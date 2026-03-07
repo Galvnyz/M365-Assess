@@ -24,6 +24,10 @@
     User principal name (e.g., 'admin@contoso.onmicrosoft.com') for interactive
     authentication to Exchange Online or Purview. Bypasses the Windows Authentication
     Manager (WAM) broker which can cause RuntimeBroker errors on some systems.
+.PARAMETER M365Environment
+    Target cloud environment. Commercial and GCC use standard endpoints.
+    GCCHigh and DoD route to sovereign cloud endpoints for Graph, Exchange,
+    and Purview. Defaults to 'commercial'.
 .EXAMPLE
     PS> .\Common\Connect-Service.ps1 -Service Graph -Scopes 'User.Read.All','Group.Read.All'
 
@@ -40,6 +44,10 @@
     PS> .\Common\Connect-Service.ps1 -Service Purview -UserPrincipalName 'admin@contoso.onmicrosoft.com'
 
     Connects to Purview using the specified UPN (avoids WAM broker issues).
+.EXAMPLE
+    PS> .\Common\Connect-Service.ps1 -Service Graph -M365Environment gcchigh -TenantId 'contoso.onmicrosoft.us'
+
+    Connects to Microsoft Graph in the GCC High sovereign cloud.
 #>
 [CmdletBinding()]
 param(
@@ -63,7 +71,11 @@ param(
     [string]$ClientSecret,
 
     [Parameter()]
-    [string]$UserPrincipalName
+    [string]$UserPrincipalName,
+
+    [Parameter()]
+    [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')]
+    [string]$M365Environment = 'commercial'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,6 +95,35 @@ if (-not (Get-Module -Name $requiredModule -ListAvailable)) {
 }
 
 try {
+    # ------------------------------------------------------------------
+    # Environment endpoint configuration
+    # GCC uses the same endpoints as commercial (tenant is in the GCC
+    # partition but API surface is identical). GCC High and DoD route
+    # to sovereign cloud endpoints.
+    # ------------------------------------------------------------------
+    $envConfig = @{
+        'commercial' = @{ GraphEnvironment = $null; ExoEnvironment = $null; PurviewParams = @{} }
+        'gcc'        = @{ GraphEnvironment = $null; ExoEnvironment = $null; PurviewParams = @{} }
+        'gcchigh'    = @{
+            GraphEnvironment = 'USGov'
+            ExoEnvironment   = 'O365USGovGCCHigh'
+            PurviewParams    = @{
+                ConnectionUri                   = 'https://ps.compliance.protection.office365.us/powershell-liveid/'
+                AzureADAuthorizationEndpointUri = 'https://login.microsoftonline.us/common'
+            }
+        }
+        'dod'        = @{
+            GraphEnvironment = 'USGovDoD'
+            ExoEnvironment   = 'O365USGovDoD'
+            PurviewParams    = @{
+                ConnectionUri                   = 'https://l5.ps.compliance.protection.office365.us/powershell-liveid/'
+                AzureADAuthorizationEndpointUri = 'https://login.microsoftonline.us/common'
+            }
+        }
+    }
+
+    $currentEnv = $envConfig[$M365Environment]
+
     switch ($Service) {
         'Graph' {
             $connectParams = @{}
@@ -101,6 +142,10 @@ try {
                 $connectParams['Scopes'] = $Scopes
             }
 
+            if ($currentEnv.GraphEnvironment) {
+                $connectParams['Environment'] = $currentEnv.GraphEnvironment
+            }
+
             # Suppress Graph SDK welcome banner (available in v2.x+)
             if ((Get-Command Connect-MgGraph -ErrorAction SilentlyContinue) -and
                 (Get-Command Connect-MgGraph).Parameters.ContainsKey('NoWelcome')) {
@@ -108,7 +153,7 @@ try {
             }
 
             Connect-MgGraph @connectParams
-            Write-Verbose "Connected to Microsoft Graph"
+            Write-Verbose "Connected to Microsoft Graph ($M365Environment)"
         }
 
         'ExchangeOnline' {
@@ -125,8 +170,12 @@ try {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
             }
 
+            if ($currentEnv.ExoEnvironment) {
+                $connectParams['ExchangeEnvironmentName'] = $currentEnv.ExoEnvironment
+            }
+
             Connect-ExchangeOnline @connectParams
-            Write-Verbose "Connected to Exchange Online"
+            Write-Verbose "Connected to Exchange Online ($M365Environment)"
         }
 
         'Purview' {
@@ -141,8 +190,12 @@ try {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
             }
 
+            foreach ($key in $currentEnv.PurviewParams.Keys) {
+                $connectParams[$key] = $currentEnv.PurviewParams[$key]
+            }
+
             Connect-IPPSSession @connectParams
-            Write-Verbose "Connected to Purview (Security & Compliance)"
+            Write-Verbose "Connected to Purview (Security & Compliance) ($M365Environment)"
         }
     }
 }

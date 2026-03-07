@@ -74,7 +74,7 @@ catch {
 $securityDefaults = $null
 try {
     Write-Verbose "Retrieving security defaults enforcement policy..."
-    $securityDefaults = Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $securityDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
 }
 catch {
     Write-Verbose "Could not retrieve security defaults policy — will report N/A"

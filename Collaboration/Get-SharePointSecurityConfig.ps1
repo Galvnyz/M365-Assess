@@ -77,7 +77,7 @@ $spoSettings = $null
 try {
     Write-Verbose "Retrieving SharePoint tenant settings..."
     $spoSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/admin/sharepoint/settings' -ErrorAction Stop
+        -Uri '/v1.0/admin/sharepoint/settings' -ErrorAction Stop
 }
 catch {
     Write-Warning "Could not retrieve SharePoint tenant settings: $_"

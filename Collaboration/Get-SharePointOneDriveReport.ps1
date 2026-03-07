@@ -49,7 +49,7 @@ catch {
 # Retrieve SharePoint tenant settings
 try {
     Write-Verbose "Retrieving SharePoint and OneDrive tenant settings..."
-    $spoSettings = Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/v1.0/admin/sharepoint/settings' -Method GET
+    $spoSettings = Invoke-MgGraphRequest -Uri '/v1.0/admin/sharepoint/settings' -Method GET
 }
 catch {
     $statusCode = $null

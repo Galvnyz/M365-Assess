@@ -81,7 +81,7 @@ function Add-Setting {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking security defaults..."
-    $secDefaults = Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
     $isEnabled = $secDefaults['isEnabled']
     Add-Setting -Category 'Security Defaults' -Setting 'Security Defaults Enabled' `
         -CurrentValue "$isEnabled" -RecommendedValue 'True (if no Conditional Access)' `
@@ -100,11 +100,11 @@ catch {
 try {
     Write-Verbose "Checking global admin count..."
     $globalAdminRole = Invoke-MgGraphRequest -Method GET `
-        -Uri "https://graph.microsoft.com/v1.0/directoryRoles?`$filter=displayName eq 'Global Administrator'" -ErrorAction Stop
+        -Uri "/v1.0/directoryRoles?`$filter=displayName eq 'Global Administrator'" -ErrorAction Stop
     $roleId = $globalAdminRole['value'][0]['id']
 
     $members = Invoke-MgGraphRequest -Method GET `
-        -Uri "https://graph.microsoft.com/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
+        -Uri "/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
     $gaCount = @($members['value']).Count
 
     $gaStatus = if ($gaCount -ge 2 -and $gaCount -le 4) { 'Pass' }
@@ -127,7 +127,7 @@ $authPolicy = $null
 try {
     Write-Verbose "Checking authorization policy..."
     $authPolicy = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/policies/authorizationPolicy' -ErrorAction Stop
+        -Uri '/v1.0/policies/authorizationPolicy' -ErrorAction Stop
 }
 catch {
     Write-Warning "Could not retrieve authorization policy: $_"
@@ -208,7 +208,7 @@ if ($authPolicy) {
 try {
     Write-Verbose "Checking admin consent workflow..."
     $adminConsentSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/policies/adminConsentRequestPolicy' -ErrorAction Stop
+        -Uri '/v1.0/policies/adminConsentRequestPolicy' -ErrorAction Stop
     $isAdminConsentEnabled = $adminConsentSettings['isEnabled']
 
     Add-Setting -Category 'Application Consent' -Setting 'Admin Consent Workflow Enabled' `
@@ -227,7 +227,7 @@ catch {
 try {
     Write-Verbose "Checking SSPR configuration..."
     $sspr = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy' -ErrorAction Stop
+        -Uri '/v1.0/policies/authenticationMethodsPolicy' -ErrorAction Stop
     $ssprRegistration = $sspr['registrationEnforcement']['authenticationMethodsRegistrationCampaign']['state']
 
     Add-Setting -Category 'Password Management' -Setting 'Auth Method Registration Campaign' `
@@ -246,7 +246,7 @@ catch {
 try {
     Write-Verbose "Checking password protection..."
     $passwordProtection = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/settings' -ErrorAction Stop
+        -Uri '/v1.0/settings' -ErrorAction Stop
     $pwSettings = $passwordProtection['value'] | Where-Object {
         $_['displayName'] -eq 'Password Rule Settings'
     }
@@ -284,7 +284,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking password expiration..."
-    $domains = Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/domains' -ErrorAction Stop
+    $domains = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/domains' -ErrorAction Stop
     foreach ($domain in $domains['value']) {
         if (-not $domain['isVerified']) { continue }
         $validityDays = $domain['passwordValidityPeriodInDays']
@@ -357,7 +357,7 @@ if ($authPolicy) {
 try {
     Write-Verbose "Counting conditional access policies..."
     $caPolicies = Invoke-MgGraphRequest -Method GET `
-        -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+        -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
     $caCount = @($caPolicies['value']).Count
     $enabledCount = @($caPolicies['value'] | Where-Object { $_['state'] -eq 'enabled' }).Count
 
@@ -398,7 +398,7 @@ catch {
 try {
     Write-Verbose "Counting guest users..."
     $guestCount = Invoke-MgGraphRequest -Method GET `
-        -Uri "https://graph.microsoft.com/v1.0/users/`$count?`$filter=userType eq 'Guest'" `
+        -Uri "/v1.0/users/`$count?`$filter=userType eq 'Guest'" `
         -Headers @{ 'ConsistencyLevel' = 'eventual' } -ErrorAction Stop
     Add-Setting -Category 'External Collaboration' -Setting 'Guest User Count' `
         -CurrentValue "$guestCount" -RecommendedValue 'Review periodically' -Status 'Review' `

@@ -36,8 +36,9 @@
     ScubaGear product codes to assess. Only used when the ScubaGear section is
     selected. Defaults to all seven products.
 .PARAMETER M365Environment
-    Target M365 environment type for ScubaGear. Defaults to 'commercial'.
-    Only used when the ScubaGear section is selected.
+    Target cloud environment for all service connections. Commercial and GCC
+    use standard endpoints. GCCHigh and DoD use sovereign cloud endpoints.
+    Defaults to 'commercial'.
 .EXAMPLE
     PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
 
@@ -336,6 +337,9 @@ function Show-InteractiveWizard {
     Write-Host "    Sections:  $sectionDisplay" -ForegroundColor $cNormal
     Write-Host "    Tenant:    $tenantDisplay" -ForegroundColor $cNormal
     Write-Host "    Auth:      $authDisplay" -ForegroundColor $cNormal
+    if ($M365Environment -ne 'commercial') {
+        Write-Host "    Cloud:     $M365Environment" -ForegroundColor $cNormal
+    }
     Write-Host "    Output:    $wizOutputFolder\" -ForegroundColor $cNormal
     Write-Host ''
     Write-Host '  Press ENTER to begin, or Q to quit.' -ForegroundColor $cPrompt
@@ -861,16 +865,22 @@ catch {
 # Initialize log file
 # ------------------------------------------------------------------
 $script:logFilePath = Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Log.txt'
-$logHeader = @(
+$logHeaderLines = @(
     ('=' * 80)
     '  M365 Environment Assessment Log'
     "  Version:  v$script:AssessmentVersion"
     "  Started:  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     "  Tenant:   $TenantId"
+)
+if ($M365Environment -ne 'commercial') {
+    $logHeaderLines += "  Cloud:    $M365Environment"
+}
+$logHeaderLines += @(
     "  Sections: $($Section -join ', ')"
     ('=' * 80)
     ''
 )
+$logHeader = $logHeaderLines
 Set-Content -Path $script:logFilePath -Value ($logHeader -join "`n") -Encoding UTF8
 Write-AssessmentLog -Level INFO -Message "Assessment started. Output folder: $assessmentFolder"
 
@@ -998,6 +1008,10 @@ function Connect-RequiredService {
 
             if ($svc -eq 'Graph') {
                 $connectParams['Scopes'] = $graphScopes
+            }
+
+            if ($M365Environment -ne 'commercial') {
+                $connectParams['M365Environment'] = $M365Environment
             }
 
             # Suppress noisy output during connection:

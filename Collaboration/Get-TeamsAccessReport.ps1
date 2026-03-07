@@ -57,7 +57,7 @@ $isUserPersonalScopeResourceSpecificConsentEnabled = $null
 # Retrieve Teams app settings from beta endpoint
 try {
     Write-Verbose "Retrieving Teams app settings from beta endpoint..."
-    $teamsAppSettings = Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/beta/teamwork/teamsAppSettings' -Method GET
+    $teamsAppSettings = Invoke-MgGraphRequest -Uri '/beta/teamwork/teamsAppSettings' -Method GET
 
     $allowSideLoading = $teamsAppSettings.isChatResourceSpecificConsentEnabled
     $isUserPersonalScopeResourceSpecificConsentEnabled = $teamsAppSettings.isUserPersonalScopeResourceSpecificConsentEnabled
@@ -69,7 +69,7 @@ catch {
 # Retrieve group settings for guest access configuration
 try {
     Write-Verbose "Retrieving group settings for guest access policies..."
-    $groupSettingsResponse = Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/v1.0/groupSettings' -Method GET
+    $groupSettingsResponse = Invoke-MgGraphRequest -Uri '/v1.0/groupSettings' -Method GET
 
     $groupSettingsList = $groupSettingsResponse.value
     $guestSettings = $null
@@ -116,7 +116,7 @@ catch {
 # Try to get tenant-wide Teams settings via service-specific beta endpoint
 try {
     Write-Verbose "Retrieving tenant-wide Teams configuration..."
-    $tenantConfig = Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/beta/teamwork' -Method GET
+    $tenantConfig = Invoke-MgGraphRequest -Uri '/beta/teamwork' -Method GET
 
     if ($null -ne $tenantConfig) {
         if ($tenantConfig.PSObject.Properties.Name -contains 'isGuestAccessEnabled' -or
