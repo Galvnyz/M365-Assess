@@ -1,6 +1,6 @@
 # Contributing to M365 Assess
 
-Thanks for your interest in contributing! This project benefits from community feedback and contributions.
+Thanks for your interest in contributing! This project often benefits from community feedback and contributions.
 
 ## How to Contribute
 
