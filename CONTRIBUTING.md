@@ -32,8 +32,7 @@ Thanks for your interest in contributing! This project often benefits from commu
 
 1. Place your script in the appropriate domain folder (e.g., `Entra/`, `Security/`)
 2. Follow the existing pattern: accept `-OutputPath`, return objects to the pipeline
-3. Add a corresponding Pester test in `tests/` mirroring the folder structure
-4. Register the collector in `Invoke-M365Assessment.ps1` under the appropriate section
+3. Register the collector in `Invoke-M365Assessment.ps1` under the appropriate section
 
 ### Custom Branding
 
@@ -47,13 +46,11 @@ To use your own branding in the HTML report, replace the images in `Common/asset
 
 ## Testing
 
-Tests use Pester 5.x. Run the full suite:
+Live tenant testing is the primary validation method. Run collectors against a real or test tenant and verify CSV output and HTML report accuracy. Use `PSScriptAnalyzer` for static analysis:
 
 ```powershell
-pwsh -NoProfile -Command "Invoke-Pester -Path './tests' -Output Detailed"
+Invoke-ScriptAnalyzer -Path .\Entra\Get-MfaReport.ps1
 ```
-
-Live tenant testing is the primary validation method. Mock-based Pester tests verify script structure and parameter handling.
 
 ## Code of Conduct
 
