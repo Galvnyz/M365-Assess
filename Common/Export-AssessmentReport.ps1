@@ -709,8 +709,9 @@ foreach ($sectionName in $sections) {
         # Standard data table rendering
         # ----------------------------------------------------------
         $rowCount = @($data).Count
+        $collectorDisplay = if ($c.FileName -eq '11-Email-Security.csv') { 'Email Policies' } else { $c.Collector }
         $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
-        $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $c.Collector) <span class='row-count'>($rowCount rows)</span></h3></summary>")
+        $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
         $null = $sectionHtml.AppendLine("<div class='table-wrapper'>")
         $null = $sectionHtml.AppendLine("<table class='data-table'>")
