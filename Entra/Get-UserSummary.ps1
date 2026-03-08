@@ -4,12 +4,15 @@
 .DESCRIPTION
     Queries Microsoft Graph for all users and produces aggregate counts including
     total users, licensed users, guest accounts, disabled accounts, on-prem synced
-    accounts, cloud-only accounts, and MFA-registered users. Useful for tenant
-    health checks and security assessments.
+    accounts, cloud-only accounts, and users with recent sign-in activity. Useful
+    for tenant health checks and security assessments.
 
-    Uses the ConsistencyLevel:eventual header required by the $count query parameter.
+    Uses Invoke-MgGraphRequest with pagination for reliable operation across all
+    tenant types and licensing tiers.
 
-    Requires Microsoft.Graph.Users module and User.Read.All permission.
+    Requires Microsoft.Graph.Authentication module and an active Graph connection
+    with User.Read.All permission. AuditLog.Read.All is optional (enables
+    sign-in activity tracking).
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned
     to the pipeline.
@@ -23,6 +26,9 @@
     PS> .\Entra\Get-UserSummary.ps1 -OutputPath '.\user-summary.csv'
 
     Exports user summary counts to CSV for reporting.
+.NOTES
+    Version: 0.3.0
+    M365 Assess
 #>
 [CmdletBinding()]
 param(
@@ -46,78 +52,96 @@ catch {
     return
 }
 
-# Ensure required Graph submodule is loaded (PS 7.x does not auto-import)
-Import-Module -Name Microsoft.Graph.Users -ErrorAction Stop
+# ------------------------------------------------------------------
+# Retrieve all users via Graph API (paginated)
+# ------------------------------------------------------------------
+Write-Verbose "Retrieving all users (this may take a moment in large tenants)..."
 
-# Retrieve all users with relevant properties
-try {
-    Write-Verbose "Retrieving all users (this may take a moment in large tenants)..."
-    $selectProperties = @(
-        'Id'
-        'DisplayName'
-        'UserPrincipalName'
-        'UserType'
-        'AccountEnabled'
-        'AssignedLicenses'
-        'OnPremisesSyncEnabled'
-        'SignInActivity'
-    )
+$allUsers = [System.Collections.Generic.List[object]]::new()
+$selectFields = 'id,displayName,userPrincipalName,userType,accountEnabled,assignedLicenses,onPremisesSyncEnabled,signInActivity'
+$uri = "/v1.0/users?`$select=$selectFields&`$top=999"
 
-    $users = Get-MgUser -All -Property $selectProperties -ConsistencyLevel 'eventual' -CountVariable 'userCount'
-}
-catch {
-    Write-Error "Failed to retrieve users from Microsoft Graph: $_"
-    return
-}
+# Try with signInActivity first; fall back without it if the tenant lacks AAD Premium
+$fallback = $false
+do {
+    try {
+        $response = Invoke-MgGraphRequest -Method GET -Uri $uri -Headers @{ 'ConsistencyLevel' = 'eventual' }
+    }
+    catch {
+        # signInActivity requires AuditLog.Read.All + AAD Premium; retry without it
+        if (-not $fallback -and $_.ToString() -match 'signInActivity|AuditLog|Authorization_RequestDenied|Insufficient privileges|Neither combinator') {
+            Write-Warning "SignInActivity not available (requires AuditLog.Read.All + Azure AD Premium). Retrying without it."
+            $fallback = $true
+            $selectFields = 'id,displayName,userPrincipalName,userType,accountEnabled,assignedLicenses,onPremisesSyncEnabled'
+            $uri = "/v1.0/users?`$select=$selectFields&`$top=999"
+            $allUsers.Clear()
+            continue
+        }
+        Write-Error "Failed to retrieve users from Microsoft Graph: $_"
+        return
+    }
 
-$allUsers = @($users)
+    if ($response.value) {
+        foreach ($user in $response.value) {
+            $allUsers.Add($user)
+        }
+    }
+
+    $uri = $response.'@odata.nextLink'
+} while ($uri)
+
 $totalUsers = $allUsers.Count
+
+if ($totalUsers -eq 0) {
+    Write-Warning "No users returned from Microsoft Graph. Check User.Read.All permission."
+}
 
 Write-Verbose "Processing $totalUsers users..."
 
+# ------------------------------------------------------------------
 # Count by category
+# ------------------------------------------------------------------
 $licensedCount = 0
 $guestCount = 0
 $disabledCount = 0
 $syncedCount = 0
 $cloudOnlyCount = 0
-$mfaRegisteredCount = 0
+$activeSignInCount = 0
 
 foreach ($user in $allUsers) {
-    if ($user.AssignedLicenses.Count -gt 0) {
+    if ($user.assignedLicenses -and @($user.assignedLicenses).Count -gt 0) {
         $licensedCount++
     }
 
-    if ($user.UserType -eq 'Guest') {
+    if ($user.userType -eq 'Guest') {
         $guestCount++
     }
 
-    if ($user.AccountEnabled -eq $false) {
+    if ($user.accountEnabled -eq $false) {
         $disabledCount++
     }
 
-    if ($user.OnPremisesSyncEnabled -eq $true) {
+    if ($user.onPremisesSyncEnabled -eq $true) {
         $syncedCount++
     }
     else {
         $cloudOnlyCount++
     }
 
-    # Check sign-in activity as a proxy for MFA where available
-    # Note: Accurate MFA counts require AuthenticationMethod reports
-    if ($user.SignInActivity.LastSignInDateTime) {
-        $mfaRegisteredCount++
+    # Sign-in activity (available only with AuditLog.Read.All + AAD Premium)
+    if (-not $fallback -and $user.signInActivity.lastSignInDateTime) {
+        $activeSignInCount++
     }
 }
 
 $report = @([PSCustomObject]@{
-    TotalUsers      = $totalUsers
-    Licensed        = $licensedCount
-    GuestUsers      = $guestCount
-    DisabledUsers   = $disabledCount
+    TotalUsers       = $totalUsers
+    Licensed         = $licensedCount
+    GuestUsers       = $guestCount
+    DisabledUsers    = $disabledCount
     SyncedFromOnPrem = $syncedCount
-    CloudOnly       = $cloudOnlyCount
-    WithMFA         = $mfaRegisteredCount
+    CloudOnly        = $cloudOnlyCount
+    WithMFA          = $activeSignInCount
 })
 
 Write-Verbose "User summary: $totalUsers total, $licensedCount licensed, $guestCount guests, $disabledCount disabled"

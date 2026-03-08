@@ -109,6 +109,7 @@ The orchestrator (`Invoke-M365Assessment.ps1`) connects to the required services
 | **Security** | Secure Score, Improvement Actions, Defender Policies, Defender Security Config, DLP Policies | Microsoft Secure Score, Defender for Office 365, anti-phishing/spam/malware, Safe Links/Attachments, data loss prevention |
 | **Collaboration** | SharePoint & OneDrive, SharePoint Security Config, Teams Access, Teams Security Config | Sharing settings, external sharing controls, sync restrictions, Teams meeting policies, third-party app restrictions |
 | **Hybrid** | Hybrid Sync | Azure AD Connect sync status and domain configuration |
+| **Inventory** *(opt-in)* | Mailbox Inventory, Group Inventory, Teams Inventory, SharePoint Inventory, OneDrive Inventory | Per-object M&A inventory: all mailboxes (user/shared/room/equipment), distribution lists, M365 groups, Teams with owners and channels, SharePoint sites with storage, OneDrive accounts with usage |
 | **ScubaGear** *(opt-in)* | CISA Baseline Scan | CISA SCuBA security baseline compliance (see below) |
 
 ### Running Specific Sections
@@ -116,6 +117,9 @@ The orchestrator (`Invoke-M365Assessment.ps1`) connects to the required services
 ```powershell
 # Run only Identity and Email
 .\Invoke-M365Assessment.ps1 -Section Identity,Email -TenantId 'contoso.onmicrosoft.com'
+
+# Run only M&A Inventory (opt-in)
+.\Invoke-M365Assessment.ps1 -Section Inventory -TenantId 'contoso.onmicrosoft.com'
 
 # Run everything including ScubaGear (opt-in)
 .\Invoke-M365Assessment.ps1 -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,Hybrid,ScubaGear -TenantId 'contoso.onmicrosoft.com'
@@ -153,6 +157,11 @@ M365-Assessment/
     21-Teams-Access.csv
     21b-Teams-Security-Config.csv     # CIS-aligned Teams configuration
     22-Hybrid-Sync.csv
+    28-Mailbox-Inventory.csv          # Per-mailbox detail (opt-in Inventory section)
+    29-Group-Inventory.csv            # Distribution lists and M365 groups
+    30-Teams-Inventory.csv            # Teams with owners, members, channels
+    31-SharePoint-Inventory.csv       # Per-site storage and activity
+    32-OneDrive-Inventory.csv         # Per-user OneDrive storage and activity
     _Assessment-Summary.csv           # Status of every collector
     _Assessment-Log.txt               # Timestamped execution log
     _Assessment-Issues.log            # Issue report with recommendations
@@ -290,6 +299,7 @@ M365-Assess/
     assets/                       # Branding assets (logo, backgrounds) — see Custom Branding
   Entra/                          # Users, MFA, admin roles, CA, apps, licensing, security config
   Exchange-Online/                # Mailboxes, mail flow, email security, EXO config
+  Inventory/                      # M&A inventory: mailboxes, groups, Teams, SharePoint, OneDrive
   Intune/                         # Devices, compliance, config profiles
   Networking/                     # Port scanning, DNS, connectivity
   Purview/                        # DLP policies, audit retention

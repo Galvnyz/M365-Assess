@@ -73,7 +73,7 @@ function Add-Setting {
 try {
     Write-Verbose "Checking Teams external access settings..."
     $teamsSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/teamwork/teamsAppSettings' -ErrorAction Stop
+        -Uri '/v1.0/teamwork/teamsAppSettings' -ErrorAction Stop
 
     $isSideloadingAllowed = $teamsSettings['isChatResourceSpecificConsentEnabled']
     Add-Setting -Category 'Teams Apps' -Setting 'Chat Resource-Specific Consent' `
@@ -174,7 +174,7 @@ catch {
 try {
     Write-Verbose "Checking tenant-level Teams settings..."
     $teamSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/teamwork' -ErrorAction SilentlyContinue
+        -Uri '/v1.0/teamwork' -ErrorAction SilentlyContinue
 
     if ($teamSettings) {
         Add-Setting -Category 'Teams Settings' -Setting 'Teams Workload Active' `

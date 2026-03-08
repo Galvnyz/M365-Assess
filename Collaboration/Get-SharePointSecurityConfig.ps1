@@ -240,7 +240,7 @@ catch {
 try {
     Write-Verbose "Checking idle session timeout policy..."
     $idlePolicy = Invoke-MgGraphRequest -Method GET `
-        -Uri '/policies/activityBasedTimeoutPolicies' -ErrorAction SilentlyContinue
+        -Uri '/v1.0/policies/activityBasedTimeoutPolicies' -ErrorAction SilentlyContinue
 
     if ($idlePolicy -and $idlePolicy['value'] -and @($idlePolicy['value']).Count -gt 0) {
         Add-Setting -Category 'Sync & Access' -Setting 'Idle Session Timeout Policy' `

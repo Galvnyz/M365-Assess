@@ -71,7 +71,7 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid', 'ActiveDirectory', 'ScubaGear')]
+    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear')]
     [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid'),
 
     [Parameter()]
@@ -144,8 +144,9 @@ function Show-InteractiveWizard {
         6  = @{ Name = 'Security';      Label = 'Security';                     Selected = $true }
         7  = @{ Name = 'Collaboration'; Label = 'Collaboration';                Selected = $true }
         8  = @{ Name = 'Hybrid';             Label = 'Hybrid Sync';                  Selected = $true }
-        9  = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
-        10 = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
+        9  = @{ Name = 'Inventory';       Label = 'M&A Inventory (opt-in)';       Selected = $false }
+        10 = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
+        11 = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
     }
 
     # --- Header ---
@@ -185,7 +186,8 @@ function Show-InteractiveWizard {
     while (-not $step1Done) {
         Show-Header
         Show-StepHeader -Step 1 -Total 4 -Title 'Select Assessment Sections'
-        Write-Host '  Toggle sections by number (e.g. 3 or 1 5 10), then press ENTER.' -ForegroundColor $cNormal
+        Write-Host '  Toggle sections by number, separated by spaces (e.g. 3 or 1 5 10).' -ForegroundColor $cNormal
+        Write-Host '  Press ENTER when done.' -ForegroundColor $cMuted
         Write-Host ''
 
         foreach ($key in $sections.Keys) {
@@ -196,21 +198,36 @@ function Show-InteractiveWizard {
         }
 
         Write-Host ''
-        Write-Host '  [A] Select all standard    [N] Select none' -ForegroundColor $cPrompt
+        Write-Host '  [S] Standard    [A] Select all    [N] Select none' -ForegroundColor $cPrompt
         Write-Host ''
         Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
         $userChoice = Read-Host
 
         switch ($userChoice.Trim().ToUpper()) {
-            'A' {
-                foreach ($key in $sections.Keys) {
-                    if ($key -le 8) { $sections[$key].Selected = $true }
+            'S' {
+                # Standard sections only (deselect opt-in)
+                # Rebuild dictionary to avoid PS OrderedDictionary in-place mutation bug
+                $optInSections = @('Inventory', 'ActiveDirectory', 'ScubaGear')
+                $rebuilt = [ordered]@{}
+                foreach ($k in @($sections.Keys)) {
+                    $rebuilt[$k] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = ($sections[$k].Name -notin $optInSections) }
                 }
+                $sections = $rebuilt
+            }
+            'A' {
+                # All sections including opt-in
+                $rebuilt = [ordered]@{}
+                foreach ($k in @($sections.Keys)) {
+                    $rebuilt[$k] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $true }
+                }
+                $sections = $rebuilt
             }
             'N' {
-                foreach ($key in $sections.Keys) {
-                    $sections[$key].Selected = $false
+                $rebuilt = [ordered]@{}
+                foreach ($k in @($sections.Keys)) {
+                    $rebuilt[$k] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $false }
                 }
+                $sections = $rebuilt
             }
             '' {
                 $selectedNames = @($sections.Values | Where-Object { $_.Selected } | ForEach-Object { $_.Name })
@@ -747,6 +764,7 @@ $sectionServiceMap = @{
     'Security'      = @('Graph', 'ExchangeOnline', 'Purview')
     'Collaboration' = @('Graph')
     'Hybrid'           = @('Graph')
+    'Inventory'        = @('Graph', 'ExchangeOnline')
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
 }
@@ -762,6 +780,7 @@ $sectionScopeMap = @{
     'Security'      = @('SecurityEvents.Read.All')
     'Collaboration' = @('SharePointTenantSettings.Read.All', 'TeamSettings.Read.All', 'TeamworkAppSettings.Read.All')
     'Hybrid'           = @('Organization.Read.All', 'Domain.Read.All')
+    'Inventory'        = @('Group.Read.All', 'Team.ReadBasic.All', 'TeamMember.Read.All', 'Channel.ReadBasic.All', 'Reports.Read.All')
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
 }
@@ -779,6 +798,7 @@ $sectionModuleMap = @{
     'Security'      = @('Microsoft.Graph.Security')
     'Collaboration' = @()
     'Hybrid'           = @('Microsoft.Graph.Identity.DirectoryManagement')
+    'Inventory'        = @()
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
 }
@@ -827,6 +847,13 @@ $collectorMap = [ordered]@{
     )
     'Hybrid' = @(
         @{ Name = '22-Hybrid-Sync'; Script = 'ActiveDirectory\Get-HybridSyncReport.ps1'; Label = 'Hybrid Sync' }
+    )
+    'Inventory' = @(
+        @{ Name = '28-Mailbox-Inventory';    Script = 'Inventory\Get-MailboxInventory.ps1';    Label = 'Mailbox Inventory';    RequiredServices = @('ExchangeOnline') }
+        @{ Name = '29-Group-Inventory';      Script = 'Inventory\Get-GroupInventory.ps1';      Label = 'Group Inventory';      RequiredServices = @('ExchangeOnline') }
+        @{ Name = '30-Teams-Inventory';      Script = 'Inventory\Get-TeamsInventory.ps1';      Label = 'Teams Inventory';      RequiredServices = @('Graph') }
+        @{ Name = '31-SharePoint-Inventory'; Script = 'Inventory\Get-SharePointInventory.ps1'; Label = 'SharePoint Inventory'; RequiredServices = @('Graph') }
+        @{ Name = '32-OneDrive-Inventory';   Script = 'Inventory\Get-OneDriveInventory.ps1';   Label = 'OneDrive Inventory';   RequiredServices = @('Graph') }
     )
     'ActiveDirectory' = @(
         @{ Name = '23-AD-Domain-Report';      Script = 'ActiveDirectory\Get-ADDomainReport.ps1';      Label = 'AD Domain & Forest' }
