@@ -367,6 +367,39 @@
         .cis-disclaimer p { margin: 8px 0 0 0; }
 
         /* ----------------------------------------------------------
+           Section Advisory Blocks
+           ---------------------------------------------------------- */
+        .section-advisory {
+            background: #f8f9fa;
+            border-left: 3px solid var(--m365a-accent);
+            padding: 15px 18px;
+            margin: 12px 0 8px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 9.5pt;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+        .section-advisory strong { color: var(--m365a-dark); }
+        .section-advisory p { margin: 6px 0; }
+        .section-advisory code {
+            background: #e2e8f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+        .section-advisory .advisory-links {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 8.5pt;
+        }
+        .section-advisory .advisory-links a {
+            color: var(--m365a-accent);
+            text-decoration: none;
+        }
+        .section-advisory .advisory-links a:hover { text-decoration: underline; }
+
+        /* ----------------------------------------------------------
            Tables
            ---------------------------------------------------------- */
         .table-wrapper {
@@ -587,6 +620,13 @@
         .cis-row-review { border-left: 3px solid var(--m365a-accent); background-color: #f0f9ff !important; }
         .cis-row-unknown { border-left: 3px solid var(--m365a-medium-gray); background-color: #f9fafb !important; }
 
+        /* Framework cross-reference tags */
+        .framework-refs { white-space: normal; max-width: 220px; }
+        .fw-tag { display: inline-block; padding: 1px 5px; margin: 1px; border-radius: 3px; font-size: 0.72em; font-family: 'Consolas', 'Courier New', monospace; }
+        .fw-nist { background: #e8f0fe; color: #1a56db; }
+        .fw-csf { background: #fef3c7; color: #92400e; }
+        .fw-iso { background: #ecfdf5; color: #065f46; }
+
         /* ----------------------------------------------------------
            Footer
            ---------------------------------------------------------- */
@@ -752,7 +792,7 @@
 </div>
 <details class='section' id='section-identity' open>
 <summary><h2>Identity</h2></summary>
-<p class='section-description'>User accounts, MFA enrollment, admin roles, conditional access policies, and password policies. Identity is the primary attack surface &mdash; these controls determine who can access your environment and how they authenticate.</p>
+<p class='section-description'>User accounts, MFA enrollment, admin roles, conditional access policies, and password policies. Identity is the primary attack surface &mdash; these controls determine who can access your environment and how they authenticate. Compromised credentials remain the leading cause of data breaches; strong identity controls (MFA, least-privilege roles, conditional access) are the single most effective defense. See <a href="https://learn.microsoft.com/en-us/entra/fundamentals/concept-secure-remote-workers" target="_blank">Microsoft Entra identity security guidance</a>.</p>
 <table class='summary-table'>
 <thead><tr><th>Collector</th><th>Status</th><th>Items</th><th>Duration</th><th>Notes</th></tr></thead>
 <tbody>
@@ -812,33 +852,11 @@
 <div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>77.5%</div><div class='stat-label'>MFA Adoption</div><div class='stat-detail'>31 / 40 capable</div></div>
 <div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>77.5%</div><div class='stat-label'>SSPR Enrolled</div><div class='stat-detail'>31 / 40 capable</div></div>
 <div class='stat-card info'><div class='stat-value'>12</div><div class='stat-label'>Guest Users</div></div>
+<div class='stat-card' style='border-top-color: #e74c3c;'><div class='stat-value' style='color: #e74c3c;'>25</div><div class='stat-label'>Disabled Users</div></div>
+<div class='stat-card info'><div class='stat-value'>98</div><div class='stat-label'>Synced From On-Prem</div></div>
+<div class='stat-card info'><div class='stat-value'>84</div><div class='stat-label'>Cloud Only</div></div>
+<div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>131</div><div class='stat-label'>With MFA</div><div class='stat-detail'>77.1% of non-guest users</div></div>
 </div>
-<details class='collector-detail'>
-<summary><h3>User Summary <span class='row-count'>(1 rows)</span></h3></summary>
-<div class='table-wrapper'>
-<table class='data-table'>
-<thead><tr>
-<th>Total Users</th>
-<th>Licensed</th>
-<th>Guest Users</th>
-<th>Disabled Users</th>
-<th>Synced From On Prem</th>
-<th>Cloud Only</th>
-<th>With MFA</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>182</td>
-<td>145</td>
-<td>12</td>
-<td>25</td>
-<td>98</td>
-<td>84</td>
-<td>131</td>
-</tr>
-</tbody></table>
-</div>
-</details>
 <details class='collector-detail'>
 <summary><h3>MFA Report <span class='row-count'>(40 rows)</span></h3></summary>
 <div class='table-wrapper'>
@@ -1874,7 +1892,20 @@
 </details>
 <details class='section' id='section-email' open>
 <summary><h2>Email</h2></summary>
-<p class='section-description'>Mailbox configuration, mail flow rules, email authentication (SPF/DKIM/DMARC), and Exchange Online security settings. Email remains the #1 attack vector &mdash; these controls protect against phishing, spoofing, and data exfiltration.</p>
+<p class='section-description'>Mailbox configuration, mail flow rules, email authentication, and Exchange Online security settings. Email remains the #1 attack vector &mdash; over 90% of cyberattacks begin with a phishing email, and business email compromise (BEC) accounts for billions in losses annually.
+<div class=""section-advisory"">
+<strong>Email Authentication Protocols</strong>
+<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p>
+<p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven't been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p>
+<p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a> for federal agencies.</p>
+<p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p>
+<p class=""advisory-links""><strong>Official Resources:</strong>
+<a href=""https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about"" target=""_blank"">Microsoft Email Authentication Overview</a> &middot;
+<a href=""https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure"" target=""_blank"">Configure DMARC</a> &middot;
+<a href=""https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts"" target=""_blank"">MTA-STS for Exchange Online</a> &middot;
+<a href=""https://csrc.nist.gov/pubs/sp/800/177/r1/final"" target=""_blank"">NIST SP 800-177: Trustworthy Email</a> &middot;
+<a href=""https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security"" target=""_blank"">CISA BOD 18-01</a>
+</p></div></p>
 <table class='summary-table'>
 <thead><tr><th>Collector</th><th>Status</th><th>Items</th><th>Duration</th><th>Notes</th></tr></thead>
 <tbody>
@@ -2219,52 +2250,99 @@
 </tbody></table>
 </div>
 </details>
+<div class='exec-summary'>
+<div class='stat-card' style='border-top-color: #2ecc71;'><div class='stat-value' style='color: #2ecc71;'>3 / 3</div><div class='stat-label'>SPF Configured</div></div>
+<div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>1 / 3</div><div class='stat-label'>DMARC Enforced</div><div class='stat-detail'>0 monitoring only</div></div>
+<div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>2 / 3</div><div class='stat-label'>DKIM Configured</div></div>
+<div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>1 / 3</div><div class='stat-label'>MTA-STS</div><div class='stat-detail'>Transport encryption</div></div>
+<div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>1 / 3</div><div class='stat-label'>TLS-RPT</div><div class='stat-detail'>TLS failure reporting</div></div>
+<div class='stat-card' style='border-top-color: #2ecc71;'><div class='stat-value' style='color: #2ecc71;'>3 / 3</div><div class='stat-label'>Public DNS</div><div class='stat-detail'>Confirmed live</div></div>
+</div>
+<div class='section-advisory'>
+<strong>DNS Email Authentication Assessment</strong>
+<p>This assessment queries both local and public DNS servers (Google 8.8.8.8, Cloudflare 1.1.1.1) to confirm your email authentication records are live and properly configured. SPF records are validated against the RFC 7208 10-DNS-lookup limit, and duplicate records that would cause PermError are flagged.</p>
+<p class='advisory-links'><strong>Standards:</strong> <a href='https://datatracker.ietf.org/doc/html/rfc7208' target='_blank'>SPF (RFC 7208)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc6376' target='_blank'>DKIM (RFC 6376)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc7489' target='_blank'>DMARC (RFC 7489)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc8461' target='_blank'>MTA-STS (RFC 8461)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc8460' target='_blank'>TLS-RPT (RFC 8460)</a></p>
+</div>
 <details class='collector-detail'>
-<summary><h3>DNS Authentication <span class='row-count'>(6 rows)</span></h3></summary>
+<summary><h3>DNS Authentication <span class='row-count'>(3 rows)</span></h3></summary>
 <div class='table-wrapper'>
 <table class='data-table'>
 <thead><tr>
-<th>Policy Type</th>
-<th>Name</th>
-<th>Enabled</th>
-<th>Key Settings</th>
+<th>Domain</th>
+<th>Domain Type</th>
+<th>Default</th>
+<th>SPF</th>
+<th>SPF Enforcement</th>
+<th>SPF Lookup Count</th>
+<th>SPF Duplicates</th>
+<th>DMARC</th>
+<th>DMARC Policy</th>
+<th>DMARC Pct</th>
+<th>DMARC Reporting</th>
+<th>DMARC Duplicates</th>
+<th>DKIM Selector1</th>
+<th>DKIM Selector2</th>
+<th>MTASTS</th>
+<th>TLSRPT</th>
+<th>Public DNS Confirm</th>
 </tr></thead>
 <tbody>
 <tr>
-<td>SPF</td>
 <td>northwindtraders.com</td>
+<td>Authoritative</td>
 <td>True</td>
 <td>v=spf1 include:spf.protection.outlook.com include:spf.barracuda.com -all</td>
-</tr>
-<tr>
-<td>DKIM</td>
-<td>northwindtraders.com</td>
-<td>True</td>
-<td>selector1._domainkey.northwindtraders.com: CNAME configured; Status: Enabled</td>
-</tr>
-<tr>
-<td>DMARC</td>
-<td>northwindtraders.com</td>
-<td>True</td>
+<td>Hard Fail (-all)</td>
+<td>2 / 10</td>
+<td>No</td>
 <td>v=DMARC1; p=quarantine; rua=mailto:dmarc@northwindtraders.com; pct=100</td>
+<td>quarantine</td>
+<td>100% (default)</td>
+<td>rua=mailto:dmarc@northwindtraders.com</td>
+<td>No</td>
+<td>selector1-northwindtraders-com._domainkey.northwind.onmicrosoft.com</td>
+<td>selector2-northwindtraders-com._domainkey.northwind.onmicrosoft.com</td>
+<td>v=STSv1; id=20260101T000000Z</td>
+<td>v=TLSRPTv1; rua=mailto:tls-reports@northwindtraders.com</td>
+<td>Confirmed (Google + Cloudflare)</td>
 </tr>
 <tr>
-<td>SPF</td>
 <td>mail.northwindtraders.com</td>
-<td>True</td>
+<td>Authoritative</td>
+<td>False</td>
 <td>v=spf1 include:spf.protection.outlook.com -all</td>
+<td>Hard Fail (-all)</td>
+<td>1 / 10</td>
+<td>No</td>
+<td>Not configured</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+<td>Not configured</td>
+<td>Not configured</td>
+<td>Not configured</td>
+<td>Not configured</td>
+<td>Confirmed (Google + Cloudflare)</td>
 </tr>
 <tr>
-<td>DKIM</td>
-<td>mail.northwindtraders.com</td>
+<td>northwindtraders.onmicrosoft.com</td>
+<td>Authoritative</td>
 <td>False</td>
-<td>DKIM signing not enabled for secondary domain</td>
-</tr>
-<tr>
-<td>DMARC</td>
-<td>mail.northwindtraders.com</td>
-<td>False</td>
-<td>No DMARC record found</td>
+<td>v=spf1 include:spf.protection.outlook.com -all</td>
+<td>Hard Fail (-all)</td>
+<td>1 / 10</td>
+<td>No</td>
+<td>Not configured</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+<td>selector1-northwindtraders-onmicrosoft-com._domainkey.northwind.onmicrosoft.com</td>
+<td>selector2-northwindtraders-onmicrosoft-com._domainkey.northwind.onmicrosoft.com</td>
+<td>Not configured</td>
+<td>Not configured</td>
+<td>Confirmed (Google + Cloudflare)</td>
 </tr>
 </tbody></table>
 </div>
@@ -2596,7 +2674,7 @@
 </details>
 <details class='section' id='section-security' open>
 <summary><h2>Security</h2></summary>
-<p class='section-description'>Microsoft Secure Score, Defender for Office 365 policies, and Data Loss Prevention rules. These controls provide defense-in-depth against malware, ransomware, and accidental data leakage.</p>
+<p class='section-description'>Microsoft Secure Score, Defender for Office 365 policies, and Data Loss Prevention rules. These controls provide defense-in-depth against malware, ransomware, and accidental data leakage. Defender policies should be configured at <em>Standard</em> or <em>Strict</em> preset levels as defined in the <a href="https://learn.microsoft.com/en-us/defender-office-365/recommended-settings-for-eop-and-office365" target="_blank">Microsoft recommended security settings</a>. DLP rules prevent sensitive data (PII, financial records, health information) from leaving the organization via email, chat, or file sharing.</p>
 <table class='summary-table'>
 <thead><tr><th>Collector</th><th>Status</th><th>Items</th><th>Duration</th><th>Notes</th></tr></thead>
 <tbody>
@@ -3226,7 +3304,7 @@
 </details>
 <details class='section' id='section-collaboration' open>
 <summary><h2>Collaboration</h2></summary>
-<p class='section-description'>SharePoint, OneDrive, and Microsoft Teams configuration and access settings. Collaboration tools are where sensitive data lives &mdash; these controls govern sharing, guest access, and external communication.</p>
+<p class='section-description'>SharePoint, OneDrive, and Microsoft Teams configuration and access settings. Collaboration tools are where sensitive data lives &mdash; these controls govern sharing, guest access, and external communication. Misconfigured sharing settings are a common source of data exposure; anonymous sharing links and unrestricted guest access should be reviewed carefully. See <a href="https://learn.microsoft.com/en-us/microsoft-365/solutions/setup-secure-collaboration-with-teams" target="_blank">Microsoft secure collaboration guidance</a>.</p>
 <table class='summary-table'>
 <thead><tr><th>Collector</th><th>Status</th><th>Items</th><th>Duration</th><th>Notes</th></tr></thead>
 <tbody>
@@ -3545,6 +3623,7 @@
 <strong>Informational Notice</strong>
 <p>This CIS benchmark assessment is provided for <strong>informational purposes only</strong> and does not constitute a comprehensive security assessment, audit, or certification. Results reflect a subset of the 140 CIS controls checked via automated methods at a point in time and should not be considered conclusive. For a thorough security evaluation, consider engaging a qualified security professional for penetration testing and full compliance review.</p>
 </div>
+<p style='margin:8px 0 0;font-size:0.9em;color:var(--m365a-medium-gray);'>Cross-referenced to: <strong>NIST 800-53 Rev 5</strong>, <strong>NIST CSF 2.0</strong>, <strong>ISO 27001:2022</strong></p>
 <div class='exec-summary'>
 <div class='stat-card' style='border-top-color: #f39c12;'><div class='stat-value' style='color: #f39c12;'>70%</div><div class='stat-label'>Compliance Score</div></div>
 <div class='stat-card' style='border-top-color: var(--m365a-medium-gray);'><div class='stat-value'>140</div><div class='stat-label'>Benchmark Total</div></div>
@@ -3557,7 +3636,7 @@
 <summary><h3>Areas of Improvement <span class='row-count'>(21 findings)</span></h3></summary>
 <div class='table-wrapper'>
 <table class='data-table cis-table'>
-<thead><tr><th>CIS Control</th><th>Status</th><th>Setting</th><th>Current Value</th><th>Recommended</th><th>Remediation</th></tr></thead>
+<thead><tr><th>CIS Control</th><th>Status</th><th>Setting</th><th>Current Value</th><th>Recommended</th><th>Frameworks</th><th>Remediation</th></tr></thead>
 <tbody>
 <tr class='cis-row-fail'>
 <td class='cis-id'>2.1.6</td>
@@ -3565,6 +3644,7 @@
 <td>Bulk Complaint Level Threshold (Default)</td>
 <td>7</td>
 <td>6 or lower</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>CM-6a;SI-3a;SI-8</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>DE.CM-09</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.7;A.8.16;A.8.23</span></td>
 <td class='remediation-cell'>Security admin center &gt; Anti-spam &gt; Set bulk threshold to 6 or lower.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3573,6 +3653,7 @@
 <td>Targeted Domain Protection (Default)</td>
 <td>False</td>
 <td>True</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>SI-8</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>DE.CM-09</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.23</span></td>
 <td class='remediation-cell'>Security admin center &gt; Anti-phishing &gt; Add domains to protect.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3581,6 +3662,7 @@
 <td>First Contact Safety Tips (Default)</td>
 <td>False</td>
 <td>True</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>SI-8</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>DE.CM-09</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.23</span></td>
 <td class='remediation-cell'>Security admin center &gt; Anti-phishing &gt; Enable first contact safety tips.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3589,6 +3671,7 @@
 <td>Targeted User Protection (Default)</td>
 <td>False</td>
 <td>True</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>SI-8</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>DE.CM-09</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.23</span></td>
 <td class='remediation-cell'>Security admin center &gt; Anti-phishing &gt; Add users to protect.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3597,6 +3680,7 @@
 <td>Users Can Create Security Groups</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6(10);CM-5</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.8.2</span></td>
 <td class='remediation-cell'>Entra admin center &gt; Groups &gt; General &gt; Users can create security groups &gt; No.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3605,6 +3689,7 @@
 <td>User Consent for Applications</td>
 <td>Allow user consent for apps</td>
 <td>Do not allow user consent</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6(10);CM-5</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.8.26</span></td>
 <td class='remediation-cell'>Entra admin center &gt; Enterprise applications &gt; Consent and permissions &gt; User consent settings &gt; Do not allow user consent.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3613,6 +3698,7 @@
 <td>Guest User Access Restriction</td>
 <td>Same as member users</td>
 <td>Restricted access</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.5.18</span></td>
 <td class='remediation-cell'>Entra admin center &gt; External Identities &gt; External collaboration settings &gt; Guest user access &gt; Most restrictive.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3621,6 +3707,7 @@
 <td>Guest Invitation Policy</td>
 <td>Anyone in the organization can invite</td>
 <td>Admins and guest inviters only</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6(10)</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.5.18</span></td>
 <td class='remediation-cell'>Entra admin center &gt; External Identities &gt; External collaboration settings &gt; Guest invite settings.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3629,6 +3716,7 @@
 <td>Auth Method Registration Campaign</td>
 <td>disabled</td>
 <td>enabled</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>IA-2(1);IA-2(2)</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-03</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.5</span></td>
 <td class='remediation-cell'>Entra admin center &gt; Protection &gt; Authentication methods &gt; Registration campaign &gt; State &gt; Enabled.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3637,6 +3725,7 @@
 <td>Outlook Add-ins Allowed (Default Role Assignment Policy)</td>
 <td>True</td>
 <td>Restricted</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>CM-11;CM-7</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.19;A.8.26</span></td>
 <td class='remediation-cell'>Remove MyMarketplaceApps and MyCustomApps roles from Default Role Assignment Policy.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3645,6 +3734,7 @@
 <td>OWA Additional Storage (OwaMailboxPolicy-Default)</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>CM-7;SC-7(10)</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.DS-01</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.19;A.8.26</span></td>
 <td class='remediation-cell'>Run: Set-OwaMailboxPolicy -Identity OwaMailboxPolicy-Default -AdditionalStorageProvidersAvailable $false</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3653,6 +3743,7 @@
 <td>Default Sharing Link Permission</td>
 <td>Edit</td>
 <td>View (read-only)</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15</span></td>
 <td class='remediation-cell'>SharePoint admin center &gt; Sharing &gt; Default permission &gt; View.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3661,6 +3752,7 @@
 <td>Default Sharing Link Type</td>
 <td>AnonymousAccess</td>
 <td>Specific people (direct)</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-6</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15</span></td>
 <td class='remediation-cell'>SharePoint admin center &gt; Policies &gt; Sharing &gt; Default link type &gt; Specific people.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3669,6 +3761,7 @@
 <td>Communication with Unmanaged Teams Users</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>CM-7;SC-7(10)</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.19;A.8.20</span></td>
 <td class='remediation-cell'>Teams admin center &gt; External access &gt; Unmanaged Teams users &gt; Off.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3677,6 +3770,7 @@
 <td>External Unmanaged Users Can Initiate Conversations</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>CM-7;SI-8</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.19;A.8.23</span></td>
 <td class='remediation-cell'>Teams admin center &gt; External access &gt; External users initiate conversations &gt; Off.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3685,6 +3779,7 @@
 <td>Anonymous Users Can Join Meeting</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>SC-15a;AC-3</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-03;PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.8.5</span></td>
 <td class='remediation-cell'>Teams admin center &gt; Meetings &gt; Anonymous users can join &gt; Off.</td>
 </tr>
 <tr class='cis-row-fail'>
@@ -3693,6 +3788,7 @@
 <td>External Participants Can Give/Request Control</td>
 <td>True</td>
 <td>False</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-17a</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.8.20</span></td>
 <td class='remediation-cell'>Teams admin center &gt; Meetings &gt; External participant control &gt; Off.</td>
 </tr>
 <tr class='cis-row-warning'>
@@ -3701,6 +3797,7 @@
 <td>Idle Session Timeout Policy</td>
 <td>Not configured</td>
 <td>Configured</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-11;AC-12</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.8.1</span></td>
 <td class='remediation-cell'>Entra admin center &gt; Conditional Access &gt; Session controls &gt; Sign-in frequency.</td>
 </tr>
 <tr class='cis-row-warning'>
@@ -3709,6 +3806,7 @@
 <td>Default Calendar External Sharing</td>
 <td>CalendarSharingFreeBusySimple</td>
 <td>Restricted</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-3;SC-7(10)</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05;PR.DS-01</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.8.3</span></td>
 <td class='remediation-cell'>Exchange admin center &gt; Organization &gt; Sharing &gt; Restrict to CalendarSharingFreeBusySimple.</td>
 </tr>
 <tr class='cis-row-warning'>
@@ -3717,6 +3815,7 @@
 <td>Customer Lockbox Enabled</td>
 <td>False</td>
 <td>True (E5 license)</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-3;AC-6</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05;GV.SC-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.5.19</span></td>
 <td class='remediation-cell'>M365 admin center &gt; Settings &gt; Org settings &gt; Customer Lockbox &gt; Require approval. Requires E5.</td>
 </tr>
 <tr class='cis-row-warning'>
@@ -3725,6 +3824,7 @@
 <td>Guest Access Expiration</td>
 <td>Enabled (90 days)</td>
 <td>Enabled (30 days or less)</td>
+<td class='framework-refs'><span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>AC-3;AC-21b</span><span class='fw-tag fw-csf' title='NIST CSF 2.0'>PR.AA-05</span><span class='fw-tag fw-iso' title='ISO 27001:2022'>A.5.15;A.5.18</span></td>
 <td class='remediation-cell'>Set guest expiration to 30 days or less.</td>
 </tr>
 </tbody></table>
@@ -3770,7 +3870,7 @@
         <div class="report-footer">
             <p>Generated by <span class="m365a-name">M365 Assess</span>
             M365 Assessment Tool v0.3.0</p>
-            <p>March 7, 2026 2:59 PM</p>
+            <p>March 7, 2026 10:42 PM</p>
         </div>
     </div>
     <script>

@@ -1,7 +1,4 @@
-PolicyType,Name,Enabled,KeySettings
-SPF,northwindtraders.com,True,"v=spf1 include:spf.protection.outlook.com include:spf.barracuda.com -all"
-DKIM,northwindtraders.com,True,"selector1._domainkey.northwindtraders.com: CNAME configured; Status: Enabled"
-DMARC,northwindtraders.com,True,"v=DMARC1; p=quarantine; rua=mailto:dmarc@northwindtraders.com; pct=100"
-SPF,mail.northwindtraders.com,True,"v=spf1 include:spf.protection.outlook.com -all"
-DKIM,mail.northwindtraders.com,False,"DKIM signing not enabled for secondary domain"
-DMARC,mail.northwindtraders.com,False,"No DMARC record found"
+Domain,DomainType,Default,SPF,SPFEnforcement,SPFLookupCount,SPFDuplicates,DMARC,DMARCPolicy,DMARCPct,DMARCReporting,DMARCDuplicates,DKIMSelector1,DKIMSelector2,MTASTS,TLSRPT,PublicDNSConfirm
+northwindtraders.com,Authoritative,True,"v=spf1 include:spf.protection.outlook.com include:spf.barracuda.com -all","Hard Fail (-all)",2 / 10,No,"v=DMARC1; p=quarantine; rua=mailto:dmarc@northwindtraders.com; pct=100",quarantine,100% (default),"rua=mailto:dmarc@northwindtraders.com",No,selector1-northwindtraders-com._domainkey.northwind.onmicrosoft.com,selector2-northwindtraders-com._domainkey.northwind.onmicrosoft.com,"v=STSv1; id=20260101T000000Z","v=TLSRPTv1; rua=mailto:tls-reports@northwindtraders.com","Confirmed (Google + Cloudflare)"
+mail.northwindtraders.com,Authoritative,False,"v=spf1 include:spf.protection.outlook.com -all","Hard Fail (-all)",1 / 10,No,Not configured,N/A,N/A,N/A,No,Not configured,Not configured,Not configured,Not configured,"Confirmed (Google + Cloudflare)"
+northwindtraders.onmicrosoft.com,Authoritative,False,"v=spf1 include:spf.protection.outlook.com -all","Hard Fail (-all)",1 / 10,No,Not configured,N/A,N/A,N/A,No,selector1-northwindtraders-onmicrosoft-com._domainkey.northwind.onmicrosoft.com,selector2-northwindtraders-onmicrosoft-com._domainkey.northwind.onmicrosoft.com,Not configured,Not configured,"Confirmed (Google + Cloudflare)"

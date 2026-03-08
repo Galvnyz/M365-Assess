@@ -1,0 +1,140 @@
+CisControl,CisTitle,NistCsf,Nist80053,Iso27001
+1.1.1,"Ensure Administrative accounts are cloud-only",PR.AA-03;PR.AA-05,AC-6(5);AC-2,A.5.15;A.5.18;A.8.2
+1.1.2,"Ensure two emergency access accounts have been defined",PR.AA-01;PR.AA-05,AC-2;AC-2(2),A.5.16;A.5.18;A.8.2
+1.1.3,"Ensure that between two and four global admins are designated",PR.AA-05,AC-6(5),A.5.15;A.8.2
+1.1.4,"Ensure administrative accounts use licenses with a reduced application footprint",PR.AA-05;PR.PS-01,AC-6;AC-6(5),A.5.15;A.8.2
+1.2.1,"Ensure that only organizationally managed/approved public groups exist",PR.AA-05,AC-6(10);CM-5,A.5.15;A.8.2
+1.2.2,"Ensure sign-in to shared mailboxes is blocked",PR.AA-03;PR.AA-05,AC-2;AC-3,A.5.15;A.5.18;A.8.2
+1.3.1,"Ensure the 'Password expiration policy' is set to 'Set passwords to never expire'",PR.AA-01,IA-5(1),A.5.17
+1.3.2,"Ensure 'Idle session timeout' is set to '3 hours (or less)' for unmanaged devices",PR.AA-05,AC-11;AC-12,A.8.1
+1.3.3,"Ensure 'External sharing' of calendars is not available",PR.AA-05;PR.DS-01,AC-3;SC-7(10),A.5.15;A.8.3
+1.3.4,"Ensure 'User owned apps and services' is restricted",PR.AA-05,CM-7;CM-11,A.8.19;A.8.26
+1.3.5,"Ensure internal phishing protection for Forms is enabled",DE.CM-09,SI-8,A.8.23
+1.3.6,"Ensure the customer lockbox feature is enabled",PR.AA-05;GV.SC-05,AC-3;AC-6,A.5.15;A.5.19
+1.3.7,"Ensure 'third-party storage services' are restricted in 'Microsoft 365 on the web'",PR.DS-01;PR.AA-05,CM-7;SC-7(10),A.8.19;A.8.26
+1.3.8,"Ensure that Sways cannot be shared with people outside of your organization",PR.DS-01,AC-3;SC-7(10),A.5.15;A.8.3
+1.3.9,"Ensure shared bookings pages are restricted to select users",PR.AA-05,AC-3;AC-6,A.5.15;A.8.3
+2.1.1,"Ensure Safe Links for Office Applications is Enabled",DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.23
+2.1.2,"Ensure the Common Attachment Types Filter is enabled",DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.23
+2.1.3,"Ensure notifications for internal users sending malware is Enabled",DE.CM-09,SI-3a;SI-4(5),A.8.7;A.8.16
+2.1.4,"Ensure Safe Attachments policy is enabled",DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.23
+2.1.5,"Ensure Safe Attachments for SharePoint OneDrive and Microsoft Teams is Enabled",DE.CM-09,SI-3a,A.8.7
+2.1.6,"Ensure Exchange Online Spam Policies are set to notify administrators",DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.16;A.8.23
+2.1.7,"Ensure that an anti-phishing policy has been created",DE.CM-09,SI-8,A.8.23
+2.1.8,"Ensure that SPF records are published for all Exchange Domains",PR.DS-02,AC-2d;SI-8,A.5.17;A.8.23
+2.1.9,"Ensure that DKIM is enabled for all Exchange Online Domains",PR.DS-02,SC-8,A.8.24
+2.1.10,"Ensure DMARC Records for all Exchange Online domains are published",PR.DS-02;DE.CM-09,SI-8;SI-4(5),A.8.23;A.8.16
+2.1.11,"Ensure comprehensive attachment filtering is applied",DE.CM-09,SI-3;CM-6a,A.8.7;A.8.23
+2.1.12,"Ensure the connection filter IP allow list is not used",DE.CM-09,AC-4;SI-8,A.8.20;A.8.23
+2.1.13,"Ensure the connection filter safe list is off",DE.CM-09,AC-4;SI-8,A.8.20;A.8.23
+2.1.14,"Ensure inbound anti-spam policies do not contain allowed domains",DE.CM-09,SI-8,A.8.23
+2.1.15,"Ensure outbound anti-spam message limits are in place",DE.CM-09,SI-8;CM-6a,A.8.23;A.8.9
+2.4.1,"Ensure Priority account protection is enabled and configured",PR.AA-05;DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.23
+2.4.2,"Ensure Priority accounts have 'Strict protection' presets applied",DE.CM-09,CM-6a;SI-3a;SI-8,A.8.7;A.8.23
+2.4.3,"Ensure Microsoft Defender for Cloud Apps is enabled and configured",DE.CM-09;DE.AE-02,SI-4(5),A.8.16
+2.4.4,"Ensure Zero-hour auto purge for Microsoft Teams is on",DE.CM-09,SI-3a;SI-8,A.8.7;A.8.23
+3.1.1,"Ensure Microsoft 365 audit log search is Enabled",DE.AE-03,AU-12,A.8.15
+3.2.1,"Ensure DLP policies are enabled",PR.DS-01;PR.DS-02,SC-7(10),A.5.12;A.8.12
+3.2.2,"Ensure DLP policies are enabled for Microsoft Teams",PR.DS-01;PR.DS-02,SC-7(10),A.5.12;A.8.12
+3.3.1,"Ensure Information Protection sensitivity label policies are published",PR.DS-01,AC-3;SC-7(10),A.5.12;A.5.13;A.8.12
+4.1,"Ensure devices without a compliance policy are marked 'not compliant'",PR.AA-05;ID.AM-01,CM-6;CM-8,A.8.1;A.8.9
+4.2,"Ensure device enrollment for personally owned devices is blocked by default",PR.AA-05,AC-19a;CM-7,A.8.1;A.6.7
+5.1.2.1,"Ensure 'Per-user MFA' is disabled",PR.AA-03,IA-2(1);IA-2(2);CM-6,A.8.5
+5.1.2.2,"Ensure third party integrated applications are not allowed",PR.AA-05,AC-6(10);CM-5,A.5.15;A.8.26
+5.1.2.3,"Ensure 'Restrict non-admin users from creating tenants' is set to 'Yes'",PR.AA-05,AC-6(10);CM-5,A.5.15;A.8.2
+5.1.2.4,"Ensure access to the Entra admin center is restricted",PR.AA-05,AC-6(5);AC-3,A.5.15;A.8.2
+5.1.2.5,"Ensure the option to remain signed in is hidden",PR.AA-05,AC-11;AC-12,A.8.1
+5.1.2.6,"Ensure 'LinkedIn account connections' is disabled",PR.AA-05,CM-7,A.8.19
+5.1.3.1,"Ensure a dynamic group for guest users is created",PR.AA-01;PR.AA-05,AC-2;AC-6,A.5.16;A.5.18
+5.1.3.2,"Ensure users cannot create security groups",PR.AA-05,AC-6(10);CM-5,A.5.15;A.8.2
+5.1.4.1,"Ensure the ability to join devices to Entra is restricted",PR.AA-05,AC-3;CM-7,A.8.1;A.5.15
+5.1.4.2,"Ensure the maximum number of devices per user is limited",ID.AM-01;PR.AA-05,CM-8;AC-19a,A.8.1;A.5.9
+5.1.4.3,"Ensure the GA role is not added as a local administrator during Entra join",PR.AA-05,AC-6(5);CM-6,A.5.15;A.8.2
+5.1.4.4,"Ensure local administrator assignment is limited during Entra join",PR.AA-05,AC-6(5);CM-6,A.5.15;A.8.2
+5.1.4.5,"Ensure Local Administrator Password Solution is enabled",PR.AA-01,IA-5;CM-6,A.5.17;A.8.5
+5.1.4.6,"Ensure users are restricted from recovering BitLocker keys",PR.AA-05,AC-6;AC-3,A.5.15;A.8.24
+5.1.5.1,"Ensure user consent to apps accessing company data on their behalf is not allowed",PR.AA-05,AC-6(10);CM-5,A.5.15;A.8.26
+5.1.5.2,"Ensure the admin consent workflow is enabled",PR.AA-05,CM-4;AC-6(10),A.5.15;A.8.9
+5.1.6.1,"Ensure that collaboration invitations are sent to allowed domains only",PR.AA-05,AC-3,A.5.15;A.5.19
+5.1.6.2,"Ensure that guest user access is restricted",PR.AA-05,AC-6,A.5.15;A.5.18
+5.1.6.3,"Ensure guest user invitations are limited to the Guest Inviter role",PR.AA-05,AC-6(10),A.5.15;A.5.18
+5.1.8.1,"Ensure that password hash sync is enabled for hybrid deployments",PR.AA-01;PR.AA-03,IA-5,A.5.17;A.8.5
+5.2.2.1,"Ensure multifactor authentication is enabled for all users in administrative roles",PR.AA-03,IA-2(1);IA-2(2),A.8.5
+5.2.2.2,"Ensure multifactor authentication is enabled for all users",PR.AA-03,IA-2(1);IA-2(2),A.8.5
+5.2.2.3,"Enable Conditional Access policies to block legacy authentication",PR.AA-03,CM-7,A.8.5;A.8.20
+5.2.2.4,"Ensure Sign-in frequency is enabled and browser sessions are not persistent for Administrative users",PR.AA-05,AC-11;AC-12,A.8.1;A.8.5
+5.2.2.5,"Ensure 'Phishing-resistant MFA strength' is required for Administrators",PR.AA-03,IA-2(1);IA-5c;IA-5g;IA-2(8),A.8.5
+5.2.2.6,"Enable Identity Protection user risk policies",DE.CM-01;PR.AA-03,AC-2(12);AC-2(13),A.8.5;A.8.16
+5.2.2.7,"Enable Identity Protection sign-in risk policies",DE.CM-01;PR.AA-03,AC-2(12);AC-2(13),A.8.5;A.8.16
+5.2.2.8,"Ensure 'sign-in risk' is blocked for medium and high risk",DE.CM-01;PR.AA-03,AC-2(12);AC-2(13),A.8.5;A.8.16
+5.2.2.9,"Ensure a managed device is required for authentication",PR.AA-03;PR.AA-05,AC-20b;IA-3,A.8.1;A.8.5
+5.2.2.10,"Ensure a managed device is required to register security information",PR.AA-03;PR.AA-05,AC-20b;IA-3,A.8.1;A.8.5
+5.2.2.11,"Ensure sign-in frequency for Intune Enrollment is set to 'Every time'",PR.AA-03;PR.AA-05,AC-11;IA-2(1),A.8.1;A.8.5
+5.2.2.12,"Ensure the device code sign-in flow is blocked",PR.AA-03,CM-7,A.8.5;A.8.20
+5.2.3.1,"Ensure Microsoft Authenticator is configured to protect against MFA fatigue",PR.AA-03,IA-2(1);IA-2(2);IA-5c;IA-5g;IA-2(8);IA-2(13),A.8.5
+5.2.3.2,"Ensure custom banned passwords lists are used",PR.AA-01,IA-5(1),A.5.17
+5.2.3.3,"Ensure password protection is enabled for on-prem Active Directory",PR.AA-01,IA-5(1),A.5.17
+5.2.3.4,"Ensure all member users are 'MFA capable'",PR.AA-03,IA-2(1);IA-2(2),A.8.5
+5.2.3.5,"Ensure weak authentication methods are disabled",PR.AA-03,CM-7b;IA-5c,A.8.5;A.8.20
+5.2.3.6,"Ensure system-preferred multifactor authentication is enabled",PR.AA-03,IA-2(1);IA-2(2),A.8.5
+5.2.3.7,"Ensure the email OTP authentication method is disabled",PR.AA-03,CM-7;IA-5c,A.8.5;A.8.20
+5.2.4.1,"Ensure 'Self service password reset enabled' is set to 'All'",PR.AA-01,IA-5(1),A.5.17
+5.3.1,"Ensure 'Privileged Identity Management' is used to manage roles",PR.AA-05,AC-2;AC-6(1),A.5.15;A.5.18;A.8.2
+5.3.2,"Ensure 'Access reviews' for Guest Users are configured",PR.AA-05,AC-2(3);AC-2(1),A.5.15;A.5.18
+5.3.3,"Ensure 'Access reviews' for privileged roles are configured",PR.AA-05,AC-2(3);AC-2(1),A.5.15;A.5.18;A.8.2
+5.3.4,"Ensure approval is required for Global Administrator role activation",PR.AA-05,AC-6(1),A.5.15;A.8.2
+5.3.5,"Ensure approval is required for Privileged Role Administrator activation",PR.AA-05,AC-6(1),A.5.15;A.8.2
+6.1.1,"Ensure 'AuditDisabled' organizationally is set to 'False'",DE.AE-03,AU-12;AU-12c,A.8.15
+6.1.2,"Ensure mailbox audit actions are configured",DE.AE-03,AU-12;AU-12c,A.8.15
+6.1.3,"Ensure 'AuditBypassEnabled' is not enabled on mailboxes",DE.AE-03,AU-12;AU-12c,A.8.15
+6.2.1,"Ensure all forms of mail forwarding are blocked and/or disabled",PR.DS-02,AC-4,A.8.20;A.5.14
+6.2.2,"Ensure mail transport rules do not whitelist specific domains",DE.CM-09,SI-8,A.8.23
+6.2.3,"Ensure email from external senders is identified",DE.CM-09,SI-8,A.8.23
+6.3.1,"Ensure users installing Outlook add-ins is not allowed",PR.AA-05,CM-11;CM-7,A.8.19;A.8.26
+6.5.1,"Ensure modern authentication for Exchange Online is enabled",PR.AA-03,CM-7,A.8.5;A.8.20
+6.5.2,"Ensure MailTips are enabled for end users",PR.AT-01,AT-2b,A.6.3
+6.5.3,"Ensure additional storage providers are restricted in Outlook on the web",PR.DS-01,CM-7;SC-7(10),A.8.19;A.8.26
+6.5.4,"Ensure SMTP AUTH is disabled",PR.AA-03,CM-7,A.8.5;A.8.20
+7.2.1,"Ensure modern authentication for SharePoint applications is required",PR.AA-03,CM-7;IA-8,A.8.5;A.8.20
+7.2.2,"Ensure SharePoint and OneDrive integration with Azure AD B2B is enabled",PR.AA-03;PR.AA-05,AC-2;IA-8,A.5.16;A.8.5
+7.2.3,"Ensure external content sharing is restricted",PR.AA-05;PR.DS-01,AC-2;AC-3;IA-8,A.5.15;A.5.18;A.8.3
+7.2.4,"Ensure OneDrive content sharing is restricted",PR.AA-05;PR.DS-01,AC-2;AC-3;IA-8,A.5.15;A.5.18;A.8.3
+7.2.5,"Ensure that SharePoint guest users cannot share items they don't own",PR.AA-05,AC-3;AC-6(10),A.5.15;A.8.3
+7.2.6,"Ensure SharePoint external sharing is managed through domain whitelist/blacklists",PR.AA-05,AC-3;AC-6(10),A.5.15;A.5.19
+7.2.7,"Ensure link sharing is restricted in SharePoint and OneDrive",PR.AA-05,AC-6,A.5.15
+7.2.8,"Ensure external sharing is restricted by security group",PR.AA-05,AC-3;AC-6(10),A.5.15;A.8.3
+7.2.9,"Ensure guest access to a site or OneDrive will expire automatically",PR.AA-05,AC-3;AC-21b,A.5.15;A.5.18
+7.2.10,"Ensure reauthentication with verification code is restricted",PR.AA-03,IA-11,A.8.5
+7.2.11,"Ensure the SharePoint default sharing link permission is set",PR.AA-05,AC-6,A.5.15
+7.3.1,"Ensure Office 365 SharePoint infected files are disallowed for download",DE.CM-09,SI-3a,A.8.7
+7.3.2,"Ensure OneDrive sync is restricted for unmanaged devices",PR.AA-05,AC-19a;CM-7,A.6.7;A.8.1
+7.3.3,"Ensure custom script execution is restricted on personal sites",PR.AA-05,CM-7;CM-11,A.8.19;A.8.26
+7.3.4,"Ensure custom script execution is restricted on site collections",PR.AA-05,CM-7;CM-11,A.8.19;A.8.26
+8.1.1,"Ensure external file sharing in Teams is enabled for only approved cloud storage services",PR.DS-01,CM-7;SC-7(10),A.8.19;A.8.26
+8.1.2,"Ensure users can't send emails to a channel email address",PR.DS-02,SI-8;SC-7(10);AC-4,A.8.20;A.8.23
+8.2.1,"Ensure external domains are restricted in the Teams admin center",PR.AA-05,AC-3,A.5.15;A.5.19
+8.2.2,"Ensure communication with unmanaged Teams users is disabled",PR.AA-05,CM-7;SC-7(10),A.8.19;A.8.20
+8.2.3,"Ensure external Teams users cannot initiate conversations",PR.AA-05,CM-7;SI-8,A.8.19;A.8.23
+8.2.4,"Ensure communication with Skype users is disabled",PR.AA-05,CM-7,A.8.19;A.8.20
+8.4.1,"Ensure app permission policies are configured",PR.AA-05,CM-11,A.8.19;A.8.26
+8.5.1,"Ensure anonymous users can't join a meeting",PR.AA-03;PR.AA-05,SC-15a;AC-3,A.5.15;A.8.5
+8.5.2,"Ensure anonymous users and dial-in callers can't start a meeting",PR.AA-03;PR.AA-05,SC-15a,A.5.15;A.8.5
+8.5.3,"Ensure only people in my org can bypass the lobby",PR.AA-05,AC-3,A.5.15
+8.5.4,"Ensure users dialing in can't bypass the lobby",PR.AA-05,SC-15a,A.5.15
+8.5.5,"Ensure meeting chat does not allow anonymous users",PR.AA-05,SC-15a;AC-3,A.5.15;A.8.3
+8.5.6,"Ensure only organizers and co-organizers can present",PR.AA-05,AC-3;AC-21a,A.5.15
+8.5.7,"Ensure external participants can't give or request control",PR.AA-05,AC-17a,A.5.15;A.8.20
+8.5.8,"Ensure external meeting chat is off",PR.AA-05,CM-7;SC-7(10),A.5.15;A.8.20
+8.5.9,"Ensure meeting recording is off by default",PR.DS-01;PR.AA-05,CM-7,A.5.15;A.8.11
+8.6.1,"Ensure users can report security concerns in Teams",RS.CO-02,SI-4(5);SI-4(12),A.6.8;A.8.16
+9.1.1,"Ensure guest user access is restricted in Power BI",PR.AA-05,CM-7;AC-6,A.5.15;A.5.18
+9.1.2,"Ensure external user invitations are restricted in Power BI",PR.AA-05,CM-7;AC-6,A.5.15;A.5.18
+9.1.3,"Ensure guest access to content is restricted in Power BI",PR.AA-05,CM-7;AC-6,A.5.15;A.5.18
+9.1.4,"Ensure 'Publish to web' is restricted in Power BI",PR.DS-01,CM-7;SC-7(10),A.8.19;A.8.12
+9.1.5,"Ensure 'Interact with and share R and Python' visuals is 'Disabled' in Power BI",PR.DS-01,CM-7;SI-3,A.8.19;A.8.7
+9.1.6,"Ensure 'Allow users to apply sensitivity labels for content' is 'Enabled' in Power BI",PR.DS-01,AC-3;SC-7(10),A.5.12;A.5.13
+9.1.7,"Ensure shareable links are restricted in Power BI",PR.AA-05;PR.DS-01,AC-21b;SC-7(10),A.5.15;A.8.12
+9.1.8,"Ensure enabling of external data sharing is restricted in Power BI",PR.DS-01,CM-7;SC-7(10),A.5.15;A.8.12
+9.1.9,"Ensure 'Block ResourceKey Authentication' is 'Enabled' in Power BI",PR.AA-03,CM-7;IA-5g,A.8.5;A.8.20
+9.1.10,"Ensure access to APIs by Service Principals is restricted in Power BI",PR.AA-05,AC-4;AC-6(5),A.5.15;A.8.20
+9.1.11,"Ensure Service Principals cannot create and use profiles in Power BI",PR.AA-05,AC-4;AC-6(5),A.5.15;A.8.20

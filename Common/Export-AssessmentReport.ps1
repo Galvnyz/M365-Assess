@@ -95,6 +95,18 @@ if (Test-Path -Path $userSummaryCsv) {
     $userSummaryData = Import-Csv -Path $userSummaryCsv
 }
 
+# Load framework mappings for cross-referencing CIS findings (if available)
+$mappingsPath = Join-Path -Path $PSScriptRoot -ChildPath 'framework-mappings.csv'
+$frameworkMappings = @{}
+if (Test-Path -Path $mappingsPath) {
+    $mappingData = Import-Csv -Path $mappingsPath
+    foreach ($row in $mappingData) {
+        if ($row.CisControl) {
+            $frameworkMappings[$row.CisControl] = $row
+        }
+    }
+}
+
 if (-not $TenantName) {
     if ($tenantData -and $tenantData[0].PSObject.Properties.Name -contains 'OrgDisplayName') {
         $TenantName = $tenantData[0].OrgDisplayName
@@ -302,18 +314,32 @@ $sectionHtml = [System.Text.StringBuilder]::new()
 
 $sectionDescriptions = @{
     'Tenant'        = 'Organization profile, verified domains, and core tenant configuration. This baseline identifies the environment and confirms tenant-level settings.'
-    'Identity'      = 'User accounts, MFA enrollment, admin roles, conditional access policies, and password policies. Identity is the primary attack surface &mdash; these controls determine who can access your environment and how they authenticate.'
+    'Identity'      = 'User accounts, MFA enrollment, admin roles, conditional access policies, and password policies. Identity is the primary attack surface &mdash; these controls determine who can access your environment and how they authenticate. Compromised credentials remain the leading cause of data breaches; strong identity controls (MFA, least-privilege roles, conditional access) are the single most effective defense. See <a href="https://learn.microsoft.com/en-us/entra/fundamentals/concept-secure-remote-workers" target="_blank">Microsoft Entra identity security guidance</a>.'
     'Licensing'     = 'Microsoft 365 license allocation and utilization. Understanding license distribution helps identify unused spend and ensures users have the entitlements needed for security features like Defender and Intune.'
-    'Email'         = 'Mailbox configuration, mail flow rules, email authentication (SPF/DKIM/DMARC), and Exchange Online security settings. Email remains the #1 attack vector &mdash; these controls protect against phishing, spoofing, and data exfiltration.'
+    'Email'         = 'Mailbox infrastructure, Exchange Online security configuration, email protection policies, mail flow, and DNS-based email authentication. Email remains the #1 attack vector &mdash; over 90% of cyberattacks begin with a phishing email, and business email compromise (BEC) accounts for billions in losses annually.'
     'Intune'        = 'Device enrollment, compliance policies, and configuration profiles. Intune controls ensure corporate devices meet security baselines and that non-compliant devices are restricted from accessing company data.'
-    'Security'      = 'Microsoft Secure Score, Defender for Office 365 policies, and Data Loss Prevention rules. These controls provide defense-in-depth against malware, ransomware, and accidental data leakage.'
-    'Collaboration' = 'SharePoint, OneDrive, and Microsoft Teams configuration and access settings. Collaboration tools are where sensitive data lives &mdash; these controls govern sharing, guest access, and external communication.'
+    'Security'      = 'Microsoft Secure Score, Defender for Office 365 policies, and Data Loss Prevention rules. These controls provide defense-in-depth against malware, ransomware, and accidental data leakage. Defender policies should be configured at <em>Standard</em> or <em>Strict</em> preset levels as defined in the <a href="https://learn.microsoft.com/en-us/defender-office-365/recommended-settings-for-eop-and-office365" target="_blank">Microsoft recommended security settings</a>. DLP rules prevent sensitive data (PII, financial records, health information) from leaving the organization via email, chat, or file sharing.'
+    'Collaboration' = 'SharePoint, OneDrive, and Microsoft Teams configuration and access settings. Collaboration tools are where sensitive data lives &mdash; these controls govern sharing, guest access, and external communication. Misconfigured sharing settings are a common source of data exposure; anonymous sharing links and unrestricted guest access should be reviewed carefully. See <a href="https://learn.microsoft.com/en-us/microsoft-365/solutions/setup-secure-collaboration-with-teams" target="_blank">Microsoft secure collaboration guidance</a>.'
     'Hybrid'        = 'On-premises Active Directory synchronization and hybrid identity configuration. Hybrid sync health directly impacts authentication reliability and determines which identities are managed in the cloud vs. on-premises.'
     'Inventory'     = 'Per-object inventory of mailboxes, distribution lists, Microsoft 365 groups, Teams, SharePoint sites, and OneDrive accounts. Designed for M&amp;A due diligence, migration planning, and tenant-wide asset enumeration.'
 }
 
 foreach ($sectionName in $sections) {
     $sectionCollectors = @($summary | Where-Object { $_.Section -eq $sectionName })
+
+    # Reorder Email collectors for natural report flow
+    if ($sectionName -eq 'Email') {
+        $emailOrder = @{
+            '09-Mailbox-Summary.csv'       = 0
+            '11b-EXO-Security-Config.csv'  = 1
+            '11-Email-Security.csv'        = 2
+            '10-Mail-Flow.csv'             = 3
+            '12-DNS-Authentication.csv'    = 4
+        }
+        $sectionCollectors = @($sectionCollectors | Sort-Object -Property @{
+            Expression = { if ($emailOrder.ContainsKey($_.FileName)) { $emailOrder[$_.FileName] } else { 99 } }
+        })
+    }
 
     # ------------------------------------------------------------------
     # Tenant Info — non-collapsible organization profile card
@@ -501,14 +527,18 @@ foreach ($sectionName in $sections) {
         }
 
         # ----------------------------------------------------------
-        # User Summary — MFA adoption stat cards before table
+        # User Summary — all metrics as stat cards (no table)
         # ----------------------------------------------------------
         if ($c.FileName -eq '02-User-Summary.csv') {
             $users = $data[0]
             $uProps = @($users.PSObject.Properties.Name)
-            $totalUsers = if ($uProps -contains 'TotalUsers') { [int]$users.TotalUsers } else { 0 }
-            $licensedUsers = if ($uProps -contains 'Licensed') { $users.Licensed } else { '' }
-            $guestUsers = if ($uProps -contains 'GuestUsers') { $users.GuestUsers } else { '' }
+            $totalUsers    = if ($uProps -contains 'TotalUsers') { [int]$users.TotalUsers } else { 0 }
+            $licensedUsers = if ($uProps -contains 'Licensed') { [int]$users.Licensed } else { 0 }
+            $guestUsers    = if ($uProps -contains 'GuestUsers') { [int]$users.GuestUsers } else { 0 }
+            $disabledUsers = if ($uProps -contains 'DisabledUsers') { [int]$users.DisabledUsers } else { 0 }
+            $syncedUsers   = if ($uProps -contains 'SyncedFromOnPrem') { [int]$users.SyncedFromOnPrem } else { 0 }
+            $cloudOnly     = if ($uProps -contains 'CloudOnly') { [int]$users.CloudOnly } else { 0 }
+            $withMfa       = if ($uProps -contains 'WithMFA') { [int]$users.WithMFA } else { 0 }
 
             # Load per-user MFA Report for accurate adoption metrics
             $mfaCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '03-MFA-Report.csv'
@@ -528,12 +558,93 @@ foreach ($sectionName in $sections) {
             $ssprPct = if ($ssprCapable -gt 0) { [math]::Round(($ssprRegistered / $ssprCapable) * 100, 1) } else { 0 }
             $ssprColor = if ($ssprPct -ge 90) { '#2ecc71' } elseif ($ssprPct -ge 70) { '#f39c12' } else { '#e74c3c' }
 
+            # Color coding for disabled users — red if any exist
+            $disabledColor = if ($disabledUsers -gt 0) { '#e74c3c' } else { '#2ecc71' }
+
+            # Color coding for MFA sign-in count relative to total users
+            $mfaSignInPct = if ($totalUsers -gt 0) { [math]::Round(($withMfa / $totalUsers) * 100, 1) } else { 0 }
+            $mfaSignInColor = if ($mfaSignInPct -ge 90) { '#2ecc71' } elseif ($mfaSignInPct -ge 70) { '#f39c12' } else { '#e74c3c' }
+
             $null = $sectionHtml.AppendLine("<div class='exec-summary'>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$totalUsers</div><div class='stat-label'>Total Users</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$licensedUsers</div><div class='stat-label'>Licensed</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $mfaColor;'><div class='stat-value' style='color: $mfaColor;'>$mfaPct%</div><div class='stat-label'>MFA Adoption</div><div class='stat-detail'>$mfaRegistered / $mfaCapable capable</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $ssprColor;'><div class='stat-value' style='color: $ssprColor;'>$ssprPct%</div><div class='stat-label'>SSPR Enrolled</div><div class='stat-detail'>$ssprRegistered / $ssprCapable capable</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$guestUsers</div><div class='stat-label'>Guest Users</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $disabledColor;'><div class='stat-value' style='color: $disabledColor;'>$disabledUsers</div><div class='stat-label'>Disabled Users</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$syncedUsers</div><div class='stat-label'>Synced From On-Prem</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$cloudOnly</div><div class='stat-label'>Cloud Only</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $mfaSignInColor;'><div class='stat-value' style='color: $mfaSignInColor;'>$withMfa</div><div class='stat-label'>With MFA</div><div class='stat-detail'>$mfaSignInPct% of all users</div></div>")
+            $null = $sectionHtml.AppendLine("</div>")
+
+            # Cards replace the table — skip standard table rendering
+            continue
+        }
+
+        # ----------------------------------------------------------
+        # DNS Authentication — advisory cards + resource links
+        # ----------------------------------------------------------
+        if ($c.FileName -eq '12-DNS-Authentication.csv') {
+            $dnsData = @($data)
+            $totalDomains = $dnsData.Count
+            $dnsColumns = @($dnsData[0].PSObject.Properties.Name)
+
+            # SPF stats
+            $spfConfigured = @($dnsData | Where-Object { $_.SPF -and $_.SPF -ne 'Not configured' -and $_.SPF -ne 'DNS lookup failed' }).Count
+            $spfColor = if ($spfConfigured -eq $totalDomains) { '#2ecc71' } else { '#e74c3c' }
+
+            # DMARC stats
+            $dmarcConfigured = @($dnsData | Where-Object { $_.DMARC -and $_.DMARC -ne 'Not configured' }).Count
+            $dmarcEnforced = 0
+            $dmarcMonitoring = 0
+            if ($dnsColumns -contains 'DMARCPolicy') {
+                $dmarcEnforced = @($dnsData | Where-Object { $_.DMARCPolicy -match '^(reject|quarantine)' }).Count
+                $dmarcMonitoring = @($dnsData | Where-Object { $_.DMARCPolicy -match '^none' }).Count
+            }
+            $dmarcColor = if ($dmarcEnforced -eq $totalDomains) { '#2ecc71' } elseif ($dmarcConfigured -gt 0) { '#f39c12' } else { '#e74c3c' }
+
+            # DKIM stats
+            $dkimKey = if ($dnsColumns -contains 'DKIMSelector1') { 'DKIMSelector1' } else { 'DKIMSelector' }
+            $dkimConfigured = @($dnsData | Where-Object { $_.$dkimKey -and $_.$dkimKey -ne 'Not configured' }).Count
+            $dkimColor = if ($dkimConfigured -eq $totalDomains) { '#2ecc71' } elseif ($dkimConfigured -gt 0) { '#f39c12' } else { '#e74c3c' }
+
+            # MTA-STS stats (new column — may not exist in older data)
+            $mtaStsConfigured = 0
+            if ($dnsColumns -contains 'MTASTS') {
+                $mtaStsConfigured = @($dnsData | Where-Object { $_.MTASTS -and $_.MTASTS -ne 'Not configured' }).Count
+            }
+            $mtaStsColor = if ($mtaStsConfigured -eq $totalDomains) { '#2ecc71' } elseif ($mtaStsConfigured -gt 0) { '#f39c12' } else { '#e74c3c' }
+
+            # TLS-RPT stats
+            $tlsRptConfigured = 0
+            if ($dnsColumns -contains 'TLSRPT') {
+                $tlsRptConfigured = @($dnsData | Where-Object { $_.TLSRPT -and $_.TLSRPT -ne 'Not configured' }).Count
+            }
+            $tlsRptColor = if ($tlsRptConfigured -eq $totalDomains) { '#2ecc71' } elseif ($tlsRptConfigured -gt 0) { '#f39c12' } else { '#e74c3c' }
+
+            # Public DNS confirmation
+            $publicConfirmed = 0
+            if ($dnsColumns -contains 'PublicDNSConfirm') {
+                $publicConfirmed = @($dnsData | Where-Object { $_.PublicDNSConfirm -match '^Confirmed' }).Count
+            }
+            $publicColor = if ($publicConfirmed -eq $totalDomains) { '#2ecc71' } elseif ($publicConfirmed -gt 0) { '#f39c12' } else { '#e74c3c' }
+
+            $null = $sectionHtml.AppendLine("<div class='exec-summary'>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $spfColor;'><div class='stat-value' style='color: $spfColor;'>$spfConfigured / $totalDomains</div><div class='stat-label'>SPF Configured</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $dmarcColor;'><div class='stat-value' style='color: $dmarcColor;'>$dmarcEnforced / $totalDomains</div><div class='stat-label'>DMARC Enforced</div><div class='stat-detail'>$dmarcMonitoring monitoring only</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $dkimColor;'><div class='stat-value' style='color: $dkimColor;'>$dkimConfigured / $totalDomains</div><div class='stat-label'>DKIM Configured</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $mtaStsColor;'><div class='stat-value' style='color: $mtaStsColor;'>$mtaStsConfigured / $totalDomains</div><div class='stat-label'>MTA-STS</div><div class='stat-detail'>Transport encryption</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $tlsRptColor;'><div class='stat-value' style='color: $tlsRptColor;'>$tlsRptConfigured / $totalDomains</div><div class='stat-label'>TLS-RPT</div><div class='stat-detail'>TLS failure reporting</div></div>")
+            if ($dnsColumns -contains 'PublicDNSConfirm') {
+                $null = $sectionHtml.AppendLine("<div class='stat-card' style='border-top-color: $publicColor;'><div class='stat-value' style='color: $publicColor;'>$publicConfirmed / $totalDomains</div><div class='stat-label'>Public DNS</div><div class='stat-detail'>Confirmed live</div></div>")
+            }
+            $null = $sectionHtml.AppendLine("</div>")
+
+            # Advisory block with resource links
+            $null = $sectionHtml.AppendLine("<div class='section-advisory'>")
+            $null = $sectionHtml.AppendLine("<strong>DNS Email Authentication Assessment</strong>")
+            $null = $sectionHtml.AppendLine("<p>This assessment queries both local and public DNS servers (Google 8.8.8.8, Cloudflare 1.1.1.1) to confirm your email authentication records are live and properly configured. SPF records are validated against the RFC 7208 10-DNS-lookup limit, and duplicate records that would cause PermError are flagged.</p>")
+            $null = $sectionHtml.AppendLine("<p class='advisory-links'><strong>Standards:</strong> <a href='https://datatracker.ietf.org/doc/html/rfc7208' target='_blank'>SPF (RFC 7208)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc6376' target='_blank'>DKIM (RFC 6376)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc7489' target='_blank'>DMARC (RFC 7489)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc8461' target='_blank'>MTA-STS (RFC 8461)</a> &middot; <a href='https://datatracker.ietf.org/doc/html/rfc8460' target='_blank'>TLS-RPT (RFC 8460)</a></p>")
             $null = $sectionHtml.AppendLine("</div>")
         }
 
@@ -661,6 +772,7 @@ foreach ($c in $summary) {
 
     foreach ($row in $data) {
         if (-not $row.CisControl -or $row.CisControl -eq '') { continue }
+        $mapping = if ($frameworkMappings.ContainsKey($row.CisControl)) { $frameworkMappings[$row.CisControl] } else { $null }
         $allCisFindings.Add([PSCustomObject]@{
             CisControl   = $row.CisControl
             Category     = $row.Category
@@ -670,6 +782,9 @@ foreach ($c in $summary) {
             Status       = $row.Status
             Remediation  = $row.Remediation
             Source       = $c.Collector
+            NistCsf      = if ($mapping) { $mapping.NistCsf } else { '' }
+            Nist80053    = if ($mapping) { $mapping.Nist80053 } else { '' }
+            Iso27001     = if ($mapping) { $mapping.Iso27001 } else { '' }
         })
     }
 }
@@ -702,6 +817,11 @@ if ($allCisFindings.Count -gt 0) {
     $null = $cisHtml.AppendLine("<p>This CIS benchmark assessment is provided for <strong>informational purposes only</strong> and does not constitute a comprehensive security assessment, audit, or certification. Results reflect a subset of the 140 CIS controls checked via automated methods at a point in time and should not be considered conclusive. For a thorough security evaluation, consider engaging a qualified security professional for penetration testing and full compliance review.</p>")
     $null = $cisHtml.AppendLine("</div>")
 
+    # Framework cross-reference note (only if mappings loaded)
+    if ($frameworkMappings.Count -gt 0) {
+        $null = $cisHtml.AppendLine("<p style='margin:8px 0 0;font-size:0.9em;color:var(--m365a-medium-gray);'>Cross-referenced to: <strong>NIST 800-53 Rev 5</strong>, <strong>NIST CSF 2.0</strong>, <strong>ISO 27001:2022</strong></p>")
+    }
+
     # Score overview cards
     $cisBenchmarkTotal = 140 # CIS v6.0.1 total — update when benchmark version changes
     $scoreColor = if ($cisScored -eq 0) { 'var(--m365a-medium-gray)' } elseif ($cisScore -ge 80) { '#2ecc71' } elseif ($cisScore -ge 60) { '#f39c12' } else { '#e74c3c' }
@@ -729,7 +849,9 @@ if ($allCisFindings.Count -gt 0) {
         $null = $cisHtml.AppendLine("<summary><h3>Areas of Improvement <span class='row-count'>($($nonPassing.Count) findings)</span></h3></summary>")
         $null = $cisHtml.AppendLine("<div class='table-wrapper'>")
         $null = $cisHtml.AppendLine("<table class='data-table cis-table'>")
-        $null = $cisHtml.AppendLine("<thead><tr><th>CIS Control</th><th>Status</th><th>Setting</th><th>Current Value</th><th>Recommended</th><th>Remediation</th></tr></thead>")
+        $hasFrameworkMappings = $frameworkMappings.Count -gt 0
+        $fwHeader = if ($hasFrameworkMappings) { '<th>Frameworks</th>' } else { '' }
+        $null = $cisHtml.AppendLine("<thead><tr><th>CIS Control</th><th>Status</th><th>Setting</th><th>Current Value</th><th>Recommended</th>$fwHeader<th>Remediation</th></tr></thead>")
         $null = $cisHtml.AppendLine("<tbody>")
 
         foreach ($finding in $nonPassing) {
@@ -747,12 +869,29 @@ if ($allCisFindings.Count -gt 0) {
             $recommended = ConvertTo-HtmlSafe -Text $finding.Recommended
             $remediation = ConvertTo-HtmlSafe -Text $finding.Remediation
 
+            # Build framework reference tags (if mappings loaded)
+            $fwCell = ''
+            if ($hasFrameworkMappings) {
+                $fwTags = [System.Text.StringBuilder]::new()
+                if ($finding.Nist80053) {
+                    $null = $fwTags.Append("<span class='fw-tag fw-nist' title='NIST 800-53 Rev 5'>$(ConvertTo-HtmlSafe -Text $finding.Nist80053)</span>")
+                }
+                if ($finding.NistCsf) {
+                    $null = $fwTags.Append("<span class='fw-tag fw-csf' title='NIST CSF 2.0'>$(ConvertTo-HtmlSafe -Text $finding.NistCsf)</span>")
+                }
+                if ($finding.Iso27001) {
+                    $null = $fwTags.Append("<span class='fw-tag fw-iso' title='ISO 27001:2022'>$(ConvertTo-HtmlSafe -Text $finding.Iso27001)</span>")
+                }
+                $fwCell = "<td class='framework-refs'>$($fwTags.ToString())</td>"
+            }
+
             $null = $cisHtml.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())'>")
             $null = $cisHtml.AppendLine("<td class='cis-id'>$cisRef</td>")
             $null = $cisHtml.AppendLine("<td>$statusBadge</td>")
             $null = $cisHtml.AppendLine("<td>$settingText</td>")
             $null = $cisHtml.AppendLine("<td>$currentVal</td>")
             $null = $cisHtml.AppendLine("<td>$recommended</td>")
+            if ($fwCell) { $null = $cisHtml.AppendLine($fwCell) }
             $null = $cisHtml.AppendLine("<td class='remediation-cell'>$remediation</td>")
             $null = $cisHtml.AppendLine("</tr>")
         }
@@ -1193,6 +1332,39 @@ $html = @"
         .cis-disclaimer p { margin: 8px 0 0 0; }
 
         /* ----------------------------------------------------------
+           Section Advisory Blocks
+           ---------------------------------------------------------- */
+        .section-advisory {
+            background: #f8f9fa;
+            border-left: 3px solid var(--m365a-accent);
+            padding: 15px 18px;
+            margin: 12px 0 8px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 9.5pt;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+        .section-advisory strong { color: var(--m365a-dark); }
+        .section-advisory p { margin: 6px 0; }
+        .section-advisory code {
+            background: #e2e8f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+        .section-advisory .advisory-links {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 8.5pt;
+        }
+        .section-advisory .advisory-links a {
+            color: var(--m365a-accent);
+            text-decoration: none;
+        }
+        .section-advisory .advisory-links a:hover { text-decoration: underline; }
+
+        /* ----------------------------------------------------------
            Tables
            ---------------------------------------------------------- */
         .table-wrapper {
@@ -1412,6 +1584,13 @@ $html = @"
         .cis-row-warning { border-left: 3px solid #f39c12; background-color: #fffbeb !important; }
         .cis-row-review { border-left: 3px solid var(--m365a-accent); background-color: #f0f9ff !important; }
         .cis-row-unknown { border-left: 3px solid var(--m365a-medium-gray); background-color: #f9fafb !important; }
+
+        /* Framework cross-reference tags */
+        .framework-refs { white-space: normal; max-width: 220px; }
+        .fw-tag { display: inline-block; padding: 1px 5px; margin: 1px; border-radius: 3px; font-size: 0.72em; font-family: 'Consolas', 'Courier New', monospace; }
+        .fw-nist { background: #e8f0fe; color: #1a56db; }
+        .fw-csf { background: #fef3c7; color: #92400e; }
+        .fw-iso { background: #ecfdf5; color: #065f46; }
 
         /* ----------------------------------------------------------
            Footer

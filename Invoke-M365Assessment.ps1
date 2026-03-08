@@ -1333,36 +1333,174 @@ foreach ($sectionName in $Section) {
         try {
             $acceptedDomains = Get-AcceptedDomain -ErrorAction Stop
             $dnsResults = foreach ($domain in $acceptedDomains) {
-                $spf = ''
-                $dmarc = ''
-                $dkim = ''
+                $domainName = $domain.DomainName
+
+                # ------- SPF -------
+                $spf = 'Not configured'
+                $spfEnforcement = 'N/A'
+                $spfLookupCount = 'N/A'
+                $spfDuplicates = 'No'
 
                 try {
-                    $txtRecords = Resolve-DnsName -Name $domain.DomainName -Type TXT -ErrorAction Stop
-                    $spf = ($txtRecords | Where-Object { $_.Strings -match '^v=spf1' } | Select-Object -First 1).Strings -join ''
+                    $txtRecords = @(Resolve-DnsName -Name $domainName -Type TXT -ErrorAction Stop)
+                    $spfRecords = @($txtRecords | Where-Object { $_.Strings -and ($_.Strings -join '' -match '^v=spf1') })
+
+                    if ($spfRecords.Count -gt 1) {
+                        $spfDuplicates = "Yes ($($spfRecords.Count) records — PermError)"
+                    }
+
+                    if ($spfRecords.Count -ge 1) {
+                        $spfValue = $spfRecords[0].Strings -join ''
+                        $spf = $spfValue
+
+                        # Parse enforcement qualifier
+                        if ($spfValue -match '-all$') { $spfEnforcement = 'Hard Fail (-all)' }
+                        elseif ($spfValue -match '~all$') { $spfEnforcement = 'Soft Fail (~all)' }
+                        elseif ($spfValue -match '\?all$') { $spfEnforcement = 'Neutral (?all)' }
+                        elseif ($spfValue -match '\+all$') { $spfEnforcement = 'Pass (+all) WARNING' }
+                        else { $spfEnforcement = 'No all mechanism' }
+
+                        # Count DNS-lookup mechanisms (10-lookup limit per RFC 7208)
+                        $lookupMechanisms = @(
+                            [regex]::Matches($spfValue, '\b(include:|a:|a/|mx:|mx/|ptr:|exists:|redirect=)').Count
+                        )
+                        $spfLookupCount = "$($lookupMechanisms[0]) / 10"
+                        if ($lookupMechanisms[0] -gt 10) {
+                            $spfLookupCount = "$($lookupMechanisms[0]) / 10 — EXCEEDS LIMIT"
+                        }
+                    }
                 }
-                catch { $spf = 'DNS lookup failed' }
+                catch {
+                    $spf = 'DNS lookup failed'
+                    Write-Verbose "SPF lookup failed for $domainName`: $_"
+                }
+
+                # ------- DMARC -------
+                $dmarc = 'Not configured'
+                $dmarcPolicy = 'N/A'
+                $dmarcPct = 'N/A'
+                $dmarcReporting = 'N/A'
+                $dmarcDuplicates = 'No'
 
                 try {
-                    $dmarcRecords = Resolve-DnsName -Name "_dmarc.$($domain.DomainName)" -Type TXT -ErrorAction Stop
-                    $dmarc = ($dmarcRecords | Where-Object { $_.Strings -match '^v=DMARC1' } | Select-Object -First 1).Strings -join ''
+                    $dmarcTxtRecords = @(Resolve-DnsName -Name "_dmarc.$domainName" -Type TXT -ErrorAction Stop)
+                    $dmarcRecords = @($dmarcTxtRecords | Where-Object { $_.Strings -and ($_.Strings -join '' -match '^v=DMARC1') })
+
+                    if ($dmarcRecords.Count -gt 1) {
+                        $dmarcDuplicates = "Yes ($($dmarcRecords.Count) records — PermError)"
+                    }
+
+                    if ($dmarcRecords.Count -ge 1) {
+                        $dmarcValue = $dmarcRecords[0].Strings -join ''
+                        $dmarc = $dmarcValue
+
+                        # Parse policy
+                        if ($dmarcValue -match 'p=(\w+)') {
+                            $dmarcPolicy = $Matches[1]
+                            if ($dmarcPolicy -eq 'none') { $dmarcPolicy = 'none (monitoring only)' }
+                        }
+
+                        # Parse percentage
+                        if ($dmarcValue -match 'pct=(\d+)') {
+                            $dmarcPct = "$($Matches[1])%"
+                        }
+                        else {
+                            $dmarcPct = '100% (default)'
+                        }
+
+                        # Parse reporting
+                        $reportingParts = @()
+                        if ($dmarcValue -match 'rua=([^;]+)') { $reportingParts += "rua=$($Matches[1])" }
+                        if ($dmarcValue -match 'ruf=([^;]+)') { $reportingParts += "ruf=$($Matches[1])" }
+                        $dmarcReporting = if ($reportingParts.Count -gt 0) { $reportingParts -join '; ' } else { 'No reporting configured' }
+                    }
                 }
-                catch { $dmarc = 'Not configured' }
+                catch {
+                    $dmarc = 'Not configured'
+                    Write-Verbose "DMARC lookup failed for $domainName`: $_"
+                }
+
+                # ------- DKIM (both selectors) -------
+                $dkimSelector1 = 'Not configured'
+                $dkimSelector2 = 'Not configured'
 
                 try {
-                    $dkimRecords = Resolve-DnsName -Name "selector1._domainkey.$($domain.DomainName)" -Type CNAME -ErrorAction Stop
-                    $dkim = $dkimRecords.NameHost
-                    if (-not $dkim) { $dkim = 'No CNAME found' }
+                    $dkim1Records = Resolve-DnsName -Name "selector1._domainkey.$domainName" -Type CNAME -ErrorAction Stop
+                    if ($dkim1Records.NameHost) { $dkimSelector1 = $dkim1Records.NameHost }
                 }
-                catch { $dkim = 'Not configured' }
+                catch { Write-Verbose "DKIM selector1 lookup failed for $domainName`: $_" }
+
+                try {
+                    $dkim2Records = Resolve-DnsName -Name "selector2._domainkey.$domainName" -Type CNAME -ErrorAction Stop
+                    if ($dkim2Records.NameHost) { $dkimSelector2 = $dkim2Records.NameHost }
+                }
+                catch { Write-Verbose "DKIM selector2 lookup failed for $domainName`: $_" }
+
+                # ------- MTA-STS (RFC 8461) -------
+                $mtaSts = 'Not configured'
+                try {
+                    $mtaStsRecords = @(Resolve-DnsName -Name "_mta-sts.$domainName" -Type TXT -ErrorAction Stop)
+                    $mtaStsRecord = $mtaStsRecords | Where-Object { $_.Strings -and ($_.Strings -join '' -match 'v=STSv1') } | Select-Object -First 1
+                    if ($mtaStsRecord) {
+                        $mtaSts = $mtaStsRecord.Strings -join ''
+                    }
+                }
+                catch { Write-Verbose "MTA-STS lookup failed for $domainName`: $_" }
+
+                # ------- TLS-RPT (RFC 8460) -------
+                $tlsRpt = 'Not configured'
+                try {
+                    $tlsRptRecords = @(Resolve-DnsName -Name "_smtp._tls.$domainName" -Type TXT -ErrorAction Stop)
+                    $tlsRptRecord = $tlsRptRecords | Where-Object { $_.Strings -and ($_.Strings -join '' -match '^v=TLSRPTv1') } | Select-Object -First 1
+                    if ($tlsRptRecord) {
+                        $tlsRpt = $tlsRptRecord.Strings -join ''
+                    }
+                }
+                catch { Write-Verbose "TLS-RPT lookup failed for $domainName`: $_" }
+
+                # ------- Public DNS Validation -------
+                # Confirm SPF and DMARC are visible from public resolvers (Google 8.8.8.8, Cloudflare 1.1.1.1)
+                $publicDnsConfirmed = 'N/A'
+                if ($spf -ne 'Not configured' -and $spf -ne 'DNS lookup failed') {
+                    $publicChecks = @()
+                    foreach ($publicServer in @('8.8.8.8', '1.1.1.1')) {
+                        try {
+                            $publicTxt = @(Resolve-DnsName -Name $domainName -Type TXT -Server $publicServer -ErrorAction Stop)
+                            $publicSpf = $publicTxt | Where-Object { $_.Strings -and ($_.Strings -join '' -match '^v=spf1') } | Select-Object -First 1
+                            if ($publicSpf) { $publicChecks += $publicServer }
+                        }
+                        catch { Write-Verbose "Public DNS check ($publicServer) failed for $domainName`: $_" }
+                    }
+
+                    if ($publicChecks.Count -eq 2) {
+                        $publicDnsConfirmed = 'Confirmed (Google + Cloudflare)'
+                    }
+                    elseif ($publicChecks.Count -eq 1) {
+                        $publicDnsConfirmed = "Partial ($($publicChecks[0]) only)"
+                    }
+                    else {
+                        $publicDnsConfirmed = 'NOT visible from public DNS'
+                    }
+                }
 
                 [PSCustomObject]@{
-                    Domain       = $domain.DomainName
-                    DomainType   = $domain.DomainType
-                    Default      = $domain.Default
-                    SPF          = if ($spf) { $spf } else { 'Not configured' }
-                    DMARC        = if ($dmarc) { $dmarc } else { 'Not configured' }
-                    DKIMSelector = if ($dkim) { $dkim } else { 'Not configured' }
+                    Domain           = $domainName
+                    DomainType       = $domain.DomainType
+                    Default          = $domain.Default
+                    SPF              = if ($spf) { $spf } else { 'Not configured' }
+                    SPFEnforcement   = $spfEnforcement
+                    SPFLookupCount   = $spfLookupCount
+                    SPFDuplicates    = $spfDuplicates
+                    DMARC            = if ($dmarc) { $dmarc } else { 'Not configured' }
+                    DMARCPolicy      = $dmarcPolicy
+                    DMARCPct         = $dmarcPct
+                    DMARCReporting   = $dmarcReporting
+                    DMARCDuplicates  = $dmarcDuplicates
+                    DKIMSelector1    = $dkimSelector1
+                    DKIMSelector2    = $dkimSelector2
+                    MTASTS           = $mtaSts
+                    TLSRPT           = $tlsRpt
+                    PublicDNSConfirm = $publicDnsConfirmed
                 }
             }
 
