@@ -52,30 +52,50 @@ catch {
 Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction Stop
 Import-Module -Name Microsoft.Graph.Users -ErrorAction Stop
 
-# Friendly names for common SKU part numbers
-$skuFriendlyNames = @{
-    'O365_BUSINESS_ESSENTIALS'     = 'Microsoft 365 Business Basic'
-    'O365_BUSINESS_PREMIUM'        = 'Microsoft 365 Business Standard'
-    'SPB'                          = 'Microsoft 365 Business Premium'
-    'ENTERPRISEPACK'               = 'Office 365 E3'
-    'ENTERPRISEPREMIUM'            = 'Office 365 E5'
-    'SPE_E3'                       = 'Microsoft 365 E3'
-    'SPE_E5'                       = 'Microsoft 365 E5'
-    'SPE_F1'                       = 'Microsoft 365 F3'
-    'EXCHANGESTANDARD'             = 'Exchange Online (Plan 1)'
-    'EXCHANGEENTERPRISE'           = 'Exchange Online (Plan 2)'
-    'EMS'                          = 'Enterprise Mobility + Security E3'
-    'EMSPREMIUM'                   = 'Enterprise Mobility + Security E5'
-    'POWER_BI_STANDARD'            = 'Power BI (Free)'
-    'POWER_BI_PRO'                 = 'Power BI Pro'
-    'PROJECTPREMIUM'               = 'Project Plan 5'
-    'VISIOCLIENT'                  = 'Visio Plan 2'
-    'AAD_PREMIUM'                  = 'Entra ID P1'
-    'AAD_PREMIUM_P2'               = 'Entra ID P2'
-    'WIN_DEF_ATP'                  = 'Microsoft Defender for Endpoint P2'
-    'IDENTITY_THREAT_PROTECTION'   = 'Microsoft 365 E5 Security'
-    'ATP_ENTERPRISE'               = 'Microsoft Defender for Office 365 P1'
-    'THREAT_INTELLIGENCE'          = 'Microsoft Defender for Office 365 P2'
+# ------------------------------------------------------------------
+# Build SKU friendly-name lookup
+# Try Microsoft's live CSV first → bundled CSV fallback → raw SkuPartNumber.
+# Source: https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference
+# To refresh the bundled copy: run assets/Update-SkuCsv.ps1
+# ------------------------------------------------------------------
+$skuFriendlyNames = @{}
+$skuCsvUrl = 'https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv'
+
+# Helper — parse a CSV (text or file) into the lookup hashtable
+function Import-SkuCsv {
+    param([Parameter(Mandatory)][object[]]$CsvRows)
+    foreach ($row in $CsvRows) {
+        $stringId = $row.String_Id
+        $displayName = $row.Product_Display_Name
+        if ($stringId -and $displayName -and -not $skuFriendlyNames.ContainsKey($stringId)) {
+            $skuFriendlyNames[$stringId] = $displayName
+        }
+    }
+}
+
+# 1) Try live download (latest from Microsoft)
+try {
+    Write-Verbose "Downloading SKU friendly-name list from Microsoft..."
+    $csvText = (Invoke-WebRequest -Uri $skuCsvUrl -UseBasicParsing -TimeoutSec 10).Content
+    Import-SkuCsv -CsvRows ($csvText | ConvertFrom-Csv)
+    Write-Verbose "Loaded $($skuFriendlyNames.Count) SKU friendly names from Microsoft"
+}
+catch {
+    Write-Verbose "Could not download SKU list ($($_.Exception.Message)). Trying bundled copy."
+}
+
+# 2) Fill gaps from bundled CSV (assets/sku-friendly-names.csv)
+if ($skuFriendlyNames.Count -eq 0) {
+    $bundledCsv = Join-Path -Path $PSScriptRoot -ChildPath '..\assets\sku-friendly-names.csv'
+    if (Test-Path -Path $bundledCsv) {
+        try {
+            Import-SkuCsv -CsvRows (Import-Csv -Path $bundledCsv)
+            Write-Verbose "Loaded $($skuFriendlyNames.Count) SKU friendly names from bundled CSV"
+        }
+        catch {
+            Write-Verbose "Could not parse bundled SKU CSV: $($_.Exception.Message)"
+        }
+    }
 }
 
 try {
