@@ -13,7 +13,6 @@
 **Read-only Microsoft 365 security assessment for IT consultants and administrators**
 
 [![PowerShell 7.x](https://img.shields.io/badge/PowerShell-7.x-blue?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
-[![Pester 5.x](https://img.shields.io/badge/Tests-Pester%205.x-green)](https://pester.dev/)
 [![Read-Only](https://img.shields.io/badge/Operations-Read--Only-brightgreen)](.)
 [![Version](https://img.shields.io/badge/version-0.3.0-blue)](.)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -305,7 +304,6 @@ M365-Assess/
   Purview/                        # DLP policies, audit retention
   Security/                       # Secure Score, Defender, DLP, ScubaGear
   Windows/                        # Installed software, services
-  tests/                          # Pester 5.x tests (mirrors folder structure)
 ```
 
 ## Getting Help
@@ -316,12 +314,6 @@ Every script includes comment-based help:
 Get-Help .\Invoke-M365Assessment.ps1 -Full
 Get-Help .\Security\Invoke-ScubaGearScan.ps1 -Examples
 Get-Help .\Entra\Get-MfaReport.ps1 -Full
-```
-
-Run the test suite:
-
-```powershell
-pwsh -NoProfile -Command "Invoke-Pester -Path './tests' -Output Detailed"
 ```
 
 ## Contributing

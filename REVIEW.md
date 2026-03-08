@@ -2,7 +2,7 @@
 
 **Reviewer:** Claude (AI-assisted review)
 **Date:** 2026-03-08
-**Scope:** Full repository evaluation — code quality, architecture, testing, documentation
+**Scope:** Full repository evaluation — code quality, architecture, error handling, documentation
 
 ---
 
@@ -12,12 +12,12 @@
 |-----------|--------|-------|
 | **Scope & Ambition** | 8/10 | Covers the right surface area for M365 assessments |
 | **Code Structure** | 7/10 | Consistent patterns, good orchestrator design |
-| **Documentation** | 8/10 | Excellent README, good comment-based help |
-| **Testing** | 3/10 | Tests exist but are shallow — no edge cases, no integration tests |
+| **Documentation** | 8/10 | Excellent README, good comment-based help on every script |
+| **Error Handling** | 7/10 | Pragmatic approach — fail silently on recoverable issues, fail hard on blockers |
 | **Security** | 6/10 | Read-only design is smart; HTML encoding is inconsistent |
-| **Maintainability** | 4/10 | Heavy duplication, no module manifest, hardcoded versions |
-| **Production Readiness** | 3/10 | No CI/CD, no evidence of real-world usage |
-| **Overall** | 5/10 | Good scaffold, needs real-world iteration |
+| **Maintainability** | 5/10 | Module manifest added; some duplication remains across collectors |
+| **Production Readiness** | 5/10 | Needs real-world tenant iteration; no CI/CD |
+| **Overall** | 6/10 | Solid scaffold with good architectural decisions, needs field testing |
 
 ## Key Findings
 
@@ -28,21 +28,28 @@
 3. **Professional HTML report** — Self-contained, branded, with CIS compliance mapping and sortable tables
 4. **Government cloud support** — GCC, GCCHigh, and DoD environments handled correctly
 5. **Resilient orchestration** — Failures in one section do not block others
+6. **Module manifest** — `.psd1` file declares version, dependencies, and metadata in one place
 
-### Concerns
+### Error Handling Philosophy
 
-1. **Entire codebase (20,000+ lines, 85 files) created in a single day** — No iterative development history
-2. **Tests are structural but shallow** — They mock everything and verify mocked data comes back; no real edge case or error path coverage
-3. **Heavy code duplication** — Connection-check blocks, error handling, and output patterns are copy-pasted across ~40 collector scripts
-4. **No module manifest** — Cannot be installed as a proper PowerShell module; version is hardcoded in multiple places
-5. **No CI/CD** — Tests exist but are never run automatically
-6. **Inconsistent HTML encoding** — `ConvertTo-HtmlSafe` and `[System.Web.HttpUtility]::HtmlEncode()` both used; some values inserted without encoding
+The codebase uses a deliberate two-tier error handling strategy:
+
+- **Fail silently (skip & continue):** Permission errors (403/Forbidden), missing prerequisites, and unavailable services mark collectors as `Skipped` with a logged warning. The assessment continues with partial results — better than no results.
+- **Fail hard (stop):** Module compatibility issues, missing output folder, and missing core scripts terminate the assessment immediately. These are genuine blockers where continuing would produce misleading output.
+
+Individual collectors set `$ErrorActionPreference = 'Stop'` so exceptions bubble up to the orchestrator's try/catch, which classifies and handles them. This is the right pattern for a tool that runs 44 collectors against live tenants.
+
+### Areas for Improvement
+
+1. **HTML encoding** — `ConvertTo-HtmlSafe` and `[System.Web.HttpUtility]::HtmlEncode()` are both used; some values are inserted without encoding. Standardize on one approach.
+2. **Code duplication** — Connection-check blocks, Graph submodule imports, and output patterns are repeated across ~40 collector scripts. Consider extracting shared patterns into helper functions.
+3. **No CI/CD** — PSScriptAnalyzer could run on every push via GitHub Actions
+4. **Hardcoded version** — Version string appears in `Invoke-M365Assessment.ps1` and `M365-Assess.psd1`; consider reading from the manifest
 
 ## Recommendations
 
 1. **Run it against real tenants** and fix what breaks — this is the fastest path to real quality
-2. **Add a module manifest** (`.psd1`) with proper dependency declarations
+2. **Standardize HTML encoding** to use one approach consistently in Export-AssessmentReport.ps1
 3. **Extract shared patterns** (connection checks, output formatting) into helper functions
-4. **Add GitHub Actions** to run Pester tests on every push
-5. **Add integration tests** or at least more meaningful unit tests with error path coverage
-6. **Standardize HTML encoding** to use one approach consistently
+4. **Add GitHub Actions** to run PSScriptAnalyzer on every push
+5. **Field-test error handling** — the current approach is architecturally sound, verify edge cases against real tenants with limited permissions
