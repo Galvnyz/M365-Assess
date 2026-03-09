@@ -1955,11 +1955,12 @@ $html = @"
             with hardcoded colors or inverted semantics)
            ---------------------------------------------------------- */
         body.dark-theme th {
-            background: #1E293B;
+            background: #1E3A5F;
             color: #E2E8F0;
-            border-right-color: rgba(255,255,255,0.08);
+            border-right: 1px solid rgba(255,255,255,0.15);
         }
-        body.dark-theme .data-table th:hover { background: #334155; }
+        body.dark-theme th:last-child { border-right: none; }
+        body.dark-theme .data-table th:hover { background: #254E78; }
 
         body.dark-theme .badge-complete,
         body.dark-theme .badge-success { background: #065F46; color: #6EE7B7; }
