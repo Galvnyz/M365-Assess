@@ -24,6 +24,10 @@
     User principal name (e.g., 'admin@contoso.onmicrosoft.com') for interactive
     authentication to Exchange Online or Purview. Bypasses the Windows Authentication
     Manager (WAM) broker which can cause RuntimeBroker errors on some systems.
+.PARAMETER UseDeviceCode
+    Use device code authentication flow instead of browser-based interactive auth.
+    Graph uses -UseDeviceCode, Exchange Online uses -Device. Purview does not
+    support device code and will fall back to browser/UPN-based auth with a warning.
 .PARAMETER M365Environment
     Target cloud environment. Commercial and GCC use standard endpoints.
     GCCHigh and DoD route to sovereign cloud endpoints for Graph, Exchange,
@@ -72,6 +76,9 @@ param(
 
     [Parameter()]
     [string]$UserPrincipalName,
+
+    [Parameter()]
+    [switch]$UseDeviceCode,
 
     [Parameter()]
     [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')]
@@ -140,6 +147,9 @@ try {
             }
             else {
                 $connectParams['Scopes'] = $Scopes
+                if ($UseDeviceCode) {
+                    $connectParams['UseDeviceCode'] = $true
+                }
             }
 
             if ($currentEnv.GraphEnvironment) {
@@ -166,6 +176,9 @@ try {
                 $connectParams['AppId'] = $ClientId
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
+            elseif ($UseDeviceCode) {
+                $connectParams['Device'] = $true
+            }
             elseif ($UserPrincipalName) {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
             }
@@ -188,6 +201,10 @@ try {
             }
             elseif ($UserPrincipalName) {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
+            }
+
+            if ($UseDeviceCode) {
+                Write-Warning "Purview (Connect-IPPSSession) does not support device code auth. Falling back to browser-based login."
             }
 
             foreach ($key in $currentEnv.PurviewParams.Keys) {

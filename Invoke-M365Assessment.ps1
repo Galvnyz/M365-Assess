@@ -35,10 +35,16 @@
 .PARAMETER ScubaProductNames
     ScubaGear product codes to assess. Only used when the ScubaGear section is
     selected. Defaults to all six products.
+.PARAMETER UseDeviceCode
+    Use device code authentication flow instead of browser-based interactive auth.
+    Displays a code and URL that you can open in any browser profile, which is
+    useful on machines with multiple Edge profiles (e.g., corporate + GCC).
+    Note: Purview (Security & Compliance) does not support device code and will
+    fall back to browser-based or UPN-hint authentication.
 .PARAMETER M365Environment
     Target cloud environment for all service connections. Commercial and GCC
     use standard endpoints. GCCHigh and DoD use sovereign cloud endpoints.
-    Defaults to 'commercial'.
+    Auto-detected from tenant metadata when not explicitly specified.
 .EXAMPLE
     PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
 
@@ -59,6 +65,11 @@
     PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' -UserPrincipalName 'admin@contoso.onmicrosoft.com'
 
     Runs a full assessment using UPN-based auth for EXO/Purview (avoids WAM broker errors).
+.EXAMPLE
+    PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.us' -UseDeviceCode
+
+    Runs a full assessment using device code auth. You choose which browser profile
+    to authenticate in (useful for multi-profile machines).
 .EXAMPLE
     PS> .\Invoke-M365Assessment.ps1 -Section ScubaGear -TenantId 'contoso.onmicrosoft.com'
 
@@ -92,6 +103,9 @@ param(
 
     [Parameter()]
     [string]$UserPrincipalName,
+
+    [Parameter()]
+    [switch]$UseDeviceCode,
 
     [Parameter()]
     [ValidateSet('aad', 'defender', 'exo', 'powerplatform', 'sharepoint', 'teams')]
@@ -355,6 +369,9 @@ function Show-InteractiveWizard {
     Write-Host "    Sections:  $sectionDisplay" -ForegroundColor $cNormal
     Write-Host "    Tenant:    $tenantDisplay" -ForegroundColor $cNormal
     Write-Host "    Auth:      $authDisplay" -ForegroundColor $cNormal
+    if ($UseDeviceCode) {
+        $authDisplay += ' (device code)'
+    }
     if ($M365Environment -ne 'commercial') {
         Write-Host "    Cloud:     $M365Environment" -ForegroundColor $cNormal
     }
@@ -394,6 +411,59 @@ function Show-InteractiveWizard {
     }
 
     return $wizardResult
+}
+
+# ------------------------------------------------------------------
+# Helper: Resolve-M365Environment — auto-detect cloud via OpenID
+# ------------------------------------------------------------------
+function Resolve-M365Environment {
+    <#
+    .SYNOPSIS
+        Detects the M365 cloud environment for a tenant using the public OpenID
+        Connect discovery endpoint (no authentication required).
+    .DESCRIPTION
+        Queries the well-known OpenID configuration to determine whether a tenant
+        is Commercial, GCC, GCC High, or DoD. Tries the commercial authority first
+        (handles legacy GCC High .com domains), then falls back to the US Government
+        authority if the tenant is not found.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$TenantId
+    )
+
+    $authorities = @(
+        'https://login.microsoftonline.com'
+        'https://login.microsoftonline.us'
+    )
+
+    foreach ($authority in $authorities) {
+        $url = "$authority/$TenantId/v2.0/.well-known/openid-configuration"
+        try {
+            $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10 -ErrorAction Stop
+
+            # Parse region fields to determine cloud environment
+            $regionScope    = $response.tenant_region_scope
+            $regionSubScope = $response.tenant_region_sub_scope
+
+            if ($regionSubScope -eq 'GCC') {
+                return 'gcc'
+            }
+            if ($regionScope -eq 'USGov') {
+                # Cannot distinguish GCC High from DoD pre-auth; default to gcchigh
+                return 'gcchigh'
+            }
+            return 'commercial'
+        }
+        catch {
+            # Tenant not found on this authority, try next
+            continue
+        }
+    }
+
+    # Both authorities failed — return $null so caller keeps the current value
+    return $null
 }
 
 # ------------------------------------------------------------------
@@ -519,7 +589,7 @@ function Get-RecommendedAction {
     param([string]$ErrorMessage)
 
     $actionPatterns = @(
-        @{ Pattern = 'WAM|broker|RuntimeBroker'; Action = 'WAM broker issue. Try -UserPrincipalName admin@tenant.onmicrosoft.com, certificate auth (-ClientId/-CertificateThumbprint), or -SkipConnection with a pre-existing session.' }
+        @{ Pattern = 'WAM|broker|RuntimeBroker'; Action = 'WAM broker issue. Try -UseDeviceCode (choose your browser profile), -UserPrincipalName admin@tenant.onmicrosoft.com, certificate auth (-ClientId/-CertificateThumbprint), or -SkipConnection with a pre-existing session.' }
         @{ Pattern = '401|Unauthorized'; Action = 'Re-authenticate or ensure admin consent has been granted for the required scopes.' }
         @{ Pattern = '403|Forbidden|Insufficient privileges'; Action = 'Grant the required Graph/API permissions to the app registration or user account.' }
         @{ Pattern = 'not recognized|not found|not installed'; Action = 'Ensure the required PowerShell module is installed and the service is connected.' }
@@ -627,7 +697,8 @@ function Show-AssessmentHeader {
     Write-Host ''
     Write-Host "    Output: $OutputPath" -ForegroundColor White
     if ($LogPath) {
-        Write-Host "    Log:    _Assessment-Log.txt" -ForegroundColor DarkGray
+        $logBaseName = Split-Path -Leaf $LogPath
+        Write-Host "    Log:    $logBaseName" -ForegroundColor DarkGray
     }
     Write-Host ''
 }
@@ -744,15 +815,19 @@ function Show-AssessmentSummary {
         }
 
         Write-Host ''
-        $logRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder '_Assessment-Log.txt' } else { '_Assessment-Log.txt' }
-        $issueRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder '_Assessment-Issues.log' } else { '_Assessment-Issues.log' }
+        $logName = if ($script:logFileName) { $script:logFileName } else { '_Assessment-Log.txt' }
+        $issueName = if ($script:issueFileName) { $script:issueFileName } else { '_Assessment-Issues.log' }
+        $logRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder $logName } else { $logName }
+        $issueRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder $issueName } else { $issueName }
         Write-Host "    Full details: $logRelPath" -ForegroundColor DarkGray
         Write-Host "    Issue report: $issueRelPath" -ForegroundColor DarkGray
     }
 
     # Report file references
     Write-Host ''
-    $reportRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder '_Assessment-Report.html' } else { '_Assessment-Report.html' }
+    $reportSuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
+    $reportName = "_Assessment-Report${reportSuffix}.html"
+    $reportRelPath = if ($AssessmentFolder) { Join-Path $AssessmentFolder $reportName } else { $reportName }
     if (Test-Path -Path $reportRelPath -ErrorAction SilentlyContinue) {
         Write-Host "    HTML report: $reportRelPath" -ForegroundColor Cyan
     }
@@ -887,10 +962,39 @@ $dnsCollector = @{
 }
 
 # ------------------------------------------------------------------
+# Auto-detect cloud environment (when not explicitly specified)
+# ------------------------------------------------------------------
+if ($TenantId -and -not $PSBoundParameters.ContainsKey('M365Environment')) {
+    $detectedEnv = Resolve-M365Environment -TenantId $TenantId
+    if ($detectedEnv -and $detectedEnv -ne $M365Environment) {
+        $envDisplayNames = @{
+            'commercial' = 'Commercial'
+            'gcc'        = 'GCC'
+            'gcchigh'    = 'GCC High'
+            'dod'        = 'DoD'
+        }
+        $M365Environment = $detectedEnv
+        Write-Host ''
+        Write-Host "  Cloud environment detected: $($envDisplayNames[$detectedEnv])" -ForegroundColor Cyan
+        if ($detectedEnv -eq 'gcchigh') {
+            Write-Host '  (If this is a DoD tenant, re-run with -M365Environment dod)' -ForegroundColor DarkGray
+        }
+    }
+}
+
+# ------------------------------------------------------------------
 # Create timestamped output folder
 # ------------------------------------------------------------------
 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-$assessmentFolder = Join-Path -Path $OutputFolder -ChildPath "Assessment_$timestamp"
+
+# Extract domain prefix for folder/file naming (Phase A: from TenantId if onmicrosoft)
+$script:domainPrefix = ''
+if ($TenantId -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
+    $script:domainPrefix = $Matches[1]
+}
+
+$folderSuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
+$assessmentFolder = Join-Path -Path $OutputFolder -ChildPath "Assessment_${timestamp}${folderSuffix}"
 
 try {
     $null = New-Item -Path $assessmentFolder -ItemType Directory -Force
@@ -903,17 +1007,17 @@ catch {
 # ------------------------------------------------------------------
 # Initialize log file
 # ------------------------------------------------------------------
-$script:logFilePath = Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Log.txt'
+$logFileSuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
+$script:logFileName = "_Assessment-Log${logFileSuffix}.txt"
+$script:logFilePath = Join-Path -Path $assessmentFolder -ChildPath $script:logFileName
 $logHeaderLines = @(
     ('=' * 80)
     '  M365 Environment Assessment Log'
     "  Version:  v$script:AssessmentVersion"
     "  Started:  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     "  Tenant:   $TenantId"
+    "  Cloud:    $M365Environment"
 )
-if ($M365Environment -ne 'commercial') {
-    $logHeaderLines += "  Cloud:    $M365Environment"
-}
 $logHeaderLines += @(
     "  Sections: $($Section -join ', ')"
     ('=' * 80)
@@ -1061,21 +1165,32 @@ function Connect-RequiredService {
             if ($M365Environment -ne 'commercial') {
                 $connectParams['M365Environment'] = $M365Environment
             }
+            if ($UseDeviceCode) {
+                $connectParams['UseDeviceCode'] = $true
+            }
 
-            # Suppress noisy output during connection:
-            #   2>$null  — PowerShell error stream (non-terminating)
-            #   6>$null  — PowerShell Information stream (Write-Host, e.g. EXO module banner)
-            #   Console.SetOut/SetError — .NET direct writes (MSAL/WAM stack traces)
+            # Suppress noisy output during connection (skip when device code
+            # is active — the user needs to see the code and URL).
+            $suppressOutput = -not $UseDeviceCode
             $prevConsoleOut = [Console]::Out
             $prevConsoleError = [Console]::Error
-            [Console]::SetOut([System.IO.TextWriter]::Null)
-            [Console]::SetError([System.IO.TextWriter]::Null)
+            if ($suppressOutput) {
+                [Console]::SetOut([System.IO.TextWriter]::Null)
+                [Console]::SetError([System.IO.TextWriter]::Null)
+            }
             try {
-                & $connectServicePath @connectParams 2>$null 6>$null
+                if ($suppressOutput) {
+                    & $connectServicePath @connectParams 2>$null 6>$null
+                }
+                else {
+                    & $connectServicePath @connectParams
+                }
             }
             finally {
-                [Console]::SetOut($prevConsoleOut)
-                [Console]::SetError($prevConsoleError)
+                if ($suppressOutput) {
+                    [Console]::SetOut($prevConsoleOut)
+                    [Console]::SetError($prevConsoleError)
+                }
             }
 
             $connectedServices.Add($svc) | Out-Null
@@ -1092,6 +1207,28 @@ function Connect-RequiredService {
                         $script:resolvedTenantId = $orgInfo.Id
                         $script:resolvedTenantDisplayName = $orgInfo.DisplayName
                         Write-AssessmentLog -Level INFO -Message "Connected tenant: $($script:resolvedTenantDisplayName) ($($script:resolvedTenantDomain)) [ID: $($script:resolvedTenantId)]" -Section $SectionName
+
+                        # Phase B: Rename folder/files to include domain prefix if not already set
+                        if (-not $script:domainPrefix -and $script:resolvedTenantDomain -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
+                            $script:domainPrefix = $Matches[1]
+                            try {
+                                # Rename assessment folder
+                                $newFolderName = "Assessment_${timestamp}_$($script:domainPrefix)"
+                                Rename-Item -Path $assessmentFolder -NewName $newFolderName -ErrorAction Stop
+                                $assessmentFolder = Join-Path -Path $OutputFolder -ChildPath $newFolderName
+
+                                # Rename log file
+                                $newLogName = "_Assessment-Log_$($script:domainPrefix).txt"
+                                Rename-Item -Path $script:logFilePath -NewName $newLogName -ErrorAction Stop
+                                $script:logFileName = $newLogName
+                                $script:logFilePath = Join-Path -Path $assessmentFolder -ChildPath $newLogName
+
+                                Write-AssessmentLog -Level INFO -Message "Renamed output to include tenant domain: $($script:domainPrefix)" -Section $SectionName
+                            }
+                            catch {
+                                Write-AssessmentLog -Level WARN -Message "Could not rename output folder/files: $($_.Exception.Message)" -Section $SectionName
+                            }
+                        }
                     }
                 }
                 catch {
@@ -1669,7 +1806,9 @@ $summaryResults | Export-Csv -Path $summaryCsvPath -NoTypeInformation -Encoding 
 # Export issue report (if any issues exist)
 # ------------------------------------------------------------------
 if ($issues.Count -gt 0) {
-    $issueReportPath = Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Issues.log'
+    $issueFileSuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
+    $script:issueFileName = "_Assessment-Issues${issueFileSuffix}.log"
+    $issueReportPath = Join-Path -Path $assessmentFolder -ChildPath $script:issueFileName
     Export-IssueReport -Path $issueReportPath -Issues @($issues) -TenantName $TenantId -OutputPath $assessmentFolder -Version $script:AssessmentVersion
     Write-AssessmentLog -Level INFO -Message "Issue report exported: $issueReportPath ($($issues.Count) issues)"
 }

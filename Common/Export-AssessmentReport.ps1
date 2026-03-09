@@ -92,6 +92,8 @@ if (-not (Test-Path -Path $summaryPath)) {
 }
 
 if (-not $OutputPath) {
+    # Derive domain prefix from tenant data for filename (resolved later, fallback to generic)
+    $reportDomainPrefix = ''
     $OutputPath = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Report.html'
 }
 
@@ -99,7 +101,8 @@ if (-not $OutputPath) {
 # Load assessment data
 # ------------------------------------------------------------------
 $summary = Import-Csv -Path $summaryPath
-$issueReportPath = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Issues.log'
+$issueFile = Get-ChildItem -Path $AssessmentFolder -Filter '_Assessment-Issues*.log' -ErrorAction SilentlyContinue | Select-Object -First 1
+$issueReportPath = if ($issueFile) { $issueFile.FullName } else { Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Issues.log' }
 $issueContent = if (Test-Path -Path $issueReportPath) { Get-Content -Path $issueReportPath -Raw } else { '' }
 
 # Load Tenant Info CSV for organization profile card and cover page
@@ -140,16 +143,41 @@ if (-not $TenantName) {
     }
 }
 
-# Read assessment version from log if available
+# Derive domain prefix from tenant CSV for report filename
+if ($reportDomainPrefix -eq '' -and $tenantData) {
+    $defaultDomainVal = if ($tenantData[0].PSObject.Properties.Name -contains 'DefaultDomain') { $tenantData[0].DefaultDomain } else { '' }
+    if ($defaultDomainVal -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
+        $reportDomainPrefix = $Matches[1]
+        $OutputPath = Join-Path -Path $AssessmentFolder -ChildPath "_Assessment-Report_${reportDomainPrefix}.html"
+    }
+}
+
+# Read assessment version and cloud environment from log if available
 $assessmentVersion = '0.3.0'
-$logPath = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Log.txt'
+$cloudEnvironment = 'commercial'
+# Find the log file (may have domain suffix, e.g., _Assessment-Log_contoso.txt)
+$logFile = Get-ChildItem -Path $AssessmentFolder -Filter '_Assessment-Log*.txt' -ErrorAction SilentlyContinue | Select-Object -First 1
+$logPath = if ($logFile) { $logFile.FullName } else { Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Log.txt' }
 if (Test-Path -Path $logPath) {
     $logHead = Get-Content -Path $logPath -TotalCount 10
     $versionLine = $logHead | Where-Object { $_ -match 'Version:\s+v(.+)' }
     if ($versionLine) {
         $assessmentVersion = $Matches[1]
     }
+    $cloudLine = $logHead | Where-Object { $_ -match 'Cloud:\s+(.+)' }
+    if ($cloudLine) {
+        $cloudEnvironment = $Matches[1].Trim()
+    }
 }
+
+# Map cloud environment to display names and CSS classes
+$cloudDisplayNames = @{
+    'commercial' = 'Commercial'
+    'gcc'        = 'GCC'
+    'gcchigh'    = 'GCC High'
+    'dod'        = 'DoD'
+}
+$cloudDisplayName = if ($cloudDisplayNames.ContainsKey($cloudEnvironment)) { $cloudDisplayNames[$cloudEnvironment] } else { $cloudEnvironment }
 
 # Get assessment date from folder name
 $folderName = Split-Path -Leaf $AssessmentFolder
@@ -403,10 +431,10 @@ foreach ($sectionName in $sections) {
         if ($verifiedDomains) {
             $allDomains = @($verifiedDomains -split ';\s*' | Where-Object { $_ } | Sort-Object)
             $customDomains = @($allDomains | Where-Object {
-                $_ -notmatch '\.onmicrosoft\.com$' -and $_ -notmatch '\.excl\.cloud$'
+                $_ -notmatch '\.onmicrosoft\.(com|us)$' -and $_ -notmatch '\.excl\.cloud$'
             })
             $systemDomains = @($allDomains | Where-Object {
-                $_ -match '\.onmicrosoft\.com$' -or $_ -match '\.excl\.cloud$'
+                $_ -match '\.onmicrosoft\.(com|us)$' -or $_ -match '\.excl\.cloud$'
             })
         }
 
@@ -429,6 +457,7 @@ foreach ($sectionName in $sections) {
         if ($defaultDomain) {
             $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Primary Domain</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $defaultDomain)</span></div>")
         }
+        $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Cloud</span><span class='cloud-badge cloud-$(ConvertTo-HtmlSafe -Text $cloudEnvironment)'>$(ConvertTo-HtmlSafe -Text $cloudDisplayName)</span></div>")
         if ($createdDisplay) {
             $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Established</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $createdDisplay)</span></div>")
         }
@@ -1410,6 +1439,35 @@ $html = @"
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 9.5pt !important;
             letter-spacing: 0.5px;
+        }
+
+        .cloud-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 4px;
+            font-size: 10pt;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .cloud-commercial {
+            background: #e8f0fe;
+            color: #1a73e8;
+            border: 1px solid #c5d9f7;
+        }
+        .cloud-gcc {
+            background: #e6f4ea;
+            color: #137333;
+            border: 1px solid #b7e1c5;
+        }
+        .cloud-gcchigh {
+            background: #fef3e0;
+            color: #c26401;
+            border: 1px solid #f5d9a8;
+        }
+        .cloud-dod {
+            background: #fce8e6;
+            color: #c5221f;
+            border: 1px solid #f5b7b1;
         }
 
         .tenant-domains {
