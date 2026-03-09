@@ -1212,10 +1212,15 @@ function Connect-RequiredService {
                         if (-not $script:domainPrefix -and $script:resolvedTenantDomain -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
                             $script:domainPrefix = $Matches[1]
                             try {
-                                # Rename assessment folder
+                                # Rename assessment folder (updates both local and script scope)
                                 $newFolderName = "Assessment_${timestamp}_$($script:domainPrefix)"
                                 Rename-Item -Path $assessmentFolder -NewName $newFolderName -ErrorAction Stop
-                                $assessmentFolder = Join-Path -Path $OutputFolder -ChildPath $newFolderName
+                                $script:assessmentFolder = Join-Path -Path $OutputFolder -ChildPath $newFolderName
+                                $assessmentFolder = $script:assessmentFolder
+
+                                # Update log path to reflect renamed folder BEFORE renaming the file
+                                $oldLogName = Split-Path -Leaf $script:logFilePath
+                                $script:logFilePath = Join-Path -Path $assessmentFolder -ChildPath $oldLogName
 
                                 # Rename log file
                                 $newLogName = "_Assessment-Log_$($script:domainPrefix).txt"
