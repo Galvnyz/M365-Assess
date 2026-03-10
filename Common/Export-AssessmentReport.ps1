@@ -282,6 +282,46 @@ function Get-SeverityBadge {
 }
 
 # ------------------------------------------------------------------
+# SVG chart helpers — inline charts for the HTML report
+# ------------------------------------------------------------------
+function Get-SvgDonut {
+    param(
+        [double]$Percentage,
+        [string]$CssClass = 'success',
+        [string]$Label = '',
+        [int]$Size = 120,
+        [int]$StrokeWidth = 10
+    )
+    $radius = ($Size / 2) - $StrokeWidth
+    $circumference = [math]::Round(2 * [math]::PI * $radius, 2)
+    $dashOffset = [math]::Round($circumference * (1 - ($Percentage / 100)), 2)
+    $center = $Size / 2
+    $displayVal = if ($Label) { $Label } else { "$Percentage%" }
+    return @"
+<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size'>
+<circle class='donut-track' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'/>
+<circle class='donut-fill donut-$CssClass' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'
+  stroke-dasharray='$circumference' stroke-dashoffset='$dashOffset' stroke-linecap='round' transform='rotate(-90 $center $center)'/>
+<text class='donut-text' x='$center' y='$center' text-anchor='middle' dominant-baseline='central'>$displayVal</text>
+</svg>
+"@
+}
+
+function Get-SvgHorizontalBar {
+    param(
+        [array]$Segments
+    )
+    $barHtml = "<div class='hbar-chart'>"
+    foreach ($seg in $Segments) {
+        if ($seg.Pct -gt 0) {
+            $barHtml += "<div class='hbar-segment hbar-$($seg.Css)' style='width: $($seg.Pct)%;' title='$($seg.Label): $($seg.Count)'><span class='hbar-label'>$($seg.Count)</span></div>"
+        }
+    }
+    $barHtml += "</div>"
+    return $barHtml
+}
+
+# ------------------------------------------------------------------
 # Smart sorting helper — prioritize actionable rows
 # ------------------------------------------------------------------
 function Get-SmartSortedData {
@@ -572,19 +612,23 @@ foreach ($sectionName in $sections) {
             }
 
             $scoreClass = if ($pctRaw -ge 80) { 'success' } elseif ($pctRaw -ge 60) { 'warning' } else { 'danger' }
+            $scoreDonut = Get-SvgDonut -Percentage $pctRaw -CssClass $scoreClass -Size 160 -StrokeWidth 14
 
-            $null = $sectionHtml.AppendLine("<div class='exec-summary'>")
-            $null = $sectionHtml.AppendLine("<div class='stat-card $scoreClass'><div class='stat-value'>$pctRaw%</div><div class='stat-label'>Secure Score</div></div>")
-            $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$currentPts</div><div class='stat-label'>Points Earned</div></div>")
-            $null = $sectionHtml.AppendLine("<div class='stat-card'><div class='stat-value'>$maxPts</div><div class='stat-label'>Points Possible</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='chart-panel'>")
+            $null = $sectionHtml.AppendLine($scoreDonut)
+            $null = $sectionHtml.AppendLine("<div class='chart-legend'>")
+            $null = $sectionHtml.AppendLine("<div class='chart-legend-item'><span class='chart-legend-dot dot-$scoreClass'></span><strong>$currentPts / $maxPts</strong> Points Earned</div>")
             if ($null -ne $avgCompare) {
                 $compClass = if ($pctRaw -ge $avgCompare) { 'success' } else { 'warning' }
-                $null = $sectionHtml.AppendLine("<div class='stat-card $compClass'><div class='stat-value'>$avgCompare%</div><div class='stat-label'>M365 Average</div></div>")
+                $null = $sectionHtml.AppendLine("<div class='chart-legend-item'><span class='chart-legend-dot dot-$compClass'></span><strong>$avgCompare%</strong> M365 Global Average</div>")
+            }
+            $aboveBelow = if ($null -ne $avgCompare -and $pctRaw -ge $avgCompare) { 'above' } elseif ($null -ne $avgCompare) { 'below' } else { '' }
+            if ($aboveBelow) {
+                $delta = [math]::Round([math]::Abs($pctRaw - $avgCompare), 1)
+                $null = $sectionHtml.AppendLine("<div class='chart-legend-item' style='margin-top: 4px; font-size: 9pt; color: var(--m365a-medium-gray);'>$delta pts $aboveBelow the M365 average</div>")
             }
             $null = $sectionHtml.AppendLine("</div>")
-
-            # Progress bar
-            $null = $sectionHtml.AppendLine("<div class='score-bar-track'><div class='score-bar-fill $scoreClass' style='width: $pctRaw%;'></div></div>")
+            $null = $sectionHtml.AppendLine("</div>")
         }
 
         # ----------------------------------------------------------
@@ -626,11 +670,18 @@ foreach ($sectionName in $sections) {
             $mfaSignInPct = if ($totalUsers -gt 0) { [math]::Round(($withMfa / $totalUsers) * 100, 1) } else { 0 }
             $mfaSignInClass = if ($mfaSignInPct -ge 90) { 'success' } elseif ($mfaSignInPct -ge 70) { 'warning' } else { 'danger' }
 
+            # Donut charts for MFA and SSPR adoption
+            $mfaDonut = Get-SvgDonut -Percentage $mfaPct -CssClass $mfaClass -Size 130 -StrokeWidth 12
+            $ssprDonut = Get-SvgDonut -Percentage $ssprPct -CssClass $ssprClass -Size 130 -StrokeWidth 12
+
+            $null = $sectionHtml.AppendLine("<div class='donut-pair'>")
+            $null = $sectionHtml.AppendLine("<div class='donut-card'><div class='donut-card-label'>MFA Adoption</div>$mfaDonut<div class='donut-card-detail'>$mfaRegistered / $mfaCapable capable users enrolled</div></div>")
+            $null = $sectionHtml.AppendLine("<div class='donut-card'><div class='donut-card-label'>SSPR Enrollment</div>$ssprDonut<div class='donut-card-detail'>$ssprRegistered / $ssprCapable capable users enrolled</div></div>")
+            $null = $sectionHtml.AppendLine("</div>")
+
             $null = $sectionHtml.AppendLine("<div class='exec-summary'>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$totalUsers</div><div class='stat-label'>Total Users</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$licensedUsers</div><div class='stat-label'>Licensed</div></div>")
-            $null = $sectionHtml.AppendLine("<div class='stat-card $mfaClass'><div class='stat-value'>$mfaPct%</div><div class='stat-label'>MFA Adoption</div><div class='stat-detail'>$mfaRegistered / $mfaCapable capable</div></div>")
-            $null = $sectionHtml.AppendLine("<div class='stat-card $ssprClass'><div class='stat-value'>$ssprPct%</div><div class='stat-label'>SSPR Enrolled</div><div class='stat-detail'>$ssprRegistered / $ssprCapable capable</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$guestUsers</div><div class='stat-label'>Guest Users</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card $disabledClass'><div class='stat-value'>$disabledUsers</div><div class='stat-label'>Disabled Users</div></div>")
             $null = $sectionHtml.AppendLine("<div class='stat-card info'><div class='stat-value'>$syncedUsers</div><div class='stat-label'>Synced From On-Prem</div></div>")
@@ -1040,6 +1091,32 @@ if ($allCisFindings.Count -gt 0 -and $frameworkMappings.Count -gt 0) {
     }
     $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $complianceHtml.AppendLine("</div>")
+
+    # Status distribution bar chart
+    $cisTotal = $allCisFindings.Count
+    if ($cisTotal -gt 0) {
+        $segments = @(
+            @{ Css = 'pass'; Pct = [math]::Round(($cisPass / $cisTotal) * 100, 1); Count = $cisPass; Label = 'Pass' }
+            @{ Css = 'fail'; Pct = [math]::Round(($cisFail / $cisTotal) * 100, 1); Count = $cisFail; Label = 'Fail' }
+            @{ Css = 'warning'; Pct = [math]::Round(($cisWarn / $cisTotal) * 100, 1); Count = $cisWarn; Label = 'Warning' }
+            @{ Css = 'review'; Pct = [math]::Round(($cisReview / $cisTotal) * 100, 1); Count = $cisReview; Label = 'Review' }
+        )
+        if ($cisUnknown -gt 0) {
+            $segments += @{ Css = 'unknown'; Pct = [math]::Round(($cisUnknown / $cisTotal) * 100, 1); Count = $cisUnknown; Label = 'Unknown' }
+        }
+        $barChart = Get-SvgHorizontalBar -Segments $segments
+        $null = $complianceHtml.AppendLine("<div class='compliance-status-bar'>")
+        $null = $complianceHtml.AppendLine("<div class='compliance-bar-header'><span class='compliance-bar-title'>Finding Status Distribution</span><span class='compliance-bar-total'>$cisTotal controls assessed</span></div>")
+        $null = $complianceHtml.AppendLine($barChart)
+        $null = $complianceHtml.AppendLine("<div class='hbar-legend'>")
+        foreach ($seg in $segments) {
+            if ($seg.Count -gt 0) {
+                $null = $complianceHtml.AppendLine("<span class='hbar-legend-item'><span class='chart-legend-dot dot-$(switch ($seg.Css) { 'pass' { 'success' } 'fail' { 'danger' } 'warning' { 'warning' } 'review' { 'info' } default { 'muted' } })'></span>$($seg.Label) ($($seg.Count))</span>")
+            }
+        }
+        $null = $complianceHtml.AppendLine("</div>")
+        $null = $complianceHtml.AppendLine("</div>")
+    }
 
     # Framework coverage cards (all frameworks)
     $null = $complianceHtml.AppendLine("<div class='exec-summary' id='fwCards'>")
@@ -1558,6 +1635,119 @@ $html = @"
         }
 
         /* ----------------------------------------------------------
+           SVG Donut Charts
+           ---------------------------------------------------------- */
+        .donut-chart { display: block; margin: 0 auto; }
+        .donut-track { stroke: var(--m365a-border); }
+        .donut-fill { transition: stroke-dashoffset 0.6s ease; }
+        .donut-success { stroke: var(--m365a-success); }
+        .donut-warning { stroke: var(--m365a-warning); }
+        .donut-danger { stroke: var(--m365a-danger); }
+        .donut-info { stroke: var(--m365a-accent); }
+        .donut-text { font-size: 22px; font-weight: 700; fill: var(--m365a-text); font-family: inherit; }
+        .donut-text-sm { font-size: 16px; }
+
+        .chart-panel {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 24px;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--m365a-light-gray);
+            border-radius: 8px;
+            border: 1px solid var(--m365a-border);
+        }
+        .chart-panel-center {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10pt;
+        }
+        .chart-legend-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .chart-legend-dot.dot-success { background: var(--m365a-success); }
+        .chart-legend-dot.dot-warning { background: var(--m365a-warning); }
+        .chart-legend-dot.dot-danger { background: var(--m365a-danger); }
+        .chart-legend-dot.dot-info { background: var(--m365a-accent); }
+        .chart-legend-dot.dot-muted { background: var(--m365a-medium-gray); }
+
+        /* Horizontal bar chart */
+        .hbar-chart {
+            display: flex;
+            height: 28px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+            background: var(--m365a-border);
+        }
+        .hbar-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            transition: width 0.4s ease;
+        }
+        .hbar-label {
+            font-size: 8pt;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .hbar-pass { background: var(--m365a-success); }
+        .hbar-fail { background: var(--m365a-danger); }
+        .hbar-warning { background: var(--m365a-warning); }
+        .hbar-review { background: var(--m365a-accent); }
+        .hbar-unknown { background: var(--m365a-medium-gray); }
+        .hbar-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 9pt; color: var(--m365a-medium-gray); }
+        .hbar-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+        .compliance-status-bar { padding: 16px 20px; background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 8px; margin: 16px 0; }
+        .compliance-bar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        .compliance-bar-title { font-weight: 600; font-size: 10pt; color: var(--m365a-dark); }
+        .compliance-bar-total { font-size: 9pt; color: var(--m365a-medium-gray); }
+
+        /* Donut pair layout for Identity section */
+        .donut-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .donut-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 20px;
+            background: var(--m365a-light-gray);
+            border-radius: 8px;
+            border: 1px solid var(--m365a-border);
+        }
+        .donut-card-label {
+            font-size: 10pt;
+            font-weight: 600;
+            color: var(--m365a-dark);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .donut-card-detail {
+            font-size: 8.5pt;
+            color: var(--m365a-medium-gray);
+        }
+
+        /* ----------------------------------------------------------
            Score Progress Bar
            ---------------------------------------------------------- */
         .score-bar-track {
@@ -1940,10 +2130,14 @@ $html = @"
         .theme-toggle {
             position: fixed; top: 16px; right: 16px; z-index: 1000;
             background: var(--m365a-card-bg); border: 1px solid var(--m365a-border);
-            border-radius: 50%; width: 40px; height: 40px; cursor: pointer;
+            border-radius: 50%; width: 44px; height: 44px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: all 0.3s ease;
-            font-size: 16px; line-height: 1; padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: all 0.3s ease;
+            font-size: 18px; line-height: 1; padding: 0;
+        }
+        body.dark-theme .theme-toggle {
+            background: #334155; border-color: #475569;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         }
         .theme-toggle:hover { transform: scale(1.1); }
         body:not(.dark-theme) .theme-icon-dark { display: none; }
@@ -2046,6 +2240,8 @@ $html = @"
             td { padding: 5px 8px; }
 
             .exec-summary { grid-template-columns: repeat(4, 1fr); }
+            .chart-panel { page-break-inside: avoid; }
+            .donut-pair { grid-template-columns: 1fr 1fr; page-break-inside: avoid; }
             .report-toc { page-break-inside: avoid; page-break-after: always; }
             .toc-list { columns: 1; }
             .tenant-card { page-break-inside: avoid; }
@@ -2109,22 +2305,17 @@ $html = @"
         <strong>$totalCollectors</strong> configuration areas across
         <strong>$($sections.Count)</strong> sections.</p>
 
-        <div class="exec-summary">
-            <div class="stat-card info">
-                <div class="stat-value">$($sections.Count)</div>
-                <div class="stat-label">Sections</div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-value">$completeCount</div>
-                <div class="stat-label">Completed</div>
-            </div>
-            <div class="stat-card warning">
-                <div class="stat-value">$skippedCount</div>
-                <div class="stat-label">Skipped</div>
-            </div>
-            <div class="stat-card error">
-                <div class="stat-value">$failedCount</div>
-                <div class="stat-label">Failed</div>
+        <div class="chart-panel">
+            $(
+                $completePct = if ($totalCollectors -gt 0) { [math]::Round(($completeCount / $totalCollectors) * 100, 0) } else { 0 }
+                $donutClass = if ($completePct -ge 90) { 'success' } elseif ($completePct -ge 70) { 'warning' } else { 'danger' }
+                Get-SvgDonut -Percentage $completePct -CssClass $donutClass -Label "$completeCount/$totalCollectors" -Size 140 -StrokeWidth 12
+            )
+            <div class="chart-legend">
+                <div class="chart-legend-item"><span class="chart-legend-dot dot-success"></span><strong>$completeCount</strong> Completed</div>
+                <div class="chart-legend-item"><span class="chart-legend-dot dot-warning"></span><strong>$skippedCount</strong> Skipped</div>
+                <div class="chart-legend-item"><span class="chart-legend-dot dot-danger"></span><strong>$failedCount</strong> Failed</div>
+                <div class="chart-legend-item"><span class="chart-legend-dot dot-info"></span><strong>$($sections.Count)</strong> Sections</div>
             </div>
         </div>
 "@
