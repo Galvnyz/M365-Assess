@@ -347,8 +347,27 @@ function Show-InteractiveWizard {
     Write-Host "    $defaultOutput\" -ForegroundColor $cSuccess
     Write-Host ''
     Write-Host '  Press ENTER to accept, or type a custom path:' -ForegroundColor $cMuted
-    Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-    $outputInput = Read-Host
+    do {
+        $outputValid = $true
+        Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
+        $outputInput = Read-Host
+        if ($outputInput.Trim()) {
+            # Reject values that look like email/UPN rather than a folder path
+            if ($outputInput.Trim() -match '@') {
+                Write-Host ''
+                Write-Host '  That looks like an email address or UPN, not a folder path.' -ForegroundColor $cError
+                Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
+                $outputValid = $false
+            }
+            # Reject paths containing characters invalid on Windows
+            elseif ($outputInput.Trim() -match '[<>"|?*]') {
+                Write-Host ''
+                Write-Host '  Path contains invalid characters ( < > " | ? * ).' -ForegroundColor $cError
+                Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
+                $outputValid = $false
+            }
+        }
+    } while (-not $outputValid)
     $wizOutputFolder = if ($outputInput.Trim()) { $outputInput.Trim() } else { $defaultOutput }
 
     # ================================================================
