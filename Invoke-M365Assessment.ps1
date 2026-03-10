@@ -1085,30 +1085,41 @@ if (-not $SkipConnection) {
         }
     }
 
-    if ($exoModule -and -not $graphModule) {
-        $needsGraph = $false
-        foreach ($s in $Section) {
-            if ($s -notin @('Email', 'ScubaGear')) { $needsGraph = $true; break }
-        }
-        if ($needsGraph) {
-            $compatErrors += "Microsoft.Graph.Authentication module is not installed. Run: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
-        }
+    # Determine which modules the selected sections actually require
+    $needsGraph = $false
+    $needsExo   = $false
+    foreach ($s in $Section) {
+        $svcList = $sectionServiceMap[$s]
+        if ($svcList -contains 'Graph')                                    { $needsGraph = $true }
+        if ($svcList -contains 'ExchangeOnline' -or $svcList -contains 'Purview') { $needsExo = $true }
+    }
+
+    $missingModules = @()
+    if ($needsGraph -and -not $graphModule) {
+        $missingModules += "Microsoft.Graph.Authentication — Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
+    }
+    if ($needsExo -and -not $exoModule) {
+        $missingModules += "ExchangeOnlineManagement — Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser"
+    }
+
+    if ($missingModules.Count -gt 0) {
+        $compatErrors += $missingModules
     }
 
     if ($compatErrors.Count -gt 0) {
         Write-Host ''
         Write-Host '  ╔══════════════════════════════════════════════════════════╗' -ForegroundColor Magenta
-        Write-Host '  ║  Module Compatibility Issue                              ║' -ForegroundColor Magenta
+        Write-Host '  ║  Module Issue                                            ║' -ForegroundColor Magenta
         Write-Host '  ╚══════════════════════════════════════════════════════════╝' -ForegroundColor Magenta
         foreach ($err in $compatErrors) {
-            Write-Host "    $err" -ForegroundColor Yellow
+            Write-Host "    • $err" -ForegroundColor Yellow
         }
         Write-Host ''
         Write-Host '  Known compatible combo: Graph SDK 2.35.x + EXO 3.7.1' -ForegroundColor DarkGray
         Write-Host '  Also: Always connect Graph BEFORE EXO in the same session.' -ForegroundColor DarkGray
         Write-Host ''
-        Write-AssessmentLog -Level ERROR -Message "Module compatibility check failed: $($compatErrors -join '; ')"
-        Write-Error "Module compatibility issue detected. See above for details."
+        Write-AssessmentLog -Level ERROR -Message "Module check failed: $($compatErrors -join '; ')"
+        Write-Error "Required modules are missing or incompatible. See above for details."
         return
     }
 
