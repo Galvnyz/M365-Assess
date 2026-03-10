@@ -214,6 +214,13 @@ $failedCount = @($summary | Where-Object { $_.Status -eq 'Failed' }).Count
 $totalCollectors = $summary.Count
 $sections = @($summary | Select-Object -ExpandProperty Section -Unique)
 
+# Preferred section display order — sections not listed keep their CSV order at the end
+$sectionDisplayOrder = @('Tenant','Identity','Hybrid','Licensing','Email','Intune','Security','Collaboration','Inventory','ScubaGear')
+$sections = @(
+    foreach ($s in $sectionDisplayOrder) { if ($sections -contains $s) { $s } }
+    foreach ($s in $sections) { if ($sectionDisplayOrder -notcontains $s) { $s } }
+)
+
 # Parse issues from the log file
 $issues = [System.Collections.Generic.List[PSCustomObject]]::new()
 if ($issueContent) {
@@ -924,6 +931,282 @@ foreach ($sectionName in $sections) {
         }
     }
 
+    # ------------------------------------------------------------------
+    # Hybrid Dashboard — sync status visual panel
+    # ------------------------------------------------------------------
+    if ($sectionName -eq 'Hybrid') {
+        $hybridCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '22-Hybrid-Sync.csv'
+        $hybridData = if (Test-Path $hybridCsvPath) { @(Import-Csv $hybridCsvPath) } else { @() }
+
+        if ($hybridData.Count -gt 0) {
+            $h = $hybridData[0]
+            $hProps = @($h.PSObject.Properties.Name)
+
+            $syncEnabled   = if ($hProps -contains 'OnPremisesSyncEnabled')  { $h.OnPremisesSyncEnabled }  else { 'Unknown' }
+            $dirSyncConfig = if ($hProps -contains 'DirSyncConfigured')     { $h.DirSyncConfigured }     else { 'Unknown' }
+            $phsEnabled    = if ($hProps -contains 'PasswordHashSyncEnabled'){ $h.PasswordHashSyncEnabled} else { 'Unknown' }
+            $syncType      = if ($hProps -contains 'SyncType')              { $h.SyncType }              else { 'Unknown' }
+            $onPremDomain  = if ($hProps -contains 'OnPremDomainName')      { $h.OnPremDomainName }      else { 'N/A' }
+            $onPremForest  = if ($hProps -contains 'OnPremForestName')      { $h.OnPremForestName }      else { 'N/A' }
+
+            # Parse last sync times
+            $lastDirSync = if ($hProps -contains 'LastDirSyncTime' -and $h.LastDirSyncTime) {
+                try { ([datetime]$h.LastDirSyncTime).ToString('yyyy-MM-dd HH:mm') } catch { $h.LastDirSyncTime }
+            } else { 'Never' }
+
+            $lastPwdSync = if ($hProps -contains 'LastPasswordSyncTime' -and $h.LastPasswordSyncTime) {
+                try { ([datetime]$h.LastPasswordSyncTime).ToString('yyyy-MM-dd HH:mm') } catch { $h.LastPasswordSyncTime }
+            } else { 'Never' }
+
+            # Determine sync health — if last sync > 6 hours ago, warning
+            $syncHealthClass = 'success'
+            $syncHealthLabel = 'Healthy'
+            if ($hProps -contains 'LastDirSyncTime' -and $h.LastDirSyncTime) {
+                try {
+                    $syncAge = (Get-Date) - [datetime]$h.LastDirSyncTime
+                    if ($syncAge.TotalHours -gt 6) { $syncHealthClass = 'warning'; $syncHealthLabel = 'Stale' }
+                    if ($syncAge.TotalHours -gt 24) { $syncHealthClass = 'danger'; $syncHealthLabel = 'Critical' }
+                } catch { $syncHealthClass = 'info'; $syncHealthLabel = 'Unknown' }
+            } elseif ($syncEnabled -eq 'True') {
+                $syncHealthClass = 'warning'; $syncHealthLabel = 'No Data'
+            } else {
+                $syncHealthClass = 'info'; $syncHealthLabel = 'Cloud Only'
+            }
+
+            $syncEnabledClass = if ($syncEnabled -eq 'True') { 'success' } else { 'info' }
+            $dirSyncClass     = if ($dirSyncConfig -eq 'True') { 'success' } else { 'warning' }
+            $phsClass         = if ($phsEnabled -eq 'True') { 'success' } else { 'warning' }
+
+            $null = $sectionHtml.AppendLine("<div class='email-dashboard'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-top'>")
+
+            # Left column: Sync status metric cards
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Sync Configuration</div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metrics-grid'>")
+
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$syncEnabledClass'><div class='email-metric-icon'>&#128260;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $syncEnabled)</div><div class='email-metric-label'>Directory Sync</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$dirSyncClass'><div class='email-metric-icon'>&#9881;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $dirSyncConfig)</div><div class='email-metric-label'>DirSync Configured</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$phsClass'><div class='email-metric-icon'>&#128272;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $phsEnabled)</div><div class='email-metric-label'>Password Hash Sync</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#128296;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $syncType)</div><div class='email-metric-label'>Sync Method</div></div></div>")
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-metrics-grid
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-col
+
+            # Middle column: Sync health donut + timing
+            $healthPct = switch ($syncHealthClass) { 'success' { 100 }; 'warning' { 60 }; 'danger' { 25 }; default { 50 } }
+            $healthDonut = Get-SvgDonut -Percentage $healthPct -CssClass $syncHealthClass -Size 130 -StrokeWidth 12
+
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Sync Health</div>")
+            $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
+            $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
+            $null = $sectionHtml.AppendLine($healthDonut)
+            $null = $sectionHtml.AppendLine("<div class='score-donut-label'>$syncHealthLabel</div>")
+            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
+            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Last Directory Sync</span><span class='score-detail-value'>$(ConvertTo-HtmlSafe -Text $lastDirSync)</span></div>")
+            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Last Password Sync</span><span class='score-detail-value'>$(ConvertTo-HtmlSafe -Text $lastPwdSync)</span></div>")
+            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("</div>")
+
+            # Right column: On-premises environment info
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>On-Premises Environment</div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metrics-grid hybrid-env-grid'>")
+
+            $tenantName = if ($hProps -contains 'TenantDisplayName') { $h.TenantDisplayName } else { 'N/A' }
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127970;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $tenantName)</div><div class='email-metric-label'>Tenant</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127760;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $onPremDomain)</div><div class='email-metric-label'>AD Domain</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127795;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $onPremForest)</div><div class='email-metric-label'>AD Forest</div></div></div>")
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-metrics-grid
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-col
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-top
+            $null = $sectionHtml.AppendLine("</div>") # end email-dashboard
+        }
+    }
+
+    # ------------------------------------------------------------------
+    # Collaboration Dashboard — combined overview panel
+    # ------------------------------------------------------------------
+    if ($sectionName -eq 'Collaboration') {
+        $spoCsvPath   = Join-Path -Path $AssessmentFolder -ChildPath '20-SharePoint-OneDrive.csv'
+        $spoSecPath   = Join-Path -Path $AssessmentFolder -ChildPath '20b-SharePoint-Security-Config.csv'
+        $teamAccPath  = Join-Path -Path $AssessmentFolder -ChildPath '21-Teams-Access.csv'
+        $teamSecPath  = Join-Path -Path $AssessmentFolder -ChildPath '21b-Teams-Security-Config.csv'
+
+        $spoData    = if (Test-Path $spoCsvPath)  { @(Import-Csv $spoCsvPath)  } else { @() }
+        $spoSecData = if (Test-Path $spoSecPath)  { @(Import-Csv $spoSecPath)  } else { @() }
+        $teamAccData= if (Test-Path $teamAccPath) { @(Import-Csv $teamAccPath) } else { @() }
+        $teamSecData= if (Test-Path $teamSecPath) { @(Import-Csv $teamSecPath) } else { @() }
+
+        $hasCollabData = ($spoData.Count -gt 0) -or ($teamAccData.Count -gt 0) -or ($spoSecData.Count -gt 0) -or ($teamSecData.Count -gt 0)
+
+        if ($hasCollabData) {
+            $null = $sectionHtml.AppendLine("<div class='email-dashboard'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-top'>")
+
+            # --- Left column: SharePoint & Teams settings as icon metric cards ---
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Collaboration Settings</div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metrics-grid'>")
+
+            if ($spoData.Count -gt 0) {
+                $spo = $spoData[0]
+                $spoProps = @($spo.PSObject.Properties.Name)
+
+                # Sharing Capability
+                $sharingCap = if ($spoProps -contains 'SharingCapability') { $spo.SharingCapability } else { 'Unknown' }
+                $sharingDisplay = switch ($sharingCap) {
+                    'Disabled'                        { 'Disabled' }
+                    'ExistingExternalUserSharingOnly'  { 'Existing Guests' }
+                    'ExternalUserSharingOnly'          { 'External Users' }
+                    'ExternalUserAndGuestSharing'      { 'Anyone' }
+                    default { $sharingCap }
+                }
+                $sharingClass = switch ($sharingCap) {
+                    'Disabled'                        { 'success' }
+                    'ExistingExternalUserSharingOnly'  { 'success' }
+                    'ExternalUserSharingOnly'          { 'warning' }
+                    'ExternalUserAndGuestSharing'      { 'danger' }
+                    default { '' }
+                }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$sharingClass'><div class='email-metric-icon'>&#128279;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $sharingDisplay)</div><div class='email-metric-label'>External Sharing</div></div></div>")
+
+                # Domain Restriction
+                $domainRestrict = if ($spoProps -contains 'SharingDomainRestrictionMode') { $spo.SharingDomainRestrictionMode } else { 'Unknown' }
+                $drClass = if ($domainRestrict -eq 'None' -or $domainRestrict -eq 'none') { 'warning' } else { 'success' }
+                $drDisplay = switch ($domainRestrict) { 'AllowList' { 'Allow List' }; 'BlockList' { 'Block List' }; 'None' { 'None' }; 'none' { 'None' }; default { $domainRestrict } }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$drClass'><div class='email-metric-icon'>&#127760;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $drDisplay)</div><div class='email-metric-label'>Domain Restriction</div></div></div>")
+
+                # Resharing
+                $resharing = if ($spoProps -contains 'IsResharingByExternalUsersEnabled') { $spo.IsResharingByExternalUsersEnabled } else { 'Unknown' }
+                $reshareClass = if ($resharing -eq 'False') { 'success' } else { 'danger' }
+                $reshareIcon = if ($resharing -eq 'False') { '&#128683;' } else { '&#9888;' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$reshareClass'><div class='email-metric-icon'>$reshareIcon</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $resharing)</div><div class='email-metric-label'>External Resharing</div></div></div>")
+
+                # Sync Client Restriction
+                $syncRestrict = if ($spoProps -contains 'IsUnmanagedSyncClientRestricted') { $spo.IsUnmanagedSyncClientRestricted } else { 'Unknown' }
+                $syncClass = if ($syncRestrict -eq 'True') { 'success' } else { 'warning' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$syncClass'><div class='email-metric-icon'>&#128260;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $syncRestrict)</div><div class='email-metric-label'>Unmanaged Sync Blocked</div></div></div>")
+            }
+
+            if ($teamAccData.Count -gt 0) {
+                $team = $teamAccData[0]
+                $tProps = @($team.PSObject.Properties.Name)
+
+                # Guest Access
+                $guestAccess = if ($tProps -contains 'AllowGuestAccess') { $team.AllowGuestAccess } else { 'Unknown' }
+                $guestClass = if ($guestAccess -eq 'False') { 'success' } else { 'warning' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$guestClass'><div class='email-metric-icon'>&#128101;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $guestAccess)</div><div class='email-metric-label'>Teams Guest Access</div></div></div>")
+
+                # Third Party Apps
+                $thirdParty = if ($tProps -contains 'AllowThirdPartyApps') { $team.AllowThirdPartyApps } else { 'Unknown' }
+                $tpClass = if ($thirdParty -eq 'False') { 'success' } else { 'warning' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$tpClass'><div class='email-metric-icon'>&#128268;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $thirdParty)</div><div class='email-metric-label'>Third-Party Apps</div></div></div>")
+
+                # Side Loading
+                $sideLoad = if ($tProps -contains 'AllowSideLoading') { $team.AllowSideLoading } else { 'Unknown' }
+                $slClass = if ($sideLoad -eq 'False') { 'success' } else { 'danger' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$slClass'><div class='email-metric-icon'>&#128230;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $sideLoad)</div><div class='email-metric-label'>Side Loading</div></div></div>")
+
+                # Resource-Specific Consent
+                $rscConsent = if ($tProps -contains 'IsUserPersonalScopeResourceSpecificConsentEnabled') { $team.IsUserPersonalScopeResourceSpecificConsentEnabled } else { 'Unknown' }
+                $rscClass = if ($rscConsent -eq 'False') { 'success' } else { 'warning' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$rscClass'><div class='email-metric-icon'>&#128273;</div><div class='email-metric-body'><div class='email-metric-value'>$(ConvertTo-HtmlSafe -Text $rscConsent)</div><div class='email-metric-label'>Resource Consent</div></div></div>")
+            }
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-metrics-grid
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-col
+
+            # --- Middle column: SharePoint Security Config donut ---
+            if ($spoSecData.Count -gt 0) {
+                $spoSecTotal  = $spoSecData.Count
+                $spoSecPass   = @($spoSecData | Where-Object { $_.Status -eq 'Pass' }).Count
+                $spoSecFail   = @($spoSecData | Where-Object { $_.Status -eq 'Fail' }).Count
+                $spoSecWarn   = @($spoSecData | Where-Object { $_.Status -eq 'Warning' }).Count
+                $spoSecReview = @($spoSecData | Where-Object { $_.Status -eq 'Review' }).Count
+
+                $spoSegments = @(
+                    @{ Css = 'success'; Pct = [math]::Round(($spoSecPass   / $spoSecTotal) * 100, 1); Label = 'Pass' }
+                    @{ Css = 'danger';  Pct = [math]::Round(($spoSecFail   / $spoSecTotal) * 100, 1); Label = 'Fail' }
+                    @{ Css = 'warning'; Pct = [math]::Round(($spoSecWarn   / $spoSecTotal) * 100, 1); Label = 'Warning' }
+                    @{ Css = 'info';    Pct = [math]::Round(($spoSecReview / $spoSecTotal) * 100, 1); Label = 'Review' }
+                )
+                $spoDonut = Get-SvgMultiDonut -Segments $spoSegments -CenterLabel "$spoSecTotal" -Size 130 -StrokeWidth 12
+
+                $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>SharePoint Security</div>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
+                $null = $sectionHtml.AppendLine($spoDonut)
+                $null = $sectionHtml.AppendLine("<div class='score-donut-label'>SPO Controls</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-success'></span> Pass</span><span class='score-detail-value success-text'>$spoSecPass</span></div>")
+                if ($spoSecFail -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-danger'></span> Fail</span><span class='score-detail-value danger-text'>$spoSecFail</span></div>")
+                }
+                if ($spoSecWarn -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-warning'></span> Warning</span><span class='score-detail-value warning-text'>$spoSecWarn</span></div>")
+                }
+                if ($spoSecReview -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-info'></span> Review</span><span class='score-detail-value' style='color: var(--m365a-accent);'>$spoSecReview</span></div>")
+                }
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Total Controls</span><span class='score-detail-value'>$spoSecTotal</span></div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+            }
+
+            # --- Right column: Teams Security Config donut ---
+            if ($teamSecData.Count -gt 0) {
+                $teamSecTotal  = $teamSecData.Count
+                $teamSecPass   = @($teamSecData | Where-Object { $_.Status -eq 'Pass' }).Count
+                $teamSecFail   = @($teamSecData | Where-Object { $_.Status -eq 'Fail' }).Count
+                $teamSecWarn   = @($teamSecData | Where-Object { $_.Status -eq 'Warning' }).Count
+                $teamSecReview = @($teamSecData | Where-Object { $_.Status -eq 'Review' }).Count
+
+                $teamSegments = @(
+                    @{ Css = 'success'; Pct = [math]::Round(($teamSecPass   / $teamSecTotal) * 100, 1); Label = 'Pass' }
+                    @{ Css = 'danger';  Pct = [math]::Round(($teamSecFail   / $teamSecTotal) * 100, 1); Label = 'Fail' }
+                    @{ Css = 'warning'; Pct = [math]::Round(($teamSecWarn   / $teamSecTotal) * 100, 1); Label = 'Warning' }
+                    @{ Css = 'info';    Pct = [math]::Round(($teamSecReview / $teamSecTotal) * 100, 1); Label = 'Review' }
+                )
+                $teamDonut = Get-SvgMultiDonut -Segments $teamSegments -CenterLabel "$teamSecTotal" -Size 130 -StrokeWidth 12
+
+                $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Teams Security</div>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
+                $null = $sectionHtml.AppendLine($teamDonut)
+                $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Teams Controls</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-success'></span> Pass</span><span class='score-detail-value success-text'>$teamSecPass</span></div>")
+                if ($teamSecFail -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-danger'></span> Fail</span><span class='score-detail-value danger-text'>$teamSecFail</span></div>")
+                }
+                if ($teamSecWarn -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-warning'></span> Warning</span><span class='score-detail-value warning-text'>$teamSecWarn</span></div>")
+                }
+                if ($teamSecReview -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-info'></span> Review</span><span class='score-detail-value' style='color: var(--m365a-accent);'>$teamSecReview</span></div>")
+                }
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Total Controls</span><span class='score-detail-value'>$teamSecTotal</span></div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+            }
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-top
+            $null = $sectionHtml.AppendLine("</div>") # end email-dashboard
+        }
+    }
+
     # Data tables for each collector
     foreach ($c in $sectionCollectors) {
         if ($c.Status -ne 'Complete' -or [int]$c.Items -eq 0) { continue }
@@ -1582,6 +1865,9 @@ $html = @"
             color: var(--m365a-text);
             background: var(--m365a-body-bg);
         }
+
+        a { color: var(--m365a-primary); }
+        a:hover { color: var(--m365a-accent); }
 
         /* ----------------------------------------------------------
            Cover Page
@@ -2306,6 +2592,9 @@ $html = @"
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
+        }
+        .hybrid-env-grid {
+            grid-template-columns: 1fr;
         }
         .email-metric-card {
             display: flex;
