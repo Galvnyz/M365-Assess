@@ -239,7 +239,7 @@ GET /roleManagement/directory/roleAssignmentScheduleRequests           # Activat
 GET /policies/roleManagementPolicies                                    # PIM policies per role
 ```
 
-**Graph scopes**: `RoleManagement.Read.Directory`, `RoleEligibilitySchedule.Read.Directory`, `RoleAssignmentSchedule.Read.Directory`
+**Graph scopes**: `RoleManagement.Read.Directory`, `RoleEligibilitySchedule.Read.Directory`, `RoleAssignmentSchedule.Read.Directory`, `RoleManagementPolicy.Read.Directory`
 
 **Output CSV columns**: `RoleName`, `RoleId`, `PrincipalName`, `PrincipalType`, `AssignmentType` (Eligible/Active), `AssignmentState` (Active/Provisioned), `StartDateTime`, `EndDateTime`, `MemberType` (Direct/Group)
 
@@ -313,6 +313,8 @@ GET /identity/conditionalAccess/policies?$filter=conditions/signInRiskLevels/any
 
 **Output**: Summary CSV with risk counts + detailed risky users list
 
+**License requirement**: Entra ID P2, E5, or E5 Security. Collector should detect licensing via `GET /subscribedSkus` and skip with an informational finding ("Identity Protection requires Entra ID P2 — consider upgrading for threat visibility") if unlicensed.
+
 **CIS/Framework mapping**: CIS 1.x, NIST SI-4, ISO A.8.16
 
 ---
@@ -331,6 +333,8 @@ GET /identity/conditionalAccess/policies?$filter=conditions/signInRiskLevels/any
 - Maker count per environment
 
 **PowerShell module**: `Microsoft.PowerApps.Administration.PowerShell`
+
+> **Note**: Microsoft is migrating Power Platform administration toward the **Power Platform CLI (pac)** and **Graph-based APIs**. The legacy `Microsoft.PowerApps.Administration.PowerShell` cmdlets below work today but may be superseded. Monitor [Power Platform admin module docs](https://learn.microsoft.com/en-us/power-platform/admin/powerapps-powershell) for deprecation notices and consider Graph-based alternatives when available.
 
 **Cmdlets:**
 ```powershell
@@ -416,6 +420,8 @@ GET /security/informationProtection/sensitivityLabels       # Requires Informati
 - Workload coverage: which workloads have retention policies (Exchange, SharePoint, OneDrive, Teams, Viva Engage)
 - Whether ANY retention exists (many SMBs have zero retention — data loss risk AND compliance risk)
 
+**Connection**: Security & Compliance PowerShell (`Connect-IPPSSession`)
+
 **Cmdlets:**
 ```powershell
 Get-RetentionCompliancePolicy                              # Retention policies
@@ -433,6 +439,8 @@ Get-ComplianceTag                                          # Retention labels
 - Advanced Audit availability (E5 feature: crucial events like MailItemsAccessed)
 - Mailbox audit configuration (org-level and per-mailbox)
 - Audit log search policy
+
+**Connection**: Exchange Online PowerShell (`Connect-ExchangeOnline`) for audit config; Security & Compliance PowerShell (`Connect-IPPSSession`) for audit retention policies
 
 **Cmdlets:**
 ```powershell
@@ -452,10 +460,14 @@ Get-OrganizationConfig | Select AuditDisabled              # Org-level mailbox a
 - HR connector status (if configured for departure triggers)
 - Priority user groups defined
 
+**Connection**: Security & Compliance PowerShell (`Connect-IPPSSession`)
+
 **Cmdlets:**
 ```powershell
 Get-InsiderRiskPolicy                                      # IRM policies (if accessible)
 ```
+
+**License requirement**: E5, E5 Compliance, or Insider Risk Management add-on. Collector should detect licensing and skip with an informational finding if unlicensed.
 
 **Note**: IRM has limited PowerShell/API access. This collector may be primarily a license/availability check with a recommendation to configure if licensed but unused.
 
@@ -470,6 +482,8 @@ Get-InsiderRiskPolicy                                      # IRM policies (if ac
 #### `Security/Get-CloudAppSecurityReport.ps1`
 
 **Why important**: MDCA provides OAuth app governance, shadow IT discovery, and app-level threat detection. Many SMBs have MDCA licensed through E5 but it's unconfigured.
+
+**License requirement**: E5, E5 Security, or standalone MDCA license. Collector should detect licensing and skip with informational finding if unlicensed.
 
 **What to assess:**
 - Whether MDCA is activated/configured
@@ -538,7 +552,7 @@ GET /auditLogs/signIns?$filter=clientAppUsed ne 'Browser' and clientAppUsed ne '
 
 **Graph scopes**: `AuditLog.Read.All`, `Directory.Read.All`
 
-**Note**: Sign-in logs can be very large. Sample the last 7 days with a reasonable page limit. Focus on aggregate patterns, not individual events.
+**Note**: Sign-in logs can be very large. Sample the last 7 days with a reasonable page limit. Focus on aggregate patterns, not individual events. **Important**: Sign-in log retention via Graph is **7 days for free/E3 tenants** and **30 days for E5/P2**. Most SMB targets will only have 7 days of data — the collector should detect the license tier and set expectations accordingly.
 
 ---
 
@@ -615,6 +629,8 @@ GET /security/alerts_v2?$filter=serviceSource eq 'microsoftDefenderForIdentity'
 - Holds in place
 - eDiscovery licensing availability
 
+**Connection**: Security & Compliance PowerShell (`Connect-IPPSSession`)
+
 **Cmdlets:**
 ```powershell
 Get-ComplianceCase                                         # eDiscovery cases
@@ -647,23 +663,23 @@ Add new sections to the orchestrator:
 'DataProtection'  = @('InformationProtectionPolicy.Read')
 'PowerPlatform'   = @()  # Uses separate PowerApps module auth
 
-# Update $collectorMap
+# Update $collectorMap  (numbering continues from existing ~30 collectors)
 'Governance' = @(
-    @{ Name = '33-PIM-Report';           Script = 'Governance\Get-PimReport.ps1';                    Label = 'PIM Roles' }
-    @{ Name = '34-Access-Reviews';       Script = 'Governance\Get-AccessReviewReport.ps1';           Label = 'Access Reviews' }
-    @{ Name = '35-Entitlement-Mgmt';     Script = 'Governance\Get-EntitlementManagementReport.ps1';  Label = 'Entitlement Management' }
+    @{ Name = '31-PIM-Report';           Script = 'Governance\Get-PimReport.ps1';                    Label = 'PIM Roles' }
+    @{ Name = '32-Access-Reviews';       Script = 'Governance\Get-AccessReviewReport.ps1';           Label = 'Access Reviews' }
+    @{ Name = '33-Entitlement-Mgmt';     Script = 'Governance\Get-EntitlementManagementReport.ps1';  Label = 'Entitlement Management' }
 )
 'DataProtection' = @(
-    @{ Name = '36-Sensitivity-Labels';   Script = 'Purview\Get-SensitivityLabelReport.ps1';    Label = 'Sensitivity Labels'; RequiredServices = @('Purview') }
-    @{ Name = '37-Retention-Policies';   Script = 'Purview\Get-RetentionPolicyReport.ps1';     Label = 'Retention Policies'; RequiredServices = @('Purview') }
-    @{ Name = '38-Audit-Config';         Script = 'Purview\Get-AuditConfigReport.ps1';         Label = 'Audit Configuration'; RequiredServices = @('Purview') }
-    @{ Name = '39-Insider-Risk';         Script = 'Purview\Get-InsiderRiskReport.ps1';         Label = 'Insider Risk'; RequiredServices = @('Purview') }
-    @{ Name = '39b-eDiscovery';          Script = 'Purview\Get-eDiscoveryReport.ps1';          Label = 'eDiscovery Overview'; RequiredServices = @('Purview') }
+    @{ Name = '34-Sensitivity-Labels';   Script = 'Purview\Get-SensitivityLabelReport.ps1';    Label = 'Sensitivity Labels'; RequiredServices = @('Purview') }
+    @{ Name = '35-Retention-Policies';   Script = 'Purview\Get-RetentionPolicyReport.ps1';     Label = 'Retention Policies'; RequiredServices = @('Purview') }
+    @{ Name = '36-Audit-Config';         Script = 'Purview\Get-AuditConfigReport.ps1';         Label = 'Audit Configuration'; RequiredServices = @('Purview') }
+    @{ Name = '37-Insider-Risk';         Script = 'Purview\Get-InsiderRiskReport.ps1';         Label = 'Insider Risk'; RequiredServices = @('Purview') }
+    @{ Name = '38-eDiscovery';           Script = 'Purview\Get-eDiscoveryReport.ps1';          Label = 'eDiscovery Overview'; RequiredServices = @('Purview') }
 )
 'PowerPlatform' = @(
-    @{ Name = '40-Power-Platform';       Script = 'PowerPlatform\Get-PowerPlatformReport.ps1';  Label = 'Environments & DLP'; RequiredServices = @('PowerPlatform') }
-    @{ Name = '41-Power-Apps';           Script = 'PowerPlatform\Get-PowerAppsReport.ps1';      Label = 'Power Apps'; RequiredServices = @('PowerPlatform') }
-    @{ Name = '42-Power-Automate';       Script = 'PowerPlatform\Get-PowerAutomateReport.ps1';  Label = 'Power Automate'; RequiredServices = @('PowerPlatform') }
+    @{ Name = '39-Power-Platform';       Script = 'PowerPlatform\Get-PowerPlatformReport.ps1';  Label = 'Environments & DLP'; RequiredServices = @('PowerPlatform') }
+    @{ Name = '40-Power-Apps';           Script = 'PowerPlatform\Get-PowerAppsReport.ps1';      Label = 'Power Apps'; RequiredServices = @('PowerPlatform') }
+    @{ Name = '41-Power-Automate';       Script = 'PowerPlatform\Get-PowerAutomateReport.ps1';  Label = 'Power Automate'; RequiredServices = @('PowerPlatform') }
 )
 
 # New collectors in existing sections (add to Identity)
@@ -719,18 +735,22 @@ Create new directories:
 ```
 mkdir Governance/           # PIM, Access Reviews, Entitlement Management
 mkdir PowerPlatform/        # Power Platform governance collectors
-mkdir Tenant/               # Move Get-TenantInfo.ps1 here (currently in Entra/) — OR keep in Entra/ and add new Tenant collectors there
+mkdir Purview/              # Sensitivity Labels, Retention, Audit, Insider Risk, eDiscovery
+mkdir Tenant/               # Service Health, Copilot Readiness (new collectors only)
 ```
 
-**Note**: `Get-TenantInfo.ps1` is currently in `Entra/` but logically belongs to the "Tenant" section. Consider a `Tenant/` directory for Service Health and Copilot Readiness, or simply add them to `Entra/` for consistency.
+**Note**: `Get-TenantInfo.ps1` currently lives in `Entra/` and is referenced from the orchestrator as `Entra\Get-TenantInfo.ps1`. **Do not move it** — that would break the `$collectorMap` path. Instead, create `Tenant/` for new tenant-scoped collectors only (Service Health, Copilot Readiness). The orchestrator already uses section names independently of directory paths.
 
-### C5. Version Sync
+### C5. Version Bump
 
-Current state:
-- `M365-Assess.psd1` → `ModuleVersion = '0.3.0'`
-- `Invoke-M365Assessment.ps1` → `$script:AssessmentVersion = '0.4.0'`
+The assessment version is currently **0.4.0** and is tracked across 10 locations (see `.claude/rules/versions.md` for the full list):
 
-These should be synchronized. Bump both to `0.5.0` for the release that includes these new collectors.
+- `Invoke-M365Assessment.ps1` → `.NOTES` block + `$script:AssessmentVersion`
+- `Common/Export-AssessmentReport.ps1` → `.NOTES` block + `$assessmentVersion` fallback
+- 5 × Security Config collectors → `.NOTES` blocks
+- `README.md` → shield badge URL
+
+Bump all 10 locations to `0.5.0` for the release that includes these new collectors. Use the verification grep from `versions.md` to confirm consistency.
 
 ### C6. Error Handling Enhancement
 
@@ -766,7 +786,9 @@ Write-Output $results
 | `ServiceHealth.Read.All` | Service Health |
 | `ServiceMessage.Read.All` | Service Health |
 | `DeviceManagementApps.Read.All` | App Protection (MAM) |
+| `RoleManagementPolicy.Read.Directory` | PIM Report (role policies) |
 | `InformationProtectionPolicy.Read` | Sensitivity Labels (Graph fallback) |
+| `AuditLog.Read.All` | Sign-in Analytics |
 
 ---
 
@@ -808,9 +830,9 @@ Write-Output $results
 
 ---
 
-## Appendix: CIS Microsoft 365 Foundations Benchmark v4.0 Coverage Gap Analysis
+## Appendix: CIS Microsoft 365 Foundations Benchmark v6.0.1 Coverage Gap Analysis
 
-The current solution covers approximately **65-70%** of CIS M365 v4.0 controls. Key uncovered areas:
+The current solution tracks **CIS v6.0.1** (140 total controls) and covers approximately **65-70%** of them. Key uncovered areas:
 
 | CIS Section | Coverage | Gap |
 |-------------|----------|-----|
@@ -823,4 +845,42 @@ The current solution covers approximately **65-70%** of CIS M365 v4.0 controls. 
 | 7. Teams | ~70% | Missing: meeting policies, messaging policies, app permissions |
 | 8. Power Platform | **0%** | Entirely missing section |
 
-**Target**: Achieve **90%+ CIS coverage** after implementing all Phase 1-3 collectors.
+**Target**: Achieve **90%+ CIS v6.0.1 coverage** after implementing all Phase 1-3 collectors.
+
+---
+
+## Appendix B: Cross-Cutting Concerns
+
+### License Detection Pattern
+
+Several proposed collectors require premium licenses (Entra ID P2, E5, E5 Compliance, IRM add-on). Every license-gated collector **must** follow this pattern:
+
+1. Check `GET /subscribedSkus` for the required SKU at collector start
+2. If unlicensed: emit an informational finding (e.g., "PIM requires Entra ID P2 — not licensed") and return gracefully
+3. If licensed but unconfigured: emit a warning finding (e.g., "Identity Protection is licensed but no risk policies are configured")
+4. If licensed and configured: proceed with full assessment
+
+Affected collectors: B1 (Governance/PIM), B2 (Identity Protection), B4d (Insider Risk), B5 (MDCA), B9 (Copilot), B10 (Defender for Identity).
+
+### Graph API Throttling
+
+Adding 15-20 new collectors with Graph API calls increases throttling risk, especially for:
+- **Guest Access** (`/users?$filter=userType eq 'Guest'`) — can be large on tenants with many B2B guests
+- **Sign-in Analytics** (`/auditLogs/signIns`) — returns high volumes of data
+- **App Registrations** (enhanced) — per-app owner lookups are N+1 queries
+
+Mitigations:
+- Use `$select` to request only needed properties (reduces response size and Graph resource units)
+- Use `$top` with paging rather than `-All` for potentially large result sets
+- Implement retry-with-backoff on HTTP 429 (the existing collector error handling catches this as a terminating error, but a shared retry helper would be more robust)
+- Consider adding a `$BatchSize` parameter to the orchestrator for tenants experiencing throttling
+
+### Assessment Runtime Impact
+
+Current assessment runtime is ~2-5 minutes for a typical SMB tenant. The proposed new collectors will add:
+- ~1 minute for Governance (3 collectors, lightweight API calls)
+- ~1-2 minutes for Data Protection (4 collectors, Purview connection overhead)
+- ~2-3 minutes for Power Platform (3 collectors, separate auth + potentially large app/flow inventories)
+- ~1 minute for remaining P2 collectors (Identity Protection, Guest Access, Sign-in Analytics)
+
+**Estimated total**: ~7-13 minutes with all sections enabled. The orchestrator should display per-section timing in the summary and consider parallelizing independent Graph calls within a section where possible.
