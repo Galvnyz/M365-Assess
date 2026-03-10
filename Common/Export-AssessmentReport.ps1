@@ -1264,31 +1264,73 @@ foreach ($sectionName in $sections) {
                 $defReview = @($defData | Where-Object { $_.Status -eq 'Review' }).Count
             }
 
-            # Build two-panel layout: Secure Score + Defender Config
-            $null = $sectionHtml.AppendLine("<div class='security-dashboard'>")
+            # Load Defender Policies and DLP Policies for metric cards
+            $defPolCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '18-Defender-Policies.csv'
+            $defPolTotal = 0; $defPolEnabled = 0
+            if (Test-Path -Path $defPolCsvPath) {
+                $defPolData = @(Import-Csv -Path $defPolCsvPath)
+                $defPolTotal = $defPolData.Count
+                $defPolEnabled = @($defPolData | Where-Object { $_.Enabled -eq 'True' }).Count
+            }
 
-            # Panel 1: Secure Score
-            $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
-            $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
-            $null = $sectionHtml.AppendLine($scoreDonut)
-            $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Secure Score</div>")
-            $null = $sectionHtml.AppendLine("</div>")
-            $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
-            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Points Earned</span><span class='score-detail-value'>$currentPts <span class='score-detail-max'>/ $maxPts</span></span></div>")
-            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Your Score</span><span class='score-detail-value $scoreClass-text'>$pctRaw%</span></div>")
+            $dlpCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '19-DLP-Policies.csv'
+            $dlpTotal = 0; $dlpEnabled = 0
+            if (Test-Path -Path $dlpCsvPath) {
+                $dlpData = @(Import-Csv -Path $dlpCsvPath)
+                $dlpPolicies = @($dlpData | Where-Object { $_.ItemType -eq 'DlpPolicy' })
+                $dlpTotal = $dlpPolicies.Count
+                $dlpEnabled = @($dlpPolicies | Where-Object { $_.Enabled -eq 'True' }).Count
+            }
+
+            # Build 3-column dashboard matching other sections
+            $null = $sectionHtml.AppendLine("<div class='email-dashboard'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-top'>")
+
+            # --- Left column: Security metrics as icon cards ---
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Security Overview</div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metrics-grid'>")
+
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$scoreClass'><div class='email-metric-icon'>&#128170;</div><div class='email-metric-body'><div class='email-metric-value $scoreClass-text'>$pctRaw%</div><div class='email-metric-label'>Secure Score</div></div></div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127919;</div><div class='email-metric-body'><div class='email-metric-value'>$currentPts <span class='score-detail-max'>/ $maxPts</span></div><div class='email-metric-label'>Points Earned</div></div></div>")
             if ($null -ne $avgCompare) {
                 $compClass = if ($pctRaw -ge $avgCompare) { 'success' } else { 'warning' }
                 $delta = [math]::Round([math]::Abs($pctRaw - $avgCompare), 1)
                 $aboveBelow = if ($pctRaw -ge $avgCompare) { 'above' } else { 'below' }
-                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>M365 Average</span><span class='score-detail-value'>$avgCompare%</span></div>")
-                $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Comparison</span><span class='score-detail-value $compClass-text'>$delta pts $aboveBelow average</span></div>")
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127760;</div><div class='email-metric-body'><div class='email-metric-value'>$avgCompare%</div><div class='email-metric-label'>M365 Average</div></div></div>")
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$compClass'><div class='email-metric-icon'>&#128200;</div><div class='email-metric-body'><div class='email-metric-value $compClass-text'>$delta pts $aboveBelow</div><div class='email-metric-label'>vs Average</div></div></div>")
             } else {
-                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>M365 Average</span><span class='score-detail-value' style='color: var(--m365a-medium-gray);'>Not available</span></div>")
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card'><div class='email-metric-icon'>&#127760;</div><div class='email-metric-body'><div class='email-metric-value' style='color: var(--m365a-medium-gray);'>N/A</div><div class='email-metric-label'>M365 Average</div></div></div>")
+            }
+            if ($defPolTotal -gt 0) {
+                $defPolClass = if ($defPolEnabled -eq $defPolTotal) { 'success' } elseif ($defPolEnabled -gt 0) { 'warning' } else { 'danger' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$defPolClass'><div class='email-metric-icon'>&#128737;</div><div class='email-metric-body'><div class='email-metric-value'>$defPolEnabled / $defPolTotal</div><div class='email-metric-label'>Defender Policies</div></div></div>")
+            }
+            if ($dlpTotal -gt 0) {
+                $dlpClass = if ($dlpEnabled -eq $dlpTotal) { 'success' } elseif ($dlpEnabled -gt 0) { 'warning' } else { 'danger' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card id-metric-$dlpClass'><div class='email-metric-icon'>&#128220;</div><div class='email-metric-body'><div class='email-metric-value'>$dlpEnabled / $dlpTotal</div><div class='email-metric-label'>DLP Policies</div></div></div>")
+            }
+            $null = $sectionHtml.AppendLine("</div>") # end email-metrics-grid
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-col
+
+            # --- Middle column: Secure Score donut ---
+            $scoreDonutSmall = Get-SvgDonut -Percentage $pctRaw -CssClass $scoreClass -Size 130 -StrokeWidth 12
+            $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+            $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Secure Score</div>")
+            $null = $sectionHtml.AppendLine("<div class='id-donut-stack'>")
+            $null = $sectionHtml.AppendLine("<div class='id-donut-item'>")
+            $null = $sectionHtml.AppendLine("<div class='id-donut-chart'>$scoreDonutSmall</div>")
+            $null = $sectionHtml.AppendLine("<div class='id-donut-info'><div class='id-donut-title'>Score: $pctRaw%</div><div class='id-donut-detail'>$currentPts / $maxPts points</div></div>")
+            $null = $sectionHtml.AppendLine("</div>")
+            if ($null -ne $avgCompare) {
+                $null = $sectionHtml.AppendLine("<div class='id-donut-item'>")
+                $null = $sectionHtml.AppendLine("<div class='id-donut-info' style='padding: 6px 0;'><div class='id-donut-title'>M365 Average: $avgCompare%</div><div class='id-donut-detail $compClass-text'>$delta pts $aboveBelow average</div></div>")
+                $null = $sectionHtml.AppendLine("</div>")
             }
             $null = $sectionHtml.AppendLine("</div>")
             $null = $sectionHtml.AppendLine("</div>")
 
-            # Panel 2: Defender Config
+            # --- Right column: Defender Config donut ---
             if ($defTotal -gt 0) {
                 $defPassPct = [math]::Round(($defPass / $defTotal) * 100, 1)
                 $defFailPct = [math]::Round(($defFail / $defTotal) * 100, 1)
@@ -1300,12 +1342,14 @@ foreach ($sectionName in $sections) {
                     @{ Css = 'warning'; Pct = $defWarnPct; Label = 'Warning' }
                     @{ Css = 'info'; Pct = $defReviewPct; Label = 'Review' }
                 )
-                $defMultiDonut = Get-SvgMultiDonut -Segments $defSegments -CenterLabel "$defTotal" -Size 150 -StrokeWidth 14
+                $defMultiDonut = Get-SvgMultiDonut -Segments $defSegments -CenterLabel "$defTotal" -Size 130 -StrokeWidth 12
 
+                $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Defender Config</div>")
                 $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
                 $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
                 $null = $sectionHtml.AppendLine($defMultiDonut)
-                $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Defender Config</div>")
+                $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Defender Controls</div>")
                 $null = $sectionHtml.AppendLine("</div>")
                 $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
                 $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-success'></span> Pass</span><span class='score-detail-value success-text'>$defPass</span></div>")
@@ -1321,9 +1365,11 @@ foreach ($sectionName in $sections) {
                 $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Total Controls</span><span class='score-detail-value'>$defTotal</span></div>")
                 $null = $sectionHtml.AppendLine("</div>")
                 $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
             }
 
-            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-top
+            $null = $sectionHtml.AppendLine("</div>") # end email-dashboard
         }
 
         # User Summary — rendered in combined identity dashboard above
@@ -2297,14 +2343,7 @@ $html = @"
         .chart-legend-dot.dot-info { background: var(--m365a-accent); }
         .chart-legend-dot.dot-muted { background: var(--m365a-medium-gray); }
 
-        /* Security Dashboard — two-panel layout */
-        .security-dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 20px auto;
-            max-width: 1000px;
-        }
+        /* Dash panel — donut + details side-by-side */
         .dash-panel {
             display: grid;
             grid-template-columns: auto 1fr;
@@ -3194,7 +3233,7 @@ $html = @"
             .dns-protocols { display: block; }
             .dns-protocols-body { display: block; }
             .chart-panel { page-break-inside: avoid; }
-            .security-dashboard { grid-template-columns: 1fr 1fr; page-break-inside: avoid; max-width: none; }
+
             .id-donut-stack { page-break-inside: avoid; }
             .exec-hero { page-break-inside: avoid; page-break-after: always; grid-template-columns: 1fr auto 1fr; }
             .exec-hero-center { border-left: none; border-right: none; padding: 0 10px; }
