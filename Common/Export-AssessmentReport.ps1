@@ -332,7 +332,7 @@ function Get-SvgMultiDonut {
         $arcLen = [math]::Round(($seg.Pct / 100) * $circumference, 2)
         $gapLen = [math]::Round($circumference - $arcLen, 2)
         $rotDeg = [math]::Round(($offset / 100) * 360 - 90, 2)
-        $svg += "<circle class='donut-fill donut-$($seg.Css)' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth' stroke-dasharray='$arcLen $gapLen' transform='rotate($rotDeg $center $center)'/>"
+        $svg += "<circle class='donut-fill donut-$($seg.Css)' data-segment='$($seg.Css)' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth' stroke-dasharray='$arcLen $gapLen' transform='rotate($rotDeg $center $center)'/>"
         $offset += $seg.Pct
     }
     $svg += "<text class='donut-text donut-text-sm' x='$center' y='$center' text-anchor='middle' dominant-baseline='central'>$CenterLabel</text>"
@@ -600,7 +600,7 @@ foreach ($sectionName in $sections) {
             default    { '' }
         }
         $notes = if ($c.Error) { ConvertTo-HtmlSafe -Text $c.Error } else { '' }
-        $notesHtml = if ($notes) { "<span class='chip-note' title='$notes'>$notes</span>" } else { '' }
+        $notesHtml = if ($notes) { "<span class='chip-note' title='$notes' onclick='this.classList.toggle(""expanded"")'>$notes</span>" } else { '' }
         $null = $sectionHtml.AppendLine("<div class='collector-chip $statusClass'>")
         $null = $sectionHtml.AppendLine("<span class='chip-dot'></span>")
         $null = $sectionHtml.AppendLine("<span class='chip-name'>$(ConvertTo-HtmlSafe -Text $c.Collector)</span>")
@@ -836,31 +836,7 @@ foreach ($sectionName in $sections) {
                 }
             }
 
-            # --- Right column: Email Policy status ---
-            if ($hasPolicies) {
-                $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
-                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies</div>")
-                $null = $sectionHtml.AppendLine("<div class='policy-list'>")
-                foreach ($policy in $polData) {
-                    $policyEnabled = ($policy.Enabled -eq 'True')
-                    $policyClass = if ($policyEnabled) { 'policy-enabled' } else { 'policy-disabled' }
-                    $statusIcon = if ($policyEnabled) { '&#x2713;' } else { '&#x2717;' }
-                    $statusLabel = if ($policyEnabled) { 'Enabled' } else { 'Disabled' }
-                    $policyLabel = ConvertTo-HtmlSafe -Text $policy.PolicyType
-                    $policyDetail = ConvertTo-HtmlSafe -Text $policy.Name
-                    $null = $sectionHtml.AppendLine("<div class='policy-card $policyClass'>")
-                    $null = $sectionHtml.AppendLine("<div class='policy-status-badge'>$statusIcon</div>")
-                    $null = $sectionHtml.AppendLine("<div class='policy-info'><div class='policy-name'>$policyLabel</div><div class='policy-detail'>$policyDetail</div></div>")
-                    $null = $sectionHtml.AppendLine("<div class='policy-status-label'>$statusLabel</div>")
-                    $null = $sectionHtml.AppendLine("</div>")
-                }
-                $null = $sectionHtml.AppendLine("</div>")
-                $null = $sectionHtml.AppendLine("</div>")
-            }
-
-            $null = $sectionHtml.AppendLine("</div>") # end email-dash-top
-
-            # --- Bottom row: DNS Authentication (full-width) ---
+            # --- Right column: DNS Authentication protocols (fixed set) ---
             if ($hasDns) {
                 $totalDomains = $dnsData.Count
                 $dnsColumns = @($dnsData[0].PSObject.Properties.Name)
@@ -899,11 +875,11 @@ foreach ($sectionName in $sections) {
                 }
                 $publicClass = if ($publicConfirmed -eq $totalDomains) { 'success' } elseif ($publicConfirmed -gt 0) { 'warning' } else { 'danger' }
 
-                $null = $sectionHtml.AppendLine("<div class='email-dash-dns'>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
                 $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Authentication</div>")
 
-                # DNS stat cards row
-                $null = $sectionHtml.AppendLine("<div class='dns-stats-row'>")
+                # DNS stat cards — compact 2-column grid for column context
+                $null = $sectionHtml.AppendLine("<div class='dns-stats-col'>")
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $spfClass'><div class='dns-stat-value'>$spfConfigured / $totalDomains</div><div class='dns-stat-label'>SPF</div></div>")
                 $dmarcDetail = if ($dmarcMonitoring -gt 0) { "<div class='dns-stat-detail'>$dmarcMonitoring monitoring</div>" } else { '' }
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $dmarcClass'><div class='dns-stat-value'>$dmarcEnforced / $totalDomains</div><div class='dns-stat-label'>DMARC Enforced</div>$dmarcDetail</div>")
@@ -927,6 +903,30 @@ foreach ($sectionName in $sections) {
                 $null = $sectionHtml.AppendLine("</div>")
                 $null = $sectionHtml.AppendLine("</details>")
 
+                $null = $sectionHtml.AppendLine("</div>") # end email-dash-col (DNS)
+            }
+
+            $null = $sectionHtml.AppendLine("</div>") # end email-dash-top
+
+            # --- Below: Email Policies as responsive grid ---
+            if ($hasPolicies) {
+                $null = $sectionHtml.AppendLine("<div class='email-dash-policies'>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies</div>")
+                $null = $sectionHtml.AppendLine("<div class='policy-grid'>")
+                foreach ($policy in $polData) {
+                    $policyEnabled = ($policy.Enabled -eq 'True')
+                    $policyClass = if ($policyEnabled) { 'policy-enabled' } else { 'policy-disabled' }
+                    $statusIcon = if ($policyEnabled) { '&#x2713;' } else { '&#x2717;' }
+                    $statusLabel = if ($policyEnabled) { 'Enabled' } else { 'Disabled' }
+                    $policyLabel = ConvertTo-HtmlSafe -Text $policy.PolicyType
+                    $policyDetail = ConvertTo-HtmlSafe -Text $policy.Name
+                    $null = $sectionHtml.AppendLine("<div class='policy-card $policyClass'>")
+                    $null = $sectionHtml.AppendLine("<div class='policy-status-badge'>$statusIcon</div>")
+                    $null = $sectionHtml.AppendLine("<div class='policy-info'><div class='policy-name'>$policyLabel</div><div class='policy-detail'>$policyDetail</div></div>")
+                    $null = $sectionHtml.AppendLine("<div class='policy-status-label'>$statusLabel</div>")
+                    $null = $sectionHtml.AppendLine("</div>")
+                }
+                $null = $sectionHtml.AppendLine("</div>")
                 $null = $sectionHtml.AppendLine("</div>")
             }
 
@@ -2298,13 +2298,18 @@ $html = @"
            ---------------------------------------------------------- */
         .donut-chart { display: block; margin: 0 auto; }
         .donut-track { stroke: var(--m365a-border); }
-        .donut-fill { transition: stroke-dashoffset 0.6s ease; }
+        .donut-fill { transition: stroke-dashoffset 0.6s ease, opacity 0.15s ease, stroke-width 0.15s ease; }
         .donut-success { stroke: var(--m365a-success); }
         .donut-warning { stroke: var(--m365a-warning); }
         .donut-danger { stroke: var(--m365a-danger); }
         .donut-info { stroke: var(--m365a-accent); }
         .donut-text { font-size: 22px; font-weight: 700; fill: var(--m365a-text); font-family: inherit; }
         .donut-text-sm { font-size: 16px; }
+        /* Donut segment highlight on legend hover */
+        .dash-panel.donut-hover-active .donut-fill { opacity: 0.3; }
+        .dash-panel.donut-hover-active .donut-fill.donut-highlight { opacity: 1; stroke-width: 16; }
+        .score-detail-row { transition: background 0.15s ease; border-radius: 4px; }
+        .score-detail-row.donut-highlight { background: var(--m365a-hover-bg); }
 
         .chart-panel {
             display: grid;
@@ -2571,6 +2576,31 @@ $html = @"
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 10px;
             margin-top: 12px;
+        }
+        /* Compact 2-column grid for DNS stats inside a dashboard column */
+        .dns-stats-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .dns-stats-col .dns-stat {
+            padding: 8px 6px;
+        }
+        .dns-stats-col .dns-stat-value {
+            font-size: 12pt;
+        }
+        /* Email Policies — responsive grid below the 3-column dashboard row */
+        .email-dash-policies {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--m365a-border);
+        }
+        .policy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
         }
         .dns-stat {
             text-align: center;
@@ -2868,6 +2898,13 @@ $html = @"
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            cursor: pointer;
+            transition: max-width 0.2s ease, white-space 0.2s ease;
+        }
+        .chip-note.expanded {
+            max-width: 600px;
+            white-space: normal;
+            word-break: break-word;
         }
 
         th {
@@ -3298,6 +3335,11 @@ $html = @"
             .policy-card { padding: 6px 10px; }
 
             .dns-stats-row { grid-template-columns: repeat(6, 1fr); }
+            .dns-stats-col { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .dns-stats-col .dns-stat { padding: 4px 3px; }
+            .dns-stats-col .dns-stat-value { font-size: 10pt; }
+            .policy-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .email-dash-policies { margin-top: 12px; padding-top: 10px; }
             .dns-protocols { display: block; }
             .dns-protocols-body { display: block; }
             .chart-panel { page-break-inside: avoid; }
@@ -3340,6 +3382,8 @@ $html = @"
             .policy-card:hover,
             .dns-stat:hover { background: inherit; border-color: inherit; }
             tr:hover { background: inherit; }
+            .dash-panel.donut-hover-active .donut-fill { opacity: 1; }
+            .score-detail-row.donut-highlight { background: inherit; }
 
             @page {
                 size: letter;
@@ -3630,6 +3674,36 @@ $html += @"
 
         rows.forEach(function(row) { tbody.appendChild(row); });
     }
+
+    // --- Donut chart interactive highlighting ---
+    // Hover a legend row to highlight both the row and its matching SVG segment
+    document.querySelectorAll('.dash-panel-details .score-detail-row').forEach(function(row) {
+        var dot = row.querySelector('.chart-legend-dot');
+        if (!dot) return;
+        // Detect segment type from dot-* class
+        var seg = null;
+        dot.classList.forEach(function(c) {
+            if (c.indexOf('dot-') === 0) seg = c.substring(4);
+        });
+        if (!seg) return;
+        var panel = row.closest('.dash-panel');
+        if (!panel) return;
+
+        row.addEventListener('mouseenter', function() {
+            panel.classList.add('donut-hover-active');
+            row.classList.add('donut-highlight');
+            panel.querySelectorAll('.donut-fill[data-segment="' + seg + '"]').forEach(function(c) {
+                c.classList.add('donut-highlight');
+            });
+        });
+        row.addEventListener('mouseleave', function() {
+            panel.classList.remove('donut-hover-active');
+            row.classList.remove('donut-highlight');
+            panel.querySelectorAll('.donut-fill.donut-highlight').forEach(function(c) {
+                c.classList.remove('donut-highlight');
+            });
+        });
+    });
     </script>
 </body>
 </html>
