@@ -3222,8 +3222,32 @@ $html = @"
            ---------------------------------------------------------- */
         @media print {
             body { font-size: 9pt; }
-            thead { display: table-header-group; }
             .theme-toggle { display: none; }
+
+            /* --- Fix 6: Force light theme for print --- */
+            body.dark-theme {
+                --m365a-primary: #2563EB;
+                --m365a-dark-primary: #1D4ED8;
+                --m365a-accent: #60A5FA;
+                --m365a-dark: #0F172A;
+                --m365a-dark-gray: #1E293B;
+                --m365a-medium-gray: #64748B;
+                --m365a-light-gray: #F1F5F9;
+                --m365a-border: #CBD5E1;
+                --m365a-white: #ffffff;
+                --m365a-body-bg: #ffffff;
+                --m365a-text: #1E293B;
+                --m365a-card-bg: #ffffff;
+                --m365a-hover-bg: #e8f4f8;
+                --m365a-success: #2ecc71;
+                --m365a-warning: #f39c12;
+                --m365a-danger: #e74c3c;
+                --m365a-info: #3498db;
+                --m365a-success-bg: #d4edda;
+                --m365a-warning-bg: #fff3cd;
+                --m365a-danger-bg: #f8d7da;
+                --m365a-info-bg: #d1ecf1;
+            }
 
             .cover-page {
                 min-height: auto;
@@ -3236,20 +3260,50 @@ $html = @"
             h1 { font-size: 18pt; margin-top: 20px; }
             h2 { font-size: 14pt; margin-top: 20px; }
 
+            /* --- Fix 4: Table header repetition and spacing --- */
+            thead { display: table-header-group; }
+            thead th { position: static !important; }
             table { font-size: 8pt; }
             th { padding: 6px 8px; }
             td { padding: 5px 8px; }
 
-            .exec-summary { grid-template-columns: repeat(4, 1fr); }
-            .email-dashboard { page-break-inside: avoid; padding: 16px; }
-            .email-dash-top { grid-template-columns: 1fr 1fr 1fr; }
-            .email-metrics-grid { grid-template-columns: 1fr 1fr; }
+            /* --- Fix 7: Tighten compliance framework cards --- */
+            .exec-summary { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+            .stat-card { padding: 12px; }
+            .stat-value { font-size: 22pt; }
+
+            /* --- Fix 1: Switch dashboards to 2-column grid --- */
+            .email-dashboard { page-break-inside: auto; padding: 12px; }
+            .email-dash-top { grid-template-columns: 1fr 1fr; page-break-inside: auto; }
+            .email-metrics-grid { grid-template-columns: 1fr; }
+
+            /* --- Fix 2: Scale down donut SVGs --- */
+            .donut-chart { max-width: 100px; height: auto; }
+            .dash-panel-donut .donut-chart { max-width: 90px; }
+            .id-donut-chart .donut-chart { max-width: 80px; }
+
+            /* --- Fix 5: Reduce spacing and padding for print density --- */
+            .email-metric-card { padding: 6px 8px; gap: 6px; }
+            .email-metric-icon { font-size: 14pt; }
+            .email-metric-value { font-size: 12pt; }
+            .email-metric-label { font-size: 7pt; }
+            .score-detail-value { font-size: 12pt; }
+            .score-detail-label { font-size: 8pt; }
+            .id-donut-item { padding: 6px 8px; gap: 8px; }
+            .id-donut-title { font-size: 8pt; }
+            .id-donut-detail { font-size: 7pt; }
+            .dash-panel { gap: 10px; padding: 10px; }
+            .dns-stat { padding: 8px 4px; }
+            .dns-stat-value { font-size: 12pt; }
+            .policy-card { padding: 6px 10px; }
+
             .dns-stats-row { grid-template-columns: repeat(6, 1fr); }
             .dns-protocols { display: block; }
             .dns-protocols-body { display: block; }
             .chart-panel { page-break-inside: avoid; }
 
-            .id-donut-stack { page-break-inside: avoid; }
+            /* --- Fix 3: Allow dashboards to break across pages --- */
+            .id-donut-stack { page-break-inside: auto; }
             .exec-hero { page-break-inside: avoid; page-break-after: always; grid-template-columns: 1fr auto 1fr; }
             .exec-hero-center { border-left: none; border-right: none; padding: 0 10px; }
             .tenant-card { page-break-inside: avoid; }
@@ -3257,13 +3311,19 @@ $html = @"
             .tenant-meta { font-size: 8pt; }
             .domain-tag { font-size: 8pt; padding: 2px 6px; }
 
+            /* --- Section / details expansion for print --- */
             .section { page-break-inside: auto; }
             details.section { border: none; padding: 0; }
             details.section > summary { pointer-events: none; }
             details.section > summary h2::after { display: none; }
             details:not([open]) > *:not(summary) { display: block !important; }
             .collector-detail { border: none; }
-            .collector-detail > summary { pointer-events: none; background: none; border: none; }
+            .collector-detail > summary {
+                pointer-events: none;
+                background: none;
+                border: none;
+                page-break-after: avoid;
+            }
             .collector-detail > summary h3::after { display: none; }
             .collector-detail .table-wrapper { max-height: none !important; overflow: visible !important; }
             .data-table th::after { display: none; }
@@ -3273,6 +3333,13 @@ $html = @"
             .status-filter { display: none; }
             .matrix-table tr { display: table-row !important; }
             .fw-col { display: table-cell !important; }
+
+            /* --- Fix 8: Hide hover effects in print --- */
+            .email-metric-card:hover,
+            .id-donut-item:hover,
+            .policy-card:hover,
+            .dns-stat:hover { background: inherit; border-color: inherit; }
+            tr:hover { background: inherit; }
 
             @page {
                 size: letter;
