@@ -122,7 +122,19 @@ function Invoke-PS5Command {
             $errorText = if ($errorLines) { ($errorLines | ForEach-Object { $_.ToString() }) -join "`n" } else { ($output | ForEach-Object { $_.ToString() }) -join "`n" }
             $actionableHint = if ($Description -eq 'module setup') {
                 " Try running 'powershell.exe -Command Install-Module ScubaGear -Scope CurrentUser -Force' manually to diagnose."
-            } else { '' }
+            }
+            elseif ($errorText -match 'unknown escape character|unable to parse input.*yaml') {
+                " This is a known ScubaGear/OPA issue where backslash characters in tenant" +
+                " data cause YAML parsing failures. Try updating ScubaGear to the latest" +
+                " version: powershell.exe -Command 'Update-Module ScubaGear -Force'." +
+                " If the issue persists, report it at https://github.com/cisagov/ScubaGear/issues"
+            }
+            elseif ($errorText -match 'Invalid JSON primitive') {
+                " ScubaGear report generation failed, likely due to upstream OPA evaluation" +
+                " errors. Check for a newer ScubaGear version or run with fewer ProductNames" +
+                " to isolate the failing baseline."
+            }
+            else { '' }
             throw "PS5 $Description failed (exit code $exitCode): $errorText$actionableHint"
         }
         return $output

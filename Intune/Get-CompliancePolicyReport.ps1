@@ -85,9 +85,9 @@ Write-Verbose "Processing $($policies.Count) compliance policies..."
 
 $results = foreach ($policy in $policies) {
     $odataType = $policy.AdditionalProperties.'@odata.type'
-    $platform = $platformMap[$odataType]
+    $platform = if ($odataType) { $platformMap[$odataType] } else { $null }
     if (-not $platform) {
-        $platform = $odataType
+        $platform = if ($odataType) { $odataType } else { 'Unknown' }
     }
 
     [PSCustomObject]@{
