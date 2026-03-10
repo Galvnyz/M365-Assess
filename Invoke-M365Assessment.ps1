@@ -168,22 +168,22 @@ function Show-InteractiveWizard {
     function Show-Header {
         Clear-Host
         Write-Host ''
-        Write-Host '      ███╗   ███╗ ██████╗  ██████╗ ███████╗' -ForegroundColor Cyan
-        Write-Host '      ████╗ ████║ ╚════██╗ ██╔════╝ ██╔════╝' -ForegroundColor Cyan
-        Write-Host '      ██╔████╔██║  █████╔╝ ██████╗  ███████╗' -ForegroundColor Cyan
-        Write-Host '      ██║╚██╔╝██║  ╚═══██╗ ██╔══██╗ ╚════██║' -ForegroundColor Cyan
-        Write-Host '      ██║ ╚═╝ ██║ ██████╔╝ ╚█████╔╝ ███████║' -ForegroundColor Cyan
-        Write-Host '      ╚═╝     ╚═╝ ╚═════╝   ╚════╝  ╚══════╝' -ForegroundColor Cyan
-        Write-Host '     ─────────────────────────────────────────' -ForegroundColor DarkCyan
-        Write-Host '       █████╗ ███████╗███████╗███████╗███████╗███████╗' -ForegroundColor DarkCyan
-        Write-Host '      ██╔══██╗██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝' -ForegroundColor DarkCyan
-        Write-Host '      ███████║███████╗███████╗█████╗  ███████╗███████╗' -ForegroundColor DarkCyan
-        Write-Host '      ██╔══██║╚════██║╚════██║██╔══╝  ╚════██║╚════██║' -ForegroundColor DarkCyan
-        Write-Host '      ██║  ██║███████║███████║███████╗███████║███████║' -ForegroundColor DarkCyan
-        Write-Host '      ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚══════╝' -ForegroundColor DarkCyan
+        Write-Host '                  .--------.                ' -ForegroundColor DarkCyan
+        Write-Host '                / .--------. \              ' -ForegroundColor DarkCyan
+        Write-Host '               / /          \ \             ' -ForegroundColor DarkCyan
+        Write-Host '               | |          | |             ' -ForegroundColor DarkCyan
+        Write-Host '              _| |__________| |_            ' -ForegroundColor DarkCyan
+        Write-Host '            .''  |_|        |_|  ''.          ' -ForegroundColor Cyan
+        Write-Host '            ''._____  ____  _____.''          ' -ForegroundColor Cyan
+        Write-Host '            |    .''  M365  ''.    |          ' -ForegroundColor Cyan
+        Write-Host '            ''.__.''. Assess .''.__.''          ' -ForegroundColor Cyan
+        Write-Host '            ''.__  |________|  __.''          ' -ForegroundColor Cyan
+        Write-Host '            |  ''.''..____..''.''.  |           ' -ForegroundColor Cyan
+        Write-Host '            ''.____''..__..''.____.''.          ' -ForegroundColor Cyan
+        Write-Host '            ''.________________.''            ' -ForegroundColor Cyan
         Write-Host ''
-        Write-Host '        ░▒▓█  M365 Environment Assessment  █▓▒░' -ForegroundColor DarkGray
-        Write-Host '        ░▒▓█  by  D A R E N 9 M            █▓▒░' -ForegroundColor DarkCyan
+        Write-Host '       ░▒▓█  M365 Environment Assessment  █▓▒░' -ForegroundColor DarkGray
+        Write-Host '       ░▒▓█  by  D A R E N 9 M            █▓▒░' -ForegroundColor DarkCyan
         Write-Host ''
     }
 
