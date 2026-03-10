@@ -307,6 +307,32 @@ function Get-SvgDonut {
 "@
 }
 
+function Get-SvgMultiDonut {
+    param(
+        [array]$Segments,
+        [string]$CenterLabel = '',
+        [int]$Size = 130,
+        [int]$StrokeWidth = 11
+    )
+    $radius = ($Size / 2) - $StrokeWidth
+    $circumference = [math]::Round(2 * [math]::PI * $radius, 2)
+    $center = $Size / 2
+    $svg = "<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size'>"
+    $svg += "<circle class='donut-track' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'/>"
+    $offset = 0
+    foreach ($seg in $Segments) {
+        if ($seg.Pct -le 0) { continue }
+        $arcLen = [math]::Round(($seg.Pct / 100) * $circumference, 2)
+        $gapLen = [math]::Round($circumference - $arcLen, 2)
+        $rotDeg = [math]::Round(($offset / 100) * 360 - 90, 2)
+        $svg += "<circle class='donut-fill donut-$($seg.Css)' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth' stroke-dasharray='$arcLen $gapLen' transform='rotate($rotDeg $center $center)'/>"
+        $offset += $seg.Pct
+    }
+    $svg += "<text class='donut-text donut-text-sm' x='$center' y='$center' text-anchor='middle' dominant-baseline='central'>$CenterLabel</text>"
+    $svg += "</svg>"
+    return $svg
+}
+
 function Get-SvgHorizontalBar {
     param(
         [array]$Segments
@@ -608,26 +634,85 @@ foreach ($sectionName in $sections) {
                 $maxPts = $score.MaxScore
             }
             if ($score.PSObject.Properties.Name -contains 'AverageComparativeScore') {
-                $avgCompare = [math]::Round([double]$score.AverageComparativeScore, 1)
+                $rawAvg = [double]$score.AverageComparativeScore
+                # Graph API returns 0 when comparative data isn't available — treat as null
+                $avgCompare = if ($rawAvg -gt 0) { [math]::Round($rawAvg, 1) } else { $null }
             }
 
             $scoreClass = if ($pctRaw -ge 80) { 'success' } elseif ($pctRaw -ge 60) { 'warning' } else { 'danger' }
             $scoreDonut = Get-SvgDonut -Percentage $pctRaw -CssClass $scoreClass -Size 160 -StrokeWidth 14
 
-            $null = $sectionHtml.AppendLine("<div class='chart-panel'>")
+            # Load Defender Security Config for status breakdown
+            $defCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '18b-Defender-Security-Config.csv'
+            $defPass = 0; $defFail = 0; $defWarn = 0; $defReview = 0; $defTotal = 0
+            if (Test-Path -Path $defCsvPath) {
+                $defData = @(Import-Csv -Path $defCsvPath)
+                $defTotal = $defData.Count
+                $defPass = @($defData | Where-Object { $_.Status -eq 'Pass' }).Count
+                $defFail = @($defData | Where-Object { $_.Status -eq 'Fail' }).Count
+                $defWarn = @($defData | Where-Object { $_.Status -eq 'Warning' }).Count
+                $defReview = @($defData | Where-Object { $_.Status -eq 'Review' }).Count
+            }
+
+            # Build two-panel layout: Secure Score + Defender Config
+            $null = $sectionHtml.AppendLine("<div class='security-dashboard'>")
+
+            # Panel 1: Secure Score
+            $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
+            $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
             $null = $sectionHtml.AppendLine($scoreDonut)
-            $null = $sectionHtml.AppendLine("<div class='chart-legend'>")
-            $null = $sectionHtml.AppendLine("<div class='chart-legend-item'><span class='chart-legend-dot dot-$scoreClass'></span><strong>$currentPts / $maxPts</strong> Points Earned</div>")
+            $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Secure Score</div>")
+            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
+            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Points Earned</span><span class='score-detail-value'>$currentPts <span class='score-detail-max'>/ $maxPts</span></span></div>")
+            $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>Your Score</span><span class='score-detail-value $scoreClass-text'>$pctRaw%</span></div>")
             if ($null -ne $avgCompare) {
                 $compClass = if ($pctRaw -ge $avgCompare) { 'success' } else { 'warning' }
-                $null = $sectionHtml.AppendLine("<div class='chart-legend-item'><span class='chart-legend-dot dot-$compClass'></span><strong>$avgCompare%</strong> M365 Global Average</div>")
-            }
-            $aboveBelow = if ($null -ne $avgCompare -and $pctRaw -ge $avgCompare) { 'above' } elseif ($null -ne $avgCompare) { 'below' } else { '' }
-            if ($aboveBelow) {
                 $delta = [math]::Round([math]::Abs($pctRaw - $avgCompare), 1)
-                $null = $sectionHtml.AppendLine("<div class='chart-legend-item' style='margin-top: 4px; font-size: 9pt; color: var(--m365a-medium-gray);'>$delta pts $aboveBelow the M365 average</div>")
+                $aboveBelow = if ($pctRaw -ge $avgCompare) { 'above' } else { 'below' }
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>M365 Average</span><span class='score-detail-value'>$avgCompare%</span></div>")
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Comparison</span><span class='score-detail-value $compClass-text'>$delta pts $aboveBelow average</span></div>")
+            } else {
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'>M365 Average</span><span class='score-detail-value' style='color: var(--m365a-medium-gray);'>Not available</span></div>")
             }
             $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("</div>")
+
+            # Panel 2: Defender Config
+            if ($defTotal -gt 0) {
+                $defPassPct = [math]::Round(($defPass / $defTotal) * 100, 1)
+                $defFailPct = [math]::Round(($defFail / $defTotal) * 100, 1)
+                $defWarnPct = [math]::Round(($defWarn / $defTotal) * 100, 1)
+                $defReviewPct = [math]::Round(($defReview / $defTotal) * 100, 1)
+                $defSegments = @(
+                    @{ Css = 'success'; Pct = $defPassPct; Label = 'Pass' }
+                    @{ Css = 'danger'; Pct = $defFailPct; Label = 'Fail' }
+                    @{ Css = 'warning'; Pct = $defWarnPct; Label = 'Warning' }
+                    @{ Css = 'info'; Pct = $defReviewPct; Label = 'Review' }
+                )
+                $defMultiDonut = Get-SvgMultiDonut -Segments $defSegments -CenterLabel "$defTotal" -Size 150 -StrokeWidth 14
+
+                $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
+                $null = $sectionHtml.AppendLine($defMultiDonut)
+                $null = $sectionHtml.AppendLine("<div class='score-donut-label'>Defender Config</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("<div class='dash-panel-details'>")
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-success'></span> Pass</span><span class='score-detail-value success-text'>$defPass</span></div>")
+                if ($defFail -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-danger'></span> Fail</span><span class='score-detail-value danger-text'>$defFail</span></div>")
+                }
+                if ($defWarn -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-warning'></span> Warning</span><span class='score-detail-value warning-text'>$defWarn</span></div>")
+                }
+                if ($defReview -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='score-detail-row'><span class='score-detail-label'><span class='chart-legend-dot dot-info'></span> Review</span><span class='score-detail-value' style='color: var(--m365a-accent);'>$defReview</span></div>")
+                }
+                $null = $sectionHtml.AppendLine("<div class='score-detail-row score-delta'><span class='score-detail-label'>Total Controls</span><span class='score-detail-value'>$defTotal</span></div>")
+                $null = $sectionHtml.AppendLine("</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+            }
+
             $null = $sectionHtml.AppendLine("</div>")
         }
 
@@ -1684,6 +1769,69 @@ $html = @"
         .chart-legend-dot.dot-info { background: var(--m365a-accent); }
         .chart-legend-dot.dot-muted { background: var(--m365a-medium-gray); }
 
+        /* Security Dashboard — two-panel layout */
+        .security-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px auto;
+            max-width: 1000px;
+        }
+        .dash-panel {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 20px;
+            align-items: center;
+            padding: 24px;
+            background: var(--m365a-light-gray);
+            border-radius: 8px;
+            border: 1px solid var(--m365a-border);
+        }
+        .dash-panel-donut { text-align: center; }
+        .score-donut-label {
+            margin-top: 8px;
+            font-size: 9pt;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--m365a-medium-gray);
+        }
+        .dash-panel-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .score-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--m365a-border);
+        }
+        .score-detail-row:last-child { border-bottom: none; }
+        .score-detail-label {
+            font-size: 10pt;
+            color: var(--m365a-medium-gray);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .score-detail-value {
+            font-size: 16pt;
+            font-weight: 700;
+            color: var(--m365a-dark);
+        }
+        .score-detail-max {
+            font-size: 11pt;
+            font-weight: 400;
+            color: var(--m365a-medium-gray);
+        }
+        .score-delta { font-size: 9pt; }
+        .score-delta .score-detail-value { font-size: 11pt; }
+        .success-text { color: var(--m365a-success); }
+        .warning-text { color: var(--m365a-warning); }
+        .danger-text { color: var(--m365a-danger); }
+
         /* Horizontal bar chart */
         .hbar-chart {
             display: flex;
@@ -2241,6 +2389,7 @@ $html = @"
 
             .exec-summary { grid-template-columns: repeat(4, 1fr); }
             .chart-panel { page-break-inside: avoid; }
+            .security-dashboard { grid-template-columns: 1fr 1fr; page-break-inside: avoid; max-width: none; }
             .donut-pair { grid-template-columns: 1fr 1fr; page-break-inside: avoid; }
             .report-toc { page-break-inside: avoid; page-break-after: always; }
             .toc-list { columns: 1; }
