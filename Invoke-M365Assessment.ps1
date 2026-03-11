@@ -15,8 +15,8 @@
     Author:  Daren9m
 .PARAMETER Section
     One or more assessment sections to run. Valid values: Tenant, Identity,
-    Licensing, Email, Intune, Security, Collaboration, Hybrid, ScubaGear.
-    Defaults to all standard sections (ScubaGear is opt-in only).
+    Licensing, Email, Intune, Security, Collaboration, Hybrid, ScubaGear, SOC2.
+    Defaults to all standard sections (ScubaGear and SOC2 are opt-in only).
 .PARAMETER TenantId
     Tenant ID or domain (e.g., 'contoso.onmicrosoft.com').
 .PARAMETER OutputFolder
@@ -82,7 +82,7 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear')]
+    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear', 'SOC2')]
     [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid'),
 
     [Parameter()]
@@ -162,6 +162,7 @@ function Show-InteractiveWizard {
         '9'  = @{ Name = 'Inventory';       Label = 'M&A Inventory (opt-in)';       Selected = $false }
         '10' = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
         '11' = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
+        '12' = @{ Name = 'SOC2';            Label = 'SOC 2 Compliance (opt-in)';    Selected = $false }
     }
 
     # --- Header ---
@@ -873,6 +874,7 @@ $sectionServiceMap = @{
     'Inventory'        = @('Graph', 'ExchangeOnline')
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
+    'SOC2'             = @('Graph', 'Purview')
 }
 
 # ------------------------------------------------------------------
@@ -889,6 +891,7 @@ $sectionScopeMap = @{
     'Inventory'        = @('Group.Read.All', 'Team.ReadBasic.All', 'TeamMember.Read.All', 'Channel.ReadBasic.All', 'Reports.Read.All', 'Sites.Read.All', 'User.Read.All')
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
+    'SOC2'             = @('Policy.Read.All', 'RoleManagement.Read.Directory', 'SecurityEvents.Read.All', 'SecurityAlert.Read.All', 'AuditLog.Read.All', 'User.Read.All', 'Reports.Read.All', 'Directory.Read.All')
 }
 
 # ------------------------------------------------------------------
@@ -907,6 +910,7 @@ $sectionModuleMap = @{
     'Inventory'        = @()
     'ActiveDirectory'  = @()
     'ScubaGear'        = @()
+    'SOC2'             = @('Microsoft.Graph.Identity.SignIns', 'Microsoft.Graph.Identity.DirectoryManagement', 'Microsoft.Graph.Security')
 }
 
 # ------------------------------------------------------------------
@@ -969,6 +973,11 @@ $collectorMap = [ordered]@{
     )
     'ScubaGear' = @(
         @{ Name = '27-ScubaGear-Baseline'; Script = 'Security\Invoke-ScubaGearScan.ps1'; Label = 'CISA ScubaGear Baseline'; IsScubaGear = $true }
+    )
+    'SOC2' = @(
+        @{ Name = '33-SOC2-Security-Controls';       Script = 'SOC2\Get-SOC2SecurityControls.ps1';       Label = 'SOC 2 Security Controls'; RequiredServices = @('Graph') }
+        @{ Name = '34-SOC2-Confidentiality-Controls'; Script = 'SOC2\Get-SOC2ConfidentialityControls.ps1'; Label = 'SOC 2 Confidentiality Controls'; RequiredServices = @('Graph', 'Purview') }
+        @{ Name = '35-SOC2-Audit-Evidence';           Script = 'SOC2\Get-SOC2AuditEvidence.ps1';           Label = 'SOC 2 Audit Evidence'; RequiredServices = @('Graph') }
     )
 }
 

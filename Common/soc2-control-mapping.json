@@ -1,0 +1,263 @@
+{
+  "version": "1.0",
+  "framework": "SOC 2 Type II",
+  "description": "Maps AICPA SOC 2 Trust Service Criteria to Microsoft 365 controls and audit queries",
+  "trustPrinciples": {
+    "Security": {
+      "description": "Control who accesses systems; detect and respond to threats",
+      "criteria": [
+        {
+          "id": "CC6.1",
+          "name": "Logical and Physical Access Controls",
+          "controls": [
+            {
+              "controlId": "S-01",
+              "name": "MFA Enforced for All Users",
+              "description": "Multi-factor authentication is required for all user accounts via Conditional Access or Security Defaults",
+              "graphEndpoint": "/identity/conditionalAccess/policies",
+              "passCriteria": "CA policy with MFA grant control targeting all users, or Security Defaults enabled",
+              "severity": "High",
+              "remediation": "Create a Conditional Access policy requiring MFA for all users, or enable Security Defaults in Entra admin center > Properties."
+            },
+            {
+              "controlId": "S-02",
+              "name": "Sign-in Risk Policy Configured",
+              "description": "Conditional Access policy evaluates sign-in risk level to block or challenge risky authentications",
+              "graphEndpoint": "/identity/conditionalAccess/policies",
+              "passCriteria": "At least one CA policy with signInRiskLevels in conditions",
+              "severity": "High",
+              "remediation": "Create a Conditional Access policy with sign-in risk condition set to Medium and High, requiring MFA or blocking access."
+            },
+            {
+              "controlId": "S-03",
+              "name": "User Risk Policy Configured",
+              "description": "Conditional Access policy evaluates user risk level to enforce password change or block access for compromised accounts",
+              "graphEndpoint": "/identity/conditionalAccess/policies",
+              "passCriteria": "At least one CA policy with userRiskLevels in conditions",
+              "severity": "High",
+              "remediation": "Create a Conditional Access policy with user risk condition set to High, requiring password change."
+            }
+          ]
+        },
+        {
+          "id": "CC6.2",
+          "name": "Authentication and Access Credentials",
+          "controls": [
+            {
+              "controlId": "S-04",
+              "name": "Admin Accounts Use Phishing-Resistant MFA",
+              "description": "Privileged accounts are registered for phishing-resistant authentication methods (FIDO2, Windows Hello, Certificate-based)",
+              "graphEndpoint": "/reports/authenticationMethods/userRegistrationDetails",
+              "passCriteria": "Admin users registered for FIDO2 or Windows Hello for Business",
+              "severity": "High",
+              "remediation": "Register admin accounts for FIDO2 security keys or Windows Hello for Business. Create a CA policy requiring phishing-resistant MFA strength for admin roles."
+            }
+          ]
+        },
+        {
+          "id": "CC6.3",
+          "name": "Role-Based Access Control",
+          "controls": [
+            {
+              "controlId": "S-05",
+              "name": "Least Privilege Admin Roles",
+              "description": "Global Administrator role is limited to 2-4 accounts following the principle of least privilege",
+              "graphEndpoint": "/directoryRoles",
+              "passCriteria": "Between 2 and 4 Global Administrator role members",
+              "severity": "High",
+              "remediation": "Review Global Admin assignments in Entra admin center > Roles and administrators. Reduce to 2-4 accounts; use scoped admin roles for day-to-day tasks."
+            }
+          ]
+        },
+        {
+          "id": "CC7.1",
+          "name": "System Monitoring — Detection",
+          "controls": [
+            {
+              "controlId": "S-06",
+              "name": "Unified Audit Log Enabled",
+              "description": "Microsoft 365 Unified Audit Log is enabled to capture activity events across all services",
+              "cmdlet": "Get-AdminAuditLogConfig",
+              "passCriteria": "UnifiedAuditLogIngestionEnabled is True",
+              "severity": "Critical",
+              "remediation": "Enable audit logging: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true. Verify in Microsoft Purview compliance portal > Audit."
+            },
+            {
+              "controlId": "S-07",
+              "name": "Defender Alert Policies Active",
+              "description": "Microsoft Defender alert policies are configured and enabled to detect threats",
+              "graphEndpoint": "/security/alerts_v2",
+              "passCriteria": "Alert policies exist and are in an active state",
+              "severity": "High",
+              "remediation": "Review alert policies in Microsoft Defender portal > Policies & rules > Alert policy. Ensure default threat detection policies are enabled."
+            }
+          ]
+        },
+        {
+          "id": "CC7.2",
+          "name": "System Monitoring — Anomaly Detection",
+          "controls": [
+            {
+              "controlId": "S-08",
+              "name": "Alerts Are Triaged and Responded To",
+              "description": "Security alerts show evidence of review and response (not all in 'new' status)",
+              "graphEndpoint": "/security/alerts_v2?$filter=status ne 'new'",
+              "passCriteria": "At least some alerts have been triaged (status is resolved or inProgress)",
+              "severity": "Medium",
+              "remediation": "Regularly review and triage security alerts in Microsoft Defender portal. Assign, investigate, and resolve alerts to demonstrate active incident response."
+            }
+          ]
+        }
+      ]
+    },
+    "Confidentiality": {
+      "description": "Sensitive data is protected from unauthorized access",
+      "criteria": [
+        {
+          "id": "C1.1",
+          "name": "Confidential Information — Access Controls",
+          "controls": [
+            {
+              "controlId": "C-01",
+              "name": "SharePoint Sites Not Publicly Shared",
+              "description": "SharePoint sites do not have anonymous access links or public sharing enabled",
+              "cmdlet": "Get-SPOTenant",
+              "passCriteria": "SharingCapability is not 'ExternalUserAndGuestSharing' with anonymous links",
+              "severity": "High",
+              "remediation": "In SharePoint admin center > Policies > Sharing, restrict external sharing to 'Existing guests' or more restrictive setting."
+            },
+            {
+              "controlId": "C-02",
+              "name": "External Sharing Restricted",
+              "description": "Tenant-level SharePoint external sharing is set to a restrictive level",
+              "cmdlet": "Get-SPOTenant",
+              "passCriteria": "SharingCapability is not 'ExternalUserAndGuestSharing' (most permissive)",
+              "severity": "High",
+              "remediation": "In SharePoint admin center > Policies > Sharing, set sharing level to 'New and existing guests' or more restrictive."
+            },
+            {
+              "controlId": "C-05",
+              "name": "Encryption in Transit Enforced",
+              "description": "TLS 1.2 or higher is enforced for all M365 service connections",
+              "passCriteria": "TLS 1.2+ enforced (default in Microsoft 365)",
+              "severity": "Medium",
+              "remediation": "Microsoft 365 enforces TLS 1.2 by default. Verify no legacy applications use TLS 1.0/1.1."
+            },
+            {
+              "controlId": "C-07",
+              "name": "Guest Access Governance",
+              "description": "Guest invitations are restricted to administrators rather than allowing all users to invite",
+              "graphEndpoint": "/policies/authorizationPolicy",
+              "passCriteria": "allowInvitesFrom is set to 'adminsAndGuestInviters' or more restrictive",
+              "severity": "Medium",
+              "remediation": "In Entra admin center > External Identities > External collaboration settings, set 'Guest invite restrictions' to 'Only users assigned to specific admin roles can invite guest users'."
+            }
+          ]
+        },
+        {
+          "id": "C1.2",
+          "name": "Confidential Information — Protection Controls",
+          "controls": [
+            {
+              "controlId": "C-03",
+              "name": "DLP Policies Active and Enforcing",
+              "description": "At least one Data Loss Prevention policy is active in enforcement mode (not test-only)",
+              "cmdlet": "Get-DlpCompliancePolicy",
+              "passCriteria": "At least one DLP policy with Mode set to 'Enable' (not 'TestWithNotifications' or 'TestWithoutNotifications')",
+              "severity": "High",
+              "remediation": "In Microsoft Purview compliance portal > Data loss prevention > Policies, create or enable a DLP policy in enforcement mode."
+            },
+            {
+              "controlId": "C-04",
+              "name": "Sensitivity Labels Published",
+              "description": "Sensitivity labels are configured and published to users for data classification",
+              "cmdlet": "Get-Label",
+              "passCriteria": "At least one sensitivity label exists and is enabled",
+              "severity": "Medium",
+              "remediation": "In Microsoft Purview compliance portal > Information protection > Labels, create and publish sensitivity labels to classify and protect sensitive data."
+            },
+            {
+              "controlId": "C-06",
+              "name": "Data Retention Policies Configured",
+              "description": "At least one retention policy is active to manage data lifecycle",
+              "cmdlet": "Get-RetentionCompliancePolicy",
+              "passCriteria": "At least one retention policy is active and enabled",
+              "severity": "Medium",
+              "remediation": "In Microsoft Purview compliance portal > Data lifecycle management > Retention policies, create retention policies for key workloads."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "Security": [
+      {
+        "evidenceId": "E-01",
+        "tscReference": "CC7.2",
+        "name": "Failed Sign-in Attempts",
+        "description": "Authentication attempts that failed due to incorrect credentials or policy blocks",
+        "source": "Graph: /auditLogs/signIns?$filter=status/errorCode ne 0",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-02",
+        "tscReference": "CC7.2",
+        "name": "Risky Sign-in Detections",
+        "description": "Sign-in events flagged as risky by Identity Protection",
+        "source": "Graph: /identityProtection/riskDetections",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-03",
+        "tscReference": "CC6.1",
+        "name": "MFA Challenge Events",
+        "description": "Authentication events where MFA was successfully completed",
+        "source": "UAL: UserLoggedIn with MFA claim",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-04",
+        "tscReference": "CC7.3",
+        "name": "Alert Response Activity",
+        "description": "Security alerts that have been triaged, showing active incident response",
+        "source": "Graph: /security/alerts_v2",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-08",
+        "tscReference": "CC6.3",
+        "name": "Privileged Role Changes",
+        "description": "Directory audit events for role assignment additions and removals",
+        "source": "Graph: /auditLogs/directoryAudits?$filter=category eq 'RoleManagement'",
+        "timeWindowDays": 30
+      }
+    ],
+    "Confidentiality": [
+      {
+        "evidenceId": "E-05",
+        "tscReference": "C1.1",
+        "name": "Sharing Events Detected",
+        "description": "SharePoint and OneDrive sharing events showing data access patterns",
+        "source": "UAL: SharingSet, SharingInvitationCreated",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-06",
+        "tscReference": "C1.1",
+        "name": "Unauthorized Sharing Blocked",
+        "description": "Sharing attempts that were blocked by policy",
+        "source": "UAL: SharingSet with blocked outcome",
+        "timeWindowDays": 30
+      },
+      {
+        "evidenceId": "E-07",
+        "tscReference": "C1.2",
+        "name": "DLP Policy Matches",
+        "description": "Data loss prevention rule matches showing policy enforcement activity",
+        "source": "UAL: DlpRuleMatch",
+        "timeWindowDays": 30
+      }
+    ]
+  }
+}
