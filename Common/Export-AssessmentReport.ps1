@@ -23,6 +23,9 @@
 .PARAMETER TenantName
     Tenant display name for the cover page. If not specified, attempts to read from
     the Tenant Information CSV.
+.PARAMETER NoBranding
+    Suppress the open-source project branding on the cover page. Useful for
+    white-labeling reports delivered to clients.
 .PARAMETER SkipPdf
     Skip PDF generation even if wkhtmltopdf is available on the system.
 .EXAMPLE
@@ -48,6 +51,9 @@ param(
 
     [Parameter()]
     [string]$TenantName,
+
+    [Parameter()]
+    [switch]$NoBranding,
 
     [Parameter()]
     [switch]$SkipPdf
@@ -704,7 +710,7 @@ foreach ($sectionName in $sections) {
                 $entraWarn   = @($entraData | Where-Object { $_.Status -eq 'Warning' }).Count
                 $entraReview = @($entraData | Where-Object { $_.Status -eq 'Review' }).Count
                 $entraInfo   = @($entraData | Where-Object { $_.Status -eq 'Info' }).Count
-                $entraTotal  = $entraData.Count - $entraInfo
+                $entraTotal  = $entraData.Count
 
                 $entraSegments = @(
                     @{ Css = 'success'; Pct = [math]::Round(($entraPass   / $entraTotal) * 100, 1); Label = 'Pass' }
@@ -712,6 +718,9 @@ foreach ($sectionName in $sections) {
                     @{ Css = 'warning'; Pct = [math]::Round(($entraWarn   / $entraTotal) * 100, 1); Label = 'Warning' }
                     @{ Css = 'info';    Pct = [math]::Round(($entraReview / $entraTotal) * 100, 1); Label = 'Review' }
                 )
+                if ($entraInfo -gt 0) {
+                    $entraSegments += @{ Css = 'neutral'; Pct = [math]::Round(($entraInfo / $entraTotal) * 100, 1); Label = 'Info' }
+                }
                 $entraDonut = Get-SvgMultiDonut -Segments $entraSegments -CenterLabel "$entraTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -805,7 +814,7 @@ foreach ($sectionName in $sections) {
                 $exoWarn   = @($exoData | Where-Object { $_.Status -eq 'Warning' }).Count
                 $exoReview = @($exoData | Where-Object { $_.Status -eq 'Review' }).Count
                 $exoInfo   = @($exoData | Where-Object { $_.Status -eq 'Info' }).Count
-                $exoTotal  = $exoData.Count - $exoInfo
+                $exoTotal  = $exoData.Count
 
                 if ($exoTotal -gt 0) {
                     $exoSegments = @(
@@ -814,6 +823,9 @@ foreach ($sectionName in $sections) {
                         @{ Css = 'warning'; Pct = [math]::Round(($exoWarn   / $exoTotal) * 100, 1); Label = 'Warning' }
                         @{ Css = 'info';    Pct = [math]::Round(($exoReview / $exoTotal) * 100, 1); Label = 'Review' }
                     )
+                    if ($exoInfo -gt 0) {
+                        $exoSegments += @{ Css = 'neutral'; Pct = [math]::Round(($exoInfo / $exoTotal) * 100, 1); Label = 'Info' }
+                    }
                     $exoDonut = Get-SvgMultiDonut -Segments $exoSegments -CenterLabel "$exoTotal" -Size 130 -StrokeWidth 12
 
                     $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -1141,7 +1153,7 @@ foreach ($sectionName in $sections) {
                 $spoSecWarn   = @($spoSecData | Where-Object { $_.Status -eq 'Warning' }).Count
                 $spoSecReview = @($spoSecData | Where-Object { $_.Status -eq 'Review' }).Count
                 $spoSecInfo   = @($spoSecData | Where-Object { $_.Status -eq 'Info' }).Count
-                $spoSecTotal  = $spoSecData.Count - $spoSecInfo
+                $spoSecTotal  = $spoSecData.Count
 
                 $spoSegments = @(
                     @{ Css = 'success'; Pct = [math]::Round(($spoSecPass   / $spoSecTotal) * 100, 1); Label = 'Pass' }
@@ -1149,6 +1161,9 @@ foreach ($sectionName in $sections) {
                     @{ Css = 'warning'; Pct = [math]::Round(($spoSecWarn   / $spoSecTotal) * 100, 1); Label = 'Warning' }
                     @{ Css = 'info';    Pct = [math]::Round(($spoSecReview / $spoSecTotal) * 100, 1); Label = 'Review' }
                 )
+                if ($spoSecInfo -gt 0) {
+                    $spoSegments += @{ Css = 'neutral'; Pct = [math]::Round(($spoSecInfo / $spoSecTotal) * 100, 1); Label = 'Info' }
+                }
                 $spoDonut = Get-SvgMultiDonut -Segments $spoSegments -CenterLabel "$spoSecTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -1185,7 +1200,7 @@ foreach ($sectionName in $sections) {
                 $teamSecWarn   = @($teamSecData | Where-Object { $_.Status -eq 'Warning' }).Count
                 $teamSecReview = @($teamSecData | Where-Object { $_.Status -eq 'Review' }).Count
                 $teamSecInfo   = @($teamSecData | Where-Object { $_.Status -eq 'Info' }).Count
-                $teamSecTotal  = $teamSecData.Count - $teamSecInfo
+                $teamSecTotal  = $teamSecData.Count
 
                 $teamSegments = @(
                     @{ Css = 'success'; Pct = [math]::Round(($teamSecPass   / $teamSecTotal) * 100, 1); Label = 'Pass' }
@@ -1193,6 +1208,9 @@ foreach ($sectionName in $sections) {
                     @{ Css = 'warning'; Pct = [math]::Round(($teamSecWarn   / $teamSecTotal) * 100, 1); Label = 'Warning' }
                     @{ Css = 'info';    Pct = [math]::Round(($teamSecReview / $teamSecTotal) * 100, 1); Label = 'Review' }
                 )
+                if ($teamSecInfo -gt 0) {
+                    $teamSegments += @{ Css = 'neutral'; Pct = [math]::Round(($teamSecInfo / $teamSecTotal) * 100, 1); Label = 'Info' }
+                }
                 $teamDonut = Get-SvgMultiDonut -Segments $teamSegments -CenterLabel "$teamSecTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -1278,7 +1296,7 @@ foreach ($sectionName in $sections) {
                 $defWarn = @($defData | Where-Object { $_.Status -eq 'Warning' }).Count
                 $defReview = @($defData | Where-Object { $_.Status -eq 'Review' }).Count
                 $defInfo = @($defData | Where-Object { $_.Status -eq 'Info' }).Count
-                $defTotal = $defData.Count - $defInfo
+                $defTotal = $defData.Count
             }
 
             # Load Defender Policies and DLP Policies for metric cards
@@ -1359,6 +1377,10 @@ foreach ($sectionName in $sections) {
                     @{ Css = 'warning'; Pct = $defWarnPct; Label = 'Warning' }
                     @{ Css = 'info'; Pct = $defReviewPct; Label = 'Review' }
                 )
+                if ($defInfo -gt 0) {
+                    $defInfoPct = [math]::Round(($defInfo / $defTotal) * 100, 1)
+                    $defSegments += @{ Css = 'neutral'; Pct = $defInfoPct; Label = 'Info' }
+                }
                 $defMultiDonut = Get-SvgMultiDonut -Segments $defSegments -CenterLabel "$defTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -1466,6 +1488,34 @@ foreach ($sectionName in $sections) {
         $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
+        # Status filter bar for security config tables
+        if ($isSecurityConfig) {
+            $tblPass   = @($data | Where-Object { $_.Status -eq 'Pass' }).Count
+            $tblFail   = @($data | Where-Object { $_.Status -eq 'Fail' }).Count
+            $tblWarn   = @($data | Where-Object { $_.Status -eq 'Warning' }).Count
+            $tblReview = @($data | Where-Object { $_.Status -eq 'Review' }).Count
+            $tblInfo   = @($data | Where-Object { $_.Status -eq 'Info' }).Count
+            $null = $sectionHtml.AppendLine("<div class='status-filter table-status-filter'>")
+            $null = $sectionHtml.AppendLine("<span class='status-filter-label'>Status:</span>")
+            if ($tblFail -gt 0) {
+                $null = $sectionHtml.AppendLine("<label class='status-checkbox status-fail'><input type='checkbox' value='fail' checked> Fail ($tblFail)</label>")
+            }
+            if ($tblWarn -gt 0) {
+                $null = $sectionHtml.AppendLine("<label class='status-checkbox status-warning'><input type='checkbox' value='warning' checked> Warning ($tblWarn)</label>")
+            }
+            if ($tblReview -gt 0) {
+                $null = $sectionHtml.AppendLine("<label class='status-checkbox status-review'><input type='checkbox' value='review' checked> Review ($tblReview)</label>")
+            }
+            if ($tblPass -gt 0) {
+                $null = $sectionHtml.AppendLine("<label class='status-checkbox status-pass'><input type='checkbox' value='pass' checked> Pass ($tblPass)</label>")
+            }
+            if ($tblInfo -gt 0) {
+                $null = $sectionHtml.AppendLine("<label class='status-checkbox status-info'><input type='checkbox' value='info' checked> Info ($tblInfo)</label>")
+            }
+            $null = $sectionHtml.AppendLine("<span class='fw-selector-actions'><button type='button' class='fw-action-btn tbl-status-all'>All</button><button type='button' class='fw-action-btn tbl-status-none'>None</button></span>")
+            $null = $sectionHtml.AppendLine("</div>")
+        }
+
         $null = $sectionHtml.AppendLine("<div class='table-wrapper'>")
         $null = $sectionHtml.AppendLine("<table class='data-table'>")
         $null = $sectionHtml.AppendLine("<thead><tr>")
@@ -1492,6 +1542,7 @@ foreach ($sectionName in $sections) {
             # Security config tables — row-level status coloring
             if ($isSecurityConfig -and $row.Status) {
                 $rowClass = switch ($row.Status) {
+                    'Pass'    { " class='cis-row-pass'" }
                     'Fail'    { " class='cis-row-fail'" }
                     'Warning' { " class='cis-row-warning'" }
                     'Review'  { " class='cis-row-review'" }
@@ -1772,6 +1823,11 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $complianceHtml.AppendLine("</div>")
 
+    # Info status explanation (only if Info checks exist)
+    if ($cisInfo -gt 0) {
+        $null = $complianceHtml.AppendLine("<div class='info-status-note'><span class='badge badge-neutral'>Info</span> checks are informational data points with no pass/fail criteria &mdash; they provide context about your environment but are <strong>not included</strong> in compliance pass rates.</div>")
+    }
+
     # Unified compliance matrix table (all frameworks as columns)
     $null = $complianceHtml.AppendLine("<div class='table-wrapper'>")
     $null = $complianceHtml.AppendLine("<table class='data-table matrix-table' id='complianceTable'>")
@@ -1974,6 +2030,7 @@ $html = @"
            Cover Page
            ---------------------------------------------------------- */
         .cover-page {
+            position: relative;
             width: 100%;
             min-height: 100vh;
             $coverBgStyle
@@ -2036,6 +2093,34 @@ $html = @"
             background: var(--m365a-primary);
             margin: 25px auto;
         }
+
+        .cover-branding {
+            position: absolute;
+            bottom: 32px;
+            left: 0;
+            right: 0;
+            text-align: center;
+        }
+        .cover-branding-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.8em;
+            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.05);
+        }
+        .cover-branding-link:hover {
+            color: rgba(255,255,255,0.9);
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.1);
+        }
+        .cover-branding-icon { flex-shrink: 0; opacity: 0.7; }
 
         /* ----------------------------------------------------------
            Content Pages
@@ -2354,6 +2439,7 @@ $html = @"
         .donut-warning { stroke: var(--m365a-warning); }
         .donut-danger { stroke: var(--m365a-danger); }
         .donut-info { stroke: var(--m365a-accent); }
+        .donut-neutral { stroke: var(--m365a-neutral); }
         .donut-text { font-size: 22px; font-weight: 700; fill: var(--m365a-text); font-family: inherit; }
         .donut-text-sm { font-size: 16px; }
         /* Donut segment highlight on legend hover */
@@ -3203,8 +3289,12 @@ $html = @"
         .status-warning.active { background: #fffbeb; color: #92400e; border-color: #fcd34d; font-weight: 600; }
         .status-review.active { background: #f0f9ff; color: #1e40af; border-color: #93c5fd; font-weight: 600; }
         .status-pass.active { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; font-weight: 600; }
-        .status-info.active { background: var(--m365a-neutral-bg); color: var(--m365a-neutral); border-color: var(--m365a-neutral); font-weight: 600; }
+        .status-info.active { background: #f3f4f6; color: #4b5563; border-color: #9ca3af; font-weight: 600; }
         .status-unknown.active { background: #f9fafb; color: #6b7280; border-color: #d1d5db; font-weight: 600; }
+
+        /* Info status explanation note */
+        .info-status-note { display: flex; align-items: center; gap: 8px; padding: 8px 14px; margin: 0 0 12px; font-size: 0.82em; color: var(--m365a-medium-gray); background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 6px; border-left: 3px solid var(--m365a-neutral); }
+        .info-status-note .badge { flex-shrink: 0; }
 
         /* Matrix table */
         .matrix-table td { vertical-align: top; }
@@ -3273,6 +3363,7 @@ $html = @"
         body.dark-theme .status-warning.active { background: #78350F; color: #FCD34D; border-color: #92400E; }
         body.dark-theme .status-review.active { background: #1E3A5F; color: #93C5FD; border-color: #1E40AF; }
         body.dark-theme .status-pass.active { background: #064E3B; color: #6EE7B7; border-color: #065F46; }
+        body.dark-theme .status-info.active { background: #374151; color: #9ca3af; border-color: #6b7280; }
         body.dark-theme .status-unknown.active { background: #334155; color: #94A3B8; border-color: #475569; }
 
         body.dark-theme .cis-disclaimer { background: #1E293B; }
@@ -3349,6 +3440,7 @@ $html = @"
                 height: 100vh;
                 page-break-after: always;
             }
+            .cover-branding-link { color: rgba(255,255,255,0.5); }
 
             .content { padding: 20px 30px; }
 
@@ -3470,6 +3562,16 @@ $html = @"
         <div class="cover-tenant">$(ConvertTo-HtmlSafe -Text $TenantName)</div>
         <div class="cover-subtitle">$assessmentDate</div>
         <div class="cover-date">v$assessmentVersion</div>
+$(if (-not $NoBranding) {
+@'
+        <div class="cover-branding">
+            <a href="https://github.com/Daren9m/M365-Assess" target="_blank" rel="noopener" class="cover-branding-link">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" class="cover-branding-icon"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                <span>Open-source &mdash; M365-Assess on GitHub</span>
+            </a>
+        </div>
+'@
+})
     </header>
 
     <!-- Content -->
@@ -3699,6 +3801,41 @@ $html += @"
                 applyStatusFilter();
             }
         }
+
+        // --- Table-level status filters (security config tables) ---
+        document.querySelectorAll('.table-status-filter').forEach(function(filterBar) {
+            var tableWrapper = filterBar.nextElementSibling;
+            if (!tableWrapper) return;
+            var table = tableWrapper.querySelector('table');
+            if (!table) return;
+            var rows = table.querySelectorAll('tbody tr');
+            var cbs = filterBar.querySelectorAll('input[type="checkbox"]');
+
+            function applyFilter() {
+                var active = [];
+                cbs.forEach(function(cb) {
+                    var lbl = cb.closest('.status-checkbox');
+                    if (cb.checked) { lbl.classList.add('active'); active.push(cb.value); }
+                    else { lbl.classList.remove('active'); }
+                });
+                rows.forEach(function(row) {
+                    var show = false;
+                    for (var i = 0; i < active.length; i++) {
+                        if ((row.className || '').indexOf('cis-row-' + active[i]) !== -1) { show = true; break; }
+                    }
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            cbs.forEach(function(cb) { cb.addEventListener('change', applyFilter); });
+
+            var btnAll = filterBar.querySelector('.tbl-status-all');
+            var btnNone = filterBar.querySelector('.tbl-status-none');
+            if (btnAll) btnAll.addEventListener('click', function() { cbs.forEach(function(cb) { cb.checked = true; }); applyFilter(); });
+            if (btnNone) btnNone.addEventListener('click', function() { cbs.forEach(function(cb) { cb.checked = false; }); applyFilter(); });
+
+            applyFilter();
+        });
     });
 
     function sortTable(table, colIndex, th) {
