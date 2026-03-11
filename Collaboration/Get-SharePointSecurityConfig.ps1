@@ -119,7 +119,7 @@ try {
         -RecommendedValue 'Existing external users only (or more restrictive)' `
         -Status $sharingStatus `
         -CheckId 'SPO-SHARING-001' `
-        -Remediation 'SharePoint admin center > Policies > Sharing. Set to "Existing guests" or more restrictive. Run: Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly'
+        -Remediation 'Run: Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly. SharePoint admin center > Policies > Sharing.'
 }
 catch {
     Write-Warning "Could not check sharing capability: $_"
@@ -134,7 +134,7 @@ try {
         -CurrentValue "$resharing" -RecommendedValue 'False' `
         -Status $(if (-not $resharing) { 'Pass' } else { 'Warning' }) `
         -CheckId 'SPO-SHARING-002' `
-        -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > Uncheck "Allow guests to share items they don''t own".'
+        -Remediation 'Run: Set-SPOTenant -PreventExternalUsersFromResharing $true. SharePoint admin center > Policies > Sharing.'
 }
 catch {
     Write-Warning "Could not check resharing: $_"
@@ -165,7 +165,7 @@ try {
         -RecommendedValue 'Allow or Block list configured' `
         -Status $restrictStatus `
         -CheckId 'SPO-SHARING-003' `
-        -Remediation 'SharePoint admin center > Policies > Sharing > Limit sharing by domain. Run: Set-SPOTenant -SharingDomainRestrictionMode AllowList -SharingAllowedDomainList "partner.com"'
+        -Remediation 'Run: Set-SPOTenant -SharingDomainRestrictionMode AllowList -SharingAllowedDomainList "partner.com". SharePoint admin center > Policies > Sharing > Limit sharing by domain.'
 }
 catch {
     Write-Warning "Could not check domain restriction: $_"
@@ -180,7 +180,7 @@ try {
         -CurrentValue "$unmanagedSync" -RecommendedValue 'True' `
         -Status $(if ($unmanagedSync) { 'Pass' } else { 'Warning' }) `
         -CheckId 'SPO-SYNC-001' `
-        -Remediation 'SharePoint admin center > Settings > Sync > Allow syncing only on computers joined to specific domains. Run: Set-SPOTenantSyncClientRestriction -Enable'
+        -Remediation 'Run: Set-SPOTenantSyncClientRestriction -Enable. SharePoint admin center > Settings > Sync > Allow syncing only on computers joined to specific domains.'
 }
 catch {
     Write-Warning "Could not check sync client restriction: $_"
@@ -193,7 +193,9 @@ try {
     $macSync = $spoSettings['isMacSyncAppEnabled']
     Add-Setting -Category 'Sync & Access' -Setting 'Mac Sync App Enabled' `
         -CurrentValue "$macSync" -RecommendedValue 'Review' `
-        -Status 'Review'
+        -Status 'Info' `
+        -CheckId 'SPO-SYNC-002' `
+        -Remediation 'Informational — review based on organizational requirements.'
 }
 catch {
     Write-Warning "Could not check Mac sync: $_"
@@ -206,7 +208,9 @@ try {
     $loopEnabled = $spoSettings['isLoopEnabled']
     Add-Setting -Category 'Collaboration Features' -Setting 'Loop Components Enabled' `
         -CurrentValue "$loopEnabled" -RecommendedValue 'Review' `
-        -Status 'Review'
+        -Status 'Info' `
+        -CheckId 'SPO-LOOP-001' `
+        -Remediation 'Informational — review based on organizational requirements.'
 }
 catch {
     Write-Warning "Could not check Loop: $_"
@@ -228,7 +232,9 @@ try {
 
     Add-Setting -Category 'Collaboration Features' -Setting 'OneDrive Loop Sharing' `
         -CurrentValue $loopSharingDisplay -RecommendedValue 'Restricted or disabled' `
-        -Status $(if ($loopSharing -eq 'disabled' -or $loopSharing -eq 'existingExternalUserSharingOnly') { 'Pass' } else { 'Review' })
+        -Status 'Info' `
+        -CheckId 'SPO-LOOP-002' `
+        -Remediation 'Informational — review based on organizational requirements.'
 }
 catch {
     Write-Warning "Could not check Loop sharing: $_"
@@ -246,13 +252,13 @@ try {
         Add-Setting -Category 'Sync & Access' -Setting 'Idle Session Timeout Policy' `
             -CurrentValue 'Configured' -RecommendedValue 'Configured' -Status 'Pass' `
             -CheckId 'SPO-SESSION-001' `
-            -Remediation 'Entra admin center > Protection > Conditional Access > Session controls > Sign-in frequency.'
+            -Remediation 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
     }
     else {
         Add-Setting -Category 'Sync & Access' -Setting 'Idle Session Timeout Policy' `
-            -CurrentValue 'Not configured' -RecommendedValue 'Configured' -Status 'Review' `
+            -CurrentValue 'Not configured' -RecommendedValue 'Configured' -Status 'Warning' `
             -CheckId 'SPO-SESSION-001' `
-            -Remediation 'M365 admin center > Settings > Org settings > Security & privacy > Idle session timeout > Turn on. Set a timeout period (e.g., 1 hour).'
+            -Remediation 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
     }
 }
 catch {
@@ -284,7 +290,7 @@ try {
         -RecommendedValue 'Specific people (direct)' `
         -Status $linkTypeStatus `
         -CheckId 'SPO-SHARING-004' `
-        -Remediation 'SharePoint admin center > Policies > Sharing > File and folder links > Default link type > Specific people. Run: Set-SPOTenant -DefaultSharingLinkType Direct'
+        -Remediation 'Run: Set-SPOTenant -DefaultSharingLinkType Direct. SharePoint admin center > Policies > Sharing > File and folder links > Default link type > Specific people.'
 }
 catch {
     Write-Warning "Could not check default sharing link type: $_"
@@ -302,7 +308,7 @@ try {
             -CurrentValue 'Not available via API' -RecommendedValue 'Enabled (30 days or less)' `
             -Status 'Review' `
             -CheckId 'SPO-SHARING-005' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > Guest access to a site or OneDrive will expire automatically after this many days. Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30'
+            -Remediation 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
     }
     else {
         $expDisplay = if ($guestExpRequired) { "Enabled ($guestExpDays days)" } else { 'Disabled' }
@@ -314,7 +320,7 @@ try {
             -CurrentValue $expDisplay -RecommendedValue 'Enabled (30 days or less)' `
             -Status $expStatus `
             -CheckId 'SPO-SHARING-005' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > Guest access to a site or OneDrive will expire automatically after this many days. Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30'
+            -Remediation 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
     }
 }
 catch {
@@ -333,7 +339,7 @@ try {
             -CurrentValue 'Not available via API' -RecommendedValue 'Enabled (30 days or less)' `
             -Status 'Review' `
             -CheckId 'SPO-SHARING-006' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > People who use a verification code must reauthenticate after this many days. Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30'
+            -Remediation 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
     }
     else {
         $attestDisplay = if ($emailAttestation) { "Enabled ($emailAttestDays days)" } else { 'Disabled' }
@@ -345,7 +351,7 @@ try {
             -CurrentValue $attestDisplay -RecommendedValue 'Enabled (30 days or less)' `
             -Status $attestStatus `
             -CheckId 'SPO-SHARING-006' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > People who use a verification code must reauthenticate after this many days. Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30'
+            -Remediation 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
     }
 }
 catch {
@@ -375,7 +381,7 @@ try {
         -RecommendedValue 'View (read-only)' `
         -Status $permStatus `
         -CheckId 'SPO-SHARING-007' `
-        -Remediation 'SharePoint admin center > Policies > Sharing > File and folder links > Default permission > View. Run: Set-SPOTenant -DefaultLinkPermission View'
+        -Remediation 'Run: Set-SPOTenant -DefaultLinkPermission View. SharePoint admin center > Policies > Sharing > File and folder links > Default permission > View.'
 }
 catch {
     Write-Warning "Could not check default link permission: $_"
