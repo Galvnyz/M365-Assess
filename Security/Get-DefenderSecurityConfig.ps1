@@ -77,9 +77,9 @@ try {
         Add-Setting -Category 'Anti-Phishing' `
             -Setting "Phishing Threshold ($policyLabel)" `
             -CurrentValue "$threshold" -RecommendedValue '2+ (Aggressive)' `
-            -Status $(if ([int]$threshold -ge 2) { 'Pass' } else { 'Warning' }) `
+            -Status $(if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }) `
             -CheckId 'DEFENDER-ANTIPHISH-001' `
-            -Remediation 'Security admin center > Email & collaboration > Policies > Anti-phishing > Edit default policy > Set threshold to 2 (Aggressive) or higher.'
+            -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
 
         # Impersonation protection (Defender P1+ only)
         if ($null -ne $policy.EnableMailboxIntelligenceProtection) {
@@ -89,7 +89,7 @@ try {
                 -CurrentValue "$mailboxIntel" -RecommendedValue 'True' `
                 -Status $(if ($mailboxIntel) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Security admin center > Anti-phishing policy > Impersonation > Enable Mailbox intelligence protection.'
+                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableMailboxIntelligenceProtection $true. Security admin center > Anti-phishing > Impersonation > Enable Mailbox intelligence protection.'
         }
 
         if ($null -ne $policy.EnableTargetedUserProtection) {
@@ -97,9 +97,9 @@ try {
             Add-Setting -Category 'Anti-Phishing' `
                 -Setting "Targeted User Protection ($policyLabel)" `
                 -CurrentValue "$targetedUser" -RecommendedValue 'True' `
-                -Status $(if ($targetedUser) { 'Pass' } else { 'Review' }) `
+                -Status $(if ($targetedUser) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Security admin center > Anti-phishing policy > Impersonation > Add users to protect (executives, high-value targets).'
+                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedUserProtection $true -TargetedUsersToProtect @{Add="user@domain.com"}. Security admin center > Anti-phishing > Impersonation > Add users to protect.'
         }
 
         if ($null -ne $policy.EnableTargetedDomainsProtection) {
@@ -107,9 +107,9 @@ try {
             Add-Setting -Category 'Anti-Phishing' `
                 -Setting "Targeted Domain Protection ($policyLabel)" `
                 -CurrentValue "$targetedDomain" -RecommendedValue 'True' `
-                -Status $(if ($targetedDomain) { 'Pass' } else { 'Review' }) `
+                -Status $(if ($targetedDomain) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Security admin center > Anti-phishing policy > Impersonation > Add domains to protect (include all org domains).'
+                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedDomainsProtection $true. Security admin center > Anti-phishing > Impersonation > Add domains to protect.'
         }
 
         # Honor DMARC policy
@@ -118,9 +118,9 @@ try {
             Add-Setting -Category 'Anti-Phishing' `
                 -Setting "Honor DMARC Policy ($policyLabel)" `
                 -CurrentValue "$honorDmarc" -RecommendedValue 'True' `
-                -Status $(if ($honorDmarc) { 'Pass' } else { 'Warning' }) `
+                -Status $(if ($honorDmarc) { 'Pass' } else { 'Fail' }) `
                 -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Security admin center > Anti-phishing policy > Enable "Honor DMARC record policy when the message is detected as spoof".'
+                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -HonorDmarcPolicy $true. Security admin center > Anti-phishing > Enable Honor DMARC record policy.'
         }
 
         # Spoof intelligence
@@ -130,7 +130,7 @@ try {
             -CurrentValue "$spoofIntel" -RecommendedValue 'True' `
             -Status $(if ($spoofIntel) { 'Pass' } else { 'Fail' }) `
             -CheckId 'DEFENDER-ANTIPHISH-001' `
-            -Remediation 'Security admin center > Anti-phishing policy > Spoof > Enable spoof intelligence.'
+            -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableSpoofIntelligence $true. Security admin center > Anti-phishing > Spoof > Enable spoof intelligence.'
 
         # Safety tips
         if ($null -ne $policy.EnableFirstContactSafetyTips) {
@@ -138,9 +138,9 @@ try {
             Add-Setting -Category 'Anti-Phishing' `
                 -Setting "First Contact Safety Tips ($policyLabel)" `
                 -CurrentValue "$firstContact" -RecommendedValue 'True' `
-                -Status $(if ($firstContact) { 'Pass' } else { 'Review' }) `
+                -Status $(if ($firstContact) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Security admin center > Anti-phishing policy > Safety tips > Enable first contact safety tips.'
+                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableFirstContactSafetyTips $true. Security admin center > Anti-phishing > Safety tips > Enable first contact safety tips.'
         }
 
         # Only assess default policy in detail to avoid duplicate noise
@@ -168,16 +168,16 @@ try {
             -CurrentValue "$bcl" -RecommendedValue '6 or lower' `
             -Status $(if ([int]$bcl -le 6) { 'Pass' } else { 'Warning' }) `
             -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Security admin center > Anti-spam > Inbound policy > Bulk email threshold > Set to 6 or lower.'
+            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -BulkThreshold 6. Security admin center > Anti-spam > Inbound policy > Bulk email threshold > Set to 6 or lower.'
 
         # Spam action
         $spamAction = $policy.SpamAction
         Add-Setting -Category 'Anti-Spam' `
             -Setting "Spam Action ($policyLabel)" `
             -CurrentValue "$spamAction" -RecommendedValue 'MoveToJmf or Quarantine' `
-            -Status $(if ($spamAction -eq 'MoveToJmf' -or $spamAction -eq 'Quarantine') { 'Pass' } else { 'Review' }) `
+            -Status $(if ($spamAction -eq 'MoveToJmf' -or $spamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
             -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Security admin center > Anti-spam > Inbound policy > Spam action > Move to Junk Email folder or Quarantine.'
+            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamAction MoveToJmf. Security admin center > Anti-spam > Inbound policy > Spam action > Move to Junk Email folder.'
 
         # High confidence spam action
         $hcSpamAction = $policy.HighConfidenceSpamAction
@@ -186,7 +186,7 @@ try {
             -CurrentValue "$hcSpamAction" -RecommendedValue 'Quarantine' `
             -Status $(if ($hcSpamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
             -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Security admin center > Anti-spam > Inbound policy > High confidence spam action > Quarantine message.'
+            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidenceSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence spam action > Quarantine.'
 
         # High confidence phishing action
         $hcPhishAction = $policy.HighConfidencePhishAction
@@ -195,7 +195,7 @@ try {
             -CurrentValue "$hcPhishAction" -RecommendedValue 'Quarantine' `
             -Status $(if ($hcPhishAction -eq 'Quarantine') { 'Pass' } else { 'Fail' }) `
             -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Security admin center > Anti-spam > Inbound policy > High confidence phishing action > Quarantine message.'
+            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidencePhishAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence phishing action > Quarantine.'
 
         # Phishing action
         $phishAction = $policy.PhishSpamAction
@@ -204,7 +204,7 @@ try {
             -CurrentValue "$phishAction" -RecommendedValue 'Quarantine' `
             -Status $(if ($phishAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
             -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Security admin center > Anti-spam > Inbound policy > Phishing action > Quarantine message.'
+            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > Phishing action > Quarantine.'
 
         # Zero-hour Auto Purge (ZAP)
         if ($null -ne $policy.ZapEnabled) {
@@ -214,7 +214,7 @@ try {
                 -CurrentValue "$zapEnabled" -RecommendedValue 'True' `
                 -Status $(if ($zapEnabled) { 'Pass' } else { 'Fail' }) `
                 -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge > Enabled.'
+                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge > Enabled.'
         }
 
         # Spam ZAP
@@ -223,9 +223,9 @@ try {
             Add-Setting -Category 'Anti-Spam' `
                 -Setting "Spam ZAP ($policyLabel)" `
                 -CurrentValue "$spamZap" -RecommendedValue 'True' `
-                -Status $(if ($spamZap) { 'Pass' } else { 'Warning' }) `
+                -Status $(if ($spamZap) { 'Pass' } else { 'Fail' }) `
                 -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for spam > Enabled.'
+                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for spam > Enabled.'
         }
 
         # Phish ZAP
@@ -236,7 +236,7 @@ try {
                 -CurrentValue "$phishZap" -RecommendedValue 'True' `
                 -Status $(if ($phishZap) { 'Pass' } else { 'Fail' }) `
                 -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for phishing > Enabled.'
+                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for phishing > Enabled.'
         }
 
         # Only assess default policy in detail
@@ -262,9 +262,9 @@ try {
         Add-Setting -Category 'Anti-Malware' `
             -Setting "Common Attachment Filter ($policyLabel)" `
             -CurrentValue "$commonFilter" -RecommendedValue 'True' `
-            -Status $(if ($commonFilter) { 'Pass' } else { 'Warning' }) `
+            -Status $(if ($commonFilter) { 'Pass' } else { 'Fail' }) `
             -CheckId 'DEFENDER-ANTIMALWARE-001' `
-            -Remediation 'Security admin center > Anti-malware > Default policy > Common attachments filter > Enable.'
+            -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableFileFilter $true. Security admin center > Anti-malware > Default policy > Common attachments filter > Enable.'
 
         # ZAP for malware
         if ($null -ne $policy.ZapEnabled) {
@@ -274,7 +274,7 @@ try {
                 -CurrentValue "$malwareZap" -RecommendedValue 'True' `
                 -Status $(if ($malwareZap) { 'Pass' } else { 'Fail' }) `
                 -CheckId 'DEFENDER-ANTIMALWARE-001' `
-                -Remediation 'Security admin center > Anti-malware > Default policy > Zero-hour auto purge for malware > Enabled.'
+                -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-malware > Default policy > Zero-hour auto purge for malware > Enabled.'
         }
 
         # Admin notification
@@ -282,9 +282,9 @@ try {
         Add-Setting -Category 'Anti-Malware' `
             -Setting "Internal Sender Admin Notifications ($policyLabel)" `
             -CurrentValue "$adminNotify" -RecommendedValue 'True' `
-            -Status $(if ($adminNotify) { 'Pass' } else { 'Review' }) `
+            -Status $(if ($adminNotify) { 'Pass' } else { 'Warning' }) `
             -CheckId 'DEFENDER-ANTIMALWARE-002' `
-            -Remediation 'Security admin center > Anti-malware > Default policy > Admin notifications > Notify an admin about undelivered messages from internal senders.'
+            -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableInternalSenderAdminNotifications $true -InternalSenderAdminAddress admin@domain.com. Security admin center > Anti-malware > Default policy > Admin notifications > Notify admin about undelivered messages from internal senders.'
 
         # Only assess default policy in detail
         if (-not $policy.IsDefault) { continue }
@@ -308,7 +308,7 @@ try {
                 -CurrentValue 'None configured' -RecommendedValue 'At least 1 policy' `
                 -Status 'Warning' `
                 -CheckId 'DEFENDER-SAFELINKS-001' `
-                -Remediation 'Security admin center > Email & collaboration > Policies > Safe Links > Create a Safe Links policy covering all users.'
+                -Remediation 'Run: New-SafeLinksPolicy -Name "Safe Links" -IsEnabled $true; New-SafeLinksRule -Name "Safe Links" -SafeLinksPolicy "Safe Links" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Links > Create a policy covering all users.'
         }
         else {
             foreach ($policy in @($safeLinks)) {
@@ -321,16 +321,16 @@ try {
                     -CurrentValue "$scanUrls" -RecommendedValue 'True' `
                     -Status $(if ($scanUrls) { 'Pass' } else { 'Warning' }) `
                     -CheckId 'DEFENDER-SAFELINKS-001' `
-                    -Remediation 'Security admin center > Safe Links policy > URL & click protection settings > Enable real-time URL scanning.'
+                    -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -ScanUrls $true. Security admin center > Safe Links policy > URL & click protection > Enable real-time URL scanning.'
 
                 # Click tracking
                 $trackClicks = -not $policy.DoNotTrackUserClicks
                 Add-Setting -Category 'Safe Links' `
                     -Setting "Track User Clicks ($policyLabel)" `
                     -CurrentValue "$trackClicks" -RecommendedValue 'True' `
-                    -Status $(if ($trackClicks) { 'Pass' } else { 'Review' }) `
+                    -Status $(if ($trackClicks) { 'Pass' } else { 'Warning' }) `
                     -CheckId 'DEFENDER-SAFELINKS-001' `
-                    -Remediation 'Security admin center > Safe Links policy > Ensure "Do not track when users click protected links" is disabled.'
+                    -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DoNotTrackUserClicks $false. Security admin center > Safe Links policy > Ensure "Do not track when users click protected links" is disabled.'
 
                 # Internal senders
                 if ($null -ne $policy.EnableForInternalSenders) {
@@ -338,9 +338,9 @@ try {
                     Add-Setting -Category 'Safe Links' `
                         -Setting "Enable for Internal Senders ($policyLabel)" `
                         -CurrentValue "$internalSenders" -RecommendedValue 'True' `
-                        -Status $(if ($internalSenders) { 'Pass' } else { 'Review' }) `
+                        -Status $(if ($internalSenders) { 'Pass' } else { 'Warning' }) `
                         -CheckId 'DEFENDER-SAFELINKS-001' `
-                        -Remediation 'Security admin center > Safe Links policy > Enable for messages sent within the organization.'
+                        -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -EnableForInternalSenders $true. Security admin center > Safe Links policy > Enable for messages sent within the organization.'
                 }
 
                 # Wait for URL scanning
@@ -349,9 +349,9 @@ try {
                     Add-Setting -Category 'Safe Links' `
                         -Setting "Wait for URL Scan ($policyLabel)" `
                         -CurrentValue "$waitScan" -RecommendedValue 'True' `
-                        -Status $(if ($waitScan) { 'Pass' } else { 'Review' }) `
+                        -Status $(if ($waitScan) { 'Pass' } else { 'Warning' }) `
                         -CheckId 'DEFENDER-SAFELINKS-001' `
-                        -Remediation 'Security admin center > Safe Links policy > Wait for URL scanning to complete before delivering the message.'
+                        -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DeliverMessageAfterScan $true. Security admin center > Safe Links policy > Wait for URL scanning to complete before delivering the message.'
                 }
             }
         }
@@ -361,7 +361,7 @@ try {
             -CurrentValue 'Not licensed' -RecommendedValue 'Defender for Office 365 P1+' `
             -Status 'Review' `
             -CheckId 'DEFENDER-SAFELINKS-001' `
-            -Remediation 'Safe Links requires Defender for Office 365 Plan 1 or higher. Consider upgrading licensing.'
+            -Remediation 'Safe Links requires Defender for Office 365 Plan 1 or higher.'
     }
 }
 catch {
@@ -382,7 +382,7 @@ try {
                 -CurrentValue 'None configured' -RecommendedValue 'At least 1 policy' `
                 -Status 'Warning' `
                 -CheckId 'DEFENDER-SAFEATTACH-001' `
-                -Remediation 'Security admin center > Email & collaboration > Policies > Safe Attachments > Create a policy covering all users.'
+                -Remediation 'Run: New-SafeAttachmentPolicy -Name "Safe Attachments" -Enable $true -Action Block; New-SafeAttachmentRule -Name "Safe Attachments" -SafeAttachmentPolicy "Safe Attachments" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Attachments > Create a policy covering all users.'
         }
         else {
             foreach ($policy in @($safeAttachments)) {
@@ -395,7 +395,7 @@ try {
                     -CurrentValue "$enabled" -RecommendedValue 'True' `
                     -Status $(if ($enabled) { 'Pass' } else { 'Warning' }) `
                     -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Security admin center > Safe Attachments policy > Enable the policy.'
+                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Enable $true. Security admin center > Safe Attachments policy > Enable the policy.'
 
                 # Action type
                 $action = $policy.Action
@@ -421,16 +421,16 @@ try {
                     -RecommendedValue 'Block or Dynamic Delivery' `
                     -Status $actionStatus `
                     -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Security admin center > Safe Attachments policy > Action > Block or Dynamic Delivery (recommended for user experience).'
+                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Action Block. Security admin center > Safe Attachments policy > Action > Block (or DynamicDelivery for user experience).'
 
                 # Redirect
                 $redirect = $policy.Redirect
                 Add-Setting -Category 'Safe Attachments' `
                     -Setting "Redirect to Admin ($policyLabel)" `
                     -CurrentValue "$redirect" -RecommendedValue 'True' `
-                    -Status $(if ($redirect) { 'Pass' } else { 'Review' }) `
+                    -Status $(if ($redirect) { 'Pass' } else { 'Warning' }) `
                     -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Security admin center > Safe Attachments policy > Enable redirect and specify an admin email for quarantined attachments.'
+                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Redirect $true -RedirectAddress admin@domain.com. Security admin center > Safe Attachments policy > Enable redirect and specify an admin email.'
             }
         }
     }
@@ -439,7 +439,7 @@ try {
             -CurrentValue 'Not licensed' -RecommendedValue 'Defender for Office 365 P1+' `
             -Status 'Review' `
             -CheckId 'DEFENDER-SAFEATTACH-001' `
-            -Remediation 'Safe Attachments requires Defender for Office 365 Plan 1 or higher. Consider upgrading licensing.'
+            -Remediation 'Safe Attachments requires Defender for Office 365 Plan 1 or higher.'
     }
 }
 catch {
@@ -463,7 +463,7 @@ try {
             -CurrentValue "$autoForward" -RecommendedValue 'Off' `
             -Status $(if ($autoForward -eq 'Off') { 'Pass' } else { 'Warning' }) `
             -CheckId 'EXO-FORWARD-001' `
-            -Remediation 'Security admin center > Anti-spam > Outbound policy > Auto-forwarding rules > Off. Prevents automatic forwarding to external addresses.'
+            -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -AutoForwardingMode Off. Security admin center > Anti-spam > Outbound policy > Auto-forwarding rules > Off.'
 
         # Notification
         if ($null -ne $policy.BccSuspiciousOutboundMail) {
@@ -471,9 +471,9 @@ try {
             Add-Setting -Category 'Outbound Spam' `
                 -Setting "BCC on Suspicious Outbound ($policyLabel)" `
                 -CurrentValue "$bccNotify" -RecommendedValue 'True' `
-                -Status $(if ($bccNotify) { 'Pass' } else { 'Review' }) `
+                -Status $(if ($bccNotify) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-OUTBOUND-001' `
-                -Remediation 'Security admin center > Anti-spam > Outbound policy > Notifications > BCC suspicious outbound messages to an admin address.'
+                -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -BccSuspiciousOutboundMail $true -BccSuspiciousOutboundAdditionalRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > BCC suspicious outbound messages.'
         }
 
         if ($null -ne $policy.NotifyOutboundSpam) {
@@ -481,9 +481,9 @@ try {
             Add-Setting -Category 'Outbound Spam' `
                 -Setting "Notify Admins of Outbound Spam ($policyLabel)" `
                 -CurrentValue "$notifySpam" -RecommendedValue 'True' `
-                -Status $(if ($notifySpam) { 'Pass' } else { 'Review' }) `
+                -Status $(if ($notifySpam) { 'Pass' } else { 'Warning' }) `
                 -CheckId 'DEFENDER-OUTBOUND-001' `
-                -Remediation 'Security admin center > Anti-spam > Outbound policy > Notifications > Notify admin when a user is restricted for sending outbound spam.'
+                -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -NotifyOutboundSpam $true -NotifyOutboundSpamRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > Notify admin of outbound spam.'
         }
 
         # Only assess default policy in detail
