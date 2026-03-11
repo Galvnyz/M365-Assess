@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 <#
 .SYNOPSIS
     Runs a comprehensive read-only Microsoft 365 environment assessment.
@@ -11,7 +11,7 @@
     Designed for IT consultants assessing SMB clients (10-500 users) with
     Microsoft-based cloud environments.
 .NOTES
-    Version: 0.4.0
+    Version: 0.5.0
     Author:  Daren9m
 .PARAMETER Section
     One or more assessment sections to run. Valid values: Tenant, Identity,
@@ -121,7 +121,7 @@ $ErrorActionPreference = 'Stop'
 # ------------------------------------------------------------------
 # Version
 # ------------------------------------------------------------------
-$script:AssessmentVersion = '0.4.0'
+$script:AssessmentVersion = '0.5.0'
 
 # Resolve project root for collector and helper paths
 $projectRoot = Split-Path -Parent $PSCommandPath

@@ -25,7 +25,7 @@
 
     Exports the security configuration to CSV.
 .NOTES
-    Version: 0.4.0
+    Version: 0.5.0
     Author:  Daren9m
     Settings checked are aligned with CIS Microsoft 365 Foundations Benchmark v6.0.1 recommendations.
     Some checks require Defender for Office 365 Plan 1 or Plan 2 licensing.
