@@ -327,16 +327,16 @@ function Get-SvgMultiDonut {
         [int]$StrokeWidth = 11
     )
     $radius = ($Size / 2) - $StrokeWidth
-    $circumference = [math]::Round(2 * [math]::PI * $radius, 2)
+    $circumference = 2 * [math]::PI * $radius
     $center = $Size / 2
     $svg = "<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size'>"
     $svg += "<circle class='donut-track' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'/>"
     $offset = 0
     foreach ($seg in $Segments) {
         if ($seg.Pct -le 0) { continue }
-        $arcLen = [math]::Round(($seg.Pct / 100) * $circumference, 2)
-        $gapLen = [math]::Round($circumference - $arcLen, 2)
-        $rotDeg = [math]::Round(($offset / 100) * 360 - 90, 2)
+        $arcLen = [math]::Round(($seg.Pct / 100) * $circumference, 4)
+        $gapLen = [math]::Round($circumference - $arcLen, 4)
+        $rotDeg = [math]::Round(($offset / 100) * 360 - 90, 4)
         $svg += "<circle class='donut-fill donut-$($seg.Css)' data-segment='$($seg.Css)' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth' stroke-dasharray='$arcLen $gapLen' transform='rotate($rotDeg $center $center)'/>"
         $offset += $seg.Pct
     }
@@ -1981,7 +1981,7 @@ $html = @"
             --m365a-warning-bg: #fff3cd;
             --m365a-danger-bg: #f8d7da;
             --m365a-info-bg: #d1ecf1;
-            --m365a-review: #EAB308;
+            --m365a-review: #8B5CF6;
             --m365a-neutral: #6b7280;
             --m365a-neutral-bg: #f3f4f6;
             --m365a-body-bg: #ffffff;
@@ -2012,7 +2012,7 @@ $html = @"
             --m365a-warning-bg: #78350F;
             --m365a-danger-bg: #7F1D1D;
             --m365a-info-bg: #1E3A5F;
-            --m365a-review: #FBBF24;
+            --m365a-review: #A78BFA;
             --m365a-neutral: #9ca3af;
             --m365a-neutral-bg: #374151;
         }
