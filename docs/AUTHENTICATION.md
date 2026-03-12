@@ -56,7 +56,7 @@ The App Registration needs these Microsoft Graph **application** permissions:
 
 For Exchange Online, add the **Exchange.ManageAsApp** application role and assign the **Exchange Administrator** or **Global Reader** directory role to the service principal.
 
-See [`scripts/`](../scripts/) for App Registration provisioning scripts.
+See [`Setup/`](../Setup/) for App Registration provisioning scripts.
 
 ## Pre-Existing Connections
 

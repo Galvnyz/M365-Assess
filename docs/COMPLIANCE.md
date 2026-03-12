@@ -61,23 +61,17 @@ To view or edit mappings:
 Get-Content .\controls\registry.json | ConvertFrom-Json | Where-Object { $_.checkId -eq 'ENTRA-ADMIN-001' }
 ```
 
-Individual framework mapping files live in `controls/frameworks/`:
+Framework mappings are stored in two locations:
 
 ```
 controls/
-  registry.json              # Master registry (151 entries)
+  registry.json              # Master registry (151 entries) — contains all framework mappings inline
   frameworks/
-    cis-m365-v6.json         # CIS M365 v6.0.1 benchmark
-    nist-800-53.json         # NIST 800-53 Rev 5
-    nist-csf.json            # NIST CSF 2.0
-    iso-27001.json           # ISO 27001:2022
-    stig.json                # DISA STIG
-    pci-dss.json             # PCI DSS v4.0.1
-    cmmc.json                # CMMC 2.0
-    hipaa.json               # HIPAA Security Rule
-    cisa-scuba.json          # CISA SCuBA
+    cis-m365-v6.json         # CIS M365 v6.0.1 benchmark profiles
     soc2-tsc.json            # SOC 2 Trust Services Criteria
 ```
+
+The master `registry.json` contains all framework mappings embedded in each control entry. The `frameworks/` directory holds supplemental profile definitions for frameworks that need additional metadata (CIS license/level profiles, SOC 2 audit evidence mappings).
 
 ## XLSX Compliance Matrix
 

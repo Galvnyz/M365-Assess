@@ -203,7 +203,7 @@ M365-Assess/
   Networking/                     # Port scanning, DNS, connectivity
   Purview/                        # DLP policies, audit retention
   Security/                       # Secure Score, Defender, DLP, ScubaGear
-  scripts/                        # App Registration provisioning scripts
+  Setup/                          # App Registration provisioning scripts
   docs/                           # Detailed documentation
 ```
 
