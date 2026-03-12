@@ -1,4 +1,3 @@
-#Requires -Version 7.0
 <#
 .SYNOPSIS
     Runs a comprehensive read-only Microsoft 365 environment assessment.
@@ -83,6 +82,7 @@
 
     Runs Tenant and Identity sections plus the ScubaGear baseline scan.
 #>
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [Parameter()]
