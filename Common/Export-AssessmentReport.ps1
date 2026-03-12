@@ -721,6 +721,10 @@ foreach ($sectionName in $sections) {
                 if ($entraInfo -gt 0) {
                     $entraSegments += @{ Css = 'info'; Pct = [math]::Round(($entraInfo / $entraTotal) * 100, 1); Label = 'Info' }
                 }
+                $entraOther = $entraTotal - ($entraPass + $entraFail + $entraWarn + $entraReview + $entraInfo)
+                if ($entraOther -gt 0) {
+                    $entraSegments += @{ Css = 'neutral'; Pct = [math]::Round(($entraOther / $entraTotal) * 100, 1); Label = 'Other' }
+                }
                 $entraDonut = Get-SvgMultiDonut -Segments $entraSegments -CenterLabel "$entraTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -825,6 +829,10 @@ foreach ($sectionName in $sections) {
                     )
                     if ($exoInfo -gt 0) {
                         $exoSegments += @{ Css = 'info'; Pct = [math]::Round(($exoInfo / $exoTotal) * 100, 1); Label = 'Info' }
+                    }
+                    $exoOther = $exoTotal - ($exoPass + $exoFail + $exoWarn + $exoReview + $exoInfo)
+                    if ($exoOther -gt 0) {
+                        $exoSegments += @{ Css = 'neutral'; Pct = [math]::Round(($exoOther / $exoTotal) * 100, 1); Label = 'Other' }
                     }
                     $exoDonut = Get-SvgMultiDonut -Segments $exoSegments -CenterLabel "$exoTotal" -Size 130 -StrokeWidth 12
 
@@ -1164,6 +1172,10 @@ foreach ($sectionName in $sections) {
                 if ($spoSecInfo -gt 0) {
                     $spoSegments += @{ Css = 'info'; Pct = [math]::Round(($spoSecInfo / $spoSecTotal) * 100, 1); Label = 'Info' }
                 }
+                $spoOther = $spoSecTotal - ($spoSecPass + $spoSecFail + $spoSecWarn + $spoSecReview + $spoSecInfo)
+                if ($spoOther -gt 0) {
+                    $spoSegments += @{ Css = 'neutral'; Pct = [math]::Round(($spoOther / $spoSecTotal) * 100, 1); Label = 'Other' }
+                }
                 $spoDonut = Get-SvgMultiDonut -Segments $spoSegments -CenterLabel "$spoSecTotal" -Size 130 -StrokeWidth 12
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
@@ -1210,6 +1222,10 @@ foreach ($sectionName in $sections) {
                 )
                 if ($teamSecInfo -gt 0) {
                     $teamSegments += @{ Css = 'info'; Pct = [math]::Round(($teamSecInfo / $teamSecTotal) * 100, 1); Label = 'Info' }
+                }
+                $teamOther = $teamSecTotal - ($teamSecPass + $teamSecFail + $teamSecWarn + $teamSecReview + $teamSecInfo)
+                if ($teamOther -gt 0) {
+                    $teamSegments += @{ Css = 'neutral'; Pct = [math]::Round(($teamOther / $teamSecTotal) * 100, 1); Label = 'Other' }
                 }
                 $teamDonut = Get-SvgMultiDonut -Segments $teamSegments -CenterLabel "$teamSecTotal" -Size 130 -StrokeWidth 12
 
@@ -1380,6 +1396,10 @@ foreach ($sectionName in $sections) {
                 if ($defInfo -gt 0) {
                     $defInfoPct = [math]::Round(($defInfo / $defTotal) * 100, 1)
                     $defSegments += @{ Css = 'info'; Pct = $defInfoPct; Label = 'Info' }
+                }
+                $defOther = $defTotal - ($defPass + $defFail + $defWarn + $defReview + $defInfo)
+                if ($defOther -gt 0) {
+                    $defSegments += @{ Css = 'neutral'; Pct = [math]::Round(($defOther / $defTotal) * 100, 1); Label = 'Other' }
                 }
                 $defMultiDonut = Get-SvgMultiDonut -Segments $defSegments -CenterLabel "$defTotal" -Size 130 -StrokeWidth 12
 

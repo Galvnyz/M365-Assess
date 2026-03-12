@@ -103,7 +103,7 @@ try {
 catch {
     Write-Warning "Could not retrieve security defaults: $_"
     Add-Setting -Category 'Security Defaults' -Setting 'Security Defaults Enabled' `
-        -CurrentValue 'Unable to retrieve' -RecommendedValue 'True (if no CA)' -Status 'Unknown' `
+        -CurrentValue 'Unable to retrieve' -RecommendedValue 'True (if no CA)' -Status 'Review' `
         -CheckId 'ENTRA-SECDEFAULT-001' `
         -Remediation 'Run: Update-MgPolicyIdentitySecurityDefaultsEnforcementPolicy -IsEnabled $true. Entra admin center > Properties > Manage security defaults.'
 }
