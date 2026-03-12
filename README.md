@@ -21,39 +21,60 @@
 
 ---
 
-Run a single command to produce a comprehensive set of CSV reports and a branded HTML assessment report covering identity, email, security, devices, collaboration, and compliance baselines. Designed for IT consultants and administrators assessing Microsoft 365 environments.
+Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **57 automated security checks** mapped across **13 compliance frameworks**.
 
 ## Quick Start
 
 ```powershell
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/Daren9m/M365-Assess.git
 cd M365-Assess
 
-# Run the full M365 assessment (interactive wizard launches if no params given)
-.\Invoke-M365Assessment.ps1
+# 2. Install required modules
+Install-Module Microsoft.Graph, ExchangeOnlineManagement -Scope CurrentUser
 
-# Or specify tenant directly
+# 3. Run the assessment
 .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
 
-# Results land in a timestamped folder with CSV data + HTML report
-Get-ChildItem .\M365-Assessment\Assessment_* -Directory | Sort-Object Name -Descending | Select-Object -First 1
+# Results land in a timestamped folder with CSV data + HTML report + XLSX compliance matrix
 ```
 
-## Interactive Console App
+## Prerequisites
 
-Running the orchestrator with no parameters launches a full interactive wizard:
+| Requirement | Details |
+|-------------|---------|
+| **PowerShell 7.x** (`pwsh`) | Primary runtime. [Install guide](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) |
+| **Microsoft.Graph** | `Install-Module Microsoft.Graph -Scope CurrentUser` |
+| **ExchangeOnlineManagement** | `Install-Module ExchangeOnlineManagement -Scope CurrentUser` |
+| **ImportExcel** *(optional)* | `Install-Module ImportExcel -Scope CurrentUser` for XLSX compliance matrix export |
+| **Windows PowerShell 5.1** *(optional)* | Required only for the [ScubaGear](docs/SCUBAGEAR.md) section. Ships with Windows. |
+
+### Platform Support
+
+| Platform | Status |
+|----------|--------|
+| **Windows** | Fully tested |
+| **macOS** | Experimental |
+| **Linux** | Experimental |
+
+macOS and Linux are supported by PowerShell 7 but have not been fully tested. If you run into issues, please [open an issue](https://github.com/Daren9m/M365-Assess/issues/new) with your OS version, PowerShell version, terminal app, and the assessment log file.
+
+## Interactive Console
+
+Running the orchestrator with no parameters launches an interactive wizard that walks you through section selection, tenant ID, authentication method, and output folder.
 
 ```powershell
 .\Invoke-M365Assessment.ps1
 ```
 
-The console app walks you through four steps:
+During execution, the console displays real-time streaming progress for each security check with color-coded status indicators:
 
-1. **Select sections** — toggle assessment sections on/off (Tenant, Identity, Email, etc.)
-2. **Tenant ID** — enter your tenant ID or `*.onmicrosoft.com` domain
-3. **Authentication** — choose Interactive, Certificate-based, or Skip (pre-existing connections)
-4. **Output folder** — confirm or change the output directory
+<div align="center">
+<img src="docs/images/console-progress.png" alt="M365 Assess console showing real-time security check progress" width="700" />
+</div>
+
+<details>
+<summary>ASCII Banner</summary>
 
 ```
       ███╗   ███╗ ██████╗  ██████╗ ███████╗
@@ -68,65 +89,11 @@ The console app walks you through four steps:
       ██╔══██║╚════██║╚════██║██╔══╝  ╚════██║╚════██║
       ██║  ██║███████║███████║███████╗███████║███████║
       ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚══════╝
-
-        ░▒▓█  M365 Environment Assessment  █▓▒░
-        ░▒▓█  by  D A R E N 9 M            █▓▒░
 ```
 
-During execution, the console displays real-time progress with status indicators for each collector (`✓` complete, `○` skipped, `✗` failed) plus item counts and timing. The completion banner summarizes results and links to the HTML report.
+</details>
 
-## Prerequisites
-
-| Requirement | Details |
-|-------------|---------|
-| **PowerShell 7.x** (`pwsh`) | Primary runtime. [Install guide](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) |
-| **Windows PowerShell 5.1** | Required only for the ScubaGear section. Ships with Windows. |
-| **Microsoft.Graph** | Core Graph module for Entra ID, licensing, Intune, security collectors |
-| **ExchangeOnlineManagement** | Exchange Online and Purview collectors |
-
-Install the core modules:
-
-```powershell
-Install-Module Microsoft.Graph, ExchangeOnlineManagement -Scope CurrentUser
-```
-
-ScubaGear and its 8 dependencies are installed automatically the first time you run that section.
-
-## Platform Support
-
-| Platform | Status |
-|----------|--------|
-| **Windows** | Fully tested |
-| **macOS** | Experimental |
-| **Linux** | Experimental |
-
-M365 Assess is developed and tested on Windows. macOS and Linux are supported by PowerShell 7 but have **not been fully tested** with this tool. The interactive wizard and console output rely on Unicode rendering and terminal features that may behave differently across platforms.
-
-**We'd love help from the community!** If you run into issues on macOS or Linux, please open an issue and include:
-
-1. Your OS and version (e.g., macOS 14.3, Ubuntu 24.04)
-2. PowerShell version (`$PSVersionTable.PSVersion`)
-3. Terminal app (e.g., Terminal.app, iTerm2, GNOME Terminal, Windows Terminal)
-4. The full error message and stack trace
-5. The assessment log file (`_Assessment-Log.txt`) from your output folder, if one was generated
-
-**To submit a bug report:**
-
-```bash
-# From the repo, use the GitHub CLI:
-gh issue create --title "macOS/Linux: <short description>" --body "..."
-
-# Or open an issue directly at:
-# https://github.com/Daren9m/M365-Assess/issues/new
-```
-
-Attach your `_Assessment-Log.txt` by dragging it into the GitHub issue, or paste the relevant error output in a code block.
-
-## M365 Assessment Suite
-
-The orchestrator (`Invoke-M365Assessment.ps1`) connects to the required services, dispatches collectors across 8 standard sections, and exports CSV reports plus a branded HTML report into a timestamped folder. All operations are strictly read-only (`Get-*` cmdlets only). Failures in one section do not block others.
-
-### Available Sections
+## Available Sections
 
 | Section | Collectors | What It Covers |
 |---------|-----------|----------------|
@@ -138,56 +105,41 @@ The orchestrator (`Invoke-M365Assessment.ps1`) connects to the required services
 | **Security** | Secure Score, Improvement Actions, Defender Policies, Defender Security Config, DLP Policies | Microsoft Secure Score, Defender for Office 365, anti-phishing/spam/malware, Safe Links/Attachments, data loss prevention |
 | **Collaboration** | SharePoint & OneDrive, SharePoint Security Config, Teams Access, Teams Security Config | Sharing settings, external sharing controls, sync restrictions, Teams meeting policies, third-party app restrictions |
 | **Hybrid** | Hybrid Sync | Azure AD Connect sync status and domain configuration |
-| **Inventory** *(opt-in)* | Mailbox Inventory, Group Inventory, Teams Inventory, SharePoint Inventory, OneDrive Inventory | Per-object M&A inventory: all mailboxes (user/shared/room/equipment), distribution lists, M365 groups, Teams with owners and channels, SharePoint sites with storage, OneDrive accounts with usage |
-| **ScubaGear** *(opt-in)* | CISA Baseline Scan | CISA SCuBA security baseline compliance (see below) |
-
-### Running Specific Sections
+| **Inventory** *(opt-in)* | Mailbox, Group, Teams, SharePoint, OneDrive Inventory | Per-object M&A inventory: mailboxes, distribution lists, M365 groups, Teams, SharePoint sites, OneDrive accounts |
+| **ScubaGear** *(opt-in)* | CISA Baseline Scan | CISA SCuBA security baseline compliance ([details](docs/SCUBAGEAR.md)) |
 
 ```powershell
-# Run only Identity and Email
+# Run specific sections
 .\Invoke-M365Assessment.ps1 -Section Identity,Email -TenantId 'contoso.onmicrosoft.com'
 
-# Run only M&A Inventory (opt-in)
-.\Invoke-M365Assessment.ps1 -Section Inventory -TenantId 'contoso.onmicrosoft.com'
-
-# Run everything including ScubaGear (opt-in)
-.\Invoke-M365Assessment.ps1 -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,Hybrid,ScubaGear -TenantId 'contoso.onmicrosoft.com'
+# Run everything including opt-in sections
+.\Invoke-M365Assessment.ps1 -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,Hybrid,Inventory,ScubaGear -TenantId 'contoso.onmicrosoft.com'
 ```
 
-### Multi-Framework Compliance
+## Parameters
 
-The HTML report includes a **Compliance Overview** section that maps all assessed security controls across 12 compliance frameworks simultaneously. No parameters needed — all framework data is always included.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, Hybrid | Sections to assess. Add `Inventory` or `ScubaGear` to include opt-in sections. |
+| `-TenantId` | string | *(wizard prompt)* | Tenant ID or `*.onmicrosoft.com` domain |
+| `-OutputFolder` | string | `.\M365-Assessment` | Base output directory |
+| `-SkipConnection` | switch | | Skip service connections (use pre-existing) |
+| `-ClientId` | string | | App Registration client ID for certificate auth |
+| `-CertificateThumbprint` | string | | Certificate thumbprint for app-only auth |
+| `-UserPrincipalName` | string | | UPN for interactive auth (avoids WAM broker issues) |
+| `-UseDeviceCode` | switch | | Use device code flow for headless environments |
+| `-ScubaProductNames` | string[] | aad, defender, exo, powerplatform, sharepoint, teams | ScubaGear products to scan |
+| `-M365Environment` | string | `commercial` | Cloud environment: `commercial`, `gcc`, `gcchigh`, `dod` |
+| `-NoBranding` | switch | | Generate report without M365 Assess branding |
+| `-SkipDLP` | switch | | Skip DLP collector and Purview connection (saves ~46s) |
 
-Supported frameworks:
+See [Authentication](docs/AUTHENTICATION.md) for detailed auth examples and App Registration setup.
 
-| Framework | Controls | Notes |
-|-----------|----------|-------|
-| CIS M365 E3 Level 1 | 86 | CIS Benchmark v6.0.1 — compliance score |
-| CIS M365 E3 Level 2 | 34 | CIS Benchmark v6.0.1 — compliance score |
-| CIS M365 E5 Level 1 | 97 | CIS Benchmark v6.0.1 — compliance score |
-| CIS M365 E5 Level 2 | 43 | CIS Benchmark v6.0.1 — compliance score |
-| NIST 800-53 Rev 5 | 1,189 | Coverage mapping |
-| NIST CSF 2.0 | 106 | Coverage mapping |
-| ISO 27001:2022 | 93 | Coverage mapping |
-| DISA STIG | 148 | Coverage mapping |
-| PCI DSS v4.0.1 | 64 | Coverage mapping |
-| CMMC 2.0 | 110 | Coverage mapping |
-| HIPAA Security Rule | 45 | Coverage mapping |
-| CISA SCuBA | 80 | Coverage mapping |
-
-The report's Compliance Overview provides:
-- **Framework selector** — checkbox controls to toggle which frameworks are visible (all on by default)
-- **Coverage cards** — CIS profiles show compliance score (pass rate); other frameworks show mapped control coverage
-- **Status filter** — filter findings by Pass, Fail, Warning, or Review status
-- **Cross-reference matrix** — every assessed finding with columns for each framework's mapped controls
-
-Edit `Common/framework-mappings.csv` to customize control mappings across frameworks.
-
-### Output Structure
+## Output Structure
 
 ```
 M365-Assessment/
-  Assessment_YYYYMMDD_HHMMSS/
+  Assessment_YYYYMMDD_HHMMSS_<tenant>/
     01-Tenant-Info.csv
     02-User-Summary.csv
     03-MFA-Report.csv
@@ -195,12 +147,12 @@ M365-Assessment/
     05-Conditional-Access.csv
     06-App-Registrations.csv
     07-Password-Policy.csv
-    07b-Entra-Security-Config.csv     # CIS-aligned Entra ID configuration
+    07b-Entra-Security-Config.csv
     08-License-Summary.csv
     09-Mailbox-Summary.csv
     10-Mail-Flow.csv
     11-Email-Security.csv
-    11b-EXO-Security-Config.csv       # CIS-aligned EXO configuration
+    11b-EXO-Security-Config.csv
     12-DNS-Authentication.csv
     13-Device-Summary.csv
     14-Compliance-Policies.csv
@@ -208,144 +160,18 @@ M365-Assessment/
     16-Secure-Score.csv
     17-Improvement-Actions.csv
     18-Defender-Policies.csv
-    18b-Defender-Security-Config.csv  # CIS-aligned Defender configuration
+    18b-Defender-Security-Config.csv
     19-DLP-Policies.csv
     20-SharePoint-OneDrive.csv
-    20b-SharePoint-Security-Config.csv # CIS-aligned SharePoint security
+    20b-SharePoint-Security-Config.csv
     21-Teams-Access.csv
-    21b-Teams-Security-Config.csv     # CIS-aligned Teams configuration
+    21b-Teams-Security-Config.csv
     22-Hybrid-Sync.csv
-    28-Mailbox-Inventory.csv          # Per-mailbox detail (opt-in Inventory section)
-    29-Group-Inventory.csv            # Distribution lists and M365 groups
-    30-Teams-Inventory.csv            # Teams with owners, members, channels
-    31-SharePoint-Inventory.csv       # Per-site storage and activity
-    32-OneDrive-Inventory.csv         # Per-user OneDrive storage and activity
-    _Assessment-Summary.csv           # Status of every collector
-    _Assessment-Log.txt               # Timestamped execution log
-    _Assessment-Issues.log            # Issue report with recommendations
-    _Assessment-Report.html           # Branded HTML report
-```
-
-Start with `_Assessment-Report.html` for a presentation-ready overview, or `_Assessment-Summary.csv` for programmatic access.
-
-### Authentication
-
-**Interactive (default)** — a browser window opens for each service:
-
-```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
-```
-
-**Interactive with UPN** — avoids WAM broker errors on some systems:
-
-```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' -UserPrincipalName 'admin@contoso.onmicrosoft.com'
-```
-
-**Certificate-based app-only** — for unattended or scheduled runs:
-
-```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
-    -ClientId '00000000-0000-0000-0000-000000000000' `
-    -CertificateThumbprint 'ABC123DEF456'
-```
-
-**Pre-existing connections** — if you already ran `Connect-MgGraph` and `Connect-ExchangeOnline`:
-
-```powershell
-.\Invoke-M365Assessment.ps1 -SkipConnection
-```
-
-### Console Output
-
-The orchestrator provides real-time console feedback during execution:
-
-- **Progress table** — shows each collector's status, item count, and duration as it runs
-- **Pre-flight checks** — validates module versions and permissions before connecting
-- **Issue summary** — logs errors and warnings with recommended actions
-- **Completion banner** — links to the output folder and HTML report
-
-All console output is also written to `_Assessment-Log.txt` for reference.
-
-### HTML Report
-
-The assessment automatically generates a self-contained HTML report (`_Assessment-Report.html`) that can be emailed directly to clients — no external dependencies, no assets folder needed. All logos are base64-encoded, styles and scripts are embedded inline.
-
-**Report features:**
-
-- **Light / Dark mode** — floating toggle button with automatic detection via `prefers-color-scheme`, persisted to `localStorage`. Every element is themed — badges, framework tags, stat cards, table headers, and compliance rows all adapt
-- **Cover page** with M365 Assess branding and tenant name
-- **Organization profile card** — non-collapsible header showing org name, primary domain, creation date, and security defaults status
-- **Executive summary** with section/collector stat cards and issue overview
-- **Identity KPIs** — stat cards for total users, licensed users, MFA adoption %, SSPR enrollment %, and guest user count (MFA/SSPR exclude non-capable accounts from the denominator)
-- **Section-by-section data tables** with executive descriptions explaining what each area covers and why it matters
-- **Collapsible sub-sections** — detail tables fold under expandable headings with row counts, keeping the report scannable
-- **Sortable column headers** — click any column header to sort ascending/descending
-- **Compliance Overview** — unified security pane with interactive framework selector, status filter, coverage cards for all 12 frameworks (4 CIS profiles by license/level, NIST 800-53, NIST CSF, ISO 27001, DISA STIG, PCI DSS, CMMC, HIPAA, CISA SCuBA), and cross-reference matrix table
-- **Security config highlighting** — Entra, EXO, Defender, SharePoint, and Teams security config tables show color-coded status badges (Pass/Fail/Warning/Review) with row-level tinting
-- **Microsoft Secure Score** — visual stat cards and progress bar showing current score, points earned, and comparison to the M365 global average
-- **Issues & recommendations** with severity badges and remediation guidance
-- **Accessibility** — semantic HTML landmarks (`<header>`, `<main>`, `<footer>`), `scope="col"` on all table headers, focus-visible outlines
-- **Print-friendly styling** — open in any browser and print to PDF with automatic page breaks and repeated table headers
-
-The report generator can also be run standalone to regenerate the HTML from existing CSV data without re-running the assessment:
-
-```powershell
-.\Common\Export-AssessmentReport.ps1 -AssessmentFolder '.\M365-Assessment\Assessment_YYYYMMDD_HHMMSS'
-```
-
-### Custom Branding
-
-To use your own logo and background in the HTML report, place your images in `Common/assets/`:
-
-| File | Purpose | Format | Recommended Size |
-|------|---------|--------|-----------------|
-| `m365-assess-logo.png` | Report cover page logo | PNG | 400 x 120 px |
-| `m365-assess-logo-white.png` | Light-on-dark variant (optional) | PNG | 400 x 120 px |
-| `m365-assess-bg.png` | Cover page background | PNG | 1200 x 800 px |
-
-The report engine base64-encodes these images into the HTML at generation time, so the output file is fully self-contained. Simply replace the files with your own branding and re-run the report generator.
-
-## ScubaGear Integration (CISA Baseline Compliance)
-
-[CISA ScubaGear](https://github.com/cisagov/ScubaGear) assesses your M365 tenant against the Secure Cloud Business Applications (SCuBA) security baselines. It is included as an **opt-in** section because it requires Windows PowerShell 5.1, handles its own authentication, and takes several minutes to complete.
-
-**How it works**: The orchestrator transparently shells out to `powershell.exe` (Windows PowerShell 5.1) to run ScubaGear. You stay in PowerShell 7 — the version bridging is handled automatically.
-
-**First run**: ScubaGear and all 8 of its dependencies (OPA, Microsoft.Graph.Authentication, ExchangeOnlineManagement, SharePoint PnP, Teams, PowerApps, etc.) are auto-installed via `Initialize-SCuBA`. This may take 5-10 minutes. Subsequent runs are faster.
-
-**Products scanned** (all 7 by default): Entra ID, Defender, Exchange Online, Power Platform, Power BI, SharePoint, Teams.
-
-```powershell
-# Run ScubaGear scan only
-.\Invoke-M365Assessment.ps1 -Section ScubaGear -TenantId 'contoso.onmicrosoft.com'
-
-# Combine with other sections
-.\Invoke-M365Assessment.ps1 -Section Tenant,Identity,ScubaGear -TenantId 'contoso.onmicrosoft.com'
-
-# Scan specific products
-.\Invoke-M365Assessment.ps1 -Section ScubaGear -TenantId 'contoso.onmicrosoft.com' -ScubaProductNames aad,exo
-
-# Government tenant (GCC)
-.\Invoke-M365Assessment.ps1 -Section ScubaGear -TenantId 'contoso.onmicrosoft.us' -M365Environment gcc
-```
-
-ScubaGear produces native HTML and JSON reports in the `ScubaGear-Report/` subfolder alongside the parsed `23-ScubaGear-Baseline.csv`.
-
-## Individual Scripts
-
-Every collector can also be run standalone outside the orchestrator:
-
-```powershell
-# Connect to the required service first
-. .\Common\Connect-Service.ps1
-Connect-Service -Service Graph -Scopes 'User.Read.All','UserAuthenticationMethod.Read.All'
-
-# Run a single collector
-.\Entra\Get-MfaReport.ps1
-
-# Export directly to CSV
-.\Entra\Get-MfaReport.ps1 -OutputPath '.\mfa-report.csv'
+    _Assessment-Summary.csv              # Status of every collector
+    _Assessment-Log.txt                  # Timestamped execution log
+    _Assessment-Issues.log               # Issue report with recommendations
+    _Assessment-Report_<tenant>.html     # Self-contained HTML report
+    _Compliance-Matrix_<tenant>.xlsx     # Framework compliance matrix (requires ImportExcel)
 ```
 
 ## Project Structure
@@ -355,8 +181,15 @@ M365-Assess/
   Invoke-M365Assessment.ps1      # Orchestrator - main entry point
   ActiveDirectory/                # Hybrid sync, AD domain/DC/replication/security
   Collaboration/                  # SharePoint, OneDrive, Teams
-  Common/                         # Shared helpers (Connect-Service, Export-AssessmentReport)
-    assets/                       # Branding assets (logo, backgrounds) — see Custom Branding
+  Common/                         # Shared helpers
+    assets/                       # Branding assets (logo, backgrounds)
+    Connect-Service.ps1           # Service connection helper
+    Export-AssessmentReport.ps1   # HTML report generator
+    Export-ComplianceMatrix.ps1   # XLSX compliance matrix export
+    Show-CheckProgress.ps1       # Real-time progress display
+  controls/                       # Control registry and framework mappings
+    registry.json                 # Master registry (151 entries, 57 automated)
+    frameworks/                   # Per-framework mapping files
   Entra/                          # Users, MFA, admin roles, CA, apps, licensing, security config
   Exchange-Online/                # Mailboxes, mail flow, email security, EXO config
   Inventory/                      # M&A inventory: mailboxes, groups, Teams, SharePoint, OneDrive
@@ -364,17 +197,38 @@ M365-Assess/
   Networking/                     # Port scanning, DNS, connectivity
   Purview/                        # DLP policies, audit retention
   Security/                       # Secure Score, Defender, DLP, ScubaGear
-  Windows/                        # Installed software, services
+  scripts/                        # App Registration provisioning scripts
+  docs/                           # Detailed documentation
+```
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Authentication](docs/AUTHENTICATION.md) | Interactive, certificate, device code, and pre-existing connection methods |
+| [HTML Report](docs/REPORT.md) | Report features, custom branding, `-NoBranding`, standalone generation |
+| [Compliance](docs/COMPLIANCE.md) | 13 frameworks, XLSX export, CheckId system, control registry |
+| [ScubaGear](docs/SCUBAGEAR.md) | CISA baseline integration, first run, products, GCC support |
+| [CheckId Guide](docs/CheckId-Guide.md) | CheckId naming convention and mapping reference |
+
+## Individual Scripts
+
+Every collector can be run standalone outside the orchestrator:
+
+```powershell
+# Connect to the required service first
+. .\Common\Connect-Service.ps1
+Connect-Service -Service Graph -Scopes 'User.Read.All','UserAuthenticationMethod.Read.All'
+
+# Run a single collector
+.\Entra\Get-MfaReport.ps1
 ```
 
 ## Getting Help
 
-Every script includes comment-based help:
-
 ```powershell
 Get-Help .\Invoke-M365Assessment.ps1 -Full
-Get-Help .\Security\Invoke-ScubaGearScan.ps1 -Examples
-Get-Help .\Entra\Get-MfaReport.ps1 -Full
+Get-Help .\Common\Export-AssessmentReport.ps1 -Examples
 ```
 
 ## Contributing
@@ -383,7 +237,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
