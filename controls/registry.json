@@ -2096,11 +2096,54 @@
       }
     },
     {
+      "checkId": "ENTRA-LINKEDIN-001",
+      "name": "Ensure 'LinkedIn account connections' is disabled",
+      "category": "LINKEDIN",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.1.2.6",
+          "title": "Ensure 'LinkedIn account connections' is disabled",
+          "profiles": [
+            "E3-L2",
+            "E5-L2"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-05"
+        },
+        "nist-800-53": {
+          "controlId": "CM-7"
+        },
+        "iso-27001": {
+          "controlId": "A.8.19"
+        },
+        "pci-dss": {
+          "controlId": "2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.4.6"
+        },
+        "hipaa": {
+          "controlId": "§164.312(a)(1)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
       "checkId": "MANUAL-CIS-5-1-2-6",
       "name": "Ensure 'LinkedIn account connections' is disabled",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-LINKEDIN-001",
       "licensing": {
         "minimum": "E3"
       },
@@ -2222,11 +2265,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-5-1-4-1",
+      "checkId": "ENTRA-DEVICE-001",
       "name": "Ensure the ability to join devices to Entra is restricted",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "DEVICE",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -2264,11 +2307,54 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-5-1-4-2",
-      "name": "Ensure the maximum number of devices per user is limited",
+      "checkId": "MANUAL-CIS-5-1-4-1",
+      "name": "Ensure the ability to join devices to Entra is restricted",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-DEVICE-001",
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.1.4.1",
+          "title": "Ensure the ability to join devices to Entra is restricted",
+          "profiles": [
+            "E3-L2",
+            "E5-L2"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-05"
+        },
+        "nist-800-53": {
+          "controlId": "AC-3;CM-7"
+        },
+        "iso-27001": {
+          "controlId": "A.8.1;A.5.15"
+        },
+        "pci-dss": {
+          "controlId": "2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.1.2;3.4.6"
+        },
+        "hipaa": {
+          "controlId": "§164.310(b);§164.312(a)(1)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC6.1;CC6.2;CC6.3;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
+      "checkId": "ENTRA-DEVICE-002",
+      "name": "Ensure the maximum number of devices per user is limited",
+      "category": "DEVICE",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -2306,11 +2392,97 @@
       }
     },
     {
+      "checkId": "MANUAL-CIS-5-1-4-2",
+      "name": "Ensure the maximum number of devices per user is limited",
+      "category": "",
+      "collector": "",
+      "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-DEVICE-002",
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.1.4.2",
+          "title": "Ensure the maximum number of devices per user is limited",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "ID.AM-01;PR.AA-05"
+        },
+        "nist-800-53": {
+          "controlId": "CM-8;AC-19a"
+        },
+        "iso-27001": {
+          "controlId": "A.8.1;A.5.9"
+        },
+        "pci-dss": {
+          "controlId": "2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.4.1;3.1.18"
+        },
+        "hipaa": {
+          "controlId": "§164.310(b);§164.310(c)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
+      "checkId": "ENTRA-DEVICE-003",
+      "name": "Ensure the GA role is not added as a local administrator during Entra join",
+      "category": "DEVICE",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.1.4.3",
+          "title": "Ensure the GA role is not added as a local administrator during Entra join",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-05"
+        },
+        "nist-800-53": {
+          "controlId": "AC-6(5);CM-6"
+        },
+        "iso-27001": {
+          "controlId": "A.5.15;A.8.2"
+        },
+        "pci-dss": {
+          "controlId": "8.2.x;2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.1.5;3.1.6;3.4.2"
+        },
+        "hipaa": {
+          "controlId": "§164.312(a)(1)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC6.1;CC6.3;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
       "checkId": "MANUAL-CIS-5-1-4-3",
       "name": "Ensure the GA role is not added as a local administrator during Entra join",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-DEVICE-003",
       "licensing": {
         "minimum": "E3"
       },
@@ -3659,11 +3831,57 @@
       }
     },
     {
+      "checkId": "ENTRA-AUTHMETHOD-001",
+      "name": "Ensure weak authentication methods are disabled",
+      "category": "AUTHMETHOD",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.2.3.5",
+          "title": "Ensure weak authentication methods are disabled",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-03"
+        },
+        "nist-800-53": {
+          "controlId": "CM-7b;IA-5c"
+        },
+        "iso-27001": {
+          "controlId": "A.8.5;A.8.20"
+        },
+        "pci-dss": {
+          "controlId": "8.2.x;2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.4.6;3.5.2"
+        },
+        "hipaa": {
+          "controlId": "§164.312(d)"
+        },
+        "cisa-scuba": {
+          "controlId": "MS.AAD.3.4v1"
+        },
+        "soc2": {
+          "controlId": "CC5;CC6.1;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
       "checkId": "MANUAL-CIS-5-2-3-5",
       "name": "Ensure weak authentication methods are disabled",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-AUTHMETHOD-001",
       "licensing": {
         "minimum": "E3"
       },
@@ -3746,11 +3964,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-5-2-3-7",
+      "checkId": "ENTRA-AUTHMETHOD-002",
       "name": "Ensure the email OTP authentication method is disabled",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "AUTHMETHOD",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -3788,11 +4006,97 @@
       }
     },
     {
+      "checkId": "MANUAL-CIS-5-2-3-7",
+      "name": "Ensure the email OTP authentication method is disabled",
+      "category": "",
+      "collector": "",
+      "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-AUTHMETHOD-002",
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.2.3.7",
+          "title": "Ensure the email OTP authentication method is disabled",
+          "profiles": [
+            "E3-L2",
+            "E5-L2"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-03"
+        },
+        "nist-800-53": {
+          "controlId": "CM-7;IA-5c"
+        },
+        "iso-27001": {
+          "controlId": "A.8.5;A.8.20"
+        },
+        "pci-dss": {
+          "controlId": "8.2.x;2.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.4.6;3.5.2"
+        },
+        "hipaa": {
+          "controlId": "§164.312(d)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC6.1;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
+      "checkId": "ENTRA-SSPR-001",
+      "name": "Ensure 'Self service password reset enabled' is set to 'All'",
+      "category": "SSPR",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.2.4.1",
+          "title": "Ensure 'Self service password reset enabled' is set to 'All'",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-01"
+        },
+        "nist-800-53": {
+          "controlId": "IA-5(1)"
+        },
+        "iso-27001": {
+          "controlId": "A.5.17"
+        },
+        "pci-dss": {
+          "controlId": "8.3.x"
+        },
+        "cmmc": {
+          "controlId": "3.5.7;3.5.8"
+        },
+        "hipaa": {
+          "controlId": "§164.308(a)(5)(ii)(D)"
+        },
+        "soc2": {
+          "controlId": "CC6.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
       "checkId": "MANUAL-CIS-5-2-4-1",
       "name": "Ensure 'Self service password reset enabled' is set to 'All'",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "ENTRA-SSPR-001",
       "licensing": {
         "minimum": "E3"
       },
@@ -4612,11 +4916,54 @@
       }
     },
     {
+      "checkId": "SPO-AUTH-001",
+      "name": "Ensure modern authentication for SharePoint applications is required",
+      "category": "AUTH",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "7.2.1",
+          "title": "Ensure modern authentication for SharePoint applications is required",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AA-03"
+        },
+        "nist-800-53": {
+          "controlId": "CM-7;IA-8"
+        },
+        "iso-27001": {
+          "controlId": "A.8.5;A.8.20"
+        },
+        "pci-dss": {
+          "controlId": "2.2.x;8.2.x"
+        },
+        "cmmc": {
+          "controlId": "3.4.6;3.5.2"
+        },
+        "hipaa": {
+          "controlId": "§164.312(d);§164.312(a)(1)"
+        },
+        "soc2": {
+          "controlId": "CC5;CC6.1;CC8.1",
+          "evidenceType": "config-export"
+        }
+      }
+    },
+    {
       "checkId": "MANUAL-CIS-7-2-1",
       "name": "Ensure modern authentication for SharePoint applications is required",
       "category": "",
       "collector": "",
       "hasAutomatedCheck": false,
+      "supersededBy": "SPO-AUTH-001",
       "licensing": {
         "minimum": "E3"
       },

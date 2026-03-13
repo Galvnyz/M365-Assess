@@ -256,6 +256,70 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# 7b. Authentication Methods — SMS/Voice/Email (CIS 5.2.3.5, 5.2.3.7)
+# ------------------------------------------------------------------
+try {
+    if ($sspr) {
+        $authMethods = $sspr['authenticationMethodConfigurations']
+        if ($authMethods) {
+            # CIS 5.2.3.5 — SMS sign-in disabled
+            $smsMethod = $authMethods | Where-Object { $_['id'] -eq 'Sms' }
+            $smsState = if ($smsMethod) { $smsMethod['state'] } else { 'not found' }
+            Add-Setting -Category 'Authentication Methods' -Setting 'SMS Authentication' `
+                -CurrentValue "$smsState" -RecommendedValue 'disabled' `
+                -Status $(if ($smsState -eq 'disabled') { 'Pass' } else { 'Fail' }) `
+                -CheckId 'ENTRA-AUTHMETHOD-001' `
+                -Remediation 'Entra admin center > Protection > Authentication methods > SMS > Disable. SMS is vulnerable to SIM-swapping attacks.'
+
+            # CIS 5.2.3.5 — Voice call disabled
+            $voiceMethod = $authMethods | Where-Object { $_['id'] -eq 'Voice' }
+            $voiceState = if ($voiceMethod) { $voiceMethod['state'] } else { 'not found' }
+            Add-Setting -Category 'Authentication Methods' -Setting 'Voice Call Authentication' `
+                -CurrentValue "$voiceState" -RecommendedValue 'disabled' `
+                -Status $(if ($voiceState -eq 'disabled') { 'Pass' } else { 'Fail' }) `
+                -CheckId 'ENTRA-AUTHMETHOD-001' `
+                -Remediation 'Entra admin center > Protection > Authentication methods > Voice call > Disable. Voice is vulnerable to telephony-based attacks.'
+
+            # CIS 5.2.3.7 — Email OTP disabled
+            $emailMethod = $authMethods | Where-Object { $_['id'] -eq 'Email' }
+            $emailState = if ($emailMethod) { $emailMethod['state'] } else { 'not found' }
+            Add-Setting -Category 'Authentication Methods' -Setting 'Email OTP Authentication' `
+                -CurrentValue "$emailState" -RecommendedValue 'disabled' `
+                -Status $(if ($emailState -eq 'disabled') { 'Pass' } else { 'Fail' }) `
+                -CheckId 'ENTRA-AUTHMETHOD-002' `
+                -Remediation 'Entra admin center > Protection > Authentication methods > Email OTP > Disable. Email OTP is a weaker authentication factor.'
+        }
+    }
+}
+catch {
+    Write-Warning "Could not check authentication method configurations: $_"
+}
+
+# ------------------------------------------------------------------
+# 7c. SSPR Enabled for All Users (CIS 5.2.4.1)
+# ------------------------------------------------------------------
+try {
+    if ($sspr) {
+        $campaign = $sspr['registrationEnforcement']['authenticationMethodsRegistrationCampaign']
+        $campaignState = $campaign['state']
+        $includeTargets = $campaign['includeTargets']
+        $targetsAll = $false
+        if ($includeTargets) {
+            $targetsAll = $includeTargets | Where-Object { $_['id'] -eq 'all_users' -or $_['targetType'] -eq 'group' }
+        }
+        Add-Setting -Category 'Password Management' -Setting 'SSPR Registration Campaign Targets All Users' `
+            -CurrentValue $(if ($campaignState -eq 'enabled' -and $targetsAll) { 'Enabled for all users' } elseif ($campaignState -eq 'enabled') { 'Enabled (limited scope)' } else { 'Disabled' }) `
+            -RecommendedValue 'Enabled for all users' `
+            -Status $(if ($campaignState -eq 'enabled' -and $targetsAll) { 'Pass' } elseif ($campaignState -eq 'enabled') { 'Warning' } else { 'Fail' }) `
+            -CheckId 'ENTRA-SSPR-001' `
+            -Remediation 'Entra admin center > Protection > Authentication methods > Registration campaign > Enable and target All Users.'
+    }
+}
+catch {
+    Write-Warning "Could not check SSPR targeting: $_"
+}
+
+# ------------------------------------------------------------------
 # 8. Password Protection (Banned Passwords)
 # ------------------------------------------------------------------
 try {
@@ -425,6 +489,75 @@ try {
 }
 catch {
     Write-Warning "Could not count guest users: $_"
+}
+
+# ------------------------------------------------------------------
+# 13. Device Registration Policy (CIS 5.1.4.1, 5.1.4.2, 5.1.4.3)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking device registration policy..."
+    $devicePolicy = Invoke-MgGraphRequest -Method GET `
+        -Uri '/v1.0/policies/deviceRegistrationPolicy' -ErrorAction Stop
+
+    if ($devicePolicy) {
+        # CIS 5.1.4.1 — Device join restricted
+        $joinType = $devicePolicy['azureADJoin']['allowedToJoin']['@odata.type']
+        $joinRestricted = $joinType -ne '#microsoft.graph.allDeviceRegistrationMembership'
+        Add-Setting -Category 'Device Management' -Setting 'Azure AD Join Restriction' `
+            -CurrentValue $(if ($joinRestricted) { 'Restricted' } else { 'All users allowed' }) `
+            -RecommendedValue 'Restricted to specific users/groups' `
+            -Status $(if ($joinRestricted) { 'Pass' } else { 'Fail' }) `
+            -CheckId 'ENTRA-DEVICE-001' `
+            -Remediation 'Entra admin center > Devices > Device settings > Users may join devices to Microsoft Entra > Selected. Restrict to a specific group of authorized users.'
+
+        # CIS 5.1.4.2 — Max devices per user
+        $maxDevices = $devicePolicy['userDeviceQuota']
+        Add-Setting -Category 'Device Management' -Setting 'Maximum Devices Per User' `
+            -CurrentValue "$maxDevices" -RecommendedValue '15 or fewer' `
+            -Status $(if ($maxDevices -le 15) { 'Pass' } else { 'Fail' }) `
+            -CheckId 'ENTRA-DEVICE-002' `
+            -Remediation 'Entra admin center > Devices > Device settings > Maximum number of devices per user. Set to 15 or lower.'
+
+        # CIS 5.1.4.3 — Global admins not added as local admin on join
+        $gaLocalAdmin = $true  # Default assumption
+        if ($devicePolicy['azureADJoin']['localAdmins']) {
+            $gaLocalAdmin = $devicePolicy['azureADJoin']['localAdmins']['enableGlobalAdmins']
+        }
+        Add-Setting -Category 'Device Management' -Setting 'Global Admins as Local Admin on Join' `
+            -CurrentValue $(if ($gaLocalAdmin) { 'Enabled' } else { 'Disabled' }) `
+            -RecommendedValue 'Disabled' `
+            -Status $(if (-not $gaLocalAdmin) { 'Pass' } else { 'Fail' }) `
+            -CheckId 'ENTRA-DEVICE-003' `
+            -Remediation 'Entra admin center > Devices > Device settings > Global administrator is added as local administrator on the device during Azure AD Join > No.'
+    }
+}
+catch {
+    Write-Warning "Could not check device registration policy: $_"
+}
+
+# ------------------------------------------------------------------
+# 14. LinkedIn Account Connections (CIS 5.1.2.6)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking LinkedIn account connections..."
+    $tenantId = $context.TenantId
+    $orgSettings = Invoke-MgGraphRequest -Method GET `
+        -Uri "/beta/organization/$tenantId" -ErrorAction Stop
+
+    $linkedInEnabled = $true  # Default assumption
+    if ($orgSettings -and $orgSettings['linkedInConfiguration']) {
+        $linkedInEnabled = -not $orgSettings['linkedInConfiguration']['isDisabled']
+    }
+
+    Add-Setting -Category 'Directory Settings' -Setting 'LinkedIn Account Connections' `
+        -CurrentValue $(if ($linkedInEnabled) { 'Enabled' } else { 'Disabled' }) `
+        -RecommendedValue 'Disabled' `
+        -Status $(if (-not $linkedInEnabled) { 'Pass' } else { 'Fail' }) `
+        -CheckId 'ENTRA-LINKEDIN-001' `
+        -Remediation 'Entra admin center > Users > User settings > LinkedIn account connections > No. Prevents data leakage between LinkedIn and organizational directory.'
+}
+catch {
+    Write-Warning "Could not check LinkedIn account connections: $_"
 }
 
 # ------------------------------------------------------------------

@@ -21,7 +21,7 @@
 
 ---
 
-Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **70 automated security checks** mapped across **13 compliance frameworks**.
+Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **78 automated security checks** mapped across **13 compliance frameworks**.
 
 ## Quick Start
 
@@ -194,7 +194,7 @@ M365-Assess/
     Export-ComplianceMatrix.ps1   # XLSX compliance matrix export
     Show-CheckProgress.ps1       # Real-time progress display
   controls/                       # Control registry and framework mappings
-    registry.json                 # Master registry (164 entries, 70 automated)
+    registry.json                 # Master registry (172 entries, 78 automated)
     frameworks/                   # Per-framework mapping files
   Entra/                          # Users, MFA, admin roles, CA, apps, licensing, security config
   Exchange-Online/                # Mailboxes, mail flow, email security, EXO config
