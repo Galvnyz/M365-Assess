@@ -87,6 +87,16 @@ function Add-Setting {
     }
 }
 
+# Helper to detect emergency access (break-glass) accounts by naming convention
+function Get-BreakGlassAccounts {
+    param([array]$Users)
+    $patterns = @('break.?glass', 'emergency.?access', 'breakglass', 'emer.?admin')
+    $regex = ($patterns | ForEach-Object { "($_)" }) -join '|'
+    @($Users | Where-Object {
+        $_['displayName'] -match $regex -or $_['userPrincipalName'] -match $regex
+    })
+}
+
 # ------------------------------------------------------------------
 # 1. Security Defaults
 # ------------------------------------------------------------------
@@ -109,7 +119,7 @@ catch {
 }
 
 # ------------------------------------------------------------------
-# 2. Global Admin Count (should be 2-4)
+# 2. Global Admin Count (should be 2-4, excluding break-glass)
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking global admin count..."
@@ -119,16 +129,24 @@ try {
 
     $members = Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
-    $gaCount = @($members['value']).Count
+    $allAdmins = @($members['value'])
+
+    # Exclude break-glass accounts from the operational admin count
+    $breakGlassAdmins = Get-BreakGlassAccounts -Users $allAdmins
+    $operationalAdmins = @($allAdmins | Where-Object { $_ -notin $breakGlassAdmins })
+    $gaCount = $operationalAdmins.Count
+    $bgExcluded = $breakGlassAdmins.Count
 
     $gaStatus = if ($gaCount -ge 2 -and $gaCount -le 4) { 'Pass' }
     elseif ($gaCount -lt 2) { 'Fail' }
     else { 'Warning' }
 
+    $countDetail = if ($bgExcluded -gt 0) { "$gaCount (excluding $bgExcluded break-glass)" } else { "$gaCount" }
+
     Add-Setting -Category 'Admin Accounts' -Setting 'Global Administrator Count' `
-        -CurrentValue "$gaCount" -RecommendedValue '2-4' -Status $gaStatus `
+        -CurrentValue $countDetail -RecommendedValue '2-4' -Status $gaStatus `
         -CheckId 'ENTRA-ADMIN-001' `
-        -Remediation 'Run: Get-MgDirectoryRole -Filter "displayName eq ''Global Administrator''" | Get-MgDirectoryRoleMember. Maintain 2-4 global admins using dedicated accounts.'
+        -Remediation 'Run: Get-MgDirectoryRole -Filter "displayName eq ''Global Administrator''" | Get-MgDirectoryRoleMember. Maintain 2-4 global admins using dedicated accounts (break-glass accounts are excluded from this count).'
 }
 catch {
     Write-Warning "Could not check global admin count: $_"
@@ -1163,16 +1181,11 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking for emergency access (break-glass) accounts..."
-    $breakGlassPatterns = @('break.?glass', 'emergency.?access', 'breakglass', 'emer.?admin')
-    $patternRegex = ($breakGlassPatterns | ForEach-Object { "($_)" }) -join '|'
-
     $allUsers = Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/users?`$select=displayName,userPrincipalName,accountEnabled&`$top=999" `
         -ErrorAction Stop
 
-    $breakGlassAccounts = @($allUsers['value'] | Where-Object {
-        $_['displayName'] -match $patternRegex -or $_['userPrincipalName'] -match $patternRegex
-    })
+    $breakGlassAccounts = Get-BreakGlassAccounts -Users $allUsers['value']
     $bgCount = $breakGlassAccounts.Count
     $enabledBg = @($breakGlassAccounts | Where-Object { $_['accountEnabled'] -eq $true })
 
