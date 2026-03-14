@@ -32,7 +32,7 @@ Graph submodules (e.g., `Microsoft.Graph.Users`, `Microsoft.Graph.Groups`) are l
 | Module | Required For | Notes |
 |--------|-------------|-------|
 | ActiveDirectory | AD section | Windows RSAT feature -- unavailable on non-domain machines |
-| MicrosoftPowerBIMgmt | Power BI section (planned) | Not yet implemented |
+| MicrosoftPowerBIMgmt | Power BI section | Required for CIS 9.x checks. `Install-Module MicrosoftPowerBIMgmt -Scope CurrentUser` |
 | PSScriptAnalyzer | Development/CI only | Not needed at runtime |
 | Pester | Testing only | v5.0+ required |
 
