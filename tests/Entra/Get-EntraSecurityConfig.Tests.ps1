@@ -198,3 +198,48 @@ Describe 'Get-EntraSecurityConfig' {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-EntraSecurityConfig - Edge Cases' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # Stub Import-Module to prevent actual module loading
+        Mock Import-Module { }
+    }
+
+    Context 'when Global Administrator role is not activated' {
+        BeforeAll {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                switch -Wildcard ($Uri) {
+                    '*/directoryRoles?*Global Administrator*' {
+                        return @{ value = @() }  # Empty - role not activated
+                    }
+                    default {
+                        return @{ value = @() }
+                    }
+                }
+            }
+            . "$PSScriptRoot/../../Entra/Get-EntraSecurityConfig.ps1"
+        }
+
+        It 'should not throw' {
+            $settings | Should -Not -BeNullOrEmpty
+        }
+
+        It 'should produce a Warning or Info status for admin count' {
+            $adminCheck = $settings | Where-Object {
+                $_.Setting -eq 'Global Administrator Count'
+            }
+            $adminCheck | Should -Not -BeNullOrEmpty
+            $adminCheck.Status | Should -BeIn @('Warning', 'Info', 'N/A')
+        }
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}

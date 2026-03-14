@@ -125,28 +125,36 @@ try {
     Write-Verbose "Checking global admin count..."
     $globalAdminRole = Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/directoryRoles?`$filter=displayName eq 'Global Administrator'" -ErrorAction Stop
-    $roleId = $globalAdminRole['value'][0]['id']
+    if (-not $globalAdminRole['value'] -or $globalAdminRole['value'].Count -eq 0) {
+        Add-Setting -Category 'Admin Accounts' -Setting 'Global Administrator Count' `
+            -CurrentValue 'Role not activated' -RecommendedValue '2-4' -Status 'Warning' `
+            -CheckId 'ENTRA-ADMIN-001' `
+            -Remediation 'The Global Administrator directory role is not activated in this tenant. Activate the role by assigning at least one user, then re-run the assessment.'
+    }
+    else {
+        $roleId = $globalAdminRole['value'][0]['id']
 
-    $members = Invoke-MgGraphRequest -Method GET `
-        -Uri "/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
-    $allAdmins = @($members['value'])
+        $members = Invoke-MgGraphRequest -Method GET `
+            -Uri "/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
+        $allAdmins = @($members['value'])
 
-    # Exclude break-glass accounts from the operational admin count
-    $breakGlassAdmins = Get-BreakGlassAccounts -Users $allAdmins
-    $operationalAdmins = @($allAdmins | Where-Object { $_ -notin $breakGlassAdmins })
-    $gaCount = $operationalAdmins.Count
-    $bgExcluded = $breakGlassAdmins.Count
+        # Exclude break-glass accounts from the operational admin count
+        $breakGlassAdmins = Get-BreakGlassAccounts -Users $allAdmins
+        $operationalAdmins = @($allAdmins | Where-Object { $_ -notin $breakGlassAdmins })
+        $gaCount = $operationalAdmins.Count
+        $bgExcluded = $breakGlassAdmins.Count
 
-    $gaStatus = if ($gaCount -ge 2 -and $gaCount -le 4) { 'Pass' }
-    elseif ($gaCount -lt 2) { 'Fail' }
-    else { 'Warning' }
+        $gaStatus = if ($gaCount -ge 2 -and $gaCount -le 4) { 'Pass' }
+        elseif ($gaCount -lt 2) { 'Fail' }
+        else { 'Warning' }
 
-    $countDetail = if ($bgExcluded -gt 0) { "$gaCount (excluding $bgExcluded break-glass)" } else { "$gaCount" }
+        $countDetail = if ($bgExcluded -gt 0) { "$gaCount (excluding $bgExcluded break-glass)" } else { "$gaCount" }
 
-    Add-Setting -Category 'Admin Accounts' -Setting 'Global Administrator Count' `
-        -CurrentValue $countDetail -RecommendedValue '2-4' -Status $gaStatus `
-        -CheckId 'ENTRA-ADMIN-001' `
-        -Remediation 'Run: Get-MgDirectoryRole -Filter "displayName eq ''Global Administrator''" | Get-MgDirectoryRoleMember. Maintain 2-4 global admins using dedicated accounts (break-glass accounts are excluded from this count).'
+        Add-Setting -Category 'Admin Accounts' -Setting 'Global Administrator Count' `
+            -CurrentValue $countDetail -RecommendedValue '2-4' -Status $gaStatus `
+            -CheckId 'ENTRA-ADMIN-001' `
+            -Remediation 'Run: Get-MgDirectoryRole -Filter "displayName eq ''Global Administrator''" | Get-MgDirectoryRoleMember. Maintain 2-4 global admins using dedicated accounts (break-glass accounts are excluded from this count).'
+    }
 }
 catch {
     Write-Warning "Could not check global admin count: $_"
