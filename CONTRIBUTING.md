@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This project often benefits from commu
 
 ### Reporting Issues
 
-- Use [GitHub Issues](https://github.com/Daren9m/M365-Assess/issues) to report bugs or request features
+- Use [GitHub Issues](https://github.com/SelvageLabs/M365-Assess/issues) to report bugs or request features
 - Include the PowerShell version (`$PSVersionTable.PSVersion`), OS, and relevant module versions
 - Paste error messages and steps to reproduce
 

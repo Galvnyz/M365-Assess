@@ -17,7 +17,7 @@ M365 Assess is a **read-only** assessment tool. It connects to Microsoft 365 ser
 If you discover a security issue in this project, please report it responsibly:
 
 1. **Do not** open a public GitHub issue for security vulnerabilities
-2. Email the maintainer directly or use [GitHub Security Advisories](https://github.com/Daren9m/M365-Assess/security/advisories/new)
+2. Email the maintainer directly or use [GitHub Security Advisories](https://github.com/SelvageLabs/M365-Assess/security/advisories/new)
 3. Include steps to reproduce and any relevant logs (with tenant PII redacted)
 
 You should receive a response within 72 hours. We will work with you to understand the issue and coordinate a fix before any public disclosure.

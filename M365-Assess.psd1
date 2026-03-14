@@ -88,8 +88,8 @@
     PrivateData       = @{
         PSData = @{
             Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'ScubaGear', 'CIS')
-            LicenseUri   = 'https://github.com/Daren9m/M365-Assess/blob/main/LICENSE'
-            ProjectUri   = 'https://github.com/Daren9m/M365-Assess'
+            LicenseUri   = 'https://github.com/SelvageLabs/M365-Assess/blob/main/LICENSE'
+            ProjectUri   = 'https://github.com/SelvageLabs/M365-Assess'
             ReleaseNotes = 'v0.8.1 - Polish: version sync across all scripts, CheckId Guide rewrite, dashboard fix, auth matrix, 6 CIS quick-win checks (138 automated)'
         }
     }

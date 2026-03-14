@@ -27,7 +27,7 @@ Run a single command to produce CSV reports, a branded HTML assessment report, a
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/Daren9m/M365-Assess.git
+git clone https://github.com/SelvageLabs/M365-Assess.git
 cd M365-Assess
 
 # 2. Install required modules
@@ -63,7 +63,7 @@ Install-Module Microsoft.Graph, ExchangeOnlineManagement -Scope CurrentUser
 | **macOS** | Experimental |
 | **Linux** | Experimental |
 
-macOS and Linux are supported by PowerShell 7 but have not been fully tested. If you run into issues, please [open an issue](https://github.com/Daren9m/M365-Assess/issues/new) with your OS version, PowerShell version, terminal app, and the assessment log file.
+macOS and Linux are supported by PowerShell 7 but have not been fully tested. If you run into issues, please [open an issue](https://github.com/SelvageLabs/M365-Assess/issues/new) with your OS version, PowerShell version, terminal app, and the assessment log file.
 
 ## Interactive Console
 
