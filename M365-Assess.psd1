@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'Invoke-M365Assessment.ps1'
-    ModuleVersion     = '0.8.4'
+    ModuleVersion     = '0.8.5'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'SelvageLabs'
     CompanyName       = 'Community'
@@ -90,7 +90,7 @@
             Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'ScubaGear', 'CIS')
             LicenseUri   = 'https://github.com/SelvageLabs/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/SelvageLabs/M365-Assess'
-            ReleaseNotes = 'v0.8.4 - Org attribution update, CI quality improvements, dependency pinning'
+            ReleaseNotes = 'v0.8.5 - Centralized version management to module manifest, eliminated 30-file version bumps'
         }
     }
 }
