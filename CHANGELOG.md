@@ -2,6 +2,14 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.8.5] - 2026-03-14
+
+### Changed
+- Version management centralized to `M365-Assess.psd1` module manifest (single source of truth)
+- Runtime scripts (`Invoke-M365Assessment.ps1`, `Export-AssessmentReport.ps1`) now read version from manifest via `Import-PowerShellDataFile`
+- Removed `.NOTES Version:` lines from 23 scripts (no longer needed)
+- CI version consistency check simplified from 25-file scan to 3-location verification
+
 ## [0.8.4] - 2026-03-14
 
 ### Added

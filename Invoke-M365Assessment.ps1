@@ -10,7 +10,6 @@
     Designed for IT consultants assessing SMB clients (10-500 users) with
     Microsoft-based cloud environments.
 .NOTES
-    Version: 0.8.4
     Author:  Daren9m
 .PARAMETER Section
     One or more assessment sections to run. Valid values: Tenant, Identity,
@@ -129,12 +128,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # ------------------------------------------------------------------
-# Version
+# Version — read from module manifest (single source of truth)
 # ------------------------------------------------------------------
-$script:AssessmentVersion = '0.8.4'
-
-# Resolve project root for collector and helper paths
 $projectRoot = Split-Path -Parent $PSCommandPath
+$script:AssessmentVersion = (Import-PowerShellDataFile -Path "$projectRoot/M365-Assess.psd1").ModuleVersion
 
 # ------------------------------------------------------------------
 # Interactive Wizard (launched when no parameters are supplied)

@@ -33,7 +33,6 @@
 
     Exports 60-day evidence window to CSV.
 .NOTES
-    Version: 0.8.4
     Author:  Daren9m
 #>
 [CmdletBinding()]

@@ -13,7 +13,6 @@
     global functions (Update-CheckProgress, Update-ProgressStatus) that
     collectors call from Add-Setting to drive real-time updates.
 .NOTES
-    Version: 0.8.4
     Author:  Daren9m
 #>
 

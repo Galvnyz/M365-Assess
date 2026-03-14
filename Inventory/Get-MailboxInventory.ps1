@@ -22,7 +22,6 @@
 
     Exports the full mailbox inventory to CSV.
 .NOTES
-    Version: 0.8.4
     M365 Assess — M&A Inventory
 #>
 [CmdletBinding()]

@@ -29,7 +29,6 @@
 
     Exports SOC 2 Confidentiality control results to CSV.
 .NOTES
-    Version: 0.8.4
     Author:  Daren9m
 #>
 [CmdletBinding()]

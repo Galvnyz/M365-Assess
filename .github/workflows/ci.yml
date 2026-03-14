@@ -78,19 +78,10 @@ jobs:
         run: |
           $manifest = Import-PowerShellDataFile -Path ./M365-Assess.psd1
           $expected = $manifest.ModuleVersion
-          Write-Host "Expected version: $expected"
+          Write-Host "Manifest version: $expected"
 
           $failures = @()
           $esc = [regex]::Escape($expected)
-
-          # Orchestrator
-          $orch = Get-Content ./Invoke-M365Assessment.ps1 -Raw
-          if ($orch -notmatch "Version:\s+$esc") {
-            $failures += 'Invoke-M365Assessment.ps1 .NOTES'
-          }
-          if ($orch -notmatch "\`$script:AssessmentVersion\s*=\s*'$esc'") {
-            $failures += 'Invoke-M365Assessment.ps1 AssessmentVersion'
-          }
 
           # README badge
           $readme = Get-Content ./README.md -Raw
@@ -98,51 +89,22 @@ jobs:
             $failures += 'README.md badge'
           }
 
-          # Report generator
-          $report = Get-Content ./Common/Export-AssessmentReport.ps1 -Raw
-          if ($report -notmatch "Version:\s+$esc") {
-            $failures += 'Common/Export-AssessmentReport.ps1 .NOTES'
+          # Verify runtime readers use Import-PowerShellDataFile (not hardcoded)
+          $orch = Get-Content ./Invoke-M365Assessment.ps1 -Raw
+          if ($orch -notmatch 'Import-PowerShellDataFile') {
+            $failures += 'Invoke-M365Assessment.ps1 should read version from manifest'
           }
 
-          # Collectors and helpers with .NOTES Version
-          $versionFiles = @(
-            'Common/Show-CheckProgress.ps1',
-            'Common/Export-ComplianceMatrix.ps1',
-            'Entra/Get-EntraSecurityConfig.ps1',
-            'Entra/Get-CASecurityConfig.ps1',
-            'Exchange-Online/Get-ExoSecurityConfig.ps1',
-            'Exchange-Online/Get-DnsSecurityConfig.ps1',
-            'Security/Get-DefenderSecurityConfig.ps1',
-            'Security/Get-ComplianceSecurityConfig.ps1',
-            'Intune/Get-IntuneSecurityConfig.ps1',
-            'Collaboration/Get-SharePointSecurityConfig.ps1',
-            'Collaboration/Get-TeamsSecurityConfig.ps1',
-            'Entra/Get-UserSummary.ps1',
-            'Inventory/Get-MailboxInventory.ps1',
-            'Inventory/Get-GroupInventory.ps1',
-            'Inventory/Get-TeamsInventory.ps1',
-            'Inventory/Get-SharePointInventory.ps1',
-            'Inventory/Get-OneDriveInventory.ps1',
-            'SOC2/Get-SOC2SecurityControls.ps1',
-            'SOC2/Get-SOC2ConfidentialityControls.ps1',
-            'SOC2/Get-SOC2AuditEvidence.ps1',
-            'SOC2/Get-SOC2ReadinessChecklist.ps1'
-          )
-          foreach ($f in $versionFiles) {
-            if (Test-Path $f) {
-              $content = Get-Content $f -Raw
-              if ($content -notmatch "Version:\s+$esc") {
-                $failures += "$f .NOTES"
-              }
-            }
+          $report = Get-Content ./Common/Export-AssessmentReport.ps1 -Raw
+          if ($report -notmatch 'Import-PowerShellDataFile') {
+            $failures += 'Export-AssessmentReport.ps1 should read version from manifest'
           }
 
           if ($failures.Count -gt 0) {
-            Write-Host "`nVersion mismatches:" -ForegroundColor Red
+            Write-Host "`nVersion issues:" -ForegroundColor Red
             $failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
-            Write-Error "$($failures.Count) file(s) don't match manifest version $expected"
+            Write-Error "$($failures.Count) version issue(s) found"
             exit 1
           }
 
-          $total = $versionFiles.Count + 4
-          Write-Host "Version consistency: All $total locations match $expected" -ForegroundColor Green
+          Write-Host "Version consistency: manifest=$expected, README badge matches, runtime readers use manifest" -ForegroundColor Green
