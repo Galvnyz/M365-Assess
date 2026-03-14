@@ -1,0 +1,13 @@
+# Default owner for everything
+* @Daren9m
+
+# Orchestrator and report generator are critical paths
+/Invoke-M365Assessment.ps1 @Daren9m
+/Common/Export-AssessmentReport.ps1 @Daren9m
+/Common/Export-ComplianceMatrix.ps1 @Daren9m
+
+# Control registry and framework mappings
+/controls/ @Daren9m
+
+# CI and repo config
+/.github/ @Daren9m
