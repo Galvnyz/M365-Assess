@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Stop'
 
 # Verify Power BI connection by attempting to get an access token
 try {
-    Get-PowerBIAccessToken -ErrorAction Stop | Out-Null
+    Get-PowerBIAccessToken -ErrorAction Stop -WarningAction SilentlyContinue | Out-Null
 }
 catch {
     Write-Error "Not connected to Power BI. Run Connect-PowerBIServiceAccount first."
@@ -78,7 +78,7 @@ function Add-Setting {
 
 # ─── Retrieve all tenant settings ────────────────────────────────
 try {
-    $tenantSettings = Invoke-PowerBIRestMethod -Url 'admin/tenantSettings' -Method Get | ConvertFrom-Json
+    $tenantSettings = Invoke-PowerBIRestMethod -Url 'admin/tenantSettings' -Method Get -WarningAction SilentlyContinue | ConvertFrom-Json
     $allSettings = $tenantSettings.tenantSettings
 }
 catch {

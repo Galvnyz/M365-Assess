@@ -248,7 +248,7 @@ try {
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
 
-            Connect-PowerBIServiceAccount @connectParams
+            Connect-PowerBIServiceAccount @connectParams -WarningAction SilentlyContinue
             Write-Verbose "Connected to Power BI ($M365Environment)"
         }
     }
