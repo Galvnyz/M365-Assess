@@ -34,6 +34,11 @@
 .PARAMETER ScubaProductNames
     ScubaGear product codes to assess. Only used when the ScubaGear section is
     selected. Defaults to all six products.
+.PARAMETER ManagedIdentity
+    Use Azure managed identity authentication. Requires the script to be running
+    on an Azure resource with a system-assigned or user-assigned managed identity
+    (e.g., Azure VM, Azure Functions, Azure Automation). Purview and Power BI do
+    not support managed identity and will fall back with a warning.
 .PARAMETER UseDeviceCode
     Use device code authentication flow instead of browser-based interactive auth.
     Displays a code and URL that you can open in any browser profile, which is
@@ -107,6 +112,9 @@ param(
 
     [Parameter()]
     [string]$UserPrincipalName,
+
+    [Parameter()]
+    [switch]$ManagedIdentity,
 
     [Parameter()]
     [switch]$UseDeviceCode,
@@ -1228,6 +1236,9 @@ function Connect-RequiredService {
 
             if ($M365Environment -ne 'commercial') {
                 $connectParams['M365Environment'] = $M365Environment
+            }
+            if ($ManagedIdentity) {
+                $connectParams['ManagedIdentity'] = $true
             }
             if ($UseDeviceCode) {
                 $connectParams['UseDeviceCode'] = $true
