@@ -89,3 +89,54 @@ Use `-M365Environment` for government or sovereign cloud tenants:
 | `gcc` | Government Community Cloud |
 | `gcchigh` | GCC High |
 | `dod` | Department of Defense |
+
+## Capability Matrix
+
+Not all sections work with all authentication methods. This matrix shows what works where.
+
+### Auth Method Support
+
+| Section | Interactive | Device Code | App-Only (Cert) | Notes |
+|---------|:-----------:|:-----------:|:----------------:|-------|
+| Tenant | Yes | Yes | Yes | |
+| Identity | Yes | Yes | Yes | |
+| Licensing | Yes | Yes | Yes | |
+| Email | Yes | Yes | Yes | EXO requires Exchange Admin or Global Reader role for app-only |
+| Intune | Yes | Yes | Yes | Falls back to Review on 403 |
+| Security | Yes | Yes | Yes | DLP/Purview: no device code (falls back to browser prompt) |
+| Collaboration | Yes | Yes | **Partial** | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
+| Hybrid | Yes | Yes | Yes | |
+| Inventory | Yes | Yes | Yes | |
+| ActiveDirectory | Yes | Yes | N/A | Runs locally via RSAT -- no cloud auth needed |
+| SOC2 | Yes | Yes | Yes | Purview collectors: no device code |
+| ScubaGear | Yes | N/A | Yes | **Windows only** -- requires PowerShell 5.1 |
+
+### License Requirements
+
+| Section/Collector | Minimum License | Behavior Without License |
+|-------------------|----------------|------------------------|
+| All default sections | E3 | Full functionality |
+| Teams Security Config | E3 + Teams | Skips with warning if no Teams licenses detected |
+| Defender Security Config | E3 + Defender P1 | Gracefully skips checks when Defender cmdlets unavailable |
+| PIM checks (Entra) | E5 or Entra P2 | Falls back to Review status with manual verification steps |
+| Intune Security Config | E3 + Intune | Falls back to Review on permission errors |
+| DLP Policies | E3 + Purview | Skippable with `-SkipDLP` to avoid Purview connection |
+| ScubaGear | Varies by product | Reports N/A for unlicensed products |
+
+### Platform Requirements
+
+| Requirement | Sections Affected |
+|-------------|-------------------|
+| **Windows + PowerShell 5.1** | ScubaGear only |
+| **RSAT or domain controller** | ActiveDirectory only |
+| **PowerShell 7.x** | All other sections (Windows, macOS, Linux) |
+
+### Service Connections
+
+Each section connects to one or more M365 services. If a service connection fails, only its dependent collectors are skipped -- not the entire assessment.
+
+| Service | Sections | Auth Methods |
+|---------|----------|-------------|
+| Microsoft Graph | Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2 | Interactive, device code, certificate, client secret |
+| Exchange Online | Email, Security, Inventory | Interactive, device code, certificate |
+| Purview | Security (DLP only), SOC2 | Interactive, certificate. **No device code** (logs warning, falls back to browser) |
