@@ -5,9 +5,9 @@
     RootModule        = 'Invoke-M365Assessment.ps1'
     ModuleVersion     = '0.8.1'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
-    Author            = 'Daren9m'
+    Author            = 'SelvageLabs'
     CompanyName       = 'Community'
-    Copyright         = '(c) 2026 Daren9m. All rights reserved.'
+    Copyright         = '(c) 2026 SelvageLabs. All rights reserved.'
     Description       = 'Comprehensive read-only Microsoft 365 security assessment tool for IT consultants and administrators. Covers Entra ID, Exchange Online, Intune, Defender, SharePoint, Teams, Purview, Active Directory, and CISA ScubaGear baselines.'
 
     # Minimum PowerShell version
