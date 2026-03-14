@@ -1,8 +1,0 @@
-Category,Setting,CurrentValue,RecommendedValue,Status,CisControl,Remediation
-External Access,Communication with Unmanaged Teams Users,True,False,Fail,8.2.2,"Teams admin center > External access > Unmanaged Teams users > Off."
-External Access,External Unmanaged Users Can Initiate Conversations,True,False,Fail,8.2.3,"Teams admin center > External access > External users initiate conversations > Off."
-Meeting Policy,Anonymous Users Can Join Meeting,True,False,Fail,8.5.1,"Teams admin center > Meetings > Anonymous users can join > Off."
-Meeting Policy,Anonymous Users Can Start Meeting,False,False,Pass,8.5.2,"Teams admin center > Meetings > Anonymous users can start > Off."
-Meeting Policy,Auto-Admitted Users (Lobby Bypass),EveryoneInCompanyExcludingGuests,EveryoneInCompanyExcludingGuests or stricter,Pass,8.5.3,"Teams admin center > Meetings > Lobby bypass > People in my org."
-Meeting Policy,Dial-in Users Bypass Lobby,False,False,Pass,8.5.4,"Teams admin center > Meetings > Dial-in bypass lobby > Off."
-Meeting Policy,External Participants Can Give/Request Control,True,False,Fail,8.5.7,"Teams admin center > Meetings > External participant control > Off."

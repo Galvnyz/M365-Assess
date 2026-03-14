@@ -1,0 +1,5 @@
+"Category","Setting","CurrentValue","RecommendedValue","Status","CheckId","Remediation"
+"Audit","Unified Audit Log Ingestion","False","True","Fail","COMPLIANCE-AUDIT-001.1","Run: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true. Microsoft Purview > Audit > Start recording user and admin activity."
+"Data Loss Prevention","DLP Policies","10 enabled (of 10 total)","At least 1 enabled","Pass","COMPLIANCE-DLP-001.1","No action needed."
+"Data Loss Prevention","DLP Covers Teams","6 policies include Teams","At least 1 policy covers Teams","Pass","COMPLIANCE-DLP-002.1","No action needed."
+"Information Protection","Sensitivity Label Policies","1 policies published","At least 1 published","Pass","COMPLIANCE-LABELS-001.1","No action needed."

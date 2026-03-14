@@ -1,0 +1,2 @@
+"TenantDisplayName","TenantId","OnPremisesSyncEnabled","LastDirSyncTime","DirSyncConfigured","PasswordHashSyncEnabled","LastPasswordSyncTime","SyncType","OnPremDomainName","OnPremForestName"
+"Contoso Corporation","a1b2c3d4-e5f6-7890-abcd-ef1234567890",,,"False","False",,"Cloud-only (no hybrid sync)","N/A","N/A"

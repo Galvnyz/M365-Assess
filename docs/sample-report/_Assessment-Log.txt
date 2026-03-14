@@ -1,0 +1,140 @@
+================================================================================
+  M365 Environment Assessment Log
+  Version:  v0.8.0
+  Started:  2026-03-13 20:10:34
+  Tenant:   contoso.com
+  Cloud:    commercial
+  Domain:   contoso
+  Sections: Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, Hybrid
+================================================================================
+
+[2026-03-13 20:10:34.340] [INFO] Assessment started. Output folder: .\M365-Assessment\Assessment_20260313_201034
+[2026-03-13 20:10:34.574] [INFO] [Tenant] Connecting to Graph...
+[2026-03-13 20:10:35.300] [INFO] [Tenant] Connected to Graph successfully.
+[2026-03-13 20:10:36.014] [INFO] [Tenant] Connected tenant: Contoso Corporation (contoso.onmicrosoft.com) [ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890]
+[2026-03-13 20:10:36.021] [INFO] [Tenant] Renamed output to include tenant domain: contoso
+[2026-03-13 20:10:36.032] [INFO] [Tenant] [Tenant Information] Running: Tenant Information
+[2026-03-13 20:10:38.610] [INFO] [Tenant] [Tenant Information] Completed: Tenant Information — Complete, 1 items, 2.6s
+[2026-03-13 20:10:38.620] [INFO] [Identity] [User Summary] Running: User Summary
+[2026-03-13 20:10:39.088] [INFO] [Identity] [User Summary] Completed: User Summary — Complete, 1 items, 0.5s
+[2026-03-13 20:10:39.089] [INFO] [Identity] [MFA Report] Running: MFA Report
+[2026-03-13 20:10:39.473] [INFO] [Identity] [MFA Report] Completed: MFA Report — Complete, 4 items, 0.4s
+[2026-03-13 20:10:39.474] [INFO] [Identity] [Admin Roles] Running: Admin Roles
+[2026-03-13 20:10:40.332] [INFO] [Identity] [Admin Roles] Completed: Admin Roles — Complete, 5 items, 0.9s
+[2026-03-13 20:10:40.332] [INFO] [Identity] [Conditional Access] Running: Conditional Access
+[2026-03-13 20:10:41.326] [INFO] [Identity] [Conditional Access] No data returned
+[2026-03-13 20:10:41.327] [INFO] [Identity] [Conditional Access] Completed: Conditional Access — Complete, 0 items, 1.0s
+[2026-03-13 20:10:41.333] [INFO] [Identity] [App Registrations] Running: App Registrations
+[2026-03-13 20:10:41.488] [INFO] [Identity] [App Registrations] No data returned
+[2026-03-13 20:10:41.490] [INFO] [Identity] [App Registrations] Completed: App Registrations — Complete, 0 items, 0.2s
+[2026-03-13 20:10:41.495] [INFO] [Identity] [Password Policy] Running: Password Policy
+[2026-03-13 20:10:41.806] [INFO] [Identity] [Password Policy] Completed: Password Policy — Complete, 2 items, 0.3s
+[2026-03-13 20:10:41.807] [INFO] [Identity] [Entra Security Config] Running: Entra Security Config
+[2026-03-13 20:10:52.729] [WARN] [Identity] [Entra Security Config] Could not retrieve security defaults: Cannot index into a null array.
+[2026-03-13 20:10:52.730] [WARN] [Identity] [Entra Security Config] Could not check password protection: GET https://graph.microsoft.com/v1.0/settings
+HTTP/2.0 400 Bad Request
+Vary: Accept-Encoding
+Strict-Transport-Security: max-age=31536000
+request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001
+client-request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002
+x-ms-ags-diagnostic: {"ServerInfo":{"DataCenter":"West US 2","Slice":"E","Ring":"4","ScaleUnit":"001","RoleInstance":"MW2PEPF00013786"}}
+Date: Sat, 14 Mar 2026 02:10:43 GMT
+Content-Type: application/json
+
+{"error":{"code":"BadRequest","message":"Resource not found for the segment 'settings'.","innerError":{"date":"2026-03-14T02:10:43","request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001","client-request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002"}}}
+[2026-03-13 20:10:52.737] [WARN] [Identity] [Entra Security Config] Could not check authenticator fatigue protection: Cannot index into a null array.
+[2026-03-13 20:10:52.746] [INFO] [Identity] [Entra Security Config] Completed: Entra Security Config — Complete, 37 items, 10.9s
+[2026-03-13 20:10:52.752] [INFO] [Identity] [CA Policy Evaluation] Running: CA Policy Evaluation
+[2026-03-13 20:10:53.724] [WARN] [Identity] [CA Policy Evaluation] Could not check CA MFA for admins: Cannot index into a null array.
+[2026-03-13 20:10:53.726] [INFO] [Identity] [CA Policy Evaluation] Completed: CA Policy Evaluation — Complete, 12 items, 1.0s
+[2026-03-13 20:10:53.735] [INFO] [Licensing] [License Summary] Running: License Summary
+[2026-03-13 20:11:03.127] [INFO] [Licensing] [License Summary] Completed: License Summary — Complete, 4 items, 9.4s
+[2026-03-13 20:11:03.130] [INFO] [Email] Connecting to ExchangeOnline...
+[2026-03-13 20:11:07.598] [INFO] [Email] Connected to ExchangeOnline successfully.
+[2026-03-13 20:11:07.599] [INFO] [Email] [Mailbox Summary] Running: Mailbox Summary
+[2026-03-13 20:11:31.923] [INFO] [Email] [Mailbox Summary] Completed: Mailbox Summary — Complete, 8 items, 24.3s
+[2026-03-13 20:11:31.924] [INFO] [Email] [Mail Flow] Running: Mail Flow
+[2026-03-13 20:11:33.167] [INFO] [Email] [Mail Flow] Completed: Mail Flow — Complete, 2 items, 1.2s
+[2026-03-13 20:11:33.168] [INFO] [Email] [Email Security] Running: Email Security
+[2026-03-13 20:11:34.443] [INFO] [Email] [Email Security] Completed: Email Security — Complete, 3 items, 1.3s
+[2026-03-13 20:11:34.443] [INFO] [Email] [EXO Security Config] Running: EXO Security Config
+[2026-03-13 20:11:37.995] [WARN] [Email] [EXO Security Config] Could not retrieve organization config: Cannot index into a null array.
+[2026-03-13 20:11:37.995] [WARN] [Email] [EXO Security Config] Could not check external sender tagging: A server side error has occurred because of which the operation could not be completed. Please try again after some time. If the problem still persists, please reach out to MS support.
+[2026-03-13 20:11:38.003] [WARN] [Email] [EXO Security Config] The object Asc-2X1-0-d2112c2e73b24fd0a7ba9fce9c227ce8-0-1 has been corrupted or isn't compatible with Microsoft support requirements, and it's in an inconsistent state. The following validation errors happened:
+[2026-03-13 20:11:38.008] [WARN] [Email] [EXO Security Config] The value of property 'ProhibitSendReceiveQuota' must be greater than or equal to that of property 'ProhibitSendQuota'. ProhibitSendReceiveQuota: '5 GB (5,368,709,120 bytes)', ProhibitSendQuota: '9.8 GB (10,522,460,160 bytes)'.
+[2026-03-13 20:11:38.014] [WARN] [Email] [EXO Security Config] The object Asc-2X1-0-d2112c2e73b24fd0a7ba9fce9c227ce8-0-0 has been corrupted or isn't compatible with Microsoft support requirements, and it's in an inconsistent state. The following validation errors happened:
+[2026-03-13 20:11:38.020] [WARN] [Email] [EXO Security Config] The value of property 'ProhibitSendReceiveQuota' must be greater than or equal to that of property 'ProhibitSendQuota'. ProhibitSendReceiveQuota: '5 GB (5,368,709,120 bytes)', ProhibitSendQuota: '9.8 GB (10,522,460,160 bytes)'.
+[2026-03-13 20:11:38.027] [WARN] [Email] [EXO Security Config] The object Asc-2X1-1-081eeef6da174d28a9ffa800b095564f-0-0 has been corrupted or isn't compatible with Microsoft support requirements, and it's in an inconsistent state. The following validation errors happened:
+[2026-03-13 20:11:38.034] [WARN] [Email] [EXO Security Config] The value of property 'ProhibitSendReceiveQuota' must be greater than or equal to that of property 'ProhibitSendQuota'. ProhibitSendReceiveQuota: '5 GB (5,368,709,120 bytes)', ProhibitSendQuota: '9.8 GB (10,522,460,160 bytes)'.
+[2026-03-13 20:11:38.043] [INFO] [Email] [EXO Security Config] Completed: EXO Security Config — Complete, 12 items, 3.6s
+[2026-03-13 20:11:38.048] [INFO] [Email] [DNS Security Config] Running: DNS Security Config
+[2026-03-13 20:11:38.576] [WARN] [Email] [DNS Security Config] Could not check SPF records: Cannot index into a null array.
+[2026-03-13 20:11:38.578] [INFO] [Email] [DNS Security Config] Completed: DNS Security Config — Complete, 3 items, 0.5s
+[2026-03-13 20:11:38.585] [INFO] [Email] [DNS Authentication] Running: DNS Authentication
+[2026-03-13 20:11:39.013] [INFO] [Email] [DNS Authentication] Completed: DNS Authentication — Complete, 2 items
+[2026-03-13 20:11:39.016] [INFO] [Intune] [Device Summary] Running: Device Summary
+[2026-03-13 20:11:40.025] [WARN] [Intune] [Device Summary] No managed devices found. Intune may not be configured or no devices are enrolled.
+[2026-03-13 20:11:40.026] [INFO] [Intune] [Device Summary] No data returned
+[2026-03-13 20:11:40.034] [INFO] [Intune] [Device Summary] Completed: Device Summary — Complete, 0 items, 1.0s
+[2026-03-13 20:11:40.039] [INFO] [Intune] [Compliance Policies] Running: Compliance Policies
+[2026-03-13 20:11:40.563] [WARN] [Intune] [Compliance Policies] No compliance policies found. Intune may not be configured or no policies have been created.
+[2026-03-13 20:11:40.564] [INFO] [Intune] [Compliance Policies] No data returned
+[2026-03-13 20:11:40.573] [INFO] [Intune] [Compliance Policies] Completed: Compliance Policies — Complete, 0 items, 0.5s
+[2026-03-13 20:11:40.578] [INFO] [Intune] [Config Profiles] Running: Config Profiles
+[2026-03-13 20:11:41.076] [WARN] [Intune] [Config Profiles] No configuration profiles found. Intune may not be configured or no profiles have been created.
+[2026-03-13 20:11:41.077] [INFO] [Intune] [Config Profiles] No data returned
+[2026-03-13 20:11:41.086] [INFO] [Intune] [Config Profiles] Completed: Config Profiles — Complete, 0 items, 0.5s
+[2026-03-13 20:11:41.097] [INFO] [Security] [Secure Score] Running: Secure Score
+[2026-03-13 20:11:41.571] [INFO] [Security] [Secure Score] Completed: Secure Score — Complete, 1 items, 0.5s
+[2026-03-13 20:11:41.571] [INFO] [Security] [Defender Policies] Running: Defender Policies
+[2026-03-13 20:11:42.438] [INFO] [Security] [Defender Policies] Completed: Defender Policies — Complete, 2 items, 0.9s
+[2026-03-13 20:11:42.439] [INFO] [Security] [Defender Security Config] Running: Defender Security Config
+[2026-03-13 20:11:44.379] [WARN] [Security] [Defender Security Config] Could not retrieve anti-phishing policies: Cannot index into a null array.
+[2026-03-13 20:11:44.388] [INFO] [Security] [Defender Security Config] Completed: Defender Security Config — Complete, 28 items, 1.9s
+[2026-03-13 20:11:44.393] [INFO] [Security] Connecting to Purview...
+[2026-03-13 20:11:44.396] [INFO] [Security] Disconnecting ExchangeOnline before connecting Purview
+[2026-03-13 20:11:51.624] [INFO] [Security] Connected to Purview successfully.
+[2026-03-13 20:11:51.625] [INFO] [Security] [DLP Policies] Running: DLP Policies
+[2026-03-13 20:12:35.353] [WARN] [Security] [DLP Policies] OnAfterGetLabels: failed to get template:[ddd36466-5c2f-4e93-b17e-cadb440efc89]
+[2026-03-13 20:12:35.354] [WARN] [Security] [DLP Policies] OnAfterGetLabels: failed to get template:[5d5b83a0-6a69-48e3-94ee-132bd90b1d43]
+[2026-03-13 20:12:35.364] [INFO] [Security] [DLP Policies] Completed: DLP Policies — Complete, 45 items, 43.7s
+[2026-03-13 20:12:35.369] [INFO] [Security] [Compliance Security Config] Running: Compliance Security Config
+[2026-03-13 20:12:47.820] [WARN] [Security] [Compliance Security Config] Could not check unified audit log: Cannot index into a null array.
+[2026-03-13 20:12:47.820] [WARN] [Security] [Compliance Security Config] Force Validate not set
+[2026-03-13 20:12:47.828] [INFO] [Security] [Compliance Security Config] Completed: Compliance Security Config — Complete, 4 items, 12.5s
+[2026-03-13 20:12:47.835] [INFO] [Collaboration] [SharePoint & OneDrive] Running: SharePoint & OneDrive
+[2026-03-13 20:12:48.472] [INFO] [Collaboration] [SharePoint & OneDrive] Completed: SharePoint & OneDrive — Complete, 1 items, 0.6s
+[2026-03-13 20:12:48.472] [INFO] [Collaboration] [SharePoint Security Config] Running: SharePoint Security Config
+[2026-03-13 20:12:49.159] [WARN] [Collaboration] [SharePoint Security Config] Could not check sharing capability: Cannot index into a null array.
+[2026-03-13 20:12:49.177] [INFO] [Collaboration] [SharePoint Security Config] Completed: SharePoint Security Config — Complete, 13 items, 0.7s
+[2026-03-13 20:12:49.178] [INFO] [Collaboration] [Teams Access] Running: Teams Access
+[2026-03-13 20:12:51.102] [INFO] [Collaboration] [Teams Access] Completed: Teams Access — Complete, 1 items, 1.9s
+[2026-03-13 20:12:51.102] [INFO] [Collaboration] [Teams Security Config] Running: Teams Security Config
+[2026-03-13 20:12:52.831] [WARN] [Collaboration] [Teams Security Config] Could not retrieve Teams app settings: Cannot index into a null array.
+[2026-03-13 20:12:52.832] [WARN] [Collaboration] [Teams Security Config] Could not retrieve Teams client configuration: GET https://graph.microsoft.com/beta/teamwork/teamsClientConfiguration
+HTTP/2.0 400 Bad Request
+Vary: Accept-Encoding
+Strict-Transport-Security: max-age=31536000
+request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003
+client-request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004
+x-ms-ags-diagnostic: {"ServerInfo":{"DataCenter":"West US 2","Slice":"E","Ring":"4","ScaleUnit":"002","RoleInstance":"MWH0EPF00032D56"}}
+Date: Sat, 14 Mar 2026 02:12:50 GMT
+Content-Type: application/json
+
+{"error":{"code":"BadRequest","message":"Resource not found for the segment 'teamsClientConfiguration'.","innerError":{"date":"2026-03-14T02:12:50","request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003","client-request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004"}}}
+[2026-03-13 20:12:52.839] [WARN] [Collaboration] [Teams Security Config] Could not retrieve Teams meeting policy via Graph: GET https://graph.microsoft.com/beta/teamwork/teamsMeetingPolicy
+HTTP/2.0 400 Bad Request
+Vary: Accept-Encoding
+Strict-Transport-Security: max-age=31536000
+request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005
+client-request-id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006
+x-ms-ags-diagnostic: {"ServerInfo":{"DataCenter":"West US 2","Slice":"E","Ring":"4","ScaleUnit":"002","RoleInstance":"MWH0EPF00032D56"}}
+Date: Sat, 14 Mar 2026 02:12:50 GMT
+Content-Type: application/json
+
+{"error":{"code":"BadRequest","message":"Resource not found for the segment 'teamsMeetingPolicy'.","innerError":{"date":"2026-03-14T02:12:50","request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005","client-request-id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006"}}}
+[2026-03-13 20:12:52.856] [INFO] [Collaboration] [Teams Security Config] Completed: Teams Security Config — Complete, 2 items, 1.8s
+[2026-03-13 20:12:52.859] [INFO] [Hybrid] [Hybrid Sync] Running: Hybrid Sync
+[2026-03-13 20:12:53.646] [INFO] [Hybrid] [Hybrid Sync] Completed: Hybrid Sync — Complete, 1 items, 0.8s
+[2026-03-13 20:12:53.649] [INFO] Assessment complete. Duration: 02:19. Summary CSV: .\M365-Assessment\Assessment_20260313_201034_contoso\_Assessment-Summary_contoso.csv
+[2026-03-13 20:12:55.737] [INFO] HTML report generated: .\M365-Assessment\Assessment_20260313_201034_contoso\_Assessment-Report_contoso.html

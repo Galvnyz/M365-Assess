@@ -1,0 +1,5 @@
+"UserPrincipalName","UserDisplayName","IsMfaRegistered","IsMfaCapable","IsPasswordlessCapable","IsSsprRegistered","IsSsprCapable","MethodsRegistered","DefaultMfaMethod","IsAdmin"
+"admin@contoso.com","Contoso Admin","True","True","False","True","True","microsoftAuthenticatorPush; softwareOneTimePasscode",,"True"
+"alex.johnson@contoso.com","Alex Johnson","True","True","True","True","True","email; microsoftAuthenticatorPush; mobilePhone; passKeyDeviceBoundAuthenticator; softwareOneTimePasscode",,"True"
+"guest_outlook.com#EXT#@contoso.onmicrosoft.com","Guest User","False","False","False","False","False","",,"True"
+"guest2_outlook.com#EXT#@contoso.onmicrosoft.com","contoso","False","False","False","False","False","",,"True"

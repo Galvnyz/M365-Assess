@@ -1,0 +1,3 @@
+"PolicyType","Name","Enabled","Priority","KeySettings"
+"SafeLinks","Built-In Protection Policy",,"N/A","IsEnabled=; DoNotTrackUserClicks=; ScanUrls=True; EnableForInternalSenders=False"
+"SafeAttachments","Built-In Protection Policy","True","N/A","Enable=True; Action=Block; Redirect=False; RedirectAddress="

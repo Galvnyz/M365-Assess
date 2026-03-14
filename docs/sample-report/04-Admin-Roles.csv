@@ -1,0 +1,6 @@
+"RoleName","RoleId","MemberDisplayName","MemberUPN","MemberType","MemberId"
+"Compliance Administrator","91bf2830-c2ca-4593-b647-37cecff6d761","Alex Johnson","alex.johnson@contoso.com","User","f1a2b3c4-d5e6-7890-abcd-111111111111"
+"Global Administrator","51c475c9-1324-4846-b86e-bc29c5bae6ee","Guest User","guest_outlook.com#EXT#@contoso.onmicrosoft.com","User","f1a2b3c4-d5e6-7890-abcd-222222222222"
+"Global Administrator","51c475c9-1324-4846-b86e-bc29c5bae6ee","Alex Johnson","alex.johnson@contoso.com","User","f1a2b3c4-d5e6-7890-abcd-111111111111"
+"Global Administrator","51c475c9-1324-4846-b86e-bc29c5bae6ee","contoso","guest2_outlook.com#EXT#@contoso.onmicrosoft.com","User","f1a2b3c4-d5e6-7890-abcd-333333333333"
+"Global Administrator","51c475c9-1324-4846-b86e-bc29c5bae6ee","Contoso Admin","admin@contoso.com","User","f1a2b3c4-d5e6-7890-abcd-444444444444"

@@ -1,7 +1,0 @@
-DisplayName,Id,CreatedDateTime,LastModifiedDateTime,Platform,Version,Description
-Windows Security Baseline,b1c2d3e4-0001-4000-8000-000000000001,2023-06-15T10:30:00Z,2025-11-20T15:00:00Z,windows10AndLater,4,Microsoft Security Baseline for Windows 11 23H2
-Windows BitLocker Encryption,b1c2d3e4-0002-4000-8000-000000000002,2023-06-15T11:00:00Z,2025-10-01T08:00:00Z,windows10AndLater,3,256-bit XTS-AES encryption; TPM+PIN startup; recovery key to Entra
-Windows Defender Antivirus,b1c2d3e4-0003-4000-8000-000000000003,2023-09-01T09:00:00Z,2025-12-05T14:00:00Z,windows10AndLater,2,Real-time protection; cloud-delivered; network protection; ASR rules
-Windows Update Ring - Standard,b1c2d3e4-0004-4000-8000-000000000004,2023-09-01T09:30:00Z,2026-01-15T10:00:00Z,windows10AndLater,5,Quality updates: 7-day deferral; Feature updates: 30-day deferral; Auto-restart after 2 days
-macOS Security Settings,b1c2d3e4-0005-4000-8000-000000000005,2024-05-01T14:30:00Z,2025-09-10T11:00:00Z,macOS,1,FileVault enforcement; Gatekeeper; firewall; auto-updates
-iOS App Protection,b1c2d3e4-0006-4000-8000-000000000006,2024-01-10T12:00:00Z,2025-10-15T16:30:00Z,iOS,2,Managed apps; PIN required; data transfer restrictions; cut/copy/paste blocked

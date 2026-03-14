@@ -1,0 +1,4 @@
+"Category","Setting","CurrentValue","RecommendedValue","Status","CheckId","Remediation"
+"DNS Authentication","SPF Records","1/2 domains -- missing: contoso.com","SPF for all domains","Fail","DNS-SPF-001.1","Add SPF TXT records for: contoso.com. Example: v=spf1 include:spf.protection.outlook.com -all"
+"DNS Authentication","DKIM Signing","0/2 domains -- missing: contoso.onmicrosoft.com, contoso.com","DKIM for all domains","Fail","DNS-DKIM-001.1","Enable DKIM for: contoso.onmicrosoft.com, contoso.com. Run: New-DkimSigningConfig -DomainName <domain> -Enabled $true. Microsoft 365 Defender > Email & collaboration > Policies > DKIM."
+"DNS Authentication","DMARC Records","0/2 enforcing -- missing: contoso.onmicrosoft.com, contoso.com","DMARC p=quarantine or p=reject for all","Fail","DNS-DMARC-001.1","Add/update DMARC for: missing: contoso.onmicrosoft.com, contoso.com. Example: v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com"

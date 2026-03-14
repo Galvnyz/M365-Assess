@@ -1,2 +1,0 @@
-TenantDisplayName,TenantId,OnPremisesSyncEnabled,LastDirSyncTime,DirSyncConfigured,PasswordHashSyncEnabled,LastPasswordSyncTime,SyncType,OnPremDomainName,OnPremForestName
-Northwind Traders,8f3a1c9d-7b4e-4d2f-a5c6-9e0d1f2b3c4a,True,2026-03-05T08:45:00Z,True,True,2026-03-05T08:45:00Z,Password Hash Sync,northwindtraders.local,northwindtraders.local

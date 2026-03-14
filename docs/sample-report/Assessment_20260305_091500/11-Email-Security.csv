@@ -1,8 +1,0 @@
-PolicyType,Name,Enabled,KeySettings
-Anti-Phishing,Office365 AntiPhish Default,True,PhishThresholdLevel: 2; EnableMailboxIntelligenceProtection: True
-Anti-Phishing,Executives Anti-Phish Policy,True,PhishThresholdLevel: 3; EnableTargetedUserProtection: True; TargetedUsers: 4
-Anti-Spam,Default Anti-Spam Inbound,True,BulkThreshold: 7; SpamAction: MoveToJmf; HighConfidenceSpamAction: Quarantine
-Anti-Spam,Default Anti-Spam Outbound,True,AutoForwardingMode: Off; RecipientLimitPerDay: 500; BccSuspiciousOutbound: True
-Anti-Malware,Default Anti-Malware,True,EnableFileFilter: True; FileFilterAction: Reject; ZapEnabled: True
-Safe Links,Built-In Protection,True,EnableSafeLinksForEmail: True; ScanUrls: True; TrackClicks: True
-Safe Attachments,Built-In Protection,True,Enable: True; Action: Block; Redirect: admin@northwindtraders.com

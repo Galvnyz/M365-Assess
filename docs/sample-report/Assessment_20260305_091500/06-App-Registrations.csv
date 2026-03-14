@@ -1,7 +1,0 @@
-DisplayName,AppId,CreatedDateTime,SignInAudience,PasswordCredentialCount,KeyCredentialCount,EarliestExpiry,ExpiredCredentials
-Northwind CRM Integration,c1d2e3f4-a1b2-4c5d-8e9f-0a1b2c3d4e5f,2022-03-10T09:00:00Z,AzureADMyOrg,1,0,2026-09-10T00:00:00Z,0
-SharePoint Automation Bot,d4e5f6a7-b2c3-4d5e-9f0a-1b2c3d4e5f6a,2023-01-22T14:30:00Z,AzureADMyOrg,2,1,2025-07-22T00:00:00Z,1
-Power BI Embedded Reports,e5f6a7b8-c3d4-4e5f-0a1b-2c3d4e5f6a7b,2023-08-05T11:15:00Z,AzureADMyOrg,1,0,2026-12-05T00:00:00Z,0
-HR Onboarding Portal,f6a7b8c9-d4e5-4f6a-1b2c-3d4e5f6a7b8c,2024-02-14T16:00:00Z,AzureADMultipleOrgs,1,1,2027-02-14T00:00:00Z,0
-Legacy ERP Connector,a7b8c9d0-e5f6-4a7b-2c3d-4e5f6a7b8c9d,2020-06-30T08:45:00Z,AzureADMyOrg,1,0,2024-06-30T00:00:00Z,1
-Vendor Invoice Scanner,b8c9d0e1-f6a7-4b8c-3d4e-5f6a7b8c9d0e,2024-11-01T10:00:00Z,AzureADMyOrg,0,1,2026-11-01T00:00:00Z,0

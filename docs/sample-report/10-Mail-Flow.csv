@@ -1,0 +1,3 @@
+"ItemType","Name","Status","Details"
+"Domain","contoso.onmicrosoft.com","Active","DomainType=Authoritative; Default=False"
+"Domain","contoso.com","Default","DomainType=Authoritative; Default=True"

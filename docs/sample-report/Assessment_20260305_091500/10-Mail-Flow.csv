@@ -1,9 +1,0 @@
-ItemType,Name,Status,Details
-Transport Rule,Disclaimer - External Email Footer,Enabled,Appends HTML disclaimer to all outbound external messages
-Transport Rule,Block Auto-Forward to External,Enabled,Rejects messages with auto-forward headers to external recipients
-Transport Rule,Encrypt Sensitive Data,Enabled,Applies Office 365 Message Encryption when subject contains [Encrypt]
-Transport Rule,Flag Large Attachments,Disabled,Generates incident report for attachments over 25 MB
-Accepted Domain,northwindtraders.com,Authoritative,Primary SMTP domain
-Accepted Domain,mail.northwindtraders.com,Authoritative,Secondary mail domain
-Remote Domain,Default (*),AllowedOOFType: External,Auto-forward disabled
-Connector,Inbound from Barracuda Gateway,Enabled,Partner connector; TLS enforced; IP restricted to 198.51.100.0/24

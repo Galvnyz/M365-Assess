@@ -180,6 +180,30 @@ M365-Assessment/
     _Compliance-Matrix_<tenant>.xlsx     # Framework compliance matrix (requires ImportExcel)
 ```
 
+## Report Preview
+
+The self-contained HTML report opens in any browser with no dependencies. Click through from the cover page to the executive summary, drill into each security domain, and review compliance posture across 13 frameworks.
+
+<div align="center">
+
+<img src="docs/images/cover-page.png" alt="Report cover page" width="340" />
+
+<br /><br />
+
+<img src="docs/images/exec-summary.png" alt="Executive summary with collector status, org profile, and section navigation" width="700" />
+
+<br /><br />
+
+<img src="docs/images/security-dash.png" alt="Security section showing Secure Score, Defender controls, and security config checks" width="700" />
+
+<br /><br />
+
+<img src="docs/images/compliance-overview.png" alt="Compliance overview with framework selector, finding distribution, and control matrix" width="700" />
+
+</div>
+
+> See [docs/sample-report/Example-Report.html](docs/sample-report/Example-Report.html) for a full PII-scrubbed example report.
+
 ## Project Structure
 
 ```

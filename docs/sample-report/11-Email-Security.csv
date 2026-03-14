@@ -1,0 +1,4 @@
+"PolicyType","Name","Enabled","KeySettings"
+"AntiSpam","Default","True","BulkThreshold=7; SpamAction=MoveToJmf; HighConfidenceSpamAction=MoveToJmf; PhishSpamAction=MoveToJmf; BulkSpamAction=MoveToJmf; QuarantineRetentionPeriod=15; InlineSafetyTipsEnabled=True; SpamZapEnabled=True; PhishZapEnabled=True"
+"AntiPhish","Office365 AntiPhish Default","True","Enabled=True; PhishThresholdLevel=1; EnableMailboxIntelligence=True; EnableMailboxIntelligenceProtection=False; EnableSpoofIntelligence=True; EnableFirstContactSafetyTips=False; EnableUnauthenticatedSender=True; EnableViaTag=True"
+"AntiMalware","Default","True","EnableFileFilter=True; FileFilterAction=; ZapEnabled=True; EnableInternalSenderAdminNotifications=False; EnableExternalSenderAdminNotifications=False; FileTypesCount=53"

@@ -1,0 +1,3 @@
+"Category","Setting","CurrentValue","RecommendedValue","Status","CheckId","Remediation"
+"Teams Apps","Chat Resource-Specific Consent","","False","Pass","TEAMS-APPS-001.1","Run: Set-CsTeamsAppPermissionPolicy -DefaultCatalogAppsType AllowedAppList. Teams admin center > Teams apps > Permission policies."
+"Teams Settings","Teams Workload Active","Active","Active","Info","TEAMS-INFO-001.1","Informational — confirms Teams service connectivity."

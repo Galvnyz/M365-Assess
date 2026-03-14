@@ -1,2 +1,0 @@
-AllowGuestAccess,AllowGuestCreateUpdateChannels,AllowThirdPartyApps,AllowSideLoading,IsUserPersonalScopeResourceSpecificConsentEnabled
-True,False,True,False,True

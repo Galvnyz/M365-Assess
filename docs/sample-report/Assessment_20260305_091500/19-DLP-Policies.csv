@@ -1,7 +1,0 @@
-ItemType,Name,Enabled,Priority,Details
-DLP Policy,PII Protection - US,True,0,"Detects SSN; credit card numbers; bank account numbers. Actions: notify user; block external sharing; generate incident report"
-DLP Policy,Financial Data Protection,True,1,"Detects financial statements and tax forms. Actions: encrypt; notify compliance team; audit log"
-DLP Policy,Healthcare Data (HIPAA),False,2,"Detects protected health information. Actions: block sharing; notify privacy officer. Status: Not yet activated"
-DLP Rule,Credit Card Number Detection,True,0,"Part of PII Protection. Confidence: High. Instance count: 1+. Notify: user + compliance@northwindtraders.com"
-DLP Rule,SSN Detection,True,0,"Part of PII Protection. Confidence: High. Instance count: 1+. Action: Block external + notify"
-DLP Rule,Financial Statement Keywords,True,1,"Part of Financial Data. Keywords: confidential; proprietary; internal only. Action: Encrypt"

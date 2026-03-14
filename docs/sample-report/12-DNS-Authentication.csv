@@ -1,0 +1,3 @@
+"Domain","DomainType","Default","SPF","SPFEnforcement","SPFLookupCount","SPFDuplicates","DMARC","DMARCPolicy","DMARCPct","DMARCReporting","DMARCDuplicates","DKIMSelector1","DKIMSelector2","MTASTS","TLSRPT","PublicDNSConfirm"
+"contoso.onmicrosoft.com","Authoritative","False","v=spf1 include:spf.protection.outlook.com -all","Hard Fail (-all)","1 / 10","No","Not configured","N/A","N/A","N/A","No","Not configured","Not configured","Not configured","Not configured","Confirmed (Google + Cloudflare)"
+"contoso.com","Authoritative","True","Not configured","N/A","N/A","No","Not configured","N/A","N/A","N/A","No","Not configured","Not configured","Not configured","Not configured","N/A"
