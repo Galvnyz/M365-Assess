@@ -1051,14 +1051,14 @@ if ($TenantId -and -not $PSBoundParameters.ContainsKey('M365Environment')) {
 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 
 # Extract domain prefix for folder/file naming (Phase A: from TenantId)
-# Handles onmicrosoft domains (extract prefix) and custom domains (use as-is).
+# Handles onmicrosoft domains (extract prefix) and custom domains (extract label before first dot).
 # GUIDs are left empty — Phase B resolves them after Graph connects.
 $script:domainPrefix = ''
 if ($TenantId -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
     $script:domainPrefix = $Matches[1]
 }
-elseif ($TenantId -match '\.' -and $TenantId -notmatch '^[0-9a-f]{8}-') {
-    $script:domainPrefix = $TenantId
+elseif ($TenantId -match '^([^.]+)\.' -and $TenantId -notmatch '^[0-9a-f]{8}-') {
+    $script:domainPrefix = $Matches[1]
 }
 
 $folderSuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
