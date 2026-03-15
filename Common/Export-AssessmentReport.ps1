@@ -3351,6 +3351,7 @@ $html = @"
             max-width: 350px;
         }
 
+        .cis-row-pass { border-left: 3px solid var(--m365a-success); background-color: var(--m365a-success-bg); }
         .cis-row-fail { border-left: 3px solid var(--m365a-danger); background-color: var(--m365a-danger-bg); }
         .cis-row-warning { border-left: 3px solid var(--m365a-warning); background-color: var(--m365a-warning-bg); }
         .cis-row-review { border-left: 3px solid var(--m365a-accent); background-color: var(--m365a-info-bg); }
@@ -3426,7 +3427,7 @@ $html = @"
         /* Matrix table */
         .matrix-table td { vertical-align: top; }
         .matrix-table tbody tr:nth-child(even) { background: transparent; }
-        .matrix-table tbody tr.stripe-even { box-shadow: inset 0 0 0 1000px rgba(148, 163, 184, 0.07); }
+        .matrix-table tbody tr.stripe-even td { background-color: rgba(148, 163, 184, 0.12); }
         .matrix-table .framework-refs { max-width: 180px; }
 
         /* ----------------------------------------------------------
