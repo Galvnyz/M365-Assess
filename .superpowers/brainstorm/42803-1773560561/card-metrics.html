@@ -1,0 +1,103 @@
+<h2>Card Metrics: How should compliance cards display data?</h2>
+<p class="subtitle">Currently CIS cards show pass rate (%) and non-CIS cards show coverage (%). We need a unified approach.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Unified Pass Rate</h3>
+      <p>All cards show <strong>pass rate</strong> as the big number. Coverage becomes the subtitle.</p>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#f0fdf4;border-left:4px solid #22c55e">
+          <div style="font-size:2em;font-weight:700;color:#16a34a">87.3%</div>
+          <div style="font-size:0.85em;color:#555">CIS E3 L1</div>
+          <div style="font-size:0.75em;color:#888">123 of 140 assessed</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#f0fdf4;border-left:4px solid #22c55e">
+          <div style="font-size:2em;font-weight:700;color:#16a34a">83.3%</div>
+          <div style="font-size:0.85em;color:#555">NIST Moderate</div>
+          <div style="font-size:0.75em;color:#888">10 of 12 mapped passed</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#fef9c3;border-left:4px solid #eab308">
+          <div style="font-size:2em;font-weight:700;color:#ca8a04">66.7%</div>
+          <div style="font-size:0.85em;color:#555">SOC 2 TSC</div>
+          <div style="font-size:0.75em;color:#888">8 of 12 mapped passed</div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Consistent metric across all cards</li><li>Pass rate is actionable ("how compliant am I?")</li><li>Matches CIS behavior users already understand</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Hides coverage gap (unmapped controls are invisible)</li><li>High pass rate with low coverage can be misleading</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Dual Metric (Pass Rate + Coverage)</h3>
+      <p>All cards show <strong>pass rate</strong> as the big number, with a small <strong>coverage bar</strong> underneath showing how much of the framework catalog is mapped.</p>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:160px;text-align:center;background:#f0fdf4;border-left:4px solid #22c55e">
+          <div style="font-size:2em;font-weight:700;color:#16a34a">87.3%</div>
+          <div style="font-size:0.85em;color:#555">CIS E3 L1</div>
+          <div style="font-size:0.75em;color:#888">123 of 140 assessed</div>
+          <div style="margin-top:6px;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+            <div style="background:#22c55e;height:100%;width:88%"></div>
+          </div>
+          <div style="font-size:0.65em;color:#999;margin-top:2px">88% coverage</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:160px;text-align:center;background:#f0fdf4;border-left:4px solid #22c55e">
+          <div style="font-size:2em;font-weight:700;color:#16a34a">83.3%</div>
+          <div style="font-size:0.85em;color:#555">NIST Moderate</div>
+          <div style="font-size:0.75em;color:#888">10 of 12 mapped passed</div>
+          <div style="margin-top:6px;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+            <div style="background:#eab308;height:100%;width:4%"></div>
+          </div>
+          <div style="font-size:0.65em;color:#999;margin-top:2px">4% coverage (12/325)</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:160px;text-align:center;background:#fef9c3;border-left:4px solid #eab308">
+          <div style="font-size:2em;font-weight:700;color:#ca8a04">66.7%</div>
+          <div style="font-size:0.85em;color:#555">SOC 2 TSC</div>
+          <div style="font-size:0.75em;color:#888">8 of 12 mapped passed</div>
+          <div style="margin-top:6px;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+            <div style="background:#ef4444;height:100%;width:15%"></div>
+          </div>
+          <div style="font-size:0.65em;color:#999;margin-top:2px">15% coverage (12/80)</div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Shows both dimensions: "how well" and "how much"</li><li>Coverage bar gives honest picture without dominating</li><li>Pass rate is the primary metric (consistent)</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More visual complexity per card</li><li>Coverage bar may be tiny for frameworks we don't cover well yet</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Coverage Primary (Current Non-CIS Approach, Applied to All)</h3>
+      <p>All cards show <strong>coverage</strong> as the big number. Pass/fail details appear on hover or in the matrix below.</p>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#f0fdf4;border-left:4px solid #22c55e">
+          <div style="font-size:2em;font-weight:700;color:#16a34a">88%</div>
+          <div style="font-size:0.85em;color:#555">CIS E3 L1</div>
+          <div style="font-size:0.75em;color:#888">123 of 140 mapped</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#fef2f2;border-left:4px solid #ef4444">
+          <div style="font-size:2em;font-weight:700;color:#dc2626">4%</div>
+          <div style="font-size:0.85em;color:#555">NIST Moderate</div>
+          <div style="font-size:0.75em;color:#888">12 of 325 mapped</div>
+        </div>
+        <div style="border:1px solid #ccc;border-radius:8px;padding:16px;min-width:140px;text-align:center;background:#fef2f2;border-left:4px solid #ef4444">
+          <div style="font-size:2em;font-weight:700;color:#dc2626">15%</div>
+          <div style="font-size:0.85em;color:#555">SOC 2 TSC</div>
+          <div style="font-size:0.75em;color:#888">12 of 80 mapped</div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Honest about our actual coverage</li><li>Motivates expanding framework mappings</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Low percentages look alarming to clients</li><li>Doesn't show pass/fail of what IS assessed</li><li>CIS going from "87% pass rate" to "88% coverage" loses compliance info</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

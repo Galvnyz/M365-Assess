@@ -13025,11 +13025,11 @@
       "supersededBy": "TEAMS-REPORTING-001"
     },
     {
-      "checkId": "MANUAL-CIS-9-1-1",
+      "checkId": "POWERBI-GUEST-001",
       "name": "Ensure guest user access is restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Guest Access",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13089,11 +13089,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-2",
+      "checkId": "POWERBI-GUEST-002",
       "name": "Ensure external user invitations are restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Guest Access",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13153,11 +13153,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-3",
+      "checkId": "POWERBI-GUEST-003",
       "name": "Ensure guest access to content is restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Guest Access",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13217,11 +13217,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-4",
+      "checkId": "POWERBI-SHARING-001",
       "name": "Ensure 'Publish to web' is restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Sharing",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13278,11 +13278,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-5",
+      "checkId": "POWERBI-SHARING-002",
       "name": "Ensure 'Interact with and share R and Python' visuals is 'Disabled' in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Sharing",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13342,11 +13342,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-6",
+      "checkId": "POWERBI-INFOPROT-001",
       "name": "Ensure 'Allow users to apply sensitivity labels for content' is 'Enabled' in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Information Protection",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13403,11 +13403,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-7",
+      "checkId": "POWERBI-SHARING-003",
       "name": "Ensure shareable links are restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Sharing",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13463,11 +13463,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-8",
+      "checkId": "POWERBI-SHARING-004",
       "name": "Ensure enabling of external data sharing is restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Sharing",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13524,11 +13524,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-9",
+      "checkId": "POWERBI-AUTH-001",
       "name": "Ensure 'Block ResourceKey Authentication' is 'Enabled' in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Authentication",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13585,11 +13585,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-10",
+      "checkId": "POWERBI-AUTH-002",
       "name": "Ensure access to APIs by Service Principals is restricted in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Authentication",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },
@@ -13648,11 +13648,11 @@
       }
     },
     {
-      "checkId": "MANUAL-CIS-9-1-11",
+      "checkId": "POWERBI-AUTH-003",
       "name": "Ensure Service Principals cannot create and use profiles in Power BI",
-      "category": "",
-      "collector": "",
-      "hasAutomatedCheck": false,
+      "category": "Authentication",
+      "collector": "PowerBI",
+      "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
       },

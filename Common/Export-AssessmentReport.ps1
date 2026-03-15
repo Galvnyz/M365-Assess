@@ -3746,7 +3746,7 @@ $(if (-not $NoBranding) {
                         <div class="exec-hero-metric-label">CIS Controls</div>
                     </div>
                     <div class="exec-hero-metric">
-                        <div class="exec-hero-metric-value">12</div>
+                        <div class="exec-hero-metric-value">$($allFrameworkKeys.Count)</div>
                         <div class="exec-hero-metric-label">Frameworks</div>
                     </div>
                 </div>

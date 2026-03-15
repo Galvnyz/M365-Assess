@@ -71,13 +71,34 @@ function Add-ControlResult {
 }
 
 # ------------------------------------------------------------------
+# SPO availability probe — distinguishes module not installed vs not connected
+# ------------------------------------------------------------------
+$spoAvailable = $false
+$spoTenant = $null
+$script:spoMessage = $null
+
+try {
+    $null = Get-Command -Name Get-SPOTenant -ErrorAction Stop
+    # Command exists — module is installed; now verify we are connected
+    try {
+        $spoTenant = Get-SPOTenant -ErrorAction Stop
+        $spoAvailable = $true
+    }
+    catch {
+        $script:spoMessage = 'SharePoint Online connection required - run Connect-SPOService first'
+        Write-Warning "SPO probe: $($script:spoMessage)"
+    }
+}
+catch {
+    $script:spoMessage = 'Requires Microsoft.Online.SharePoint.PowerShell module'
+    Write-Warning "SPO probe: $($script:spoMessage)"
+}
+
+# ------------------------------------------------------------------
 # C-01: SharePoint Sites Not Publicly Shared (C1.1)
 # ------------------------------------------------------------------
-try {
-    Write-Verbose "C-01: Checking SharePoint tenant sharing capability..."
-    $null = Get-Command -Name Get-SPOTenant -ErrorAction Stop
-    $spoTenant = Get-SPOTenant -ErrorAction Stop
-
+Write-Verbose "C-01: Checking SharePoint tenant sharing capability..."
+if ($spoAvailable) {
     $sharingCapability = $spoTenant.SharingCapability.ToString()
 
     # ExternalUserAndGuestSharing = most permissive (Anyone links)
@@ -96,11 +117,10 @@ try {
         -Evidence "Tenant sharing level: $sharingCapability; Anonymous links: $hasAnonymousLinks" `
         -Remediation 'In SharePoint admin center > Policies > Sharing, restrict to Existing guests or more restrictive.'
 }
-catch {
-    Write-Warning "C-01: SharePoint Online cmdlet not available: $_"
+else {
     Add-ControlResult -TrustPrinciple 'Confidentiality' -TSCReference 'C1.1' -ControlId 'C-01' `
         -ControlName 'SharePoint Sites Not Publicly Shared' `
-        -CurrentValue 'Unable to check (SPO module not connected)' -ExpectedValue 'No anonymous sharing links' `
+        -CurrentValue $script:spoMessage -ExpectedValue 'SharingCapability not set to ExternalUserAndGuestSharing' `
         -Status 'Review' -Severity 'High' `
         -Remediation 'Connect to SharePoint Online to evaluate this control.'
 }
@@ -108,13 +128,8 @@ catch {
 # ------------------------------------------------------------------
 # C-02: External Sharing Restricted (C1.1)
 # ------------------------------------------------------------------
-try {
-    Write-Verbose "C-02: Checking external sharing restrictions..."
-    if (-not $spoTenant) {
-        $null = Get-Command -Name Get-SPOTenant -ErrorAction Stop
-        $spoTenant = Get-SPOTenant -ErrorAction Stop
-    }
-
+Write-Verbose "C-02: Checking external sharing restrictions..."
+if ($spoAvailable) {
     $sharingCapability = $spoTenant.SharingCapability.ToString()
     $isMostPermissive = $sharingCapability -eq 'ExternalUserAndGuestSharing'
 
@@ -128,12 +143,12 @@ try {
         -Evidence "Sharing capability: $sharingCapability" `
         -Remediation 'In SharePoint admin center > Policies > Sharing, set to New and existing guests or more restrictive.'
 }
-catch {
-    Write-Warning "C-02: Failed to check external sharing: $_"
+else {
     Add-ControlResult -TrustPrinciple 'Confidentiality' -TSCReference 'C1.1' -ControlId 'C-02' `
         -ControlName 'External Sharing Restricted' `
-        -CurrentValue 'Unable to check (SPO module not connected)' -ExpectedValue 'Restricted external sharing' `
-        -Status 'Review' -Severity 'High'
+        -CurrentValue $script:spoMessage -ExpectedValue 'Not set to most permissive level (ExternalUserAndGuestSharing)' `
+        -Status 'Review' -Severity 'High' `
+        -Remediation 'Connect to SharePoint Online to evaluate this control.'
 }
 
 # ------------------------------------------------------------------

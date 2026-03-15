@@ -117,7 +117,8 @@ try {
     $enrollConfigs = Invoke-MgGraphRequest -Method GET `
         -Uri '/beta/deviceManagement/deviceEnrollmentConfigurations' -ErrorAction Stop
 
-    $platformRestrictions = $enrollConfigs['value'] | Where-Object {
+    $enrollConfigList = if ($enrollConfigs -and $enrollConfigs['value']) { @($enrollConfigs['value']) } else { @() }
+    $platformRestrictions = $enrollConfigList | Where-Object {
         $_['@odata.type'] -eq '#microsoft.graph.deviceEnrollmentPlatformRestrictionsConfiguration'
     }
 

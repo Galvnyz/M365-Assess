@@ -58,6 +58,25 @@ For Exchange Online, add the **Exchange.ManageAsApp** application role and assig
 
 See [`Setup/`](Setup/) for App Registration provisioning scripts.
 
+## Client Secret Authentication
+
+Client secret authentication is supported for **Microsoft Graph** and **Power BI** only. Exchange Online and Purview require certificate-based authentication for app-only access.
+
+```powershell
+# Create a SecureString from your client secret
+$secret = ConvertTo-SecureString 'your-client-secret' -AsPlainText -Force
+
+# Or prompt interactively (recommended - secret never visible in terminal)
+$secret = Read-Host -AsSecureString -Prompt 'Client Secret'
+
+.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
+    -ClientId '00000000-0000-0000-0000-000000000000' `
+    -ClientSecret $secret `
+    -Section Tenant,Identity,Licensing
+```
+
+> **Note:** Client secret authentication only covers Graph-based sections (Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2). Email and Purview sections require certificate-based auth. Power BI supports client secret via service principal.
+
 ## Managed Identity
 
 For workloads running on Azure (VMs, App Service, Azure Functions, Azure Automation), use managed identity to authenticate without credentials. The Azure resource must have a system- or user-assigned managed identity with appropriate permissions.
@@ -106,21 +125,21 @@ Not all sections work with all authentication methods. This matrix shows what wo
 
 ### Auth Method Support
 
-| Section | Interactive | Device Code | App-Only (Cert) | Managed Identity | Notes |
-|---------|:-----------:|:-----------:|:----------------:|:----------------:|-------|
-| Tenant | Yes | Yes | Yes | Yes | |
-| Identity | Yes | Yes | Yes | Yes | |
-| Licensing | Yes | Yes | Yes | Yes | |
-| Email | Yes | Yes | Yes | Yes | EXO requires Exchange Admin or Global Reader role for app-only |
-| Intune | Yes | Yes | Yes | Yes | Falls back to Review on 403 |
-| Security | Yes | Yes | Yes | Yes | DLP/Purview: no device code or managed identity (falls back to browser) |
-| Collaboration | Yes | Yes | **Partial** | Yes | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
-| PowerBI | Yes | No | Yes | No | Opt-in. Requires MicrosoftPowerBIMgmt module |
-| Hybrid | Yes | Yes | Yes | Yes | |
-| Inventory | Yes | Yes | Yes | Yes | |
-| ActiveDirectory | Yes | Yes | N/A | N/A | Runs locally via RSAT -- no cloud auth needed |
-| SOC2 | Yes | Yes | Yes | Yes | Purview collectors: no device code or managed identity |
-| ScubaGear | Yes | N/A | Yes | N/A | **Windows only** -- requires PowerShell 5.1 |
+| Section | Interactive | Device Code | App-Only (Cert) | Client Secret | Managed Identity | Notes |
+|---------|:-----------:|:-----------:|:----------------:|:-------------:|:----------------:|-------|
+| Tenant | Yes | Yes | Yes | Yes | Yes | |
+| Identity | Yes | Yes | Yes | Yes | Yes | |
+| Licensing | Yes | Yes | Yes | Yes | Yes | |
+| Email | Yes | Yes | Yes | No | Yes | EXO requires Exchange Admin or Global Reader role for app-only. Client secret not supported for EXO. |
+| Intune | Yes | Yes | Yes | Yes | Yes | Falls back to Review on 403 |
+| Security | Yes | Yes | Yes | Partial | Yes | DLP/Purview: no device code, managed identity, or client secret (falls back to browser) |
+| Collaboration | Yes | Yes | **Partial** | Yes | Yes | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
+| PowerBI | Yes | No | Yes | Yes | No | Opt-in. Requires MicrosoftPowerBIMgmt module |
+| Hybrid | Yes | Yes | Yes | Yes | Yes | |
+| Inventory | Yes | Yes | Yes | Yes | Yes | |
+| ActiveDirectory | Yes | Yes | N/A | N/A | N/A | Runs locally via RSAT -- no cloud auth needed |
+| SOC2 | Yes | Yes | Yes | Partial | Yes | Purview collectors: no device code, managed identity, or client secret |
+| ScubaGear | Yes | N/A | Yes | N/A | N/A | **Windows only** -- requires PowerShell 5.1 |
 
 ### License Requirements
 
@@ -148,7 +167,7 @@ Each section connects to one or more M365 services. If a service connection fail
 
 | Service | Sections | Auth Methods |
 |---------|----------|-------------|
-| Microsoft Graph | Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2 | Interactive, device code, certificate, client secret, managed identity |
-| Exchange Online | Email, Security, Inventory | Interactive, device code, certificate, managed identity |
-| Purview | Security (DLP only), SOC2 | Interactive, certificate. **No device code or managed identity** |
-| Power BI | PowerBI | Interactive, certificate. **No device code or managed identity** |
+| Microsoft Graph | Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2 | Interactive, device code, certificate, client secret (SecureString), managed identity |
+| Exchange Online | Email, Security, Inventory | Interactive, device code, certificate, managed identity. **Client secret not supported.** |
+| Purview | Security (DLP only), SOC2 | Interactive, certificate. **No device code, managed identity, or client secret.** |
+| Power BI | PowerBI | Interactive, certificate, client secret (SecureString). **No device code or managed identity.** |

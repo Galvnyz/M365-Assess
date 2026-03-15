@@ -114,7 +114,7 @@ param(
     [string]$CertificateThumbprint,
 
     [Parameter()]
-    [string]$ClientSecret,
+    [SecureString]$ClientSecret,
 
     [Parameter()]
     [string]$UserPrincipalName,
@@ -893,7 +893,7 @@ $sectionServiceMap = @{
     'Intune'        = @('Graph')
     'Security'      = @('Graph', 'ExchangeOnline', 'Purview')
     'Collaboration' = @('Graph')
-    'PowerBI'       = @('PowerBI')
+    'PowerBI'       = @()
     'Hybrid'           = @('Graph')
     'Inventory'        = @('Graph', 'ExchangeOnline')
     'ActiveDirectory'  = @()
@@ -986,7 +986,7 @@ $collectorMap = [ordered]@{
         @{ Name = '21b-Teams-Security-Config'; Script = 'Collaboration\Get-TeamsSecurityConfig.ps1';    Label = 'Teams Security Config' }
     )
     'PowerBI' = @(
-        @{ Name = '22-PowerBI-Security-Config'; Script = 'PowerBI\Get-PowerBISecurityConfig.ps1'; Label = 'Power BI Security Config' }
+        @{ Name = '22-PowerBI-Security-Config'; Script = 'PowerBI\Get-PowerBISecurityConfig.ps1'; Label = 'Power BI Security Config'; IsChildProcess = $true }
     )
     'Hybrid' = @(
         @{ Name = '23-Hybrid-Sync'; Script = 'ActiveDirectory\Get-HybridSyncReport.ps1'; Label = 'Hybrid Sync' }
@@ -1141,7 +1141,7 @@ if (-not $SkipConnection) {
         $svcList = $sectionServiceMap[$s]
         if ($svcList -contains 'Graph')                                    { $needsGraph = $true }
         if ($svcList -contains 'ExchangeOnline' -or $svcList -contains 'Purview') { $needsExo = $true }
-        if ($svcList -contains 'PowerBI')                                  { $needsPowerBI = $true }
+        if ($s -eq 'PowerBI')                                               { $needsPowerBI = $true }
     }
 
     $missingModules = @()
@@ -1605,6 +1605,79 @@ foreach ($sectionName in $Section) {
                 if ($CertificateThumbprint) { $collectorParams['CertificateThumbprint'] = $CertificateThumbprint }
             }
 
+            # Child-process collectors (e.g., PowerBI) run in an isolated pwsh
+            # process to avoid .NET assembly version conflicts.  The PowerBI module
+            # ships Microsoft.Identity.Client 4.64 while Microsoft.Graph loads 4.78;
+            # a child process gets its own AppDomain and avoids the clash.
+            if ($collector.ContainsKey('IsChildProcess') -and $collector.IsChildProcess) {
+                Write-Host "    Running in isolated process (assembly compatibility)..." -ForegroundColor Gray
+                Write-AssessmentLog -Level INFO -Message "Running $($collector.Label) in child process to avoid MSAL assembly conflict" -Section $sectionName -Collector $collector.Label
+                $childCsvPath = $csvPath
+                # Build a self-contained script that connects + runs the collector
+                $scriptLines = [System.Collections.Generic.List[string]]::new()
+                $scriptLines.Add('$ErrorActionPreference = "Stop"')
+                # Call Connect-Service.ps1 directly (do NOT dot-source -- it has a
+                # Mandatory param block that would prompt for input).
+                $scriptLines.Add("`$connectParams = @{ Service = 'PowerBI' }")
+                if ($TenantId)              { $scriptLines.Add("`$connectParams['TenantId'] = '$TenantId'") }
+                if ($ClientId -and $CertificateThumbprint) {
+                    $scriptLines.Add("`$connectParams['ClientId'] = '$ClientId'")
+                    $scriptLines.Add("`$connectParams['CertificateThumbprint'] = '$CertificateThumbprint'")
+                }
+                elseif ($ClientId -and $ClientSecret) {
+                    # Convert SecureString to plain text for child process serialization
+                    $plainSecret = [System.Net.NetworkCredential]::new('', $ClientSecret).Password
+                    $scriptLines.Add("`$connectParams['ClientId'] = '$ClientId'")
+                    $scriptLines.Add("`$connectParams['ClientSecret'] = (ConvertTo-SecureString '$plainSecret' -AsPlainText -Force)")
+                }
+                if ($UseDeviceCode)         { $scriptLines.Add('$connectParams["UseDeviceCode"] = $true') }
+                $scriptLines.Add("try { & '$connectServicePath' @connectParams } catch { Write-Error `$_; exit 1 }")
+                $scriptLines.Add("& '$scriptPath' -OutputPath '$childCsvPath'")
+
+                $childScriptFile = Join-Path -Path $assessmentFolder -ChildPath '_powerbi_child.ps1'
+                Set-Content -Path $childScriptFile -Value ($scriptLines -join "`n") -Encoding UTF8
+                try {
+                    $childOutput = & pwsh -NoProfile -File $childScriptFile 2>&1
+                    $childErrors = @($childOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+                    $childWarnings = @($childOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+
+                    foreach ($w in $childWarnings) {
+                        Write-AssessmentLog -Level WARN -Message $w.Message -Section $sectionName -Collector $collector.Label
+                    }
+
+                    if ($childErrors.Count -gt 0) {
+                        throw ($childErrors | Select-Object -First 1).Exception.Message
+                    }
+
+                    if (Test-Path -Path $childCsvPath) {
+                        $results = @(Import-Csv -Path $childCsvPath)
+                        $itemCount = $results.Count
+                        $status = 'Complete'
+                    }
+                    else {
+                        throw "Child process completed but CSV output not found at $childCsvPath"
+                    }
+                }
+                finally {
+                    Remove-Item -Path $childScriptFile -ErrorAction SilentlyContinue
+                }
+
+                # Skip normal in-process execution
+                $collectorDuration = ((Get-Date) - $collectorStart).TotalSeconds
+                Show-CollectorResult -Label $collector.Label -Status $status -Items $itemCount -DurationSeconds $collectorDuration -ErrorMessage $errorMessage
+                $summaryResults.Add([PSCustomObject]@{
+                    Section   = $sectionName
+                    Collector = $collector.Label
+                    FileName  = "$($collector.Name).csv"
+                    Status    = $status
+                    Items     = $itemCount
+                    Duration  = '{0:mm\:ss}' -f [timespan]::FromSeconds($collectorDuration)
+                    Error     = $errorMessage
+                })
+                Write-AssessmentLog -Level INFO -Message "Completed: $($collector.Label) -- $status, $itemCount items, $([math]::Round($collectorDuration, 1))s" -Section $sectionName -Collector $collector.Label
+                continue
+            }
+
             # Capture warnings (3>&1) so they go to log instead of console.
             # Suppress error stream (2>$null) to prevent Graph SDK cmdlets from
             # dumping raw API errors to console; terminating errors still propagate
@@ -1974,7 +2047,8 @@ if (Test-Path -Path $reportScriptPath) {
         $reportParams = @{
             AssessmentFolder = $assessmentFolder
         }
-        if ($TenantId) { $reportParams['TenantName'] = $TenantId }
+        if ($script:domainPrefix) { $reportParams['TenantName'] = $script:domainPrefix }
+        elseif ($TenantId)        { $reportParams['TenantName'] = $TenantId }
         if ($NoBranding) { $reportParams['NoBranding'] = $true }
 
         $reportOutput = & $reportScriptPath @reportParams

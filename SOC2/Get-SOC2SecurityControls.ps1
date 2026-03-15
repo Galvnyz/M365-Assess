@@ -89,7 +89,7 @@ function Add-ControlResult {
 try {
     Write-Verbose "S-01: Checking MFA enforcement via Conditional Access..."
     $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-    $policies = $caPolicies['value']
+    $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
 
     # Check for Security Defaults first
     $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
@@ -149,7 +149,7 @@ try {
     # Reuse $policies from S-01 if available
     if (-not $policies) {
         $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-        $policies = $caPolicies['value']
+        $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     }
 
     $signInRiskPolicies = @()
@@ -191,7 +191,7 @@ try {
     Write-Verbose "S-03: Checking for user risk Conditional Access policies..."
     if (-not $policies) {
         $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-        $policies = $caPolicies['value']
+        $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     }
 
     $userRiskPolicies = @()
@@ -234,12 +234,13 @@ try {
 
     # Get Global Admin role members
     $globalAdminRole = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
-    $gaRole = $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' }
+    $gaRole = if ($globalAdminRole -and $globalAdminRole['value']) { $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' } } else { $null }
 
     $adminUserIds = @()
     if ($gaRole) {
         $members = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
-        $adminUserIds = @($members['value'] | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' } | ForEach-Object { $_['id'] })
+        $memberList = if ($members -and $members['value']) { @($members['value']) } else { @() }
+        $adminUserIds = @($memberList | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' } | ForEach-Object { $_['id'] })
     }
 
     # Check auth method registration for phishing-resistant methods
@@ -248,8 +249,8 @@ try {
     foreach ($userId in $adminUserIds) {
         try {
             $regDetails = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/reports/authenticationMethods/userRegistrationDetails?`$filter=id eq '$userId'" -ErrorAction Stop
-            $details = $regDetails['value']
-            if ($details) {
+            $details = if ($regDetails -and $regDetails['value']) { @($regDetails['value']) } else { @() }
+            if ($details.Count -gt 0) {
                 $methods = @($details[0]['methodsRegistered'])
                 if ($methods -contains 'fido2SecurityKey' -or $methods -contains 'windowsHelloForBusiness' -or $methods -contains 'passKeyDeviceBound') {
                     $phishingResistantAdmins++
@@ -287,13 +288,14 @@ try {
 
     if (-not $gaRole) {
         $globalAdminRole = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
-        $gaRole = $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' }
+        $gaRole = if ($globalAdminRole -and $globalAdminRole['value']) { $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' } } else { $null }
     }
 
     $gaCount = 0
     if ($gaRole) {
         $members = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
-        $gaCount = @($members['value'] | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' }).Count
+        $memberList = if ($members -and $members['value']) { @($members['value']) } else { @() }
+        $gaCount = @($memberList | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' }).Count
     }
 
     $currentValue = "$gaCount Global Administrators"
@@ -373,7 +375,7 @@ catch {
 try {
     Write-Verbose "S-07: Checking Defender alert policies..."
     $alerts = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/security/alerts_v2?$top=10' -ErrorAction Stop
-    $alertList = @($alerts['value'])
+    $alertList = if ($alerts -and $alerts['value']) { @($alerts['value']) } else { @() }
 
     $currentValue = if ($alertList.Count -gt 0) {
         "$($alertList.Count)+ alerts found (threat detection active)"
@@ -412,7 +414,7 @@ try {
     $null = $resolvedAlerts  # Response used only to confirm API access; counts derived from allAlerts below
 
     $allAlerts = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/security/alerts_v2?$top=50' -ErrorAction Stop
-    $allList = @($allAlerts['value'])
+    $allList = if ($allAlerts -and $allAlerts['value']) { @($allAlerts['value']) } else { @() }
     $newCount = @($allList | Where-Object { $_['status'] -eq 'new' }).Count
     $triagedCount = $allList.Count - $newCount
 

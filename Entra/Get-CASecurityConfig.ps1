@@ -72,7 +72,7 @@ try {
     Write-Verbose "Fetching Conditional Access policies..."
     $caPolicies = Invoke-MgGraphRequest -Method GET `
         -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-    $allPolicies = @($caPolicies['value'])
+    $allPolicies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     $enabledPolicies = @($allPolicies | Where-Object { $_['state'] -eq 'enabled' })
 }
 catch {

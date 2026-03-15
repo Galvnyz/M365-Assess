@@ -33,7 +33,7 @@ param(
     [string]$OutputPath
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 # Verify Graph connection
 try {
@@ -102,6 +102,7 @@ function Get-BreakGlassAccounts {
 try {
     Write-Verbose "Checking security defaults..."
     $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    if (-not $secDefaults) { throw "API returned null response" }
     $isEnabled = $secDefaults['isEnabled']
     Add-Setting -Category 'Security Defaults' -Setting 'Security Defaults Enabled' `
         -CurrentValue "$isEnabled" -RecommendedValue 'True (if no Conditional Access)' `
@@ -135,7 +136,7 @@ try {
 
         $members = Invoke-MgGraphRequest -Method GET `
             -Uri "/v1.0/directoryRoles/$roleId/members" -ErrorAction Stop
-        $allAdmins = @($members['value'])
+        $allAdmins = if ($members -and $members['value']) { @($members['value']) } else { @() }
 
         # Exclude break-glass accounts from the operational admin count
         $breakGlassAdmins = Get-BreakGlassAccounts -Users $allAdmins
@@ -356,9 +357,12 @@ try {
     }
 
     if ($pwSettings) {
-        $bannedList = ($pwSettings['values'] | Where-Object { $_['name'] -eq 'BannedPasswordList' })['value']
-        $enforceCustom = ($pwSettings['values'] | Where-Object { $_['name'] -eq 'EnableBannedPasswordCheck' })['value']
-        $lockoutThreshold = ($pwSettings['values'] | Where-Object { $_['name'] -eq 'LockoutThreshold' })['value']
+        $bannedListEntry = if ($pwSettings['values']) { $pwSettings['values'] | Where-Object { $_['name'] -eq 'BannedPasswordList' } } else { $null }
+        $bannedList = if ($bannedListEntry) { $bannedListEntry['value'] } else { $null }
+        $enforceCustomEntry = if ($pwSettings['values']) { $pwSettings['values'] | Where-Object { $_['name'] -eq 'EnableBannedPasswordCheck' } } else { $null }
+        $enforceCustom = if ($enforceCustomEntry) { $enforceCustomEntry['value'] } else { $null }
+        $lockoutEntry = if ($pwSettings['values']) { $pwSettings['values'] | Where-Object { $_['name'] -eq 'LockoutThreshold' } } else { $null }
+        $lockoutThreshold = if ($lockoutEntry) { $lockoutEntry['value'] } else { $null }
 
         Add-Setting -Category 'Password Management' -Setting 'Custom Banned Password List Enforced' `
             -CurrentValue "$enforceCustom" -RecommendedValue 'True' `
@@ -390,7 +394,8 @@ catch {
 try {
     Write-Verbose "Checking password expiration..."
     $domains = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/domains' -ErrorAction Stop
-    foreach ($domain in $domains['value']) {
+    $domainList = if ($domains -and $domains['value']) { @($domains['value']) } else { @() }
+    foreach ($domain in $domainList) {
         if (-not $domain['isVerified']) { continue }
         $validityDays = $domain['passwordValidityPeriodInDays']
         $neverExpires = ($validityDays -eq 2147483647)
@@ -463,8 +468,9 @@ try {
     Write-Verbose "Counting conditional access policies..."
     $caPolicies = Invoke-MgGraphRequest -Method GET `
         -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-    $caCount = @($caPolicies['value']).Count
-    $enabledCount = @($caPolicies['value'] | Where-Object { $_['state'] -eq 'enabled' }).Count
+    $policyList = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
+    $caCount = $policyList.Count
+    $enabledCount = @($policyList | Where-Object { $_['state'] -eq 'enabled' }).Count
 
     Add-Setting -Category 'Conditional Access' -Setting 'Total CA Policies' `
         -CurrentValue "$caCount" -RecommendedValue '1+' `
@@ -653,7 +659,8 @@ try {
     Write-Verbose "Checking for dynamic guest group..."
     $dynamicGroups = Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/groups?`$filter=groupTypes/any(g:g eq 'DynamicMembership')&`$select=displayName,membershipRule&`$top=999" -ErrorAction Stop
-    $guestGroups = @($dynamicGroups['value'] | Where-Object {
+    $dynamicGroupList = if ($dynamicGroups -and $dynamicGroups['value']) { @($dynamicGroups['value']) } else { @() }
+    $guestGroups = @($dynamicGroupList | Where-Object {
         $_['membershipRule'] -and $_['membershipRule'] -match 'user\.userType\s+(-eq|-contains)\s+.?Guest'
     })
 
@@ -786,6 +793,30 @@ catch {
 # ------------------------------------------------------------------
 $pimAvailable = $true
 $pimRoleAssignments = $null
+$script:pimMessage = $null
+
+# Check if tenant has P2/E5 capability for PIM
+$hasPimLicense = $false
+try {
+    $skus = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
+    $skuList = if ($skus -and $skus['value']) { @($skus['value']) } else { @() }
+    $pimSkuIds = @(
+        'eec0eb4f-6444-4f95-aba0-50c24d67f998'  # AAD_PREMIUM_P2
+        '06ebc4ee-1bb5-47dd-8120-11324bc54e06'  # SPE_E5 (M365 E5)
+        'b05e124f-c7cc-45a0-a6aa-8cf78c946968'  # EMSPREMIUM (EMS E5)
+        'cd2925a3-5076-4233-8931-638a8c94f773'  # SPE_E5_NOPSTNCONF
+    )
+    foreach ($sku in $skuList) {
+        if ($sku['skuId'] -in $pimSkuIds -and $sku['capabilityStatus'] -eq 'Enabled') {
+            $hasPimLicense = $true
+            break
+        }
+    }
+}
+catch {
+    Write-Verbose "Could not check SKU licenses: $_"
+}
+
 try {
     Write-Verbose "Checking PIM role assignments..."
     $pimRoleAssignments = Invoke-MgGraphRequest -Method GET `
@@ -794,14 +825,21 @@ try {
 catch {
     if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
         $pimAvailable = $false
+        if ($hasPimLicense) {
+            $script:pimMessage = 'PIM is available but not configured in this tenant'
+        }
+        else {
+            $script:pimMessage = 'Requires Entra ID P2 license (included in M365 E5)'
+        }
     }
     else {
         Write-Warning "Could not check PIM role assignments: $_"
         $pimAvailable = $false
+        $script:pimMessage = "Could not check PIM: $($_.Exception.Message)"
     }
 }
 
-if ($pimAvailable -and $pimRoleAssignments) {
+if ($pimAvailable -and $pimRoleAssignments -and $pimRoleAssignments['value']) {
     # CIS 5.3.1 -- PIM manages privileged roles (no permanent GA assignments)
     $gaRoleTemplateId = '62e90394-69f5-4237-9190-012177145e10'
     $permanentGA = @($pimRoleAssignments['value'] | Where-Object {
@@ -819,7 +857,7 @@ if ($pimAvailable -and $pimRoleAssignments) {
 }
 elseif (-not $pimAvailable) {
     Add-Setting -Category 'Privileged Identity Management' -Setting 'PIM Manages Privileged Roles' `
-        -CurrentValue 'Requires Entra ID P2 license -- PIM API returned 403' `
+        -CurrentValue $script:pimMessage `
         -RecommendedValue 'PIM enabled for all privileged roles' `
         -Status 'Review' `
         -CheckId 'ENTRA-PIM-001' `
@@ -844,7 +882,7 @@ if ($pimAvailable) {
     }
 }
 
-if ($accessReviews) {
+if ($accessReviews -and $accessReviews['value']) {
     $allReviews = @($accessReviews['value'])
 
     # CIS 5.3.2 -- Guest access reviews
@@ -871,14 +909,14 @@ if ($accessReviews) {
 }
 elseif (-not $pimAvailable) {
     Add-Setting -Category 'Privileged Identity Management' -Setting 'Access Reviews for Guest Users' `
-        -CurrentValue 'Requires Entra ID P2 license -- Access Reviews API returned 403' `
+        -CurrentValue $script:pimMessage `
         -RecommendedValue 'At least 1 access review for guests' `
         -Status 'Review' `
         -CheckId 'ENTRA-PIM-002' `
         -Remediation 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > Access reviews.'
 
     Add-Setting -Category 'Privileged Identity Management' -Setting 'Access Reviews for Privileged Roles' `
-        -CurrentValue 'Requires Entra ID P2 license -- Access Reviews API returned 403' `
+        -CurrentValue $script:pimMessage `
         -RecommendedValue 'At least 1 access review for admin roles' `
         -Status 'Review' `
         -CheckId 'ENTRA-PIM-003' `
@@ -903,7 +941,7 @@ if ($pimAvailable) {
     }
 }
 
-if ($roleManagementPolicies) {
+if ($roleManagementPolicies -and $roleManagementPolicies['value']) {
     $allPolicies = @($roleManagementPolicies['value'])
 
     # CIS 5.3.4 -- GA activation approval
@@ -950,14 +988,14 @@ if ($roleManagementPolicies) {
 }
 elseif (-not $pimAvailable) {
     Add-Setting -Category 'Privileged Identity Management' -Setting 'GA Activation Requires Approval' `
-        -CurrentValue 'Requires Entra ID P2 license -- PIM Policies API returned 403' `
+        -CurrentValue $script:pimMessage `
         -RecommendedValue 'Yes' `
         -Status 'Review' `
         -CheckId 'ENTRA-PIM-004' `
         -Remediation 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Azure AD roles > Settings.'
 
     Add-Setting -Category 'Privileged Identity Management' -Setting 'PRA Activation Requires Approval' `
-        -CurrentValue 'Requires Entra ID P2 license -- PIM Policies API returned 403' `
+        -CurrentValue $script:pimMessage `
         -RecommendedValue 'Yes' `
         -Status 'Review' `
         -CheckId 'ENTRA-PIM-005' `
@@ -974,11 +1012,12 @@ try {
         -Uri "/v1.0/directoryRoles/roleTemplateId=$gaRoleTemplateId/members?`$select=displayName,userPrincipalName,onPremisesSyncEnabled" `
         -ErrorAction Stop
 
-    $syncedAdmins = @($gaMembers['value'] | Where-Object { $_['onPremisesSyncEnabled'] -eq $true })
+    $gaList = if ($gaMembers -and $gaMembers['value']) { @($gaMembers['value']) } else { @() }
+    $syncedAdmins = @($gaList | Where-Object { $_['onPremisesSyncEnabled'] -eq $true })
 
     if ($syncedAdmins.Count -eq 0) {
         Add-Setting -Category 'Admin Accounts' -Setting 'Cloud-Only Global Admins' `
-            -CurrentValue "All $($gaMembers['value'].Count) GA accounts are cloud-only" `
+            -CurrentValue "All $($gaList.Count) GA accounts are cloud-only" `
             -RecommendedValue 'All admin accounts cloud-only' `
             -Status 'Pass' `
             -CheckId 'ENTRA-CLOUDADMIN-001' `
@@ -1016,7 +1055,8 @@ try {
         'c7df2760-2c81-4ef7-b578-5b5392b571df'   # ENTERPRISEPREMIUM (O365 E5)
     )
 
-    $heavyLicensed = @($gaUsersLicense['value'] | Where-Object {
+    $gaLicenseList = if ($gaUsersLicense -and $gaUsersLicense['value']) { @($gaUsersLicense['value']) } else { @() }
+    $heavyLicensed = @($gaLicenseList | Where-Object {
         $licenses = $_['assignedLicenses']
         $licenses | Where-Object { $productivitySkus -contains $_['skuId'] }
     })
@@ -1052,8 +1092,9 @@ try {
         -Uri "/v1.0/groups?`$filter=visibility eq 'Public' and groupTypes/any(g:g eq 'Unified')&`$select=displayName,id&`$top=100" `
         -ErrorAction Stop
 
+    $publicGroupList = if ($publicGroups -and $publicGroups['value']) { @($publicGroups['value']) } else { @() }
     $noOwnerGroups = @()
-    foreach ($group in $publicGroups['value']) {
+    foreach ($group in $publicGroupList) {
         $owners = Invoke-MgGraphRequest -Method GET `
             -Uri "/v1.0/groups/$($group['id'])/owners?`$select=id" -ErrorAction SilentlyContinue
         if (-not $owners['value'] -or $owners['value'].Count -eq 0) {
@@ -1063,7 +1104,7 @@ try {
 
     if ($noOwnerGroups.Count -eq 0) {
         Add-Setting -Category 'Group Management' -Setting 'Public Groups Have Owners' `
-            -CurrentValue "$($publicGroups['value'].Count) public groups, all have owners" `
+            -CurrentValue "$($publicGroupList.Count) public groups, all have owners" `
             -RecommendedValue 'All public groups have assigned owners' `
             -Status 'Pass' `
             -CheckId 'ENTRA-GROUP-003' `
@@ -1114,7 +1155,8 @@ try {
     Write-Verbose "Checking password protection on-premises setting..."
     # Reuse $pwSettings from section 8 if available
     if ($pwSettings) {
-        $onPremEnabled = ($pwSettings['values'] | Where-Object { $_['name'] -eq 'EnableBannedPasswordCheckOnPremises' })['value']
+        $onPremEntry = if ($pwSettings['values']) { $pwSettings['values'] | Where-Object { $_['name'] -eq 'EnableBannedPasswordCheckOnPremises' } } else { $null }
+        $onPremEnabled = if ($onPremEntry) { $onPremEntry['value'] } else { $null }
         Add-Setting -Category 'Password Management' -Setting 'Password Protection On-Premises' `
             -CurrentValue "$onPremEnabled" -RecommendedValue 'True' `
             -Status $(if ($onPremEnabled -eq 'True') { 'Pass' } else { 'Fail' }) `
@@ -1192,7 +1234,8 @@ try {
         -Uri "/v1.0/users?`$select=displayName,userPrincipalName,accountEnabled&`$top=999" `
         -ErrorAction Stop
 
-    $breakGlassAccounts = Get-BreakGlassAccounts -Users $allUsers['value']
+    $allUserList = if ($allUsers -and $allUsers['value']) { @($allUsers['value']) } else { @() }
+    $breakGlassAccounts = Get-BreakGlassAccounts -Users $allUserList
     $bgCount = $breakGlassAccounts.Count
     $enabledBg = @($breakGlassAccounts | Where-Object { $_['accountEnabled'] -eq $true })
 
@@ -1225,7 +1268,7 @@ try {
     $orgInfo = Invoke-MgGraphRequest -Method GET `
         -Uri '/v1.0/organization' -ErrorAction Stop
 
-    $orgValue = $orgInfo['value']
+    $orgValue = if ($orgInfo -and $orgInfo['value']) { @($orgInfo['value']) } else { @() }
     if ($orgValue -and $orgValue.Count -gt 0) {
         $org = $orgValue[0]
         $onPremSync = $org['onPremisesSyncEnabled']

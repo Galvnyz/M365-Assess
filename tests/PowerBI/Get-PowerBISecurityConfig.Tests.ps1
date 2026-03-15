@@ -197,6 +197,98 @@ Describe 'Get-PowerBISecurityConfig - Edge Cases' {
         }
     }
 
+    Context 'when Power BI connection is not established' {
+        BeforeAll {
+            # Remove locally-scoped functions from outer BeforeAll so global overrides take effect
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+            function global:Update-CheckProgress { param($CheckId, $Status) }
+            function global:Import-Module { }
+            function global:Get-PowerBIAccessToken { throw 'Not connected to Power BI service. Run Connect-PowerBIServiceAccount first.' }
+            function global:Invoke-PowerBIRestMethod { }
+
+            $errorOutput = $null
+            try {
+                . $PSScriptRoot/../../PowerBI/Get-PowerBISecurityConfig.ps1
+            }
+            catch {
+                $errorOutput = $_.Exception.Message
+            }
+        }
+
+        It 'should fail with connection error' {
+            $errorOutput | Should -Not -BeNullOrEmpty
+            $errorOutput | Should -Match 'connection check failed|Not connected'
+        }
+
+        AfterAll {
+            Remove-Item -Path Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Import-Module -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context 'when tenant settings API returns 403 Forbidden' {
+        BeforeAll {
+            # Remove locally-scoped functions from outer BeforeAll so global overrides take effect
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+            function global:Update-CheckProgress { param($CheckId, $Status) }
+            function global:Import-Module { }
+            function global:Get-PowerBIAccessToken { return @{ 'Authorization' = 'Bearer test' } }
+            function global:Invoke-PowerBIRestMethod { throw '403 Forbidden' }
+
+            . $PSScriptRoot/../../PowerBI/Get-PowerBISecurityConfig.ps1
+        }
+
+        It 'should produce settings with Review status' {
+            $settings | Should -Not -BeNullOrEmpty
+            $settings | ForEach-Object { $_.Status | Should -Be 'Review' }
+        }
+
+        It 'should include permission error in CurrentValue' {
+            $settings[0].CurrentValue | Should -Match 'denied|permission|403'
+        }
+
+        AfterAll {
+            Remove-Item -Path Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Import-Module -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context 'when tenant settings API returns 404 Not Found' {
+        BeforeAll {
+            # Remove locally-scoped functions from outer BeforeAll so global overrides take effect
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+            function global:Update-CheckProgress { param($CheckId, $Status) }
+            function global:Import-Module { }
+            function global:Get-PowerBIAccessToken { return @{ 'Authorization' = 'Bearer test' } }
+            function global:Invoke-PowerBIRestMethod { throw '404 Not Found' }
+
+            . $PSScriptRoot/../../PowerBI/Get-PowerBISecurityConfig.ps1
+        }
+
+        It 'should produce settings with Review status' {
+            $settings | Should -Not -BeNullOrEmpty
+            $settings | ForEach-Object { $_.Status | Should -Be 'Review' }
+        }
+
+        It 'should include admin API message in CurrentValue' {
+            $settings[0].CurrentValue | Should -Match 'admin API|not available|Administrator'
+        }
+
+        AfterAll {
+            Remove-Item -Path Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Import-Module -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+        }
+    }
+
     AfterAll {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
