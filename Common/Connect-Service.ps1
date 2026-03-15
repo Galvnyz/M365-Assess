@@ -240,7 +240,7 @@ try {
             if ($TenantId) { $connectParams['Tenant'] = $TenantId }
 
             if ($ManagedIdentity) {
-                Write-Warning "Power BI does not support managed identity auth. Use certificate-based auth instead."
+                throw "Power BI (Connect-PowerBIServiceAccount) does not support managed identity auth. Use -ClientId and -CertificateThumbprint for non-interactive auth."
             }
             elseif ($ClientId -and $CertificateThumbprint) {
                 $connectParams['ServicePrincipal'] = $true

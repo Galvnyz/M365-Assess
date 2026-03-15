@@ -39,7 +39,7 @@ try {
     Get-PowerBIAccessToken -ErrorAction Stop -WarningAction SilentlyContinue | Out-Null
 }
 catch {
-    Write-Error "Not connected to Power BI. Run Connect-PowerBIServiceAccount first."
+    Write-Error "Power BI connection check failed: $($_.Exception.Message). Ensure you have run Connect-PowerBIServiceAccount."
     return
 }
 

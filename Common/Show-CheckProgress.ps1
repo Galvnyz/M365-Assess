@@ -27,6 +27,7 @@ $script:CollectorSectionMap = @{
     'Intune'         = 'Intune'
     'SharePoint'     = 'Collaboration'
     'Teams'          = 'Collaboration'
+    'PowerBI'        = 'PowerBI'
 }
 
 $script:CollectorLabelMap = @{
@@ -39,10 +40,11 @@ $script:CollectorLabelMap = @{
     'Intune'         = 'Intune Security Config'
     'SharePoint'     = 'SharePoint Security Config'
     'Teams'          = 'Teams Security Config'
+    'PowerBI'        = 'Power BI Security Config'
 }
 
 # Ordered list for consistent display
-$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'Intune', 'SharePoint', 'Teams')
+$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'Intune', 'SharePoint', 'Teams', 'PowerBI')
 
 function Initialize-CheckProgress {
     <#
