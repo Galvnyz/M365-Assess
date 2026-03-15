@@ -25,7 +25,7 @@ Describe 'Import-ControlRegistry' {
     }
 
     It 'Returns empty hashtable when registry not found' {
-        $result = Import-ControlRegistry -ControlsPath 'C:\nonexistent\path' -WarningAction SilentlyContinue
+        $result = Import-ControlRegistry -ControlsPath (Join-Path $TestDrive 'nonexistent') -WarningAction SilentlyContinue
         $result.Count | Should -Be 0
     }
 }

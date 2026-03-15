@@ -12,7 +12,10 @@ permissions:
 jobs:
   lint:
     name: PSScriptAnalyzer
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,8 +39,32 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: All checks passed" -ForegroundColor Green
 
+  smoke-tests:
+    name: Smoke Tests (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+
+      - name: Run smoke tests
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = @('./tests/Smoke', './tests/Consistency', './tests/Common/Export-AssessmentReport.Tests.ps1', './tests/Common/Import-ControlRegistry.Tests.ps1', './tests/controls')
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
   test:
-    name: Pester Tests
+    name: Pester Tests (Full)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

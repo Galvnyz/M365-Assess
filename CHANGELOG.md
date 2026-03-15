@@ -2,6 +2,18 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.4] - 2026-03-15
+
+### Added
+- Cross-platform CI: lint + smoke tests on ubuntu-latest and macos-latest (#103)
+- PSGallery feasibility report (`docs/superpowers/specs/2026-03-15-psgallery-feasibility.md`)
+
+### Changed
+- CI lint job now runs on all 3 platforms (Windows, Linux, macOS)
+- New `smoke-tests` job runs platform-agnostic Pester tests cross-platform
+- Full Pester suite and version check remain Windows-only
+- PSGallery packaging (#120) deferred to v1.0.0 (requires .psm1 wrapper restructuring)
+
 ## [0.9.3] - 2026-03-15
 
 ### Added
