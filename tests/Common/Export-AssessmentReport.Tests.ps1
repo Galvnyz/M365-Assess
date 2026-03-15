@@ -133,9 +133,8 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'Nist80053Privacy'
         }
 
-        It 'Should default NIST baselines to unchecked in framework selector' {
-            $html | Should -Match 'nistProfileKeys'
-            $html | Should -Match 'checkedAttr'
+        It 'Should include all frameworks checked by default in framework selector' {
+            $html | Should -Match "checked>"
         }
 
         It 'Should treat NIST baselines as profile cards' {

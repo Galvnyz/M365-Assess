@@ -1803,8 +1803,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     $null = $complianceHtml.AppendLine("<span class='fw-selector-label'>Frameworks:</span>")
     foreach ($fwKey in $allFrameworkKeys) {
         $fwInfo = $frameworkLookup[$fwKey]
-        $checkedAttr = if ($fwKey -in $nistProfileKeys) { '' } else { ' checked' }
-        $null = $complianceHtml.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fwInfo.Col)'$checkedAttr> $($fwInfo.Label)</label>")
+        $null = $complianceHtml.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fwInfo.Col)' checked> $($fwInfo.Label)</label>")
     }
     $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $complianceHtml.AppendLine("</div>")
@@ -1838,6 +1837,11 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
         $null = $complianceHtml.AppendLine("</div>")
     }
 
+    # Info status explanation (only if Info checks exist) — placed before cards, after status bar
+    if ($cisInfo -gt 0) {
+        $null = $complianceHtml.AppendLine("<div class='info-status-note'><span class='badge badge-neutral'>Info</span> checks are informational data points with no pass/fail criteria &mdash; they provide context about your environment but are <strong>not included</strong> in compliance pass rates.</div>")
+    }
+
     # Framework coverage cards (all frameworks)
     $null = $complianceHtml.AppendLine("<div class='exec-summary' id='fwCards'>")
     foreach ($fwKey in $allFrameworkKeys) {
@@ -1853,7 +1857,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
             $scoreClass = if ($profileScored -eq 0) { '' } elseif ($profileScore -ge 80) { 'success' } elseif ($profileScore -ge 60) { 'warning' } else { 'danger' }
             $catalogTotal = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
             $coverageLabel = if ($catalogTotal -gt 0) { "$($profileFindings.Count) of $catalogTotal assessed" } else { "$($profileFindings.Count) assessed" }
-            $coveragePct = if ($catalogTotal -gt 0) { [math]::Round(($profileScored / $catalogTotal) * 100, 0) } else { 0 }
+            $coveragePct = if ($catalogTotal -gt 0) { [math]::Min(100, [math]::Round(($profileScored / $catalogTotal) * 100, 0)) } else { 0 }
             $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$col' data-catalog-total='$catalogTotal'><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div></div>")
         }
         else {
@@ -1867,7 +1871,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
             $passDisplay = if ($mappedTotal -gt 0) { "$passRate%" } else { 'N/A' }
             $passClass = if ($mappedTotal -eq 0) { '' } elseif ($passRate -ge 80) { 'success' } elseif ($passRate -ge 60) { 'warning' } else { 'danger' }
             $totalCount = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
-            $coveragePct = if ($totalCount -gt 0) { [math]::Round(($mappedCount / $totalCount) * 100, 0) } else { 0 }
+            $coveragePct = if ($totalCount -gt 0) { [math]::Min(100, [math]::Round(($mappedCount / $totalCount) * 100, 0)) } else { 0 }
             $coverageLabel = if ($totalCount -gt 0) { "$mappedTotal of $totalCount assessed" } else { "$mappedTotal assessed" }
             $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $passClass' data-fw='$col' data-catalog-total='$totalCount'><div class='stat-value'>$passDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div></div>")
         }
@@ -1893,11 +1897,6 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     }
     $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $complianceHtml.AppendLine("</div>")
-
-    # Info status explanation (only if Info checks exist)
-    if ($cisInfo -gt 0) {
-        $null = $complianceHtml.AppendLine("<div class='info-status-note'><span class='badge badge-neutral'>Info</span> checks are informational data points with no pass/fail criteria &mdash; they provide context about your environment but are <strong>not included</strong> in compliance pass rates.</div>")
-    }
 
     # Section filter (scopes compliance view by assessment domain)
     $uniqueSections = @($allCisFindings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
@@ -3923,7 +3922,7 @@ $html += @"
                     var passCount = findings.filter(function(f) { return f.st === 'Pass'; }).length;
                     var total = findings.length;
                     var passRate = total > 0 ? (passCount / total * 100) : 0;
-                    var coveragePct = catalogTotal > 0 ? Math.round(total / catalogTotal * 100) : 0;
+                    var coveragePct = catalogTotal > 0 ? Math.min(100, Math.round(total / catalogTotal * 100)) : 0;
 
                     var valEl = card.querySelector('.stat-value');
                     if (valEl) valEl.textContent = (total > 0 ? passRate.toFixed(1) : '0') + '%';
