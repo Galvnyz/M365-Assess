@@ -3425,8 +3425,8 @@ $html = @"
 
         /* Matrix table */
         .matrix-table td { vertical-align: top; }
-        .matrix-table tbody tr:nth-child(even) { background: transparent; }
-        .matrix-table tbody tr.stripe-even { background: var(--m365a-light-gray); }
+        .matrix-table tbody tr:nth-child(even) { background: transparent !important; }
+        .matrix-table tbody tr.stripe-even { background: rgba(148, 163, 184, 0.08) !important; }
         .matrix-table .framework-refs { max-width: 180px; }
 
         /* ----------------------------------------------------------
