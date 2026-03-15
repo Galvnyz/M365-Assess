@@ -1616,8 +1616,9 @@ foreach ($sectionName in $Section) {
                 # Build a self-contained script that connects + runs the collector
                 $scriptLines = [System.Collections.Generic.List[string]]::new()
                 $scriptLines.Add('$ErrorActionPreference = "Stop"')
-                $scriptLines.Add(". '$connectServicePath'")
-                $scriptLines.Add('$connectParams = @{ Service = "PowerBI" }')
+                # Call Connect-Service.ps1 directly (do NOT dot-source -- it has a
+                # Mandatory param block that would prompt for input).
+                $scriptLines.Add("`$connectParams = @{ Service = 'PowerBI' }")
                 if ($TenantId)              { $scriptLines.Add("`$connectParams['TenantId'] = '$TenantId'") }
                 if ($ClientId -and $CertificateThumbprint) {
                     $scriptLines.Add("`$connectParams['ClientId'] = '$ClientId'")
@@ -1630,7 +1631,7 @@ foreach ($sectionName in $Section) {
                     $scriptLines.Add("`$connectParams['ClientSecret'] = (ConvertTo-SecureString '$plainSecret' -AsPlainText -Force)")
                 }
                 if ($UseDeviceCode)         { $scriptLines.Add('$connectParams["UseDeviceCode"] = $true') }
-                $scriptLines.Add('try { Connect-Service @connectParams } catch { Write-Error $_; exit 1 }')
+                $scriptLines.Add("try { & '$connectServicePath' @connectParams } catch { Write-Error `$_; exit 1 }")
                 $scriptLines.Add("& '$scriptPath' -OutputPath '$childCsvPath'")
 
                 $childScriptFile = Join-Path -Path $assessmentFolder -ChildPath '_powerbi_child.ps1'
