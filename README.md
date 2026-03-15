@@ -111,7 +111,7 @@ During execution, the console displays real-time streaming progress for each sec
 | **Security** | Secure Score, Improvement Actions, Defender Policies, Defender Security Config, DLP Policies | Microsoft Secure Score, Defender for Office 365, anti-phishing/spam/malware, Safe Links/Attachments, data loss prevention |
 | **Collaboration** | SharePoint & OneDrive, SharePoint Security Config, Teams Access, Teams Security Config | Sharing settings, external sharing controls, sync restrictions, Teams meeting policies, third-party app restrictions |
 | **Hybrid** | Hybrid Sync | Azure AD Connect sync status and domain configuration |
-| **PowerBI** *(opt-in)* | Power BI Security Config | 11 CIS 9.1.x tenant setting checks: guest access, external sharing, publish to web, sensitivity labels, service principal restrictions. Requires MicrosoftPowerBIMgmt module. |
+| **PowerBI** | Power BI Security Config | 11 CIS 9.1.x tenant setting checks: guest access, external sharing, publish to web, sensitivity labels, service principal restrictions. Requires MicrosoftPowerBIMgmt module. |
 | **Inventory** *(opt-in)* | Mailbox, Group, Teams, SharePoint, OneDrive Inventory | Per-object M&A inventory: mailboxes, distribution lists, M365 groups, Teams, SharePoint sites, OneDrive accounts |
 | **ActiveDirectory** *(opt-in)* | AD Domain & Forest, AD DC Health, AD Replication, AD Security | Domain/forest topology, DC health via dcdiag, replication partners and lag, password policies, privileged group membership. Requires RSAT or domain controller access. |
 | **SOC2** *(opt-in)* | Security Controls, Confidentiality Controls, Audit Evidence, Readiness Checklist | SOC 2 Trust Services Criteria assessment: security and confidentiality controls, 30-day audit log evidence collection, organizational readiness checklist for non-automatable criteria (CC1-CC5, CC8-CC9) |
@@ -129,7 +129,7 @@ During execution, the console displays real-time streaming progress for each sec
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, Hybrid | Sections to assess. Add `PowerBI`, `Inventory`, `ScubaGear`, or other opt-in sections. |
+| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ScubaGear`, or other opt-in sections. |
 | `-TenantId` | string | *(wizard prompt)* | Tenant ID or `*.onmicrosoft.com` domain |
 | `-OutputFolder` | string | `.\M365-Assessment` | Base output directory |
 | `-SkipConnection` | switch | | Skip service connections (use pre-existing) |

@@ -975,7 +975,7 @@ foreach ($sectionName in $sections) {
     # Hybrid Dashboard — sync status visual panel
     # ------------------------------------------------------------------
     if ($sectionName -eq 'Hybrid') {
-        $hybridCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '22-Hybrid-Sync.csv'
+        $hybridCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '23-Hybrid-Sync.csv'
         $hybridData = if (Test-Path $hybridCsvPath) { @(Import-Csv $hybridCsvPath) } else { @() }
 
         if ($hybridData.Count -gt 0) {
@@ -1926,7 +1926,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
 try {
     $xlsxScript = Join-Path -Path $PSScriptRoot -ChildPath 'Export-ComplianceMatrix.ps1'
     if (Test-Path -Path $xlsxScript) {
-        & $xlsxScript -AssessmentFolder $AssessmentFolder -TenantName $TenantName
+        & $xlsxScript -AssessmentFolder $AssessmentFolder -TenantName $reportDomainPrefix
     }
 } catch {
     Write-Warning "XLSX compliance matrix export failed: $($_.Exception.Message)"

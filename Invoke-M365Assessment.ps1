@@ -15,8 +15,7 @@
     One or more assessment sections to run. Valid values: Tenant, Identity,
     Licensing, Email, Intune, Security, Collaboration, Hybrid, PowerBI,
     Inventory, ActiveDirectory, ScubaGear, SOC2. Defaults to all standard
-    sections. PowerBI, Inventory, ActiveDirectory, ScubaGear, and SOC2 are
-    opt-in only.
+    sections. Inventory, ActiveDirectory, ScubaGear, and SOC2 are opt-in only.
 .PARAMETER TenantId
     Tenant ID or domain (e.g., 'contoso.onmicrosoft.com').
 .PARAMETER OutputFolder
@@ -96,7 +95,7 @@
 param(
     [Parameter()]
     [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'PowerBI', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear', 'SOC2')]
-    [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid'),
+    [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'PowerBI', 'Hybrid'),
 
     [Parameter()]
     [string]$TenantId,
@@ -182,7 +181,7 @@ function Show-InteractiveWizard {
         '6'  = @{ Name = 'Security';        Label = 'Security';                     Selected = $true }
         '7'  = @{ Name = 'Collaboration';   Label = 'Collaboration';                Selected = $true }
         '8'  = @{ Name = 'Hybrid';          Label = 'Hybrid Sync';                  Selected = $true }
-        '9'  = @{ Name = 'PowerBI';         Label = 'Power BI (opt-in)';            Selected = $false }
+        '9'  = @{ Name = 'PowerBI';         Label = 'Power BI';                     Selected = $true }
         '10' = @{ Name = 'Inventory';       Label = 'M&A Inventory (opt-in)';       Selected = $false }
         '11' = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
         '12' = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
