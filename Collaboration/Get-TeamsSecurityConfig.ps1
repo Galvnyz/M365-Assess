@@ -143,7 +143,7 @@ catch {
 try {
     Write-Verbose "Checking Teams client configuration for unmanaged users..."
     $teamsClientConfig = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/teamwork/teamsClientConfiguration' -ErrorAction SilentlyContinue
+        -Uri '/beta/teamwork/teamsClientConfiguration' -ErrorAction Stop
 
     if ($teamsClientConfig) {
         $allowConsumer = $teamsClientConfig['allowTeamsConsumer']
@@ -210,7 +210,7 @@ try {
     }
 }
 catch {
-    Write-Warning "Could not retrieve Teams client configuration: $_"
+    Write-Warning "Teams client configuration endpoint unavailable: $($_.Exception.Message)"
 }
 
 # ------------------------------------------------------------------
@@ -219,7 +219,7 @@ catch {
 try {
     Write-Verbose "Checking Teams meeting policy..."
     $meetingPolicy = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/teamwork/teamsMeetingPolicy' -ErrorAction SilentlyContinue
+        -Uri '/beta/teamwork/teamsMeetingPolicy' -ErrorAction Stop
 
     if ($meetingPolicy) {
         $anonymousJoin = $meetingPolicy['allowAnonymousUsersToJoinMeeting']
@@ -302,7 +302,7 @@ try {
     }
 }
 catch {
-    Write-Warning "Could not retrieve Teams meeting policy via Graph: $_"
+    Write-Warning "Teams meeting policy endpoint unavailable: $($_.Exception.Message)"
 }
 
 # ------------------------------------------------------------------
@@ -311,7 +311,7 @@ catch {
 try {
     Write-Verbose "Checking tenant-level Teams settings..."
     $teamSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/teamwork' -ErrorAction SilentlyContinue
+        -Uri '/v1.0/teamwork' -ErrorAction Stop
 
     if ($teamSettings) {
         Add-Setting -Category 'Teams Settings' -Setting 'Teams Workload Active' `
@@ -321,7 +321,7 @@ try {
     }
 }
 catch {
-    Write-Warning "Could not retrieve Teams settings: $_"
+    Write-Warning "Teams settings endpoint unavailable: $($_.Exception.Message)"
 }
 
 # ------------------------------------------------------------------
