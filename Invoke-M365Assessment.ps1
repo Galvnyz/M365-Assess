@@ -115,7 +115,7 @@ param(
     [string]$CertificateThumbprint,
 
     [Parameter()]
-    [string]$ClientSecret,
+    [SecureString]$ClientSecret,
 
     [Parameter()]
     [string]$UserPrincipalName,

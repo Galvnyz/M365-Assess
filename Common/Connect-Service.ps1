@@ -78,7 +78,7 @@ param(
     [string]$CertificateThumbprint,
 
     [Parameter()]
-    [string]$ClientSecret,
+    [SecureString]$ClientSecret,
 
     [Parameter()]
     [string]$UserPrincipalName,
@@ -154,8 +154,7 @@ try {
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
             elseif ($ClientId -and $ClientSecret) {
-                $secureSecret = ConvertTo-SecureString -String $ClientSecret -AsPlainText -Force
-                $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $secureSecret
+                $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $ClientSecret
                 $connectParams['ClientSecretCredential'] = $credential
             }
             else {
@@ -248,8 +247,7 @@ try {
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
             elseif ($ClientId -and $ClientSecret) {
-                $secureSecret = ConvertTo-SecureString -String $ClientSecret -AsPlainText -Force
-                $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $secureSecret
+                $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $ClientSecret
                 $connectParams['ServicePrincipal'] = $true
                 $connectParams['Credential'] = $credential
             }
