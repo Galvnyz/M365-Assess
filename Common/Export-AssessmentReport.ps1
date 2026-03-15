@@ -77,7 +77,10 @@ $frameworkLookup = @{
     'CIS-E3-L2'  = @{ Col = 'CisE3L2';   Label = 'CIS E3 L2';          Css = 'fw-cis-l2' }
     'CIS-E5-L1'  = @{ Col = 'CisE5L1';   Label = 'CIS E5 L1';          Css = 'fw-cis' }
     'CIS-E5-L2'  = @{ Col = 'CisE5L2';   Label = 'CIS E5 L2';          Css = 'fw-cis-l2' }
-    'NIST-800-53'= @{ Col = 'Nist80053';  Label = 'NIST 800-53 Rev 5';  Css = 'fw-nist' }
+    'NIST-Low'     = @{ Col = 'Nist80053Low';      Label = 'NIST Low';      Css = 'fw-nist' }
+    'NIST-Moderate'= @{ Col = 'Nist80053Moderate';  Label = 'NIST Moderate'; Css = 'fw-nist' }
+    'NIST-High'    = @{ Col = 'Nist80053High';      Label = 'NIST High';     Css = 'fw-nist-high' }
+    'NIST-Privacy' = @{ Col = 'Nist80053Privacy';   Label = 'NIST Privacy';  Css = 'fw-nist-privacy' }
     'NIST-CSF'   = @{ Col = 'NistCsf';    Label = 'NIST CSF 2.0';       Css = 'fw-csf' }
     'ISO-27001'  = @{ Col = 'Iso27001';   Label = 'ISO 27001:2022';     Css = 'fw-iso' }
     'STIG'       = @{ Col = 'Stig';       Label = 'DISA STIG';          Css = 'fw-stig' }
@@ -88,8 +91,9 @@ $frameworkLookup = @{
     'SOC-2'      = @{ Col = 'Soc2';       Label = 'SOC 2 TSC';          Css = 'fw-soc2' }
 }
 # Ordered list for consistent rendering (all frameworks always included)
-$allFrameworkKeys = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2','NIST-800-53','NIST-CSF','ISO-27001','STIG','PCI-DSS','CMMC','HIPAA','CISA-SCuBA','SOC-2')
+$allFrameworkKeys = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2','NIST-Low','NIST-Moderate','NIST-High','NIST-Privacy','NIST-CSF','ISO-27001','STIG','PCI-DSS','CMMC','HIPAA','CISA-SCuBA','SOC-2')
 $cisProfileKeys = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2')
+$nistProfileKeys = @('NIST-Low','NIST-Moderate','NIST-High','NIST-Privacy')
 
 # ------------------------------------------------------------------
 # Validate input
@@ -625,6 +629,11 @@ foreach ($sectionName in $sections) {
     }
 
     $null = $sectionHtml.AppendLine("</div>")
+
+    # Expand/Collapse buttons (only for sections with multiple collectors)
+    if ($sectionCollectors.Count -gt 1) {
+        $null = $sectionHtml.AppendLine("<div class='matrix-controls'><button type='button' class='expand-all-btn fw-action-btn'>Expand All</button><button type='button' class='collapse-all-btn fw-action-btn'>Collapse All</button></div>")
+    }
 
     # ------------------------------------------------------------------
     # Identity Dashboard — combined overview panel
@@ -1696,6 +1705,8 @@ foreach ($c in $summary) {
         $fw = if ($entry) { $entry.frameworks } else { @{} }
         $cisProfiles = if ($fw.'cis-m365-v6' -and $fw.'cis-m365-v6'.profiles) { $fw.'cis-m365-v6'.profiles } else { @() }
         $cisId = if ($fw.'cis-m365-v6' -and $fw.'cis-m365-v6'.controlId) { $fw.'cis-m365-v6'.controlId } else { '' }
+        $nistProfiles = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.profiles) { $fw.'nist-800-53'.profiles } else { @() }
+        $nistControlId = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.controlId) { $fw.'nist-800-53'.controlId } else { '' }
         $allCisFindings.Add([PSCustomObject]@{
             CheckId      = $row.CheckId
             CisControl   = $cisId
@@ -1705,13 +1716,18 @@ foreach ($c in $summary) {
             Recommended  = $row.RecommendedValue
             Status       = $row.Status
             Remediation  = $row.Remediation
+            Section      = $c.Section
             Source       = $c.Collector
             CisE3L1      = if ($cisProfiles -contains 'E3-L1') { $cisId } else { '' }
             CisE3L2      = if ($cisProfiles -contains 'E3-L2') { $cisId } else { '' }
             CisE5L1      = if ($cisProfiles -contains 'E5-L1') { $cisId } else { '' }
             CisE5L2      = if ($cisProfiles -contains 'E5-L2') { $cisId } else { '' }
             NistCsf      = if ($fw.'nist-csf')    { $fw.'nist-csf'.controlId }    else { '' }
-            Nist80053    = if ($fw.'nist-800-53')  { $fw.'nist-800-53'.controlId } else { '' }
+            Nist80053         = if ($fw.'nist-800-53')  { $fw.'nist-800-53'.controlId } else { '' }
+            Nist80053Low      = if ($nistProfiles -contains 'Low')      { $nistControlId } else { '' }
+            Nist80053Moderate = if ($nistProfiles -contains 'Moderate') { $nistControlId } else { '' }
+            Nist80053High     = if ($nistProfiles -contains 'High')     { $nistControlId } else { '' }
+            Nist80053Privacy  = if ($nistProfiles -contains 'Privacy')  { $nistControlId } else { '' }
             Iso27001     = if ($fw.'iso-27001')    { $fw.'iso-27001'.controlId }   else { '' }
             Stig         = if ($fw.stig)           { $fw.stig.controlId }          else { '' }
             PciDss       = if ($fw.'pci-dss')      { $fw.'pci-dss'.controlId }     else { '' }
@@ -1733,7 +1749,6 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
         'CIS-E3-L2'   = 'cis-e3-l2.csv'
         'CIS-E5-L1'   = 'cis-e5-l1.csv'
         'CIS-E5-L2'   = 'cis-e5-l2.csv'
-        'NIST-800-53'  = 'nist-800-53-r5.csv'
         'NIST-CSF'     = 'nist-csf-2.0.csv'
         'ISO-27001'    = 'iso-27001-2022.csv'
         'STIG'         = 'disa-stig-m365.csv'
@@ -1748,6 +1763,19 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
             if (Test-Path -Path $catPath) {
                 $catData = Import-Csv -Path $catPath
                 $catalogCounts[$fwKey] = @($catData).Count
+            }
+        }
+    }
+    # Load NIST 800-53 baseline counts from framework definition
+    $nistFwDefPath = Join-Path -Path $projectRoot -ChildPath 'controls/frameworks/nist-800-53-r5.json'
+    if (Test-Path -Path $nistFwDefPath) {
+        $nistFwDef = Get-Content -Path $nistFwDefPath -Raw | ConvertFrom-Json
+        if ($nistFwDef.scoring -and $nistFwDef.scoring.profiles) {
+            foreach ($profileName in @('Low','Moderate','High','Privacy')) {
+                $profileDef = $nistFwDef.scoring.profiles.$profileName
+                if ($profileDef -and $profileDef.controlCount) {
+                    $catalogCounts["NIST-$profileName"] = [int]$profileDef.controlCount
+                }
             }
         }
     }
@@ -1814,8 +1842,8 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     foreach ($fwKey in $allFrameworkKeys) {
         $fwInfo = $frameworkLookup[$fwKey]
         $col = $fwInfo.Col
-        if ($fwKey -in $cisProfileKeys) {
-            # CIS profile card — show compliance score for controls in this profile
+        if ($fwKey -in $cisProfileKeys -or $fwKey -in $nistProfileKeys) {
+            # CIS/NIST profile card — pass rate as primary, coverage bar as secondary
             $profileFindings = @($allCisFindings | Where-Object { $_.$col -and $_.$col -ne '' })
             $profilePass = @($profileFindings | Where-Object { $_.Status -eq 'Pass' }).Count
             $profileScored = $profileFindings.Count
@@ -1824,17 +1852,24 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
             $scoreClass = if ($profileScored -eq 0) { '' } elseif ($profileScore -ge 80) { 'success' } elseif ($profileScore -ge 60) { 'warning' } else { 'danger' }
             $catalogTotal = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
             $coverageLabel = if ($catalogTotal -gt 0) { "$($profileFindings.Count) of $catalogTotal assessed" } else { "$($profileFindings.Count) assessed" }
-            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$col'><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fwInfo.Label)<br><small>$coverageLabel</small></div></div>")
+            $coveragePct = if ($catalogTotal -gt 0) { [math]::Min(100, [math]::Round(($profileScored / $catalogTotal) * 100, 0)) } else { 0 }
+            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$col' data-catalog-total='$catalogTotal'><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div></div>")
         }
         else {
-            # Non-CIS card — show mapping coverage
-            $mappedControls = @($allCisFindings | Where-Object { $_.$col -and $_.$col -ne '' } | ForEach-Object { $_.$col -split ';' } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | Sort-Object -Unique)
+            # Non-CIS card — pass rate as primary, coverage bar as secondary
+            $mappedFindings = @($allCisFindings | Where-Object { $_.$col -and $_.$col -ne '' })
+            $mappedControls = @($mappedFindings | ForEach-Object { $_.$col -split ';' } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | Sort-Object -Unique)
             $mappedCount = $mappedControls.Count
+            $mappedPass = @($mappedFindings | Where-Object { $_.Status -eq 'Pass' }).Count
+            $mappedTotal = $mappedFindings.Count
+            $passRate = if ($mappedTotal -gt 0) { [math]::Round(($mappedPass / $mappedTotal) * 100, 1) } else { 0 }
+            $passDisplay = if ($mappedTotal -gt 0) { "$passRate%" } else { 'N/A' }
+            $passClass = if ($mappedTotal -eq 0) { '' } elseif ($passRate -ge 80) { 'success' } elseif ($passRate -ge 60) { 'warning' } else { 'danger' }
             $totalCount = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
-            $coveragePct = if ($totalCount -gt 0) { [math]::Round(($mappedCount / $totalCount) * 100, 0) } else { 0 }
-            $coverageClass = if ($totalCount -eq 0) { '' } elseif ($coveragePct -ge 70) { 'success' } elseif ($coveragePct -ge 50) { 'warning' } else { 'danger' }
-            $coverageLabel = if ($totalCount -gt 0) { "$mappedCount of $totalCount mapped" } else { "$mappedCount controls mapped" }
-            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $coverageClass' data-fw='$col'><div class='stat-value'>$coveragePct%</div><div class='stat-label'>$($fwInfo.Label)<br><small>$coverageLabel</small></div></div>")
+            $coveragePct = if ($totalCount -gt 0) { [math]::Min(100, [math]::Round(($mappedCount / $totalCount) * 100, 0)) } else { 0 }
+            $coverageLabel = if ($totalCount -gt 0) { "$mappedTotal of $totalCount assessed" } else { "$mappedTotal assessed" }
+            $coverageBarHtml = if ($totalCount -gt 0) { "<div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div>" } else { '' }
+            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $passClass' data-fw='$col' data-catalog-total='$totalCount'><div class='stat-value'>$passDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div>$coverageBarHtml</div>")
         }
     }
     $null = $complianceHtml.AppendLine("</div>")
@@ -1856,12 +1891,23 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     if ($cisUnknown -gt 0) {
         $null = $complianceHtml.AppendLine("<label class='status-checkbox status-unknown'><input type='checkbox' value='unknown' checked> Unknown ($cisUnknown)</label>")
     }
+    if ($cisInfo -gt 0) {
+        $null = $complianceHtml.AppendLine("<span class='info-note-inline'><span class='badge badge-neutral'>Info</span> = no pass/fail criteria; not included in pass rates</span>")
+    }
     $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $complianceHtml.AppendLine("</div>")
 
-    # Info status explanation (only if Info checks exist)
-    if ($cisInfo -gt 0) {
-        $null = $complianceHtml.AppendLine("<div class='info-status-note'><span class='badge badge-neutral'>Info</span> checks are informational data points with no pass/fail criteria &mdash; they provide context about your environment but are <strong>not included</strong> in compliance pass rates.</div>")
+    # Section filter (scopes compliance view by assessment domain)
+    $uniqueSections = @($allCisFindings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    if ($uniqueSections.Count -gt 1) {
+        $null = $complianceHtml.AppendLine("<div class='section-filter' id='sectionFilter'>")
+        $null = $complianceHtml.AppendLine("<span class='section-filter-label'>Sections:</span>")
+        foreach ($sec in $uniqueSections) {
+            $secCount = @($allCisFindings | Where-Object { $_.Section -eq $sec }).Count
+            $null = $complianceHtml.AppendLine("<label class='section-checkbox'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $sec)' checked> $(ConvertTo-HtmlSafe -Text $sec) ($secCount)</label>")
+        }
+        $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='sectionSelectAll' class='fw-action-btn'>All</button><button type='button' id='sectionSelectNone' class='fw-action-btn'>None</button></span>")
+        $null = $complianceHtml.AppendLine("</div>")
     }
 
     # Unified compliance matrix table (all frameworks as columns)
@@ -1892,7 +1938,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
         $checkRef = ConvertTo-HtmlSafe -Text $finding.CheckId
         $settingText = ConvertTo-HtmlSafe -Text $finding.Setting
 
-        $null = $complianceHtml.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())'>")
+        $null = $complianceHtml.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'>")
         $null = $complianceHtml.AppendLine("<td class='cis-id'>$checkRef</td>")
         $null = $complianceHtml.AppendLine("<td>$settingText</td>")
         $null = $complianceHtml.AppendLine("<td>$statusBadge</td>")
@@ -1917,6 +1963,24 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
 
     $null = $complianceHtml.AppendLine("</tbody></table>")
     $null = $complianceHtml.AppendLine("</div>")
+    $null = $complianceHtml.AppendLine("<div id='complianceNoResults' class='no-results' style='display:none'><p>No findings match the current filter selection.</p></div>")
+
+    # Embed compliance data for client-side filtering/recalculation
+    $complianceJson = @($allCisFindings | ForEach-Object {
+        $fwMap = [ordered]@{}
+        foreach ($fwKey in $allFrameworkKeys) {
+            $fwCol = $frameworkLookup[$fwKey].Col
+            $val = $_.$fwCol
+            if ($val -and $val -ne '') { $fwMap[$fwCol] = $val }
+        }
+        [PSCustomObject]@{
+            c  = $_.CheckId
+            s  = $_.Section
+            st = $_.Status
+            fw = $fwMap
+        }
+    }) | ConvertTo-Json -Compress -Depth 3
+    $null = $complianceHtml.AppendLine("<script>var complianceData = $complianceJson;</script>")
     $null = $complianceHtml.AppendLine("</details>")
 }
 
@@ -3287,6 +3351,7 @@ $html = @"
             max-width: 350px;
         }
 
+        .cis-row-pass { border-left: 3px solid var(--m365a-success); background-color: var(--m365a-success-bg); }
         .cis-row-fail { border-left: 3px solid var(--m365a-danger); background-color: var(--m365a-danger-bg); }
         .cis-row-warning { border-left: 3px solid var(--m365a-warning); background-color: var(--m365a-warning-bg); }
         .cis-row-review { border-left: 3px solid var(--m365a-accent); background-color: var(--m365a-info-bg); }
@@ -3299,6 +3364,8 @@ $html = @"
         .fw-cis    { background: #e8f0fe; color: #1a56db; }
         .fw-cis-l2 { background: #dbeafe; color: #1e40af; }
         .fw-nist   { background: #e8f0fe; color: #1a56db; }
+        .fw-nist-high { background: #dbeafe; color: #1e40af; }
+        .fw-nist-privacy { background: #ede9fe; color: #5b21b6; }
         .fw-csf   { background: #fef3c7; color: #92400e; }
         .fw-iso   { background: #ecfdf5; color: #065f46; }
         .fw-stig  { background: #f3e8ff; color: #6b21a8; }
@@ -3334,11 +3401,33 @@ $html = @"
         .status-unknown.active { background: #f9fafb; color: #6b7280; border-color: #d1d5db; font-weight: 600; }
 
         /* Info status explanation note */
-        .info-status-note { display: flex; align-items: center; gap: 8px; padding: 8px 14px; margin: 0 0 12px; font-size: 0.82em; color: var(--m365a-medium-gray); background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 6px; border-left: 3px solid var(--m365a-neutral); }
-        .info-status-note .badge { flex-shrink: 0; }
+        .info-note-inline { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75em; color: var(--m365a-medium-gray); margin-left: 8px; }
+
+        /* Dual-metric framework cards */
+        .coverage-bar { margin-top: 6px; background: var(--m365a-border); border-radius: 4px; height: 6px; overflow: hidden; }
+        .coverage-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .fw-card.success .coverage-fill { background: var(--m365a-success); }
+        .fw-card.warning .coverage-fill { background: var(--m365a-warning); }
+        .fw-card.danger .coverage-fill { background: var(--m365a-danger); }
+        .stat-sublabel { font-size: 0.75em; color: var(--m365a-medium-gray); }
+        .coverage-label { font-size: 0.65em; color: var(--m365a-medium-gray); margin-top: 2px; }
+
+        /* Section filter */
+        .section-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 14px; margin: 0 0 12px; background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 6px; }
+        .section-filter-label { font-weight: 600; font-size: 0.85em; color: var(--m365a-dark); margin-right: 4px; }
+        .section-checkbox { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; font-size: 0.82em; cursor: pointer; transition: all 0.15s; background: var(--m365a-card-bg); user-select: none; }
+        .section-checkbox:hover { border-color: var(--m365a-accent); }
+        .section-checkbox.active { background: #0d9488; color: #fff; border-color: #0d9488; }
+        .section-checkbox input[type="checkbox"] { display: none; }
+        .no-results { text-align: center; padding: 40px; color: var(--m365a-medium-gray); font-style: italic; }
+
+        /* Expand/Collapse all buttons */
+        .matrix-controls { display: flex; gap: 6px; margin: 8px 0; }
 
         /* Matrix table */
         .matrix-table td { vertical-align: top; }
+        .matrix-table tbody tr:nth-child(even) { background: transparent; }
+        .matrix-table tbody tr.stripe-even td { background-color: rgba(148, 163, 184, 0.12); }
         .matrix-table .framework-refs { max-width: 180px; }
 
         /* ----------------------------------------------------------
@@ -3385,6 +3474,8 @@ $html = @"
         body.dark-theme .fw-cis    { background: #1E3A5F; color: #93C5FD; }
         body.dark-theme .fw-cis-l2 { background: #1E3A5F; color: #60A5FA; }
         body.dark-theme .fw-nist   { background: #1E3A5F; color: #93C5FD; }
+        body.dark-theme .fw-nist-high { background: #1E3A5F; color: #60A5FA; }
+        body.dark-theme .fw-nist-privacy { background: #2E1065; color: #C4B5FD; }
         body.dark-theme .fw-csf    { background: #78350F; color: #FCD34D; }
         body.dark-theme .fw-iso    { background: #064E3B; color: #6EE7B7; }
         body.dark-theme .fw-stig   { background: #3B0764; color: #C4B5FD; }
@@ -3400,6 +3491,7 @@ $html = @"
         body.dark-theme .cloud-dod { background: #7F1D1D; color: #FCA5A5; border-color: #334155; }
 
         body.dark-theme .fw-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
+        body.dark-theme .section-checkbox.active { background: #0d9488; color: #ffffff; border-color: #0d9488; }
         body.dark-theme .status-fail.active { background: #7F1D1D; color: #FCA5A5; border-color: #991B1B; }
         body.dark-theme .status-warning.active { background: #78350F; color: #FCD34D; border-color: #92400E; }
         body.dark-theme .status-review.active { background: #1E3A5F; color: #93C5FD; border-color: #1E40AF; }
@@ -3564,6 +3656,8 @@ $html = @"
             tr { page-break-inside: avoid; }
             .fw-selector { display: none; }
             .status-filter { display: none; }
+            .section-filter { display: none; }
+            .matrix-controls { display: none; }
             .matrix-table tr { display: table-row !important; }
             .fw-col { display: table-cell !important; }
 
@@ -3753,95 +3847,205 @@ $html += @"
             });
         });
 
-        // --- Framework multi-selector ---
-        var selector = document.getElementById('fwSelector');
-        if (selector) {
-            var checkboxes = selector.querySelectorAll('input[type="checkbox"]');
-            var table = document.getElementById('complianceTable');
-            var cards = document.querySelectorAll('.fw-card');
-            function applyFrameworkFilter() {
+        // --- Unified compliance filters ---
+        var fwSelector = document.getElementById('fwSelector');
+        var statusFilter = document.getElementById('statusFilter');
+        var sectionFilter = document.getElementById('sectionFilter');
+        var compTable = document.getElementById('complianceTable');
+        var cards = document.querySelectorAll('.fw-card');
+
+        if (compTable) {
+            var compRows = compTable.querySelectorAll('tbody tr');
+            var allFwCols = compTable.querySelectorAll('.fw-col');
+            var fwCbs = fwSelector ? fwSelector.querySelectorAll('input[type="checkbox"]') : [];
+            var statusCbs = statusFilter ? statusFilter.querySelectorAll('input[type="checkbox"]') : [];
+            var sectionCbs = sectionFilter ? sectionFilter.querySelectorAll('input[type="checkbox"]') : [];
+
+            function getActive(cbs, parentClass) {
                 var active = [];
-                checkboxes.forEach(function(cb) {
-                    var lbl = cb.closest('.fw-checkbox');
-                    if (cb.checked) { lbl.classList.add('active'); active.push(cb.value); }
-                    else { lbl.classList.remove('active'); }
+                cbs.forEach(function(cb) {
+                    var lbl = cb.closest(parentClass);
+                    if (cb.checked) { if (lbl) lbl.classList.add('active'); active.push(cb.value); }
+                    else { if (lbl) lbl.classList.remove('active'); }
                 });
-                // Toggle table columns
-                if (table) {
-                    var allCols = table.querySelectorAll('.fw-col');
-                    allCols.forEach(function(el) {
-                        var fw = el.getAttribute('data-fw');
-                        el.style.display = active.indexOf(fw) !== -1 ? '' : 'none';
-                    });
-                }
-                // Toggle coverage cards
+                return active;
+            }
+
+            function applyAllFilters() {
+                var activeFw = getActive(fwCbs, '.fw-checkbox');
+                var activeStatus = getActive(statusCbs, '.status-checkbox');
+                var activeSections = getActive(sectionCbs, '.section-checkbox');
+
+                // 1. Toggle framework columns and cards
+                allFwCols.forEach(function(el) {
+                    var fw = el.getAttribute('data-fw');
+                    el.style.display = activeFw.indexOf(fw) !== -1 ? '' : 'none';
+                });
                 cards.forEach(function(card) {
                     var fw = card.getAttribute('data-fw');
-                    card.style.display = active.indexOf(fw) !== -1 ? '' : 'none';
+                    card.style.display = activeFw.indexOf(fw) !== -1 ? '' : 'none';
                 });
-            }
 
-            checkboxes.forEach(function(cb) {
-                cb.addEventListener('change', applyFrameworkFilter);
-            });
+                // 2. Filter rows by status + section
+                var visibleCount = 0;
+                compRows.forEach(function(row) {
+                    var sec = row.getAttribute('data-section') || '';
+                    var sectionOk = activeSections.indexOf(sec) !== -1;
+                    var statusOk = false;
+                    for (var i = 0; i < activeStatus.length; i++) {
+                        if ((row.className || '').indexOf('cis-row-' + activeStatus[i]) !== -1) { statusOk = true; break; }
+                    }
+                    var show = sectionOk && statusOk;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visibleCount++;
+                });
 
-            var btnAll = document.getElementById('fwSelectAll');
-            var btnNone = document.getElementById('fwSelectNone');
-            if (btnAll) btnAll.addEventListener('click', function() {
-                checkboxes.forEach(function(cb) { cb.checked = true; });
-                applyFrameworkFilter();
-            });
-            if (btnNone) btnNone.addEventListener('click', function() {
-                checkboxes.forEach(function(cb) { cb.checked = false; });
-                applyFrameworkFilter();
-            });
+                // 2b. Re-apply zebra striping to visible rows only
+                var visIdx = 0;
+                compRows.forEach(function(row) {
+                    if (row.style.display !== 'none') {
+                        row.classList.toggle('stripe-even', visIdx % 2 === 1);
+                        visIdx++;
+                    } else {
+                        row.classList.remove('stripe-even');
+                    }
+                });
 
-            // Initialize visual state
-            applyFrameworkFilter();
-        }
+                // 3. No-results message
+                var noResults = document.getElementById('complianceNoResults');
+                if (noResults) noResults.style.display = visibleCount === 0 ? '' : 'none';
 
-        // --- Status filter (multi-select) ---
-        var statusFilter = document.getElementById('statusFilter');
-        if (statusFilter) {
-            var statusCbs = statusFilter.querySelectorAll('input[type="checkbox"]');
-            var compTable = document.getElementById('complianceTable');
-            if (compTable) {
-                var compRows = compTable.querySelectorAll('tbody tr');
-
-                function applyStatusFilter() {
-                    var active = [];
-                    statusCbs.forEach(function(cb) {
-                        var lbl = cb.closest('.status-checkbox');
-                        if (cb.checked) { lbl.classList.add('active'); active.push(cb.value); }
-                        else { lbl.classList.remove('active'); }
-                    });
-                    compRows.forEach(function(row) {
-                        var show = false;
-                        for (var i = 0; i < active.length; i++) {
-                            if ((row.className || '').indexOf('cis-row-' + active[i]) !== -1) { show = true; break; }
-                        }
-                        row.style.display = show ? '' : 'none';
-                    });
+                // 4. Recalculate cards and status bar
+                if (typeof complianceData !== 'undefined') {
+                    recalculateCards(activeFw, activeSections);
+                    recalculateStatusBar(activeSections);
                 }
-
-                statusCbs.forEach(function(cb) {
-                    cb.addEventListener('change', applyStatusFilter);
-                });
-
-                var sAll = document.getElementById('statusSelectAll');
-                var sNone = document.getElementById('statusSelectNone');
-                if (sAll) sAll.addEventListener('click', function() {
-                    statusCbs.forEach(function(cb) { cb.checked = true; });
-                    applyStatusFilter();
-                });
-                if (sNone) sNone.addEventListener('click', function() {
-                    statusCbs.forEach(function(cb) { cb.checked = false; });
-                    applyStatusFilter();
-                });
-
-                applyStatusFilter();
             }
+
+            function recalculateCards(activeFw, activeSections) {
+                cards.forEach(function(card) {
+                    var fw = card.getAttribute('data-fw');
+                    if (activeFw.indexOf(fw) === -1) return;
+                    var catalogTotal = parseInt(card.getAttribute('data-catalog-total')) || 0;
+
+                    var findings = complianceData.filter(function(f) {
+                        return activeSections.indexOf(f.s) !== -1 && f.fw[fw];
+                    });
+                    var passCount = findings.filter(function(f) { return f.st === 'Pass'; }).length;
+                    var total = findings.length;
+                    var passRate = total > 0 ? (passCount / total * 100) : 0;
+                    var coveragePct = catalogTotal > 0 ? Math.min(100, Math.round(total / catalogTotal * 100)) : 0;
+
+                    var valEl = card.querySelector('.stat-value');
+                    if (valEl) valEl.textContent = (total > 0 ? passRate.toFixed(1) : '0') + '%';
+                    var subEl = card.querySelector('.stat-sublabel');
+                    if (subEl) subEl.textContent = passCount + ' of ' + total + ' assessed';
+                    var fill = card.querySelector('.coverage-fill');
+                    if (fill) fill.style.width = coveragePct + '%';
+                    var covLabel = card.querySelector('.coverage-label');
+                    if (covLabel) covLabel.textContent = coveragePct + '% coverage';
+
+                    card.classList.remove('success', 'warning', 'danger');
+                    if (total === 0) { /* no class */ }
+                    else if (passRate >= 80) card.classList.add('success');
+                    else if (passRate >= 60) card.classList.add('warning');
+                    else card.classList.add('danger');
+                });
+            }
+
+            function recalculateStatusBar(activeSections) {
+                var bar = document.querySelector('.compliance-status-bar');
+                if (!bar || typeof complianceData === 'undefined') return;
+                var findings = complianceData.filter(function(f) { return activeSections.indexOf(f.s) !== -1; });
+                var total = findings.length;
+
+                var statusMap = [
+                    { css: 'pass', label: 'Pass' },
+                    { css: 'fail', label: 'Fail' },
+                    { css: 'warning', label: 'Warning' },
+                    { css: 'review', label: 'Review' },
+                    { css: 'info', label: 'Info' }
+                ];
+                var counts = {};
+                statusMap.forEach(function(s) { counts[s.label] = 0; });
+                findings.forEach(function(f) { if (counts.hasOwnProperty(f.st)) counts[f.st]++; });
+
+                var totalEl = bar.querySelector('.compliance-bar-total');
+                if (totalEl) totalEl.textContent = total + ' controls assessed';
+
+                statusMap.forEach(function(s) {
+                    var seg = bar.querySelector('.hbar-segment.hbar-' + s.css);
+                    if (seg) {
+                        var count = counts[s.label] || 0;
+                        var pct = total > 0 ? (count / total * 100) : 0;
+                        seg.style.width = pct > 0 ? pct + '%' : '0';
+                        seg.style.display = pct > 0 ? '' : 'none';
+                        seg.title = s.label + ': ' + count;
+                        var lbl = seg.querySelector('.hbar-label');
+                        if (lbl) lbl.textContent = count > 0 ? count : '';
+                    }
+                });
+
+                bar.querySelectorAll('.hbar-legend-item').forEach(function(item) {
+                    var text = item.textContent;
+                    var match = text.match(/^(.+?)\s*\(\d+\)$/);
+                    if (match) {
+                        var label = match[1].trim();
+                        var count = counts[label] || 0;
+                        if (count > 0) {
+                            item.textContent = label + ' (' + count + ')';
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            // Wire up change handlers
+            fwCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
+            statusCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
+            sectionCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
+
+            // All/None buttons -- framework
+            var fwAll = document.getElementById('fwSelectAll');
+            var fwNone = document.getElementById('fwSelectNone');
+            if (fwAll) fwAll.addEventListener('click', function() { fwCbs.forEach(function(cb) { cb.checked = true; }); applyAllFilters(); });
+            if (fwNone) fwNone.addEventListener('click', function() { fwCbs.forEach(function(cb) { cb.checked = false; }); applyAllFilters(); });
+
+            // All/None buttons -- status
+            var sAll = document.getElementById('statusSelectAll');
+            var sNone = document.getElementById('statusSelectNone');
+            if (sAll) sAll.addEventListener('click', function() { statusCbs.forEach(function(cb) { cb.checked = true; }); applyAllFilters(); });
+            if (sNone) sNone.addEventListener('click', function() { statusCbs.forEach(function(cb) { cb.checked = false; }); applyAllFilters(); });
+
+            // All/None buttons -- section
+            var secAll = document.getElementById('sectionSelectAll');
+            var secNone = document.getElementById('sectionSelectNone');
+            if (secAll) secAll.addEventListener('click', function() { sectionCbs.forEach(function(cb) { cb.checked = true; }); applyAllFilters(); });
+            if (secNone) secNone.addEventListener('click', function() { sectionCbs.forEach(function(cb) { cb.checked = false; }); applyAllFilters(); });
+
+            // Initialize
+            applyAllFilters();
         }
+
+        // --- Expand/Collapse All buttons ---
+        document.querySelectorAll('.expand-all-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var section = btn.closest('.section');
+                if (section) {
+                    section.querySelectorAll('.collector-detail').forEach(function(d) { d.open = true; });
+                }
+            });
+        });
+        document.querySelectorAll('.collapse-all-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var section = btn.closest('.section');
+                if (section) {
+                    section.querySelectorAll('.collector-detail').forEach(function(d) { d.open = false; });
+                }
+            });
+        });
 
         // --- Table-level status filters (security config tables) ---
         document.querySelectorAll('.table-status-filter').forEach(function(filterBar) {

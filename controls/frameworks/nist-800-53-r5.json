@@ -1,0 +1,36 @@
+{
+  "frameworkId": "nist-800-53",
+  "label": "NIST SP 800-53 Rev 5",
+  "version": "5.2.0",
+  "css": "fw-nist",
+  "totalControls": 1189,
+  "scoring": {
+    "method": "profile-compliance",
+    "profiles": {
+      "Low": {
+        "label": "NIST 800-53 Low",
+        "css": "fw-nist",
+        "profileKey": "Low",
+        "controlCount": 149
+      },
+      "Moderate": {
+        "label": "NIST 800-53 Moderate",
+        "css": "fw-nist",
+        "profileKey": "Moderate",
+        "controlCount": 287
+      },
+      "High": {
+        "label": "NIST 800-53 High",
+        "css": "fw-nist-high",
+        "profileKey": "High",
+        "controlCount": 370
+      },
+      "Privacy": {
+        "label": "NIST 800-53 Privacy",
+        "css": "fw-nist-privacy",
+        "profileKey": "Privacy",
+        "controlCount": 96
+      }
+    }
+  }
+}

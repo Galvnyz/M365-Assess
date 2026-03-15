@@ -58,3 +58,4 @@ Modules/
 *.code-workspace
 *.suo
 *.user
+.superpowers/
