@@ -71,4 +71,23 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'var complianceData\s*='
         }
     }
+
+    Context 'Section filter UI' {
+        It 'Should include section filter HTML structure' {
+            $html | Should -Match "id='sectionFilter'"
+            $html | Should -Match 'section-checkbox'
+            $html | Should -Match "id='sectionSelectAll'"
+            $html | Should -Match "id='sectionSelectNone'"
+        }
+
+        It 'Should include no-results placeholder' {
+            $html | Should -Match "id='complianceNoResults'"
+            $html | Should -Match 'no-results'
+        }
+
+        It 'Should include section filter CSS' {
+            $html | Should -Match '\.section-filter'
+            $html | Should -Match '\.section-checkbox'
+        }
+    }
 }

@@ -1876,6 +1876,19 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
         $null = $complianceHtml.AppendLine("<div class='info-status-note'><span class='badge badge-neutral'>Info</span> checks are informational data points with no pass/fail criteria &mdash; they provide context about your environment but are <strong>not included</strong> in compliance pass rates.</div>")
     }
 
+    # Section filter (scopes compliance view by assessment domain)
+    $uniqueSections = @($allCisFindings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    if ($uniqueSections.Count -gt 1) {
+        $null = $complianceHtml.AppendLine("<div class='section-filter' id='sectionFilter'>")
+        $null = $complianceHtml.AppendLine("<span class='section-filter-label'>Sections:</span>")
+        foreach ($sec in $uniqueSections) {
+            $secCount = @($allCisFindings | Where-Object { $_.Section -eq $sec }).Count
+            $null = $complianceHtml.AppendLine("<label class='section-checkbox'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $sec)' checked> $(ConvertTo-HtmlSafe -Text $sec) ($secCount)</label>")
+        }
+        $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='sectionSelectAll' class='fw-action-btn'>All</button><button type='button' id='sectionSelectNone' class='fw-action-btn'>None</button></span>")
+        $null = $complianceHtml.AppendLine("</div>")
+    }
+
     # Unified compliance matrix table (all frameworks as columns)
     $null = $complianceHtml.AppendLine("<div class='table-wrapper'>")
     $null = $complianceHtml.AppendLine("<table class='data-table matrix-table' id='complianceTable'>")
@@ -1928,6 +1941,8 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
     }
 
     $null = $complianceHtml.AppendLine("</tbody></table>")
+    $null = $complianceHtml.AppendLine("</div>")
+    $null = $complianceHtml.AppendLine("<div id='complianceNoResults' class='no-results' style='display:none'><p>No findings match the current filter selection.</p></div>")
 
     # Embed compliance data for client-side filtering/recalculation
     $complianceJson = @($allCisFindings | ForEach-Object {
@@ -1945,8 +1960,6 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
         }
     }) | ConvertTo-Json -Compress -Depth 3
     $null = $complianceHtml.AppendLine("<script>var complianceData = $complianceJson;</script>")
-
-    $null = $complianceHtml.AppendLine("</div>")
     $null = $complianceHtml.AppendLine("</details>")
 }
 
@@ -3376,6 +3389,15 @@ $html = @"
         .stat-sublabel { font-size: 0.75em; color: var(--m365a-medium-gray); }
         .coverage-label { font-size: 0.65em; color: var(--m365a-medium-gray); margin-top: 2px; }
 
+        /* Section filter */
+        .section-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 14px; margin: 0 0 12px; background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 6px; }
+        .section-filter-label { font-weight: 600; font-size: 0.85em; color: var(--m365a-dark); margin-right: 4px; }
+        .section-checkbox { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; font-size: 0.82em; cursor: pointer; transition: all 0.15s; background: var(--m365a-card-bg); user-select: none; }
+        .section-checkbox:hover { border-color: var(--m365a-accent); }
+        .section-checkbox.active { background: var(--m365a-dark); color: #fff; border-color: var(--m365a-dark); }
+        .section-checkbox input[type="checkbox"] { display: none; }
+        .no-results { text-align: center; padding: 40px; color: var(--m365a-medium-gray); font-style: italic; }
+
         /* Expand/Collapse all buttons */
         .matrix-controls { display: flex; gap: 6px; margin: 8px 0; }
 
@@ -3442,6 +3464,7 @@ $html = @"
         body.dark-theme .cloud-dod { background: #7F1D1D; color: #FCA5A5; border-color: #334155; }
 
         body.dark-theme .fw-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
+        body.dark-theme .section-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
         body.dark-theme .status-fail.active { background: #7F1D1D; color: #FCA5A5; border-color: #991B1B; }
         body.dark-theme .status-warning.active { background: #78350F; color: #FCD34D; border-color: #92400E; }
         body.dark-theme .status-review.active { background: #1E3A5F; color: #93C5FD; border-color: #1E40AF; }
@@ -3606,6 +3629,7 @@ $html = @"
             tr { page-break-inside: avoid; }
             .fw-selector { display: none; }
             .status-filter { display: none; }
+            .section-filter { display: none; }
             .matrix-controls { display: none; }
             .matrix-table tr { display: table-row !important; }
             .fw-col { display: table-cell !important; }
