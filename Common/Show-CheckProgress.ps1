@@ -27,6 +27,7 @@ $script:CollectorSectionMap = @{
     'Intune'         = 'Intune'
     'SharePoint'     = 'Collaboration'
     'Teams'          = 'Collaboration'
+    'PowerBI'        = 'PowerBI'
 }
 
 $script:CollectorLabelMap = @{
@@ -39,10 +40,11 @@ $script:CollectorLabelMap = @{
     'Intune'         = 'Intune Security Config'
     'SharePoint'     = 'SharePoint Security Config'
     'Teams'          = 'Teams Security Config'
+    'PowerBI'        = 'Power BI Security Config'
 }
 
 # Ordered list for consistent display
-$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'Intune', 'SharePoint', 'Teams')
+$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'Intune', 'SharePoint', 'Teams', 'PowerBI')
 
 function Initialize-CheckProgress {
     <#
@@ -152,16 +154,19 @@ function global:Update-CheckProgress {
 
     $state = $global:CheckProgressState
     if (-not $state -or $state.Total -eq 0) { return }
-    if (-not $state.CheckIds.ContainsKey($CheckId)) { return }
 
-    $collectorName = $state.CheckIds[$CheckId]
+    # Extract base CheckId (strip .N sub-number) for registry lookup and counting
+    $baseCheckId = if ($CheckId -match '^(.+)\.\d+$') { $Matches[1] } else { $CheckId }
 
-    # Only count unique CheckIds toward progress (some collectors call
-    # Add-Setting multiple times with the same CheckId, e.g., per-domain
-    # password policies or multiple OWA policies).
-    $isFirstOccurrence = -not $state.CountedIds.ContainsKey($CheckId)
+    if (-not $state.CheckIds.ContainsKey($baseCheckId)) { return }
+
+    $collectorName = $state.CheckIds[$baseCheckId]
+
+    # Only count unique base CheckIds toward progress (sub-numbered settings
+    # share the same base, e.g., DEFENDER-ANTISPAM-001.1, .2, .3).
+    $isFirstOccurrence = -not $state.CountedIds.ContainsKey($baseCheckId)
     if ($isFirstOccurrence) {
-        $state.CountedIds[$CheckId] = $true
+        $state.CountedIds[$baseCheckId] = $true
         $state.Completed++
         $state.CollectorDone[$collectorName]++
     }
@@ -199,7 +204,7 @@ function global:Update-CheckProgress {
     # Stream the check result line
     Write-Host "    $([char]0x2502) " -ForegroundColor DarkGray -NoNewline
     Write-Host "$symbol " -ForegroundColor $color -NoNewline
-    Write-Host "$($CheckId.PadRight(22)) $name" -ForegroundColor $color
+    Write-Host "$($CheckId.PadRight(28)) $name" -ForegroundColor $color
 
     # Print collector footer when all unique checks in this collector are done
     $done = $state.CollectorDone[$collectorName]

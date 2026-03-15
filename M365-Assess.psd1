@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'Invoke-M365Assessment.ps1'
-    ModuleVersion     = '0.8.5'
+    ModuleVersion     = '0.9.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'SelvageLabs'
     CompanyName       = 'Community'
@@ -34,6 +34,9 @@
         'Invoke-M365Assessment.ps1'
         'Common\Connect-Service.ps1'
         'Common\Export-AssessmentReport.ps1'
+        'Common\Export-ComplianceMatrix.ps1'
+        'Common\Import-ControlRegistry.ps1'
+        'Common\Show-CheckProgress.ps1'
         'Entra\Get-TenantInfo.ps1'
         'Entra\Get-UserSummary.ps1'
         'Entra\Get-MfaReport.ps1'
@@ -78,8 +81,13 @@
         'Inventory\Get-TeamsInventory.ps1'
         'Inventory\Get-SharePointInventory.ps1'
         'Inventory\Get-OneDriveInventory.ps1'
+        'PowerBI\Get-PowerBISecurityConfig.ps1'
         'Purview\Get-AuditRetentionReport.ps1'
         'Purview\Search-AuditLog.ps1'
+        'SOC2\Get-SOC2SecurityControls.ps1'
+        'SOC2\Get-SOC2ConfidentialityControls.ps1'
+        'SOC2\Get-SOC2AuditEvidence.ps1'
+        'SOC2\Get-SOC2ReadinessChecklist.ps1'
         'Networking\Test-PortConnectivity.ps1'
         'Windows\Get-InstalledSoftware.ps1'
     )
@@ -87,10 +95,10 @@
     # Private data / PSData for PowerShell Gallery
     PrivateData       = @{
         PSData = @{
-            Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'ScubaGear', 'CIS')
+            Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'PowerBI', 'ScubaGear', 'CIS')
             LicenseUri   = 'https://github.com/SelvageLabs/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/SelvageLabs/M365-Assess'
-            ReleaseNotes = 'v0.8.5 - Centralized version management to module manifest, eliminated 30-file version bumps'
+            ReleaseNotes = 'v0.9.0 - Power BI collector (11 CIS 9.x checks), -ManagedIdentity and -ClientSecret auth, section reorder for optimal connections, validated issue fixes'
         }
     }
 }

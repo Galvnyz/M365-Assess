@@ -13,8 +13,10 @@
     Author:  Daren9m
 .PARAMETER Section
     One or more assessment sections to run. Valid values: Tenant, Identity,
-    Licensing, Email, Intune, Security, Collaboration, Hybrid, ScubaGear, SOC2.
-    Defaults to all standard sections (ScubaGear and SOC2 are opt-in only).
+    Licensing, Email, Intune, Security, Collaboration, Hybrid, PowerBI,
+    Inventory, ActiveDirectory, ScubaGear, SOC2. Defaults to all standard
+    sections. PowerBI, Inventory, ActiveDirectory, ScubaGear, and SOC2 are
+    opt-in only.
 .PARAMETER TenantId
     Tenant ID or domain (e.g., 'contoso.onmicrosoft.com').
 .PARAMETER OutputFolder
@@ -26,6 +28,9 @@
     Application (client) ID for app-only authentication.
 .PARAMETER CertificateThumbprint
     Certificate thumbprint for app-only authentication.
+.PARAMETER ClientSecret
+    Client secret for app-only authentication. Less secure than certificate
+    auth -- prefer -CertificateThumbprint for production use.
 .PARAMETER UserPrincipalName
     User principal name (e.g., 'admin@contoso.onmicrosoft.com') for interactive
     authentication to Exchange Online and Purview. Specifying this can bypass
@@ -33,6 +38,11 @@
 .PARAMETER ScubaProductNames
     ScubaGear product codes to assess. Only used when the ScubaGear section is
     selected. Defaults to all six products.
+.PARAMETER ManagedIdentity
+    Use Azure managed identity authentication. Requires the script to be running
+    on an Azure resource with a system-assigned or user-assigned managed identity
+    (e.g., Azure VM, Azure Functions, Azure Automation). Purview and Power BI do
+    not support managed identity and will fall back with a warning.
 .PARAMETER UseDeviceCode
     Use device code authentication flow instead of browser-based interactive auth.
     Displays a code and URL that you can open in any browser profile, which is
@@ -85,7 +95,7 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear', 'SOC2')]
+    [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'PowerBI', 'Hybrid', 'Inventory', 'ActiveDirectory', 'ScubaGear', 'SOC2')]
     [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'Hybrid'),
 
     [Parameter()]
@@ -105,14 +115,20 @@ param(
     [string]$CertificateThumbprint,
 
     [Parameter()]
+    [string]$ClientSecret,
+
+    [Parameter()]
     [string]$UserPrincipalName,
+
+    [Parameter()]
+    [switch]$ManagedIdentity,
 
     [Parameter()]
     [switch]$UseDeviceCode,
 
     [Parameter()]
-    [ValidateSet('aad', 'defender', 'exo', 'powerbi', 'powerplatform', 'sharepoint', 'teams')]
-    [string[]]$ScubaProductNames = @('aad', 'defender', 'exo', 'powerbi', 'powerplatform', 'sharepoint', 'teams'),
+    [ValidateSet('aad', 'defender', 'exo', 'powerplatform', 'sharepoint', 'teams')]
+    [string[]]$ScubaProductNames = @('aad', 'defender', 'exo', 'powerplatform', 'sharepoint', 'teams'),
 
     [Parameter()]
     [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')]
@@ -166,10 +182,11 @@ function Show-InteractiveWizard {
         '6'  = @{ Name = 'Security';        Label = 'Security';                     Selected = $true }
         '7'  = @{ Name = 'Collaboration';   Label = 'Collaboration';                Selected = $true }
         '8'  = @{ Name = 'Hybrid';          Label = 'Hybrid Sync';                  Selected = $true }
-        '9'  = @{ Name = 'Inventory';       Label = 'M&A Inventory (opt-in)';       Selected = $false }
-        '10' = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
-        '11' = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
-        '12' = @{ Name = 'SOC2';            Label = 'SOC 2 Readiness (opt-in)';     Selected = $false }
+        '9'  = @{ Name = 'PowerBI';         Label = 'Power BI (opt-in)';            Selected = $false }
+        '10' = @{ Name = 'Inventory';       Label = 'M&A Inventory (opt-in)';       Selected = $false }
+        '11' = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
+        '12' = @{ Name = 'ScubaGear';       Label = 'ScubaGear Baseline (PS 5.1)';  Selected = $false }
+        '13' = @{ Name = 'SOC2';            Label = 'SOC 2 Readiness (opt-in)';     Selected = $false }
     }
 
     # --- Header ---
@@ -877,6 +894,7 @@ $sectionServiceMap = @{
     'Intune'        = @('Graph')
     'Security'      = @('Graph', 'ExchangeOnline', 'Purview')
     'Collaboration' = @('Graph')
+    'PowerBI'       = @('PowerBI')
     'Hybrid'           = @('Graph')
     'Inventory'        = @('Graph', 'ExchangeOnline')
     'ActiveDirectory'  = @()
@@ -894,6 +912,7 @@ $sectionScopeMap = @{
     'Intune'        = @('DeviceManagementManagedDevices.Read.All', 'DeviceManagementConfiguration.Read.All')
     'Security'      = @('SecurityEvents.Read.All')
     'Collaboration' = @('SharePointTenantSettings.Read.All', 'TeamSettings.Read.All', 'TeamworkAppSettings.Read.All')
+    'PowerBI'       = @()
     'Hybrid'           = @('Organization.Read.All', 'Domain.Read.All')
     'Inventory'        = @('Group.Read.All', 'Team.ReadBasic.All', 'TeamMember.Read.All', 'Channel.ReadBasic.All', 'Reports.Read.All', 'Sites.Read.All', 'User.Read.All')
     'ActiveDirectory'  = @()
@@ -913,6 +932,7 @@ $sectionModuleMap = @{
     'Intune'        = @('Microsoft.Graph.DeviceManagement')
     'Security'      = @('Microsoft.Graph.Security')
     'Collaboration' = @()
+    'PowerBI'       = @()
     'Hybrid'           = @('Microsoft.Graph.Identity.DirectoryManagement')
     'Inventory'        = @()
     'ActiveDirectory'  = @()
@@ -966,8 +986,11 @@ $collectorMap = [ordered]@{
         @{ Name = '21-Teams-Access';        Script = 'Collaboration\Get-TeamsAccessReport.ps1';         Label = 'Teams Access' }
         @{ Name = '21b-Teams-Security-Config'; Script = 'Collaboration\Get-TeamsSecurityConfig.ps1';    Label = 'Teams Security Config' }
     )
+    'PowerBI' = @(
+        @{ Name = '22-PowerBI-Security-Config'; Script = 'PowerBI\Get-PowerBISecurityConfig.ps1'; Label = 'Power BI Security Config' }
+    )
     'Hybrid' = @(
-        @{ Name = '22-Hybrid-Sync'; Script = 'ActiveDirectory\Get-HybridSyncReport.ps1'; Label = 'Hybrid Sync' }
+        @{ Name = '23-Hybrid-Sync'; Script = 'ActiveDirectory\Get-HybridSyncReport.ps1'; Label = 'Hybrid Sync' }
     )
     'Inventory' = @(
         @{ Name = '28-Mailbox-Inventory';    Script = 'Inventory\Get-MailboxInventory.ps1';    Label = 'Mailbox Inventory';    RequiredServices = @('ExchangeOnline') }
@@ -1027,9 +1050,14 @@ if ($TenantId -and -not $PSBoundParameters.ContainsKey('M365Environment')) {
 # ------------------------------------------------------------------
 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 
-# Extract domain prefix for folder/file naming (Phase A: from TenantId if onmicrosoft)
+# Extract domain prefix for folder/file naming (Phase A: from TenantId)
+# Handles onmicrosoft domains (extract prefix) and custom domains (extract label before first dot).
+# GUIDs are left empty — Phase B resolves them after Graph connects.
 $script:domainPrefix = ''
 if ($TenantId -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
+    $script:domainPrefix = $Matches[1]
+}
+elseif ($TenantId -match '^([^.]+)\.' -and $TenantId -notmatch '^[0-9a-f]{8}-') {
     $script:domainPrefix = $Matches[1]
 }
 
@@ -1107,12 +1135,14 @@ if (-not $SkipConnection) {
     }
 
     # Determine which modules the selected sections actually require
-    $needsGraph = $false
-    $needsExo   = $false
+    $needsGraph   = $false
+    $needsExo     = $false
+    $needsPowerBI = $false
     foreach ($s in $Section) {
         $svcList = $sectionServiceMap[$s]
         if ($svcList -contains 'Graph')                                    { $needsGraph = $true }
         if ($svcList -contains 'ExchangeOnline' -or $svcList -contains 'Purview') { $needsExo = $true }
+        if ($svcList -contains 'PowerBI')                                  { $needsPowerBI = $true }
     }
 
     $missingModules = @()
@@ -1121,6 +1151,9 @@ if (-not $SkipConnection) {
     }
     if ($needsExo -and -not $exoModule) {
         $missingModules += "ExchangeOnlineManagement — Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser"
+    }
+    if ($needsPowerBI -and -not (Get-Module -Name MicrosoftPowerBIMgmt -ListAvailable)) {
+        $missingModules += "MicrosoftPowerBIMgmt — Install-Module MicrosoftPowerBIMgmt -Scope CurrentUser"
     }
 
     if ($missingModules.Count -gt 0) {
@@ -1183,6 +1216,7 @@ function Connect-RequiredService {
             'Graph'          { 'Microsoft Graph' }
             'ExchangeOnline' { 'Exchange Online' }
             'Purview'        { 'Purview (Security & Compliance)' }
+            'PowerBI'        { 'Power BI' }
             default          { $svc }
         }
         Write-Host "    Connecting to $serviceDisplayName..." -ForegroundColor Yellow
@@ -1209,6 +1243,7 @@ function Connect-RequiredService {
             if ($TenantId) { $connectParams['TenantId'] = $TenantId }
             if ($ClientId) { $connectParams['ClientId'] = $ClientId }
             if ($CertificateThumbprint) { $connectParams['CertificateThumbprint'] = $CertificateThumbprint }
+            if ($ClientSecret) { $connectParams['ClientSecret'] = $ClientSecret }
             if ($UserPrincipalName -and $svc -ne 'Graph') {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
             }
@@ -1219,6 +1254,9 @@ function Connect-RequiredService {
 
             if ($M365Environment -ne 'commercial') {
                 $connectParams['M365Environment'] = $M365Environment
+            }
+            if ($ManagedIdentity) {
+                $connectParams['ManagedIdentity'] = $true
             }
             if ($UseDeviceCode) {
                 $connectParams['UseDeviceCode'] = $true
@@ -1349,6 +1387,18 @@ if (Test-Path -Path $progressHelper) {
         }
     }
 }
+
+# Optimize section execution order to minimize service reconnections.
+# Group all EXO-dependent sections before Purview-dependent sections so
+# that running both Inventory and Security avoids EXO→Purview→EXO thrashing.
+$sectionOrder = @(
+    'Tenant', 'Identity', 'Licensing', 'Email', 'Intune',
+    'Inventory',        # EXO-dependent — run before Security's Purview collectors
+    'Security',         # Graph → EXO (Defender) → Purview (DLP/Compliance)
+    'Collaboration', 'PowerBI', 'Hybrid',
+    'ActiveDirectory', 'ScubaGear', 'SOC2'
+)
+$Section = $sectionOrder | Where-Object { $_ -in $Section }
 
 foreach ($sectionName in $Section) {
     if (-not $collectorMap.Contains($sectionName)) {
@@ -1925,7 +1975,8 @@ if (Test-Path -Path $reportScriptPath) {
         $reportParams = @{
             AssessmentFolder = $assessmentFolder
         }
-        if ($TenantId) { $reportParams['TenantName'] = $TenantId }
+        if ($script:domainPrefix) { $reportParams['TenantName'] = $script:domainPrefix }
+        elseif ($TenantId)        { $reportParams['TenantName'] = $TenantId }
         if ($NoBranding) { $reportParams['NoBranding'] = $true }
 
         $reportOutput = & $reportScriptPath @reportParams

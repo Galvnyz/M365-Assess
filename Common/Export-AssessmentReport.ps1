@@ -220,7 +220,7 @@ $totalCollectors = $summary.Count
 $sections = @($summary | Select-Object -ExpandProperty Section -Unique)
 
 # Preferred section display order — sections not listed keep their CSV order at the end
-$sectionDisplayOrder = @('Tenant','Identity','Hybrid','Licensing','Email','Intune','Security','Collaboration','Inventory','ScubaGear','SOC2')
+$sectionDisplayOrder = @('Tenant','Identity','Hybrid','Licensing','Email','Intune','Security','Collaboration','PowerBI','Inventory','ActiveDirectory','ScubaGear','SOC2')
 $sections = @(
     foreach ($s in $sectionDisplayOrder) { if ($sections -contains $s) { $s } }
     foreach ($s in $sections) { if ($sectionDisplayOrder -notcontains $s) { $s } }

@@ -59,7 +59,7 @@ function Add-Setting {
         Remediation      = $Remediation
     })
     if ($CheckId -and (Get-Command -Name Update-CheckProgress -ErrorAction SilentlyContinue)) {
-        Update-CheckProgress -CheckId $CheckId -Setting $Setting -Status $Status
+        Update-CheckProgress -CheckId $subCheckId -Setting $Setting -Status $Status
     }
 }
 

@@ -58,6 +58,16 @@ For Exchange Online, add the **Exchange.ManageAsApp** application role and assig
 
 See [`Setup/`](Setup/) for App Registration provisioning scripts.
 
+## Managed Identity
+
+For workloads running on Azure (VMs, App Service, Azure Functions, Azure Automation), use managed identity to authenticate without credentials. The Azure resource must have a system- or user-assigned managed identity with appropriate permissions.
+
+```powershell
+.\Invoke-M365Assessment.ps1 -ManagedIdentity
+```
+
+Managed identity is supported for Graph and Exchange Online. Purview and Power BI do not support managed identity and will fall back to browser-based login with a warning.
+
 ## Pre-Existing Connections
 
 If you have already connected to the required services (e.g., via `Connect-MgGraph` and `Connect-ExchangeOnline`), skip the connection step entirely:
@@ -96,20 +106,21 @@ Not all sections work with all authentication methods. This matrix shows what wo
 
 ### Auth Method Support
 
-| Section | Interactive | Device Code | App-Only (Cert) | Notes |
-|---------|:-----------:|:-----------:|:----------------:|-------|
-| Tenant | Yes | Yes | Yes | |
-| Identity | Yes | Yes | Yes | |
-| Licensing | Yes | Yes | Yes | |
-| Email | Yes | Yes | Yes | EXO requires Exchange Admin or Global Reader role for app-only |
-| Intune | Yes | Yes | Yes | Falls back to Review on 403 |
-| Security | Yes | Yes | Yes | DLP/Purview: no device code (falls back to browser prompt) |
-| Collaboration | Yes | Yes | **Partial** | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
-| Hybrid | Yes | Yes | Yes | |
-| Inventory | Yes | Yes | Yes | |
-| ActiveDirectory | Yes | Yes | N/A | Runs locally via RSAT -- no cloud auth needed |
-| SOC2 | Yes | Yes | Yes | Purview collectors: no device code |
-| ScubaGear | Yes | N/A | Yes | **Windows only** -- requires PowerShell 5.1 |
+| Section | Interactive | Device Code | App-Only (Cert) | Managed Identity | Notes |
+|---------|:-----------:|:-----------:|:----------------:|:----------------:|-------|
+| Tenant | Yes | Yes | Yes | Yes | |
+| Identity | Yes | Yes | Yes | Yes | |
+| Licensing | Yes | Yes | Yes | Yes | |
+| Email | Yes | Yes | Yes | Yes | EXO requires Exchange Admin or Global Reader role for app-only |
+| Intune | Yes | Yes | Yes | Yes | Falls back to Review on 403 |
+| Security | Yes | Yes | Yes | Yes | DLP/Purview: no device code or managed identity (falls back to browser) |
+| Collaboration | Yes | Yes | **Partial** | Yes | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
+| PowerBI | Yes | No | Yes | No | Opt-in. Requires MicrosoftPowerBIMgmt module |
+| Hybrid | Yes | Yes | Yes | Yes | |
+| Inventory | Yes | Yes | Yes | Yes | |
+| ActiveDirectory | Yes | Yes | N/A | N/A | Runs locally via RSAT -- no cloud auth needed |
+| SOC2 | Yes | Yes | Yes | Yes | Purview collectors: no device code or managed identity |
+| ScubaGear | Yes | N/A | Yes | N/A | **Windows only** -- requires PowerShell 5.1 |
 
 ### License Requirements
 
@@ -137,6 +148,7 @@ Each section connects to one or more M365 services. If a service connection fail
 
 | Service | Sections | Auth Methods |
 |---------|----------|-------------|
-| Microsoft Graph | Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2 | Interactive, device code, certificate, client secret |
-| Exchange Online | Email, Security, Inventory | Interactive, device code, certificate |
-| Purview | Security (DLP only), SOC2 | Interactive, certificate. **No device code** (logs warning, falls back to browser) |
+| Microsoft Graph | Tenant, Identity, Licensing, Intune, Security, Collaboration, Hybrid, Inventory, SOC2 | Interactive, device code, certificate, client secret, managed identity |
+| Exchange Online | Email, Security, Inventory | Interactive, device code, certificate, managed identity |
+| Purview | Security (DLP only), SOC2 | Interactive, certificate. **No device code or managed identity** |
+| Power BI | PowerBI | Interactive, certificate. **No device code or managed identity** |

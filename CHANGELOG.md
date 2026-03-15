@@ -2,6 +2,27 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.0] - 2026-03-14
+
+### Added
+- Power BI security config collector with 11 CIS 9.1.x checks (`PowerBI/Get-PowerBISecurityConfig.ps1`)
+- 14 Pester tests for Power BI collector (pass/fail/review scenarios)
+- `-ManagedIdentity` switch for Azure managed identity authentication (Graph + EXO)
+- `-ClientSecret` parameter exposed on orchestrator for app-only Graph auth
+- Power BI section wired into orchestrator (opt-in), Connect-Service, wizard, and collector maps
+- PowerBI and ActiveDirectory added to report `sectionDisplayOrder`
+- SECURITY.md and COMPATIBILITY.md added to README documentation index
+
+### Changed
+- Registry updated: 11 Power BI checks now automated (149 total automated, 233 entries)
+- Section execution reordered to minimize EXO/Purview reconnection thrashing
+- ScubaProductNames help text corrected to "seven products" (includes `powerbi`)
+- `.PARAMETER Section` help now lists all 13 valid values
+- Manifest FileList updated with 7 previously missing scripts (Common helpers + SOC2)
+
+### Fixed
+- 6 validated issues from external code review addressed on this branch
+
 ## [0.8.5] - 2026-03-14
 
 ### Changed

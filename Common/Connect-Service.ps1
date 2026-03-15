@@ -4,7 +4,7 @@
 .DESCRIPTION
     Wraps Connect-MgGraph, Connect-ExchangeOnline, and Connect-IPPSSession
     with consistent error handling, required module checks, and scope management.
-    Supports interactive, certificate, and client secret authentication.
+    Supports interactive, certificate, client secret, and managed identity authentication.
 .PARAMETER Service
     The service to connect to: Graph, ExchangeOnline, or Purview.
 .PARAMETER Scopes
@@ -24,6 +24,12 @@
     User principal name (e.g., 'admin@contoso.onmicrosoft.com') for interactive
     authentication to Exchange Online or Purview. Bypasses the Windows Authentication
     Manager (WAM) broker which can cause RuntimeBroker errors on some systems.
+.PARAMETER ManagedIdentity
+    Use Azure managed identity authentication. Requires the script to be running
+    on an Azure resource with a system-assigned or user-assigned managed identity
+    (e.g., Azure VM, Azure Functions, Azure Automation). Graph uses -Identity,
+    Exchange Online uses -ManagedIdentity. Purview and Power BI do not support
+    managed identity and will fall back with a warning.
 .PARAMETER UseDeviceCode
     Use device code authentication flow instead of browser-based interactive auth.
     Graph uses -UseDeviceCode, Exchange Online uses -Device. Purview does not
@@ -56,7 +62,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Graph', 'ExchangeOnline', 'Purview')]
+    [ValidateSet('Graph', 'ExchangeOnline', 'Purview', 'PowerBI')]
     [string]$Service,
 
     [Parameter()]
@@ -78,6 +84,9 @@ param(
     [string]$UserPrincipalName,
 
     [Parameter()]
+    [switch]$ManagedIdentity,
+
+    [Parameter()]
     [switch]$UseDeviceCode,
 
     [Parameter()]
@@ -91,6 +100,7 @@ $moduleMap = @{
     'Graph'           = 'Microsoft.Graph.Authentication'
     'ExchangeOnline'  = 'ExchangeOnlineManagement'
     'Purview'         = 'ExchangeOnlineManagement'
+    'PowerBI'         = 'MicrosoftPowerBIMgmt'
 }
 
 $requiredModule = $moduleMap[$Service]
@@ -136,7 +146,10 @@ try {
             $connectParams = @{}
             if ($TenantId) { $connectParams['TenantId'] = $TenantId }
 
-            if ($ClientId -and $CertificateThumbprint) {
+            if ($ManagedIdentity) {
+                $connectParams['Identity'] = $true
+            }
+            elseif ($ClientId -and $CertificateThumbprint) {
                 $connectParams['ClientId'] = $ClientId
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
@@ -172,7 +185,10 @@ try {
             }
             if ($TenantId) { $connectParams['Organization'] = $TenantId }
 
-            if ($ClientId -and $CertificateThumbprint) {
+            if ($ManagedIdentity) {
+                $connectParams['ManagedIdentity'] = $true
+            }
+            elseif ($ClientId -and $CertificateThumbprint) {
                 $connectParams['AppId'] = $ClientId
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
             }
@@ -195,6 +211,10 @@ try {
             $connectParams = @{}
             if ($TenantId) { $connectParams['Organization'] = $TenantId }
 
+            if ($ManagedIdentity) {
+                Write-Warning "Purview (Connect-IPPSSession) does not support managed identity auth. Falling back to browser-based login."
+            }
+
             if ($ClientId -and $CertificateThumbprint) {
                 $connectParams['AppId'] = $ClientId
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
@@ -213,6 +233,29 @@ try {
 
             Connect-IPPSSession @connectParams
             Write-Verbose "Connected to Purview (Security & Compliance) ($M365Environment)"
+        }
+
+        'PowerBI' {
+            $connectParams = @{}
+            if ($TenantId) { $connectParams['Tenant'] = $TenantId }
+
+            if ($ManagedIdentity) {
+                throw "Power BI (Connect-PowerBIServiceAccount) does not support managed identity auth. Use -ClientId and -CertificateThumbprint for non-interactive auth."
+            }
+            elseif ($ClientId -and $CertificateThumbprint) {
+                $connectParams['ServicePrincipal'] = $true
+                $connectParams['ApplicationId'] = $ClientId
+                $connectParams['CertificateThumbprint'] = $CertificateThumbprint
+            }
+            elseif ($ClientId -and $ClientSecret) {
+                $secureSecret = ConvertTo-SecureString -String $ClientSecret -AsPlainText -Force
+                $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $secureSecret
+                $connectParams['ServicePrincipal'] = $true
+                $connectParams['Credential'] = $credential
+            }
+
+            Connect-PowerBIServiceAccount @connectParams -WarningAction SilentlyContinue
+            Write-Verbose "Connected to Power BI ($M365Environment)"
         }
     }
 }
