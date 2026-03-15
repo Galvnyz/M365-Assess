@@ -2,6 +2,16 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.3] - 2026-03-15
+
+### Added
+- Copy-to-clipboard button for PowerShell remediation commands in HTML report (#121)
+- Pester consistency tests for metadata drift prevention (#104)
+  - Manifest FileList coverage, framework count, section names, registry integrity, version consistency
+
+### Fixed
+- Dynamic zebra striping now applies to td cells for dark mode visibility (#125)
+
 ## [0.9.1] - 2026-03-15
 
 ### Changed
