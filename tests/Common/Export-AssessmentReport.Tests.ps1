@@ -146,4 +146,22 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'controlCount'
         }
     }
+
+    Context 'Copy-to-clipboard for remediation' {
+        It 'Should include copyRemediation JavaScript function' {
+            $html | Should -Match 'function copyRemediation'
+        }
+
+        It 'Should include copy button CSS' {
+            $html | Should -Match '\.copy-btn'
+        }
+
+        It 'Should include cmdlet pattern for PowerShell detection' {
+            $html | Should -Match 'Set\|Get\|New\|Remove\|Update\|Enable\|Disable'
+        }
+
+        It 'Should hide copy button in print styles' {
+            $html | Should -Match '@media print[\s\S]*?\.copy-btn[\s\S]*?display:\s*none'
+        }
+    }
 }

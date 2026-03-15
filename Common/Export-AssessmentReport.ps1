@@ -1640,6 +1640,13 @@ foreach ($sectionName in $sections) {
                         $val = "<span class='badge $badgeClass'>$val</span>"
                     }
                 }
+                # Remediation column — add copy-to-clipboard button for PowerShell commands
+                if ($col -eq 'Remediation' -and $row.Remediation -match '^(Set|Get|New|Remove|Update|Enable|Disable|Add|Connect|Grant|Revoke|Install|Uninstall|Import|Export)-') {
+                    $rawRemediation = ConvertTo-HtmlSafe -Text "$($row.Remediation)"
+                    if ($rawRemediation.Length -gt 200) { $rawRemediation = $rawRemediation.Substring(0, 197) + '...' }
+                    $null = $sectionHtml.AppendLine("<td class='remediation-cell'><span class='remediation-text'>$rawRemediation</span><button type='button' class='copy-btn' title='Copy command' onclick='copyRemediation(this)'>&#128203;</button></td>")
+                    continue
+                }
                 $null = $sectionHtml.AppendLine("<td>$val</td>")
             }
             $null = $sectionHtml.AppendLine("</tr>")
@@ -3351,6 +3358,10 @@ $html = @"
             max-width: 350px;
         }
 
+        .copy-btn { background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 0.85em; opacity: 0.5; transition: opacity 0.15s; vertical-align: middle; margin-left: 4px; }
+        .copy-btn:hover { opacity: 1; }
+        .copy-btn.copied { opacity: 1; }
+
         .cis-row-pass { border-left: 3px solid var(--m365a-success); background-color: var(--m365a-success-bg); }
         .cis-row-fail { border-left: 3px solid var(--m365a-danger); background-color: var(--m365a-danger-bg); }
         .cis-row-warning { border-left: 3px solid var(--m365a-warning); background-color: var(--m365a-warning-bg); }
@@ -3428,6 +3439,13 @@ $html = @"
         .matrix-table td { vertical-align: top; }
         .matrix-table tbody tr:nth-child(even) { background: transparent; }
         .matrix-table tbody tr.stripe-even td { background-color: rgba(148, 163, 184, 0.12); }
+        .matrix-table tbody tr:hover td { background-color: transparent; }
+        .matrix-table tbody tr.cis-row-pass:hover { background-color: var(--m365a-success); opacity: 0.85; }
+        .matrix-table tbody tr.cis-row-fail:hover { background-color: var(--m365a-danger); opacity: 0.85; }
+        .matrix-table tbody tr.cis-row-warning:hover { background-color: var(--m365a-warning); opacity: 0.85; }
+        .matrix-table tbody tr.cis-row-review:hover { background-color: var(--m365a-accent); opacity: 0.85; }
+        .matrix-table tbody tr.cis-row-info:hover { background-color: var(--m365a-neutral); opacity: 0.85; }
+        .matrix-table tbody tr.cis-row-unknown:hover { background-color: var(--m365a-medium-gray); opacity: 0.85; }
         .matrix-table .framework-refs { max-width: 180px; }
 
         /* ----------------------------------------------------------
@@ -3492,6 +3510,8 @@ $html = @"
 
         body.dark-theme .fw-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
         body.dark-theme .section-checkbox.active { background: #0d9488; color: #ffffff; border-color: #0d9488; }
+        body.dark-theme .matrix-table tbody tr[class*="cis-row-"]:hover { color: #1a1a1a; }
+        body.dark-theme .matrix-table tbody tr[class*="cis-row-"]:hover .badge { color: #1a1a1a; }
         body.dark-theme .status-fail.active { background: #7F1D1D; color: #FCA5A5; border-color: #991B1B; }
         body.dark-theme .status-warning.active { background: #78350F; color: #FCD34D; border-color: #92400E; }
         body.dark-theme .status-review.active { background: #1E3A5F; color: #93C5FD; border-color: #1E40AF; }
@@ -3669,6 +3689,7 @@ $html = @"
             tr:hover { background: inherit; }
             .dash-panel.donut-hover-active .donut-fill { opacity: 1; }
             .score-detail-row.donut-highlight { background: inherit; }
+            .copy-btn { display: none; }
 
             @page {
                 size: letter;
@@ -4144,6 +4165,18 @@ $html += @"
             });
         });
     });
+
+    function copyRemediation(btn) {
+        var text = btn.previousElementSibling.textContent;
+        navigator.clipboard.writeText(text).then(function() {
+            btn.textContent = '\u2713';
+            btn.classList.add('copied');
+            setTimeout(function() {
+                btn.textContent = '\uD83D\uDCCB';
+                btn.classList.remove('copied');
+            }, 1500);
+        });
+    }
     </script>
 </body>
 </html>
