@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'Invoke-M365Assessment.ps1'
-    ModuleVersion     = '0.9.3'
+    ModuleVersion     = '0.9.4'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'SelvageLabs'
     CompanyName       = 'Community'
@@ -98,7 +98,7 @@
             Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'PowerBI', 'ScubaGear', 'CIS')
             LicenseUri   = 'https://github.com/SelvageLabs/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/SelvageLabs/M365-Assess'
-            ReleaseNotes = 'v0.9.3 - Quick wins: copy-to-clipboard for remediation commands, Pester consistency tests for metadata drift, zebra stripe fix'
+            ReleaseNotes = 'v0.9.4 - Infrastructure: cross-platform CI (Linux/macOS smoke tests), PSGallery feasibility evaluation'
         }
     }
 }
