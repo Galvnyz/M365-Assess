@@ -46,11 +46,25 @@ To use your own branding in the HTML report, replace the images in `Common/asset
 
 ## Testing
 
-Live tenant testing is the primary validation method. Run collectors against a real or test tenant and verify CSV output and HTML report accuracy. Use `PSScriptAnalyzer` for static analysis:
+Live tenant testing is the primary validation method. Run collectors against a real or test tenant and verify CSV output and HTML report accuracy.
+
+### Static Analysis
+
+Use `PSScriptAnalyzer` on changed files:
 
 ```powershell
 Invoke-ScriptAnalyzer -Path .\Entra\Get-MfaReport.ps1
 ```
+
+### Pester Tests
+
+CI runs Pester tests automatically on every PR. If you are modifying collectors or Common/ helpers, run Pester locally before pushing:
+
+```powershell
+Invoke-Pester ./tests/ -Output Detailed
+```
+
+Test files live under `tests/` mirroring the source structure. When adding new collectors or modifying check logic, add or update corresponding test files.
 
 ## Code of Conduct
 
