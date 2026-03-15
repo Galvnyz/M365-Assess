@@ -90,7 +90,13 @@ try {
         -Uri '/v1.0/admin/sharepoint/settings' -ErrorAction Stop
 }
 catch {
-    Write-Warning "Could not retrieve SharePoint tenant settings: $_"
+    $errMsg = $_.Exception.Message
+    if ($errMsg -match '401|403|Unauthorized|Forbidden') {
+        Write-Warning "SharePoint settings access denied. Ensure 'SharePointTenantSettings.Read.All' is consented. Add this scope when connecting to Graph."
+    }
+    else {
+        Write-Warning "Could not retrieve SharePoint tenant settings: $errMsg"
+    }
 }
 
 if (-not $spoSettings) {
