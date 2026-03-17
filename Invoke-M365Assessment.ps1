@@ -1386,7 +1386,11 @@ if (Test-Path -Path $progressHelper) {
         if ($progressRegistry.Count -gt 1) {
             Initialize-CheckProgress -ControlRegistry $progressRegistry -ActiveSections $Section
         }
+    } else {
+        Write-Warning "Import-ControlRegistry.ps1 not found - progress tracking disabled."
     }
+} else {
+    Write-Warning "Show-CheckProgress.ps1 not found - progress display disabled."
 }
 
 # Optimize section execution order to minimize service reconnections.

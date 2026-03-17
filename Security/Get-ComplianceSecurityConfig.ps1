@@ -30,6 +30,7 @@ param(
     [string]$OutputPath
 )
 
+# Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
 
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -76,18 +77,28 @@ try {
         $auditConfig = Get-AdminAuditLogConfig -ErrorAction Stop
         $auditEnabled = $auditConfig.UnifiedAuditLogIngestionEnabled
 
-        Add-Setting -Category 'Audit' -Setting 'Unified Audit Log Ingestion' `
-            -CurrentValue "$auditEnabled" -RecommendedValue 'True' `
-            -Status $(if ($auditEnabled) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'COMPLIANCE-AUDIT-001' `
-            -Remediation 'Run: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true. Microsoft Purview > Audit > Start recording user and admin activity.'
+        $settingParams = @{
+            Category         = 'Audit'
+            Setting          = 'Unified Audit Log Ingestion'
+            CurrentValue     = "$auditEnabled"
+            RecommendedValue = 'True'
+            Status           = if ($auditEnabled) { 'Pass' } else { 'Fail' }
+            CheckId          = 'COMPLIANCE-AUDIT-001'
+            Remediation      = 'Run: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true. Microsoft Purview > Audit > Start recording user and admin activity.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Audit' -Setting 'Unified Audit Log Ingestion' `
-            -CurrentValue 'Cmdlet not available' -RecommendedValue 'True' `
-            -Status 'Review' `
-            -CheckId 'COMPLIANCE-AUDIT-001' `
-            -Remediation 'Connect to Security & Compliance PowerShell to check audit log configuration.'
+        $settingParams = @{
+            Category         = 'Audit'
+            Setting          = 'Unified Audit Log Ingestion'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'True'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-AUDIT-001'
+            Remediation      = 'Connect to Security & Compliance PowerShell to check audit log configuration.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -105,50 +116,71 @@ try {
         $enabledPolicies = @($dlpPolicies | Where-Object { $_.Enabled -eq $true })
 
         if ($enabledPolicies.Count -gt 0) {
-            Add-Setting -Category 'Data Loss Prevention' -Setting 'DLP Policies' `
-                -CurrentValue "$($enabledPolicies.Count) enabled (of $(@($dlpPolicies).Count) total)" `
-                -RecommendedValue 'At least 1 enabled' `
-                -Status 'Pass' `
-                -CheckId 'COMPLIANCE-DLP-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Data Loss Prevention'
+                Setting          = 'DLP Policies'
+                CurrentValue     = "$($enabledPolicies.Count) enabled (of $(@($dlpPolicies).Count) total)"
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Pass'
+                CheckId          = 'COMPLIANCE-DLP-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'Data Loss Prevention' -Setting 'DLP Policies' `
-                -CurrentValue $(if (@($dlpPolicies).Count -eq 0) { 'None configured' } else { "$(@($dlpPolicies).Count) policies (none enabled)" }) `
-                -RecommendedValue 'At least 1 enabled' `
-                -Status 'Fail' `
-                -CheckId 'COMPLIANCE-DLP-001' `
-                -Remediation 'Microsoft Purview > Data loss prevention > Policies > Create a DLP policy covering sensitive information types relevant to your organization.'
+            $settingParams = @{
+                Category         = 'Data Loss Prevention'
+                Setting          = 'DLP Policies'
+                CurrentValue     = $(if (@($dlpPolicies).Count -eq 0) { 'None configured' } else { "$(@($dlpPolicies).Count) policies (none enabled)" })
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Fail'
+                CheckId          = 'COMPLIANCE-DLP-001'
+                Remediation      = 'Microsoft Purview > Data loss prevention > Policies > Create a DLP policy covering sensitive information types relevant to your organization.'
+            }
+            Add-Setting @settingParams
         }
 
-        # CIS 3.2.2 — DLP covers Teams
+        # CIS 3.2.2 -- DLP covers Teams
         $teamsPolicies = @($enabledPolicies | Where-Object {
             $_.TeamsLocation -or ($_.Workload -and $_.Workload -match 'Teams')
         })
 
         if ($teamsPolicies.Count -gt 0) {
-            Add-Setting -Category 'Data Loss Prevention' -Setting 'DLP Covers Teams' `
-                -CurrentValue "$($teamsPolicies.Count) policies include Teams" `
-                -RecommendedValue 'At least 1 policy covers Teams' `
-                -Status 'Pass' `
-                -CheckId 'COMPLIANCE-DLP-002' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Data Loss Prevention'
+                Setting          = 'DLP Covers Teams'
+                CurrentValue     = "$($teamsPolicies.Count) policies include Teams"
+                RecommendedValue = 'At least 1 policy covers Teams'
+                Status           = 'Pass'
+                CheckId          = 'COMPLIANCE-DLP-002'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'Data Loss Prevention' -Setting 'DLP Covers Teams' `
-                -CurrentValue 'No DLP policies cover Teams' `
-                -RecommendedValue 'At least 1 policy covers Teams' `
-                -Status 'Fail' `
-                -CheckId 'COMPLIANCE-DLP-002' `
-                -Remediation 'Microsoft Purview > Data loss prevention > Policies > Edit an existing policy or create new > Include Teams chat and channel messages location.'
+            $settingParams = @{
+                Category         = 'Data Loss Prevention'
+                Setting          = 'DLP Covers Teams'
+                CurrentValue     = 'No DLP policies cover Teams'
+                RecommendedValue = 'At least 1 policy covers Teams'
+                Status           = 'Fail'
+                CheckId          = 'COMPLIANCE-DLP-002'
+                Remediation      = 'Microsoft Purview > Data loss prevention > Policies > Edit an existing policy or create new > Include Teams chat and channel messages location.'
+            }
+            Add-Setting @settingParams
         }
     }
     else {
-        Add-Setting -Category 'Data Loss Prevention' -Setting 'DLP Policies' `
-            -CurrentValue 'Cmdlet not available' -RecommendedValue 'At least 1 enabled' `
-            -Status 'Review' `
-            -CheckId 'COMPLIANCE-DLP-001' `
-            -Remediation 'Connect to Security & Compliance PowerShell to check DLP policies.'
+        $settingParams = @{
+            Category         = 'Data Loss Prevention'
+            Setting          = 'DLP Policies'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'At least 1 enabled'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-DLP-001'
+            Remediation      = 'Connect to Security & Compliance PowerShell to check DLP policies.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -165,27 +197,41 @@ try {
         $labelPolicies = Get-LabelPolicy -ErrorAction Stop
 
         if (@($labelPolicies).Count -gt 0) {
-            Add-Setting -Category 'Information Protection' -Setting 'Sensitivity Label Policies' `
-                -CurrentValue "$(@($labelPolicies).Count) policies published" `
-                -RecommendedValue 'At least 1 published' `
-                -Status 'Pass' `
-                -CheckId 'COMPLIANCE-LABELS-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Information Protection'
+                Setting          = 'Sensitivity Label Policies'
+                CurrentValue     = "$(@($labelPolicies).Count) policies published"
+                RecommendedValue = 'At least 1 published'
+                Status           = 'Pass'
+                CheckId          = 'COMPLIANCE-LABELS-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'Information Protection' -Setting 'Sensitivity Label Policies' `
-                -CurrentValue 'None published' -RecommendedValue 'At least 1 published' `
-                -Status 'Fail' `
-                -CheckId 'COMPLIANCE-LABELS-001' `
-                -Remediation 'Microsoft Purview > Information protection > Labels > Create and publish sensitivity labels. Then create a label policy to deploy them to users.'
+            $settingParams = @{
+                Category         = 'Information Protection'
+                Setting          = 'Sensitivity Label Policies'
+                CurrentValue     = 'None published'
+                RecommendedValue = 'At least 1 published'
+                Status           = 'Fail'
+                CheckId          = 'COMPLIANCE-LABELS-001'
+                Remediation      = 'Microsoft Purview > Information protection > Labels > Create and publish sensitivity labels. Then create a label policy to deploy them to users.'
+            }
+            Add-Setting @settingParams
         }
     }
     else {
-        Add-Setting -Category 'Information Protection' -Setting 'Sensitivity Label Policies' `
-            -CurrentValue 'Cmdlet not available' -RecommendedValue 'At least 1 published' `
-            -Status 'Review' `
-            -CheckId 'COMPLIANCE-LABELS-001' `
-            -Remediation 'Connect to Security & Compliance PowerShell to check sensitivity labels.'
+        $settingParams = @{
+            Category         = 'Information Protection'
+            Setting          = 'Sensitivity Label Policies'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'At least 1 published'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-LABELS-001'
+            Remediation      = 'Connect to Security & Compliance PowerShell to check sensitivity labels.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {

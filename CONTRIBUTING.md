@@ -66,6 +66,15 @@ Invoke-Pester ./tests/ -Output Detailed
 
 Test files live under `tests/` mirroring the source structure. When adding new collectors or modifying check logic, add or update corresponding test files.
 
+## Error Handling Convention
+
+Security collectors use one of two `$ErrorActionPreference` strategies:
+
+- **Stop** - Used when API failures should halt the collector entirely. Partial results could be misleading (e.g., reporting "no risky users found" when the API call actually failed).
+- **Continue** (or inherited default) - Used when individual checks are independent and a single failure should not block the remaining assessments. Critical calls use explicit `try/catch` blocks.
+
+When writing new collectors, choose `Stop` if the collector's checks depend on a shared API response that must succeed, or `Continue` if checks are independent and can fail individually.
+
 ## Code of Conduct
 
 Be respectful and constructive. We're all here to make M365 security assessment easier for everyone.

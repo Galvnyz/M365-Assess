@@ -36,6 +36,7 @@ param(
     [string]$OutputPath
 )
 
+# Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
 
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -84,73 +85,101 @@ try {
 
         # Phishing threshold
         $threshold = $policy.PhishThresholdLevel
-        Add-Setting -Category 'Anti-Phishing' `
-            -Setting "Phishing Threshold ($policyLabel)" `
-            -CurrentValue "$threshold" -RecommendedValue '2+ (Aggressive)' `
-            -Status $(if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-ANTIPHISH-001' `
-            -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
+        $settingParams = @{
+            Category         = 'Anti-Phishing'
+            Setting          = "Phishing Threshold ($policyLabel)"
+            CurrentValue     = "$threshold"
+            RecommendedValue = '2+ (Aggressive)'
+            Status           = if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-ANTIPHISH-001'
+            Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
+        }
+        Add-Setting @settingParams
 
         # Impersonation protection (Defender P1+ only)
         if ($null -ne $policy.EnableMailboxIntelligenceProtection) {
             $mailboxIntel = $policy.EnableMailboxIntelligenceProtection
-            Add-Setting -Category 'Anti-Phishing' `
-                -Setting "Mailbox Intelligence Protection ($policyLabel)" `
-                -CurrentValue "$mailboxIntel" -RecommendedValue 'True' `
-                -Status $(if ($mailboxIntel) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableMailboxIntelligenceProtection $true. Security admin center > Anti-phishing > Impersonation > Enable Mailbox intelligence protection.'
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "Mailbox Intelligence Protection ($policyLabel)"
+                CurrentValue     = "$mailboxIntel"
+                RecommendedValue = 'True'
+                Status           = if ($mailboxIntel) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableMailboxIntelligenceProtection $true. Security admin center > Anti-phishing > Impersonation > Enable Mailbox intelligence protection.'
+            }
+            Add-Setting @settingParams
         }
 
         if ($null -ne $policy.EnableTargetedUserProtection) {
             $targetedUser = $policy.EnableTargetedUserProtection
-            Add-Setting -Category 'Anti-Phishing' `
-                -Setting "Targeted User Protection ($policyLabel)" `
-                -CurrentValue "$targetedUser" -RecommendedValue 'True' `
-                -Status $(if ($targetedUser) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedUserProtection $true -TargetedUsersToProtect @{Add="user@domain.com"}. Security admin center > Anti-phishing > Impersonation > Add users to protect.'
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "Targeted User Protection ($policyLabel)"
+                CurrentValue     = "$targetedUser"
+                RecommendedValue = 'True'
+                Status           = if ($targetedUser) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedUserProtection $true -TargetedUsersToProtect @{Add="user@domain.com"}. Security admin center > Anti-phishing > Impersonation > Add users to protect.'
+            }
+            Add-Setting @settingParams
         }
 
         if ($null -ne $policy.EnableTargetedDomainsProtection) {
             $targetedDomain = $policy.EnableTargetedDomainsProtection
-            Add-Setting -Category 'Anti-Phishing' `
-                -Setting "Targeted Domain Protection ($policyLabel)" `
-                -CurrentValue "$targetedDomain" -RecommendedValue 'True' `
-                -Status $(if ($targetedDomain) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedDomainsProtection $true. Security admin center > Anti-phishing > Impersonation > Add domains to protect.'
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "Targeted Domain Protection ($policyLabel)"
+                CurrentValue     = "$targetedDomain"
+                RecommendedValue = 'True'
+                Status           = if ($targetedDomain) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableTargetedDomainsProtection $true. Security admin center > Anti-phishing > Impersonation > Add domains to protect.'
+            }
+            Add-Setting @settingParams
         }
 
         # Honor DMARC policy
         if ($null -ne $policy.HonorDmarcPolicy) {
             $honorDmarc = $policy.HonorDmarcPolicy
-            Add-Setting -Category 'Anti-Phishing' `
-                -Setting "Honor DMARC Policy ($policyLabel)" `
-                -CurrentValue "$honorDmarc" -RecommendedValue 'True' `
-                -Status $(if ($honorDmarc) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -HonorDmarcPolicy $true. Security admin center > Anti-phishing > Enable Honor DMARC record policy.'
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "Honor DMARC Policy ($policyLabel)"
+                CurrentValue     = "$honorDmarc"
+                RecommendedValue = 'True'
+                Status           = if ($honorDmarc) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -HonorDmarcPolicy $true. Security admin center > Anti-phishing > Enable Honor DMARC record policy.'
+            }
+            Add-Setting @settingParams
         }
 
         # Spoof intelligence
         $spoofIntel = $policy.EnableSpoofIntelligence
-        Add-Setting -Category 'Anti-Phishing' `
-            -Setting "Spoof Intelligence ($policyLabel)" `
-            -CurrentValue "$spoofIntel" -RecommendedValue 'True' `
-            -Status $(if ($spoofIntel) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-ANTIPHISH-001' `
-            -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableSpoofIntelligence $true. Security admin center > Anti-phishing > Spoof > Enable spoof intelligence.'
+        $settingParams = @{
+            Category         = 'Anti-Phishing'
+            Setting          = "Spoof Intelligence ($policyLabel)"
+            CurrentValue     = "$spoofIntel"
+            RecommendedValue = 'True'
+            Status           = if ($spoofIntel) { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-ANTIPHISH-001'
+            Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableSpoofIntelligence $true. Security admin center > Anti-phishing > Spoof > Enable spoof intelligence.'
+        }
+        Add-Setting @settingParams
 
         # Safety tips
         if ($null -ne $policy.EnableFirstContactSafetyTips) {
             $firstContact = $policy.EnableFirstContactSafetyTips
-            Add-Setting -Category 'Anti-Phishing' `
-                -Setting "First Contact Safety Tips ($policyLabel)" `
-                -CurrentValue "$firstContact" -RecommendedValue 'True' `
-                -Status $(if ($firstContact) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-ANTIPHISH-001' `
-                -Remediation 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableFirstContactSafetyTips $true. Security admin center > Anti-phishing > Safety tips > Enable first contact safety tips.'
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "First Contact Safety Tips ($policyLabel)"
+                CurrentValue     = "$firstContact"
+                RecommendedValue = 'True'
+                Status           = if ($firstContact) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -EnableFirstContactSafetyTips $true. Security admin center > Anti-phishing > Safety tips > Enable first contact safety tips.'
+            }
+            Add-Setting @settingParams
         }
 
         # Only assess default policy in detail to avoid duplicate noise
@@ -173,80 +202,112 @@ try {
 
         # Bulk complaint level threshold
         $bcl = $policy.BulkThreshold
-        Add-Setting -Category 'Anti-Spam' `
-            -Setting "Bulk Complaint Level Threshold ($policyLabel)" `
-            -CurrentValue "$bcl" -RecommendedValue '6 or lower' `
-            -Status $(if ([int]$bcl -le 6) { 'Pass' } else { 'Warning' }) `
-            -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -BulkThreshold 6. Security admin center > Anti-spam > Inbound policy > Bulk email threshold > Set to 6 or lower.'
+        $settingParams = @{
+            Category         = 'Anti-Spam'
+            Setting          = "Bulk Complaint Level Threshold ($policyLabel)"
+            CurrentValue     = "$bcl"
+            RecommendedValue = '6 or lower'
+            Status           = if ([int]$bcl -le 6) { 'Pass' } else { 'Warning' }
+            CheckId          = 'DEFENDER-ANTISPAM-001'
+            Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -BulkThreshold 6. Security admin center > Anti-spam > Inbound policy > Bulk email threshold > Set to 6 or lower.'
+        }
+        Add-Setting @settingParams
 
         # Spam action
         $spamAction = $policy.SpamAction
-        Add-Setting -Category 'Anti-Spam' `
-            -Setting "Spam Action ($policyLabel)" `
-            -CurrentValue "$spamAction" -RecommendedValue 'MoveToJmf or Quarantine' `
-            -Status $(if ($spamAction -eq 'MoveToJmf' -or $spamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
-            -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamAction MoveToJmf. Security admin center > Anti-spam > Inbound policy > Spam action > Move to Junk Email folder.'
+        $settingParams = @{
+            Category         = 'Anti-Spam'
+            Setting          = "Spam Action ($policyLabel)"
+            CurrentValue     = "$spamAction"
+            RecommendedValue = 'MoveToJmf or Quarantine'
+            Status           = if ($spamAction -eq 'MoveToJmf' -or $spamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }
+            CheckId          = 'DEFENDER-ANTISPAM-001'
+            Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamAction MoveToJmf. Security admin center > Anti-spam > Inbound policy > Spam action > Move to Junk Email folder.'
+        }
+        Add-Setting @settingParams
 
         # High confidence spam action
         $hcSpamAction = $policy.HighConfidenceSpamAction
-        Add-Setting -Category 'Anti-Spam' `
-            -Setting "High Confidence Spam Action ($policyLabel)" `
-            -CurrentValue "$hcSpamAction" -RecommendedValue 'Quarantine' `
-            -Status $(if ($hcSpamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
-            -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidenceSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence spam action > Quarantine.'
+        $settingParams = @{
+            Category         = 'Anti-Spam'
+            Setting          = "High Confidence Spam Action ($policyLabel)"
+            CurrentValue     = "$hcSpamAction"
+            RecommendedValue = 'Quarantine'
+            Status           = if ($hcSpamAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }
+            CheckId          = 'DEFENDER-ANTISPAM-001'
+            Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidenceSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence spam action > Quarantine.'
+        }
+        Add-Setting @settingParams
 
         # High confidence phishing action
         $hcPhishAction = $policy.HighConfidencePhishAction
-        Add-Setting -Category 'Anti-Spam' `
-            -Setting "High Confidence Phish Action ($policyLabel)" `
-            -CurrentValue "$hcPhishAction" -RecommendedValue 'Quarantine' `
-            -Status $(if ($hcPhishAction -eq 'Quarantine') { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidencePhishAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence phishing action > Quarantine.'
+        $settingParams = @{
+            Category         = 'Anti-Spam'
+            Setting          = "High Confidence Phish Action ($policyLabel)"
+            CurrentValue     = "$hcPhishAction"
+            RecommendedValue = 'Quarantine'
+            Status           = if ($hcPhishAction -eq 'Quarantine') { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-ANTISPAM-001'
+            Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -HighConfidencePhishAction Quarantine. Security admin center > Anti-spam > Inbound policy > High confidence phishing action > Quarantine.'
+        }
+        Add-Setting @settingParams
 
         # Phishing action
         $phishAction = $policy.PhishSpamAction
-        Add-Setting -Category 'Anti-Spam' `
-            -Setting "Phishing Action ($policyLabel)" `
-            -CurrentValue "$phishAction" -RecommendedValue 'Quarantine' `
-            -Status $(if ($phishAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }) `
-            -CheckId 'DEFENDER-ANTISPAM-001' `
-            -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > Phishing action > Quarantine.'
+        $settingParams = @{
+            Category         = 'Anti-Spam'
+            Setting          = "Phishing Action ($policyLabel)"
+            CurrentValue     = "$phishAction"
+            RecommendedValue = 'Quarantine'
+            Status           = if ($phishAction -eq 'Quarantine') { 'Pass' } else { 'Warning' }
+            CheckId          = 'DEFENDER-ANTISPAM-001'
+            Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishSpamAction Quarantine. Security admin center > Anti-spam > Inbound policy > Phishing action > Quarantine.'
+        }
+        Add-Setting @settingParams
 
         # Zero-hour Auto Purge (ZAP)
         if ($null -ne $policy.ZapEnabled) {
             $zapEnabled = $policy.ZapEnabled
-            Add-Setting -Category 'Anti-Spam' `
-                -Setting "Zero-Hour Auto Purge ($policyLabel)" `
-                -CurrentValue "$zapEnabled" -RecommendedValue 'True' `
-                -Status $(if ($zapEnabled) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge > Enabled.'
+            $settingParams = @{
+                Category         = 'Anti-Spam'
+                Setting          = "Zero-Hour Auto Purge ($policyLabel)"
+                CurrentValue     = "$zapEnabled"
+                RecommendedValue = 'True'
+                Status           = if ($zapEnabled) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ANTISPAM-001'
+                Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge > Enabled.'
+            }
+            Add-Setting @settingParams
         }
 
         # Spam ZAP
         if ($null -ne $policy.SpamZapEnabled) {
             $spamZap = $policy.SpamZapEnabled
-            Add-Setting -Category 'Anti-Spam' `
-                -Setting "Spam ZAP ($policyLabel)" `
-                -CurrentValue "$spamZap" -RecommendedValue 'True' `
-                -Status $(if ($spamZap) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for spam > Enabled.'
+            $settingParams = @{
+                Category         = 'Anti-Spam'
+                Setting          = "Spam ZAP ($policyLabel)"
+                CurrentValue     = "$spamZap"
+                RecommendedValue = 'True'
+                Status           = if ($spamZap) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ANTISPAM-001'
+                Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -SpamZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for spam > Enabled.'
+            }
+            Add-Setting @settingParams
         }
 
         # Phish ZAP
         if ($null -ne $policy.PhishZapEnabled) {
             $phishZap = $policy.PhishZapEnabled
-            Add-Setting -Category 'Anti-Spam' `
-                -Setting "Phishing ZAP ($policyLabel)" `
-                -CurrentValue "$phishZap" -RecommendedValue 'True' `
-                -Status $(if ($phishZap) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ANTISPAM-001' `
-                -Remediation 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for phishing > Enabled.'
+            $settingParams = @{
+                Category         = 'Anti-Spam'
+                Setting          = "Phishing ZAP ($policyLabel)"
+                CurrentValue     = "$phishZap"
+                RecommendedValue = 'True'
+                Status           = if ($phishZap) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ANTISPAM-001'
+                Remediation      = 'Run: Set-HostedContentFilterPolicy -Identity <PolicyName> -PhishZapEnabled $true. Security admin center > Anti-spam > Inbound policy > Zero-hour auto purge for phishing > Enabled.'
+            }
+            Add-Setting @settingParams
         }
 
         # Only assess default policy in detail
@@ -269,32 +330,44 @@ try {
 
         # Common attachment type filter
         $commonFilter = $policy.EnableFileFilter
-        Add-Setting -Category 'Anti-Malware' `
-            -Setting "Common Attachment Filter ($policyLabel)" `
-            -CurrentValue "$commonFilter" -RecommendedValue 'True' `
-            -Status $(if ($commonFilter) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-ANTIMALWARE-001' `
-            -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableFileFilter $true. Security admin center > Anti-malware > Default policy > Common attachments filter > Enable.'
+        $settingParams = @{
+            Category         = 'Anti-Malware'
+            Setting          = "Common Attachment Filter ($policyLabel)"
+            CurrentValue     = "$commonFilter"
+            RecommendedValue = 'True'
+            Status           = if ($commonFilter) { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-ANTIMALWARE-001'
+            Remediation      = 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableFileFilter $true. Security admin center > Anti-malware > Default policy > Common attachments filter > Enable.'
+        }
+        Add-Setting @settingParams
 
         # ZAP for malware
         if ($null -ne $policy.ZapEnabled) {
             $malwareZap = $policy.ZapEnabled
-            Add-Setting -Category 'Anti-Malware' `
-                -Setting "Malware ZAP ($policyLabel)" `
-                -CurrentValue "$malwareZap" -RecommendedValue 'True' `
-                -Status $(if ($malwareZap) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ANTIMALWARE-001' `
-                -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-malware > Default policy > Zero-hour auto purge for malware > Enabled.'
+            $settingParams = @{
+                Category         = 'Anti-Malware'
+                Setting          = "Malware ZAP ($policyLabel)"
+                CurrentValue     = "$malwareZap"
+                RecommendedValue = 'True'
+                Status           = if ($malwareZap) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ANTIMALWARE-001'
+                Remediation      = 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -ZapEnabled $true. Security admin center > Anti-malware > Default policy > Zero-hour auto purge for malware > Enabled.'
+            }
+            Add-Setting @settingParams
         }
 
         # Admin notification
         $adminNotify = $policy.EnableInternalSenderAdminNotifications
-        Add-Setting -Category 'Anti-Malware' `
-            -Setting "Internal Sender Admin Notifications ($policyLabel)" `
-            -CurrentValue "$adminNotify" -RecommendedValue 'True' `
-            -Status $(if ($adminNotify) { 'Pass' } else { 'Warning' }) `
-            -CheckId 'DEFENDER-ANTIMALWARE-002' `
-            -Remediation 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableInternalSenderAdminNotifications $true -InternalSenderAdminAddress admin@domain.com. Security admin center > Anti-malware > Default policy > Admin notifications > Notify admin about undelivered messages from internal senders.'
+        $settingParams = @{
+            Category         = 'Anti-Malware'
+            Setting          = "Internal Sender Admin Notifications ($policyLabel)"
+            CurrentValue     = "$adminNotify"
+            RecommendedValue = 'True'
+            Status           = if ($adminNotify) { 'Pass' } else { 'Warning' }
+            CheckId          = 'DEFENDER-ANTIMALWARE-002'
+            Remediation      = 'Run: Set-MalwareFilterPolicy -Identity <PolicyName> -EnableInternalSenderAdminNotifications $true -InternalSenderAdminAddress admin@domain.com. Security admin center > Anti-malware > Default policy > Admin notifications > Notify admin about undelivered messages from internal senders.'
+        }
+        Add-Setting @settingParams
 
         # Only assess default policy in detail
         if (-not $policy.IsDefault) { continue }
@@ -314,11 +387,16 @@ try {
         $safeLinks = Get-SafeLinksPolicy -ErrorAction Stop
 
         if (@($safeLinks).Count -eq 0) {
-            Add-Setting -Category 'Safe Links' -Setting 'Safe Links Policies' `
-                -CurrentValue 'None configured' -RecommendedValue 'At least 1 policy' `
-                -Status 'Warning' `
-                -CheckId 'DEFENDER-SAFELINKS-001' `
-                -Remediation 'Run: New-SafeLinksPolicy -Name "Safe Links" -IsEnabled $true; New-SafeLinksRule -Name "Safe Links" -SafeLinksPolicy "Safe Links" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Links > Create a policy covering all users.'
+            $settingParams = @{
+                Category         = 'Safe Links'
+                Setting          = 'Safe Links Policies'
+                CurrentValue     = 'None configured'
+                RecommendedValue = 'At least 1 policy'
+                Status           = 'Warning'
+                CheckId          = 'DEFENDER-SAFELINKS-001'
+                Remediation      = 'Run: New-SafeLinksPolicy -Name "Safe Links" -IsEnabled $true; New-SafeLinksRule -Name "Safe Links" -SafeLinksPolicy "Safe Links" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Links > Create a policy covering all users.'
+            }
+            Add-Setting @settingParams
         }
         else {
             foreach ($policy in @($safeLinks)) {
@@ -326,52 +404,73 @@ try {
 
                 # URL scanning
                 $scanUrls = $policy.ScanUrls
-                Add-Setting -Category 'Safe Links' `
-                    -Setting "Real-time URL Scanning ($policyLabel)" `
-                    -CurrentValue "$scanUrls" -RecommendedValue 'True' `
-                    -Status $(if ($scanUrls) { 'Pass' } else { 'Warning' }) `
-                    -CheckId 'DEFENDER-SAFELINKS-001' `
-                    -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -ScanUrls $true. Security admin center > Safe Links policy > URL & click protection > Enable real-time URL scanning.'
+                $settingParams = @{
+                    Category         = 'Safe Links'
+                    Setting          = "Real-time URL Scanning ($policyLabel)"
+                    CurrentValue     = "$scanUrls"
+                    RecommendedValue = 'True'
+                    Status           = if ($scanUrls) { 'Pass' } else { 'Warning' }
+                    CheckId          = 'DEFENDER-SAFELINKS-001'
+                    Remediation      = 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -ScanUrls $true. Security admin center > Safe Links policy > URL & click protection > Enable real-time URL scanning.'
+                }
+                Add-Setting @settingParams
 
                 # Click tracking
                 $trackClicks = -not $policy.DoNotTrackUserClicks
-                Add-Setting -Category 'Safe Links' `
-                    -Setting "Track User Clicks ($policyLabel)" `
-                    -CurrentValue "$trackClicks" -RecommendedValue 'True' `
-                    -Status $(if ($trackClicks) { 'Pass' } else { 'Warning' }) `
-                    -CheckId 'DEFENDER-SAFELINKS-001' `
-                    -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DoNotTrackUserClicks $false. Security admin center > Safe Links policy > Ensure "Do not track when users click protected links" is disabled.'
+                $settingParams = @{
+                    Category         = 'Safe Links'
+                    Setting          = "Track User Clicks ($policyLabel)"
+                    CurrentValue     = "$trackClicks"
+                    RecommendedValue = 'True'
+                    Status           = if ($trackClicks) { 'Pass' } else { 'Warning' }
+                    CheckId          = 'DEFENDER-SAFELINKS-001'
+                    Remediation      = 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DoNotTrackUserClicks $false. Security admin center > Safe Links policy > Ensure "Do not track when users click protected links" is disabled.'
+                }
+                Add-Setting @settingParams
 
                 # Internal senders
                 if ($null -ne $policy.EnableForInternalSenders) {
                     $internalSenders = $policy.EnableForInternalSenders
-                    Add-Setting -Category 'Safe Links' `
-                        -Setting "Enable for Internal Senders ($policyLabel)" `
-                        -CurrentValue "$internalSenders" -RecommendedValue 'True' `
-                        -Status $(if ($internalSenders) { 'Pass' } else { 'Warning' }) `
-                        -CheckId 'DEFENDER-SAFELINKS-001' `
-                        -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -EnableForInternalSenders $true. Security admin center > Safe Links policy > Enable for messages sent within the organization.'
+                    $settingParams = @{
+                        Category         = 'Safe Links'
+                        Setting          = "Enable for Internal Senders ($policyLabel)"
+                        CurrentValue     = "$internalSenders"
+                        RecommendedValue = 'True'
+                        Status           = if ($internalSenders) { 'Pass' } else { 'Warning' }
+                        CheckId          = 'DEFENDER-SAFELINKS-001'
+                        Remediation      = 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -EnableForInternalSenders $true. Security admin center > Safe Links policy > Enable for messages sent within the organization.'
+                    }
+                    Add-Setting @settingParams
                 }
 
                 # Wait for URL scanning
                 if ($null -ne $policy.DeliverMessageAfterScan) {
                     $waitScan = $policy.DeliverMessageAfterScan
-                    Add-Setting -Category 'Safe Links' `
-                        -Setting "Wait for URL Scan ($policyLabel)" `
-                        -CurrentValue "$waitScan" -RecommendedValue 'True' `
-                        -Status $(if ($waitScan) { 'Pass' } else { 'Warning' }) `
-                        -CheckId 'DEFENDER-SAFELINKS-001' `
-                        -Remediation 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DeliverMessageAfterScan $true. Security admin center > Safe Links policy > Wait for URL scanning to complete before delivering the message.'
+                    $settingParams = @{
+                        Category         = 'Safe Links'
+                        Setting          = "Wait for URL Scan ($policyLabel)"
+                        CurrentValue     = "$waitScan"
+                        RecommendedValue = 'True'
+                        Status           = if ($waitScan) { 'Pass' } else { 'Warning' }
+                        CheckId          = 'DEFENDER-SAFELINKS-001'
+                        Remediation      = 'Run: Set-SafeLinksPolicy -Identity <PolicyName> -DeliverMessageAfterScan $true. Security admin center > Safe Links policy > Wait for URL scanning to complete before delivering the message.'
+                    }
+                    Add-Setting @settingParams
                 }
             }
         }
     }
     else {
-        Add-Setting -Category 'Safe Links' -Setting 'Safe Links Availability' `
-            -CurrentValue 'Not licensed' -RecommendedValue 'Defender for Office 365 P1+' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-SAFELINKS-001' `
-            -Remediation 'Safe Links requires Defender for Office 365 Plan 1 or higher.'
+        $settingParams = @{
+            Category         = 'Safe Links'
+            Setting          = 'Safe Links Availability'
+            CurrentValue     = 'Not licensed'
+            RecommendedValue = 'Defender for Office 365 P1+'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-SAFELINKS-001'
+            Remediation      = 'Safe Links requires Defender for Office 365 Plan 1 or higher.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -388,11 +487,16 @@ try {
         $safeAttachments = Get-SafeAttachmentPolicy -ErrorAction Stop
 
         if (@($safeAttachments).Count -eq 0) {
-            Add-Setting -Category 'Safe Attachments' -Setting 'Safe Attachments Policies' `
-                -CurrentValue 'None configured' -RecommendedValue 'At least 1 policy' `
-                -Status 'Warning' `
-                -CheckId 'DEFENDER-SAFEATTACH-001' `
-                -Remediation 'Run: New-SafeAttachmentPolicy -Name "Safe Attachments" -Enable $true -Action Block; New-SafeAttachmentRule -Name "Safe Attachments" -SafeAttachmentPolicy "Safe Attachments" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Attachments > Create a policy covering all users.'
+            $settingParams = @{
+                Category         = 'Safe Attachments'
+                Setting          = 'Safe Attachments Policies'
+                CurrentValue     = 'None configured'
+                RecommendedValue = 'At least 1 policy'
+                Status           = 'Warning'
+                CheckId          = 'DEFENDER-SAFEATTACH-001'
+                Remediation      = 'Run: New-SafeAttachmentPolicy -Name "Safe Attachments" -Enable $true -Action Block; New-SafeAttachmentRule -Name "Safe Attachments" -SafeAttachmentPolicy "Safe Attachments" -RecipientDomainIs (Get-AcceptedDomain).Name. Security admin center > Safe Attachments > Create a policy covering all users.'
+            }
+            Add-Setting @settingParams
         }
         else {
             foreach ($policy in @($safeAttachments)) {
@@ -400,12 +504,16 @@ try {
 
                 # Enabled
                 $enabled = $policy.Enable
-                Add-Setting -Category 'Safe Attachments' `
-                    -Setting "Policy Enabled ($policyLabel)" `
-                    -CurrentValue "$enabled" -RecommendedValue 'True' `
-                    -Status $(if ($enabled) { 'Pass' } else { 'Warning' }) `
-                    -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Enable $true. Security admin center > Safe Attachments policy > Enable the policy.'
+                $settingParams = @{
+                    Category         = 'Safe Attachments'
+                    Setting          = "Policy Enabled ($policyLabel)"
+                    CurrentValue     = "$enabled"
+                    RecommendedValue = 'True'
+                    Status           = if ($enabled) { 'Pass' } else { 'Warning' }
+                    CheckId          = 'DEFENDER-SAFEATTACH-001'
+                    Remediation      = 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Enable $true. Security admin center > Safe Attachments policy > Enable the policy.'
+                }
+                Add-Setting @settingParams
 
                 # Action type
                 $action = $policy.Action
@@ -425,31 +533,43 @@ try {
                     default { 'Review' }
                 }
 
-                Add-Setting -Category 'Safe Attachments' `
-                    -Setting "Action ($policyLabel)" `
-                    -CurrentValue $actionDisplay `
-                    -RecommendedValue 'Block or Dynamic Delivery' `
-                    -Status $actionStatus `
-                    -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Action Block. Security admin center > Safe Attachments policy > Action > Block (or DynamicDelivery for user experience).'
+                $settingParams = @{
+                    Category         = 'Safe Attachments'
+                    Setting          = "Action ($policyLabel)"
+                    CurrentValue     = $actionDisplay
+                    RecommendedValue = 'Block or Dynamic Delivery'
+                    Status           = $actionStatus
+                    CheckId          = 'DEFENDER-SAFEATTACH-001'
+                    Remediation      = 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Action Block. Security admin center > Safe Attachments policy > Action > Block (or DynamicDelivery for user experience).'
+                }
+                Add-Setting @settingParams
 
                 # Redirect
                 $redirect = $policy.Redirect
-                Add-Setting -Category 'Safe Attachments' `
-                    -Setting "Redirect to Admin ($policyLabel)" `
-                    -CurrentValue "$redirect" -RecommendedValue 'True' `
-                    -Status $(if ($redirect) { 'Pass' } else { 'Warning' }) `
-                    -CheckId 'DEFENDER-SAFEATTACH-001' `
-                    -Remediation 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Redirect $true -RedirectAddress admin@domain.com. Security admin center > Safe Attachments policy > Enable redirect and specify an admin email.'
+                $settingParams = @{
+                    Category         = 'Safe Attachments'
+                    Setting          = "Redirect to Admin ($policyLabel)"
+                    CurrentValue     = "$redirect"
+                    RecommendedValue = 'True'
+                    Status           = if ($redirect) { 'Pass' } else { 'Warning' }
+                    CheckId          = 'DEFENDER-SAFEATTACH-001'
+                    Remediation      = 'Run: Set-SafeAttachmentPolicy -Identity <PolicyName> -Redirect $true -RedirectAddress admin@domain.com. Security admin center > Safe Attachments policy > Enable redirect and specify an admin email.'
+                }
+                Add-Setting @settingParams
             }
         }
     }
     else {
-        Add-Setting -Category 'Safe Attachments' -Setting 'Safe Attachments Availability' `
-            -CurrentValue 'Not licensed' -RecommendedValue 'Defender for Office 365 P1+' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-SAFEATTACH-001' `
-            -Remediation 'Safe Attachments requires Defender for Office 365 Plan 1 or higher.'
+        $settingParams = @{
+            Category         = 'Safe Attachments'
+            Setting          = 'Safe Attachments Availability'
+            CurrentValue     = 'Not licensed'
+            RecommendedValue = 'Defender for Office 365 P1+'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-SAFEATTACH-001'
+            Remediation      = 'Safe Attachments requires Defender for Office 365 Plan 1 or higher.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -466,20 +586,28 @@ try {
         $atpPolicy = Get-AtpPolicyForO365 -ErrorAction Stop
 
         $atpEnabled = $atpPolicy.EnableATPForSPOTeamsODB
-        Add-Setting -Category 'Safe Attachments' `
-            -Setting 'Safe Attachments for SPO/OneDrive/Teams' `
-            -CurrentValue "$atpEnabled" -RecommendedValue 'True' `
-            -Status $(if ($atpEnabled) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-SAFEATTACH-002' `
-            -Remediation 'Run: Set-AtpPolicyForO365 -EnableATPForSPOTeamsODB $true. Security admin center > Safe Attachments > Global settings > Turn on Defender for Office 365 for SharePoint, OneDrive, and Microsoft Teams.'
+        $settingParams = @{
+            Category         = 'Safe Attachments'
+            Setting          = 'Safe Attachments for SPO/OneDrive/Teams'
+            CurrentValue     = "$atpEnabled"
+            RecommendedValue = 'True'
+            Status           = if ($atpEnabled) { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-SAFEATTACH-002'
+            Remediation      = 'Run: Set-AtpPolicyForO365 -EnableATPForSPOTeamsODB $true. Security admin center > Safe Attachments > Global settings > Turn on Defender for Office 365 for SharePoint, OneDrive, and Microsoft Teams.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Safe Attachments' `
-            -Setting 'Safe Attachments for SPO/OneDrive/Teams' `
-            -CurrentValue 'Not licensed' -RecommendedValue 'Defender for Office 365 P1+' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-SAFEATTACH-002' `
-            -Remediation 'Safe Attachments for SPO/OneDrive/Teams requires Defender for Office 365 Plan 1 or higher.'
+        $settingParams = @{
+            Category         = 'Safe Attachments'
+            Setting          = 'Safe Attachments for SPO/OneDrive/Teams'
+            CurrentValue     = 'Not licensed'
+            RecommendedValue = 'Defender for Office 365 P1+'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-SAFEATTACH-002'
+            Remediation      = 'Safe Attachments for SPO/OneDrive/Teams requires Defender for Office 365 Plan 1 or higher.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -498,32 +626,44 @@ try {
 
         # Auto-forwarding mode
         $autoForward = $policy.AutoForwardingMode
-        Add-Setting -Category 'Outbound Spam' `
-            -Setting "Auto-Forwarding Mode ($policyLabel)" `
-            -CurrentValue "$autoForward" -RecommendedValue 'Off' `
-            -Status $(if ($autoForward -eq 'Off') { 'Pass' } else { 'Warning' }) `
-            -CheckId 'EXO-FORWARD-001' `
-            -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -AutoForwardingMode Off. Security admin center > Anti-spam > Outbound policy > Auto-forwarding rules > Off.'
+        $settingParams = @{
+            Category         = 'Outbound Spam'
+            Setting          = "Auto-Forwarding Mode ($policyLabel)"
+            CurrentValue     = "$autoForward"
+            RecommendedValue = 'Off'
+            Status           = if ($autoForward -eq 'Off') { 'Pass' } else { 'Warning' }
+            CheckId          = 'EXO-FORWARD-001'
+            Remediation      = 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -AutoForwardingMode Off. Security admin center > Anti-spam > Outbound policy > Auto-forwarding rules > Off.'
+        }
+        Add-Setting @settingParams
 
         # Notification
         if ($null -ne $policy.BccSuspiciousOutboundMail) {
             $bccNotify = $policy.BccSuspiciousOutboundMail
-            Add-Setting -Category 'Outbound Spam' `
-                -Setting "BCC on Suspicious Outbound ($policyLabel)" `
-                -CurrentValue "$bccNotify" -RecommendedValue 'True' `
-                -Status $(if ($bccNotify) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-OUTBOUND-001' `
-                -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -BccSuspiciousOutboundMail $true -BccSuspiciousOutboundAdditionalRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > BCC suspicious outbound messages.'
+            $settingParams = @{
+                Category         = 'Outbound Spam'
+                Setting          = "BCC on Suspicious Outbound ($policyLabel)"
+                CurrentValue     = "$bccNotify"
+                RecommendedValue = 'True'
+                Status           = if ($bccNotify) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-OUTBOUND-001'
+                Remediation      = 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -BccSuspiciousOutboundMail $true -BccSuspiciousOutboundAdditionalRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > BCC suspicious outbound messages.'
+            }
+            Add-Setting @settingParams
         }
 
         if ($null -ne $policy.NotifyOutboundSpam) {
             $notifySpam = $policy.NotifyOutboundSpam
-            Add-Setting -Category 'Outbound Spam' `
-                -Setting "Notify Admins of Outbound Spam ($policyLabel)" `
-                -CurrentValue "$notifySpam" -RecommendedValue 'True' `
-                -Status $(if ($notifySpam) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-OUTBOUND-001' `
-                -Remediation 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -NotifyOutboundSpam $true -NotifyOutboundSpamRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > Notify admin of outbound spam.'
+            $settingParams = @{
+                Category         = 'Outbound Spam'
+                Setting          = "Notify Admins of Outbound Spam ($policyLabel)"
+                CurrentValue     = "$notifySpam"
+                RecommendedValue = 'True'
+                Status           = if ($notifySpam) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-OUTBOUND-001'
+                Remediation      = 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -NotifyOutboundSpam $true -NotifyOutboundSpamRecipients admin@domain.com. Security admin center > Anti-spam > Outbound policy > Notifications > Notify admin of outbound spam.'
+            }
+            Add-Setting @settingParams
         }
 
         # Only assess default policy in detail
@@ -551,23 +691,29 @@ try {
             $missing = @($requiredTypes | Where-Object { $fileTypes -notcontains $_ })
 
             if ($fileTypes.Count -ge 30 -and $missing.Count -eq 0) {
-                Add-Setting -Category 'Anti-Malware' `
-                    -Setting 'Comprehensive Attachment Filter (Default)' `
-                    -CurrentValue "$($fileTypes.Count) file types blocked" `
-                    -RecommendedValue '30+ dangerous types blocked' `
-                    -Status 'Pass' `
-                    -CheckId 'DEFENDER-MALWARE-002' `
-                    -Remediation 'No action needed.'
+                $settingParams = @{
+                    Category         = 'Anti-Malware'
+                    Setting          = 'Comprehensive Attachment Filter (Default)'
+                    CurrentValue     = "$($fileTypes.Count) file types blocked"
+                    RecommendedValue = '30+ dangerous types blocked'
+                    Status           = 'Pass'
+                    CheckId          = 'DEFENDER-MALWARE-002'
+                    Remediation      = 'No action needed.'
+                }
+                Add-Setting @settingParams
             }
             else {
                 $missingStr = if ($missing.Count -gt 0) { " Missing: $($missing -join ', ')" } else { '' }
-                Add-Setting -Category 'Anti-Malware' `
-                    -Setting 'Comprehensive Attachment Filter (Default)' `
-                    -CurrentValue "$($fileTypes.Count) types blocked.$missingStr" `
-                    -RecommendedValue '30+ dangerous types blocked' `
-                    -Status 'Fail' `
-                    -CheckId 'DEFENDER-MALWARE-002' `
-                    -Remediation "Add missing file types via: Set-MalwareFilterPolicy -Identity Default -FileTypes @{Add='ext1','ext2'}. Security admin center > Anti-malware > Default policy > Common attachments filter > Customize file types."
+                $settingParams = @{
+                    Category         = 'Anti-Malware'
+                    Setting          = 'Comprehensive Attachment Filter (Default)'
+                    CurrentValue     = "$($fileTypes.Count) types blocked.$missingStr"
+                    RecommendedValue = '30+ dangerous types blocked'
+                    Status           = 'Fail'
+                    CheckId          = 'DEFENDER-MALWARE-002'
+                    Remediation      = "Add missing file types via: Set-MalwareFilterPolicy -Identity Default -FileTypes @{Add='ext1','ext2'}. Security admin center > Anti-malware > Default policy > Common attachments filter > Customize file types."
+                }
+                Add-Setting @settingParams
             }
         }
     }
@@ -588,24 +734,30 @@ try {
             $allowedDomains = @($policy.AllowedSenderDomains)
 
             if ($allowedDomains.Count -eq 0) {
-                Add-Setting -Category 'Anti-Spam' `
-                    -Setting "Allowed Sender Domains ($policyLabel)" `
-                    -CurrentValue '0 allowed domains' `
-                    -RecommendedValue 'No allowed domains' `
-                    -Status 'Pass' `
-                    -CheckId 'DEFENDER-ANTISPAM-002' `
-                    -Remediation 'No action needed.'
+                $settingParams = @{
+                    Category         = 'Anti-Spam'
+                    Setting          = "Allowed Sender Domains ($policyLabel)"
+                    CurrentValue     = '0 allowed domains'
+                    RecommendedValue = 'No allowed domains'
+                    Status           = 'Pass'
+                    CheckId          = 'DEFENDER-ANTISPAM-002'
+                    Remediation      = 'No action needed.'
+                }
+                Add-Setting @settingParams
             }
             else {
                 $domainList = ($allowedDomains | Select-Object -First 10) -join ', '
                 $suffix = if ($allowedDomains.Count -gt 10) { " (+$($allowedDomains.Count - 10) more)" } else { '' }
-                Add-Setting -Category 'Anti-Spam' `
-                    -Setting "Allowed Sender Domains ($policyLabel)" `
-                    -CurrentValue "$($allowedDomains.Count) domains: $domainList$suffix" `
-                    -RecommendedValue 'No allowed domains' `
-                    -Status 'Fail' `
-                    -CheckId 'DEFENDER-ANTISPAM-002' `
-                    -Remediation "Remove allowed sender domains: Set-HostedContentFilterPolicy -Identity '$policyLabel' -AllowedSenderDomains @{}. Security admin center > Anti-spam > Inbound policy > Allowed senders and domains > Remove all entries."
+                $settingParams = @{
+                    Category         = 'Anti-Spam'
+                    Setting          = "Allowed Sender Domains ($policyLabel)"
+                    CurrentValue     = "$($allowedDomains.Count) domains: $domainList$suffix"
+                    RecommendedValue = 'No allowed domains'
+                    Status           = 'Fail'
+                    CheckId          = 'DEFENDER-ANTISPAM-002'
+                    Remediation      = "Remove allowed sender domains: Set-HostedContentFilterPolicy -Identity '$policyLabel' -AllowedSenderDomains @{}. Security admin center > Anti-spam > Inbound policy > Allowed senders and domains > Remove all entries."
+                }
+                Add-Setting @settingParams
             }
 
             if (-not $policy.IsDefault) { continue }
@@ -630,52 +782,67 @@ try {
         $standardRule = $eopRules | Where-Object { $_.Identity -match 'Standard' }
         $hasPreset = ($null -ne $strictRule) -or ($null -ne $standardRule)
 
-        Add-Setting -Category 'Priority Accounts' `
-            -Setting 'Preset Security Policies Configured' `
-            -CurrentValue $(if ($hasPreset) { 'Preset policies found' } else { 'No preset policies' }) `
-            -RecommendedValue 'Strict or Standard preset policy configured' `
-            -Status $(if ($hasPreset) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'DEFENDER-PRIORITY-001' `
-            -Remediation 'Configure preset security policies in Security admin center > Preset security policies > Strict or Standard protection > Assign users/groups.'
+        $settingParams = @{
+            Category         = 'Priority Accounts'
+            Setting          = 'Preset Security Policies Configured'
+            CurrentValue     = $(if ($hasPreset) { 'Preset policies found' } else { 'No preset policies' })
+            RecommendedValue = 'Strict or Standard preset policy configured'
+            Status           = if ($hasPreset) { 'Pass' } else { 'Fail' }
+            CheckId          = 'DEFENDER-PRIORITY-001'
+            Remediation      = 'Configure preset security policies in Security admin center > Preset security policies > Strict or Standard protection > Assign users/groups.'
+        }
+        Add-Setting @settingParams
 
         # CIS 2.4.2 - Strict preset applies to priority-tagged users
         if ($strictRule) {
             $hasSentTo = ($strictRule.SentTo.Count -gt 0) -or
                          ($strictRule.SentToMemberOf.Count -gt 0) -or
                          ($strictRule.RecipientDomainIs.Count -gt 0)
-            Add-Setting -Category 'Priority Accounts' `
-                -Setting 'Strict Preset Covers Priority Users' `
-                -CurrentValue $(if ($hasSentTo) { 'Strict policy has targeted users/groups' } else { 'Strict policy has no targeted recipients' }) `
-                -RecommendedValue 'Strict preset targets priority accounts' `
-                -Status $(if ($hasSentTo) { 'Pass' } else { 'Warning' }) `
-                -CheckId 'DEFENDER-PRIORITY-002' `
-                -Remediation 'Assign priority account users to the Strict preset policy. Security admin center > Preset security policies > Strict protection > Manage protection settings > Add users or groups.'
+            $settingParams = @{
+                Category         = 'Priority Accounts'
+                Setting          = 'Strict Preset Covers Priority Users'
+                CurrentValue     = $(if ($hasSentTo) { 'Strict policy has targeted users/groups' } else { 'Strict policy has no targeted recipients' })
+                RecommendedValue = 'Strict preset targets priority accounts'
+                Status           = if ($hasSentTo) { 'Pass' } else { 'Warning' }
+                CheckId          = 'DEFENDER-PRIORITY-002'
+                Remediation      = 'Assign priority account users to the Strict preset policy. Security admin center > Preset security policies > Strict protection > Manage protection settings > Add users or groups.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'Priority Accounts' `
-                -Setting 'Strict Preset Covers Priority Users' `
-                -CurrentValue 'No strict preset policy found' `
-                -RecommendedValue 'Strict preset targets priority accounts' `
-                -Status 'Fail' `
-                -CheckId 'DEFENDER-PRIORITY-002' `
-                -Remediation 'Enable the Strict preset security policy and assign priority accounts. Security admin center > Preset security policies > Strict protection.'
+            $settingParams = @{
+                Category         = 'Priority Accounts'
+                Setting          = 'Strict Preset Covers Priority Users'
+                CurrentValue     = 'No strict preset policy found'
+                RecommendedValue = 'Strict preset targets priority accounts'
+                Status           = 'Fail'
+                CheckId          = 'DEFENDER-PRIORITY-002'
+                Remediation      = 'Enable the Strict preset security policy and assign priority accounts. Security admin center > Preset security policies > Strict protection.'
+            }
+            Add-Setting @settingParams
         }
     }
     else {
-        Add-Setting -Category 'Priority Accounts' `
-            -Setting 'Preset Security Policies Configured' `
-            -CurrentValue 'Get-EOPProtectionPolicyRule not available' `
-            -RecommendedValue 'Strict or Standard preset policy' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-PRIORITY-001' `
-            -Remediation 'Connect to Exchange Online PowerShell to check preset security policy rules.'
-        Add-Setting -Category 'Priority Accounts' `
-            -Setting 'Strict Preset Covers Priority Users' `
-            -CurrentValue 'Get-EOPProtectionPolicyRule not available' `
-            -RecommendedValue 'Strict preset targets priority accounts' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-PRIORITY-002' `
-            -Remediation 'Connect to Exchange Online PowerShell to check preset security policy rules.'
+        $settingParams = @{
+            Category         = 'Priority Accounts'
+            Setting          = 'Preset Security Policies Configured'
+            CurrentValue     = 'Get-EOPProtectionPolicyRule not available'
+            RecommendedValue = 'Strict or Standard preset policy'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-PRIORITY-001'
+            Remediation      = 'Connect to Exchange Online PowerShell to check preset security policy rules.'
+        }
+        Add-Setting @settingParams
+        $settingParams = @{
+            Category         = 'Priority Accounts'
+            Setting          = 'Strict Preset Covers Priority Users'
+            CurrentValue     = 'Get-EOPProtectionPolicyRule not available'
+            RecommendedValue = 'Strict preset targets priority accounts'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-PRIORITY-002'
+            Remediation      = 'Connect to Exchange Online PowerShell to check preset security policy rules.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -691,32 +858,41 @@ try {
     if ($atpO365AvailableZap) {
         $atpPolicyZap = Get-AtpPolicyForO365 -ErrorAction Stop
         if ($null -ne $atpPolicyZap.ZapEnabled) {
-            Add-Setting -Category 'Zero-Hour Auto Purge' `
-                -Setting 'ZAP for Teams' `
-                -CurrentValue "$($atpPolicyZap.ZapEnabled)" `
-                -RecommendedValue 'True' `
-                -Status $(if ($atpPolicyZap.ZapEnabled) { 'Pass' } else { 'Fail' }) `
-                -CheckId 'DEFENDER-ZAP-001' `
-                -Remediation 'Enable ZAP for Teams in Security admin center > Settings > Zero-hour auto purge > Teams.'
+            $settingParams = @{
+                Category         = 'Zero-Hour Auto Purge'
+                Setting          = 'ZAP for Teams'
+                CurrentValue     = "$($atpPolicyZap.ZapEnabled)"
+                RecommendedValue = 'True'
+                Status           = if ($atpPolicyZap.ZapEnabled) { 'Pass' } else { 'Fail' }
+                CheckId          = 'DEFENDER-ZAP-001'
+                Remediation      = 'Enable ZAP for Teams in Security admin center > Settings > Zero-hour auto purge > Teams.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'Zero-Hour Auto Purge' `
-                -Setting 'ZAP for Teams' `
-                -CurrentValue 'Property not available on current license' `
-                -RecommendedValue 'Defender for Office 365 with Teams ZAP' `
-                -Status 'Review' `
-                -CheckId 'DEFENDER-ZAP-001' `
-                -Remediation 'ZAP for Teams requires Defender for Office 365 Plan 2. Verify license and check Security admin center > Settings > Zero-hour auto purge.'
+            $settingParams = @{
+                Category         = 'Zero-Hour Auto Purge'
+                Setting          = 'ZAP for Teams'
+                CurrentValue     = 'Property not available on current license'
+                RecommendedValue = 'Defender for Office 365 with Teams ZAP'
+                Status           = 'Review'
+                CheckId          = 'DEFENDER-ZAP-001'
+                Remediation      = 'ZAP for Teams requires Defender for Office 365 Plan 2. Verify license and check Security admin center > Settings > Zero-hour auto purge.'
+            }
+            Add-Setting @settingParams
         }
     }
     else {
-        Add-Setting -Category 'Zero-Hour Auto Purge' `
-            -Setting 'ZAP for Teams' `
-            -CurrentValue 'Not licensed (Defender for Office 365 required)' `
-            -RecommendedValue 'Defender for Office 365 with Teams ZAP' `
-            -Status 'Review' `
-            -CheckId 'DEFENDER-ZAP-001' `
-            -Remediation 'ZAP for Teams requires Defender for Office 365. Upgrade license to enable this capability.'
+        $settingParams = @{
+            Category         = 'Zero-Hour Auto Purge'
+            Setting          = 'ZAP for Teams'
+            CurrentValue     = 'Not licensed (Defender for Office 365 required)'
+            RecommendedValue = 'Defender for Office 365 with Teams ZAP'
+            Status           = 'Review'
+            CheckId          = 'DEFENDER-ZAP-001'
+            Remediation      = 'ZAP for Teams requires Defender for Office 365. Upgrade license to enable this capability.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {

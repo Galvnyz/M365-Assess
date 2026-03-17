@@ -30,6 +30,7 @@ param(
     [string]$OutputPath
 )
 
+# Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
 
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -80,18 +81,36 @@ catch {
 }
 
 if ($authDomains.Count -eq 0) {
-    Add-Setting -Category 'DNS Authentication' -Setting 'SPF Records' `
-        -CurrentValue 'No authoritative domains found' -RecommendedValue 'SPF for all domains' `
-        -Status 'Review' -CheckId 'DNS-SPF-001' `
-        -Remediation 'Connect to Exchange Online and verify accepted domains.'
-    Add-Setting -Category 'DNS Authentication' -Setting 'DKIM Signing' `
-        -CurrentValue 'No authoritative domains found' -RecommendedValue 'DKIM for all domains' `
-        -Status 'Review' -CheckId 'DNS-DKIM-001' `
-        -Remediation 'Connect to Exchange Online and verify accepted domains.'
-    Add-Setting -Category 'DNS Authentication' -Setting 'DMARC Records' `
-        -CurrentValue 'No authoritative domains found' -RecommendedValue 'DMARC for all domains' `
-        -Status 'Review' -CheckId 'DNS-DMARC-001' `
-        -Remediation 'Connect to Exchange Online and verify accepted domains.'
+    $settingParams = @{
+        Category         = 'DNS Authentication'
+        Setting          = 'SPF Records'
+        CurrentValue     = 'No authoritative domains found'
+        RecommendedValue = 'SPF for all domains'
+        Status           = 'Review'
+        CheckId          = 'DNS-SPF-001'
+        Remediation      = 'Connect to Exchange Online and verify accepted domains.'
+    }
+    Add-Setting @settingParams
+    $settingParams = @{
+        Category         = 'DNS Authentication'
+        Setting          = 'DKIM Signing'
+        CurrentValue     = 'No authoritative domains found'
+        RecommendedValue = 'DKIM for all domains'
+        Status           = 'Review'
+        CheckId          = 'DNS-DKIM-001'
+        Remediation      = 'Connect to Exchange Online and verify accepted domains.'
+    }
+    Add-Setting @settingParams
+    $settingParams = @{
+        Category         = 'DNS Authentication'
+        Setting          = 'DMARC Records'
+        CurrentValue     = 'No authoritative domains found'
+        RecommendedValue = 'DMARC for all domains'
+        Status           = 'Review'
+        CheckId          = 'DNS-DMARC-001'
+        Remediation      = 'Connect to Exchange Online and verify accepted domains.'
+    }
+    Add-Setting @settingParams
 }
 else {
     # ------------------------------------------------------------------
@@ -110,20 +129,28 @@ else {
         }
 
         if ($spfMissing.Count -eq 0) {
-            Add-Setting -Category 'DNS Authentication' -Setting 'SPF Records' `
-                -CurrentValue "$($spfPresent.Count)/$($authDomains.Count) domains have SPF" `
-                -RecommendedValue 'SPF for all domains' `
-                -Status 'Pass' `
-                -CheckId 'DNS-SPF-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'SPF Records'
+                CurrentValue     = "$($spfPresent.Count)/$($authDomains.Count) domains have SPF"
+                RecommendedValue = 'SPF for all domains'
+                Status           = 'Pass'
+                CheckId          = 'DNS-SPF-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
-            Add-Setting -Category 'DNS Authentication' -Setting 'SPF Records' `
-                -CurrentValue "$($spfPresent.Count)/$($authDomains.Count) domains -- missing: $($spfMissing -join ', ')" `
-                -RecommendedValue 'SPF for all domains' `
-                -Status 'Fail' `
-                -CheckId 'DNS-SPF-001' `
-                -Remediation "Add SPF TXT records for: $($spfMissing -join ', '). Example: v=spf1 include:spf.protection.outlook.com -all"
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'SPF Records'
+                CurrentValue     = "$($spfPresent.Count)/$($authDomains.Count) domains -- missing: $($spfMissing -join ', ')"
+                RecommendedValue = 'SPF for all domains'
+                Status           = 'Fail'
+                CheckId          = 'DNS-SPF-001'
+                Remediation      = "Add SPF TXT records for: $($spfMissing -join ', '). Example: v=spf1 include:spf.protection.outlook.com -all"
+            }
+            Add-Setting @settingParams
         }
     }
     catch {
@@ -148,29 +175,41 @@ else {
             }
 
             if ($dkimMissing.Count -eq 0) {
-                Add-Setting -Category 'DNS Authentication' -Setting 'DKIM Signing' `
-                    -CurrentValue "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled" `
-                    -RecommendedValue 'DKIM for all domains' `
-                    -Status 'Pass' `
-                    -CheckId 'DNS-DKIM-001' `
-                    -Remediation 'No action needed.'
+                $settingParams = @{
+                    Category         = 'DNS Authentication'
+                    Setting          = 'DKIM Signing'
+                    CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled"
+                    RecommendedValue = 'DKIM for all domains'
+                    Status           = 'Pass'
+                    CheckId          = 'DNS-DKIM-001'
+                    Remediation      = 'No action needed.'
+                }
+                Add-Setting @settingParams
             }
             else {
-                Add-Setting -Category 'DNS Authentication' -Setting 'DKIM Signing' `
-                    -CurrentValue "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')" `
-                    -RecommendedValue 'DKIM for all domains' `
-                    -Status 'Fail' `
-                    -CheckId 'DNS-DKIM-001' `
-                    -Remediation "Enable DKIM for: $($dkimMissing -join ', '). Run: New-DkimSigningConfig -DomainName <domain> -Enabled `$true. Microsoft 365 Defender > Email & collaboration > Policies > DKIM."
+                $settingParams = @{
+                    Category         = 'DNS Authentication'
+                    Setting          = 'DKIM Signing'
+                    CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')"
+                    RecommendedValue = 'DKIM for all domains'
+                    Status           = 'Fail'
+                    CheckId          = 'DNS-DKIM-001'
+                    Remediation      = "Enable DKIM for: $($dkimMissing -join ', '). Run: New-DkimSigningConfig -DomainName <domain> -Enabled `$true. Microsoft 365 Defender > Email & collaboration > Policies > DKIM."
+                }
+                Add-Setting @settingParams
             }
         }
         else {
-            Add-Setting -Category 'DNS Authentication' -Setting 'DKIM Signing' `
-                -CurrentValue 'Get-DkimSigningConfig cmdlet not available' `
-                -RecommendedValue 'DKIM for all domains' `
-                -Status 'Review' `
-                -CheckId 'DNS-DKIM-001' `
-                -Remediation 'Connect to Exchange Online PowerShell to check DKIM configuration.'
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'DKIM Signing'
+                CurrentValue     = 'Get-DkimSigningConfig cmdlet not available'
+                RecommendedValue = 'DKIM for all domains'
+                Status           = 'Review'
+                CheckId          = 'DNS-DKIM-001'
+                Remediation      = 'Connect to Exchange Online PowerShell to check DKIM configuration.'
+            }
+            Add-Setting @settingParams
         }
     }
     catch {
@@ -202,23 +241,31 @@ else {
         $totalGood = $dmarcStrong.Count
         $totalDomains = $authDomains.Count
         if ($dmarcMissing.Count -eq 0 -and $dmarcWeak.Count -eq 0) {
-            Add-Setting -Category 'DNS Authentication' -Setting 'DMARC Records' `
-                -CurrentValue "$totalGood/$totalDomains domains have enforcing DMARC" `
-                -RecommendedValue 'DMARC p=quarantine or p=reject for all' `
-                -Status 'Pass' `
-                -CheckId 'DNS-DMARC-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'DMARC Records'
+                CurrentValue     = "$totalGood/$totalDomains domains have enforcing DMARC"
+                RecommendedValue = 'DMARC p=quarantine or p=reject for all'
+                Status           = 'Pass'
+                CheckId          = 'DNS-DMARC-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
             $issues = @()
             if ($dmarcMissing.Count -gt 0) { $issues += "missing: $($dmarcMissing -join ', ')" }
             if ($dmarcWeak.Count -gt 0) { $issues += "p=none: $($dmarcWeak -join ', ')" }
-            Add-Setting -Category 'DNS Authentication' -Setting 'DMARC Records' `
-                -CurrentValue "$totalGood/$totalDomains enforcing -- $($issues -join '; ')" `
-                -RecommendedValue 'DMARC p=quarantine or p=reject for all' `
-                -Status 'Fail' `
-                -CheckId 'DNS-DMARC-001' `
-                -Remediation "Add/update DMARC for: $($issues -join '; '). Example: v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com"
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'DMARC Records'
+                CurrentValue     = "$totalGood/$totalDomains enforcing -- $($issues -join '; ')"
+                RecommendedValue = 'DMARC p=quarantine or p=reject for all'
+                Status           = 'Fail'
+                CheckId          = 'DNS-DMARC-001'
+                Remediation      = "Add/update DMARC for: $($issues -join '; '). Example: v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com"
+            }
+            Add-Setting @settingParams
         }
     }
     catch {

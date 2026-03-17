@@ -30,6 +30,7 @@ param(
     [string]$OutputPath
 )
 
+# Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
 
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -70,39 +71,52 @@ function Add-Setting {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking device compliance default action..."
-    $complianceSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/deviceManagement/settings' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/beta/deviceManagement/settings'
+        ErrorAction = 'Stop'
+    }
+    $complianceSettings = Invoke-MgGraphRequest @graphParams
 
     $markNonCompliant = $complianceSettings['deviceComplianceCheckinThresholdDays']
     # A low threshold (or specific config) means devices are flagged quickly
     if ($null -ne $markNonCompliant) {
-        Add-Setting -Category 'Device Compliance' `
-            -Setting 'Non-Compliant Default Threshold' `
-            -CurrentValue "$markNonCompliant days" `
-            -RecommendedValue 'Devices without policy marked non-compliant' `
-            -Status $(if ([int]$markNonCompliant -le 30) { 'Pass' } else { 'Warning' }) `
-            -CheckId 'INTUNE-COMPLIANCE-001' `
-            -Remediation 'Intune admin center > Devices > Compliance > Compliance policy settings > Mark devices with no compliance policy assigned as > Not compliant.'
+        $settingParams = @{
+            Category         = 'Device Compliance'
+            Setting          = 'Non-Compliant Default Threshold'
+            CurrentValue     = "$markNonCompliant days"
+            RecommendedValue = 'Devices without policy marked non-compliant'
+            Status           = if ([int]$markNonCompliant -le 30) { 'Pass' } else { 'Warning' }
+            CheckId          = 'INTUNE-COMPLIANCE-001'
+            Remediation      = 'Intune admin center > Devices > Compliance > Compliance policy settings > Mark devices with no compliance policy assigned as > Not compliant.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Device Compliance' `
-            -Setting 'Non-Compliant Default Threshold' `
-            -CurrentValue 'Setting not available' `
-            -RecommendedValue 'Devices without policy marked non-compliant' `
-            -Status 'Review' `
-            -CheckId 'INTUNE-COMPLIANCE-001' `
-            -Remediation 'Intune admin center > Devices > Compliance > Compliance policy settings > verify non-compliant default.'
+        $settingParams = @{
+            Category         = 'Device Compliance'
+            Setting          = 'Non-Compliant Default Threshold'
+            CurrentValue     = 'Setting not available'
+            RecommendedValue = 'Devices without policy marked non-compliant'
+            Status           = 'Review'
+            CheckId          = 'INTUNE-COMPLIANCE-001'
+            Remediation      = 'Intune admin center > Devices > Compliance > Compliance policy settings > verify non-compliant default.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
     if ($_.Exception.Message -match '403|Forbidden|Authorization') {
-        Add-Setting -Category 'Device Compliance' `
-            -Setting 'Non-Compliant Default Threshold' `
-            -CurrentValue 'Insufficient permissions or license (Intune required)' `
-            -RecommendedValue 'Devices without policy marked non-compliant' `
-            -Status 'Review' `
-            -CheckId 'INTUNE-COMPLIANCE-001' `
-            -Remediation 'This check requires Intune license and DeviceManagementConfiguration.Read.All permission.'
+        $settingParams = @{
+            Category         = 'Device Compliance'
+            Setting          = 'Non-Compliant Default Threshold'
+            CurrentValue     = 'Insufficient permissions or license (Intune required)'
+            RecommendedValue = 'Devices without policy marked non-compliant'
+            Status           = 'Review'
+            CheckId          = 'INTUNE-COMPLIANCE-001'
+            Remediation      = 'This check requires Intune license and DeviceManagementConfiguration.Read.All permission.'
+        }
+        Add-Setting @settingParams
     }
     else {
         Write-Warning "Could not check device compliance settings: $_"
@@ -114,8 +128,12 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking device enrollment restrictions..."
-    $enrollConfigs = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/deviceManagement/deviceEnrollmentConfigurations' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/beta/deviceManagement/deviceEnrollmentConfigurations'
+        ErrorAction = 'Stop'
+    }
+    $enrollConfigs = Invoke-MgGraphRequest @graphParams
 
     $enrollConfigList = if ($enrollConfigs -and $enrollConfigs['value']) { @($enrollConfigs['value']) } else { @() }
     $platformRestrictions = $enrollConfigList | Where-Object {
@@ -135,33 +153,42 @@ try {
             }
         }
 
-        Add-Setting -Category 'Device Enrollment' `
-            -Setting 'Personal Device Enrollment Blocked' `
-            -CurrentValue $(if ($personalBlocked) { 'Blocked on all platforms' } else { 'Allowed on some platforms' }) `
-            -RecommendedValue 'Block personal device enrollment' `
-            -Status $(if ($personalBlocked) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'INTUNE-ENROLL-001' `
-            -Remediation 'Intune admin center > Devices > Enrollment > Device platform restrictions > Edit default policy > Block personally owned devices for each platform.'
+        $settingParams = @{
+            Category         = 'Device Enrollment'
+            Setting          = 'Personal Device Enrollment Blocked'
+            CurrentValue     = if ($personalBlocked) { 'Blocked on all platforms' } else { 'Allowed on some platforms' }
+            RecommendedValue = 'Block personal device enrollment'
+            Status           = if ($personalBlocked) { 'Pass' } else { 'Fail' }
+            CheckId          = 'INTUNE-ENROLL-001'
+            Remediation      = 'Intune admin center > Devices > Enrollment > Device platform restrictions > Edit default policy > Block personally owned devices for each platform.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Device Enrollment' `
-            -Setting 'Personal Device Enrollment Blocked' `
-            -CurrentValue 'No platform restriction policies found' `
-            -RecommendedValue 'Block personal device enrollment' `
-            -Status 'Fail' `
-            -CheckId 'INTUNE-ENROLL-001' `
-            -Remediation 'Configure device enrollment restrictions. Intune admin center > Devices > Enrollment > Device platform restrictions > Create platform restriction.'
+        $settingParams = @{
+            Category         = 'Device Enrollment'
+            Setting          = 'Personal Device Enrollment Blocked'
+            CurrentValue     = 'No platform restriction policies found'
+            RecommendedValue = 'Block personal device enrollment'
+            Status           = 'Fail'
+            CheckId          = 'INTUNE-ENROLL-001'
+            Remediation      = 'Configure device enrollment restrictions. Intune admin center > Devices > Enrollment > Device platform restrictions > Create platform restriction.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
     if ($_.Exception.Message -match '403|Forbidden|Authorization') {
-        Add-Setting -Category 'Device Enrollment' `
-            -Setting 'Personal Device Enrollment Blocked' `
-            -CurrentValue 'Insufficient permissions or license (Intune required)' `
-            -RecommendedValue 'Block personal device enrollment' `
-            -Status 'Review' `
-            -CheckId 'INTUNE-ENROLL-001' `
-            -Remediation 'This check requires Intune license and DeviceManagementConfiguration.Read.All permission.'
+        $settingParams = @{
+            Category         = 'Device Enrollment'
+            Setting          = 'Personal Device Enrollment Blocked'
+            CurrentValue     = 'Insufficient permissions or license (Intune required)'
+            RecommendedValue = 'Block personal device enrollment'
+            Status           = 'Review'
+            CheckId          = 'INTUNE-ENROLL-001'
+            Remediation      = 'This check requires Intune license and DeviceManagementConfiguration.Read.All permission.'
+        }
+        Add-Setting @settingParams
     }
     else {
         Write-Warning "Could not check device enrollment restrictions: $_"

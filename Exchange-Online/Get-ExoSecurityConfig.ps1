@@ -27,6 +27,7 @@ param(
     [string]$OutputPath
 )
 
+# Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
 
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -72,57 +73,91 @@ try {
 
     # Modern Authentication
     $modernAuth = $orgConfig.OAuth2ClientProfileEnabled
-    Add-Setting -Category 'Authentication' -Setting 'Modern Authentication Enabled' `
-        -CurrentValue "$modernAuth" -RecommendedValue 'True' `
-        -Status $(if ($modernAuth) { 'Pass' } else { 'Fail' }) `
-        -CheckId 'EXO-AUTH-001' `
-        -Remediation 'Exchange admin center > Settings > Modern authentication > Enable. Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true'
+    $settingParams = @{
+        Category         = 'Authentication'
+        Setting          = 'Modern Authentication Enabled'
+        CurrentValue     = "$modernAuth"
+        RecommendedValue = 'True'
+        Status           = if ($modernAuth) { 'Pass' } else { 'Fail' }
+        CheckId          = 'EXO-AUTH-001'
+        Remediation      = 'Exchange admin center > Settings > Modern authentication > Enable. Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true'
+    }
+    Add-Setting @settingParams
 
     # Audit Enabled
     $auditEnabled = $orgConfig.AuditDisabled
-    Add-Setting -Category 'Auditing' -Setting 'Org-Level Audit Enabled' `
-        -CurrentValue "$(if ($auditEnabled) { 'Disabled' } else { 'Enabled' })" `
-        -RecommendedValue 'Enabled' `
-        -Status $(if (-not $auditEnabled) { 'Pass' } else { 'Fail' }) `
-        -CheckId 'EXO-AUDIT-001' `
-        -Remediation 'Run: Set-OrganizationConfig -AuditDisabled $false. Ensure unified audit log is enabled in Microsoft Purview.'
+    $settingParams = @{
+        Category         = 'Auditing'
+        Setting          = 'Org-Level Audit Enabled'
+        CurrentValue     = "$(if ($auditEnabled) { 'Disabled' } else { 'Enabled' })"
+        RecommendedValue = 'Enabled'
+        Status           = if (-not $auditEnabled) { 'Pass' } else { 'Fail' }
+        CheckId          = 'EXO-AUDIT-001'
+        Remediation      = 'Run: Set-OrganizationConfig -AuditDisabled $false. Ensure unified audit log is enabled in Microsoft Purview.'
+    }
+    Add-Setting @settingParams
 
     # Customer Lockbox
     $lockbox = $orgConfig.CustomerLockBoxEnabled
-    Add-Setting -Category 'Security' -Setting 'Customer Lockbox Enabled' `
-        -CurrentValue "$lockbox" -RecommendedValue 'True (E5 license)' `
-        -Status $(if ($lockbox) { 'Pass' } else { 'Review' }) `
-        -CheckId 'EXO-LOCKBOX-001' `
-        -Remediation 'M365 admin center > Settings > Org settings > Security & privacy > Customer Lockbox > Require approval. Requires E5 or equivalent.'
+    $settingParams = @{
+        Category         = 'Security'
+        Setting          = 'Customer Lockbox Enabled'
+        CurrentValue     = "$lockbox"
+        RecommendedValue = 'True (E5 license)'
+        Status           = if ($lockbox) { 'Pass' } else { 'Review' }
+        CheckId          = 'EXO-LOCKBOX-001'
+        Remediation      = 'M365 admin center > Settings > Org settings > Security & privacy > Customer Lockbox > Require approval. Requires E5 or equivalent.'
+    }
+    Add-Setting @settingParams
 
     # Mail Tips
     $mailTipsEnabled = $orgConfig.MailTipsAllTipsEnabled
-    Add-Setting -Category 'Mail Tips' -Setting 'All MailTips Enabled' `
-        -CurrentValue "$mailTipsEnabled" -RecommendedValue 'True' `
-        -Status $(if ($mailTipsEnabled) { 'Pass' } else { 'Warning' }) `
-        -CheckId 'EXO-MAILTIPS-001' `
-        -Remediation 'Run: Set-OrganizationConfig -MailTipsAllTipsEnabled $true'
+    $settingParams = @{
+        Category         = 'Mail Tips'
+        Setting          = 'All MailTips Enabled'
+        CurrentValue     = "$mailTipsEnabled"
+        RecommendedValue = 'True'
+        Status           = if ($mailTipsEnabled) { 'Pass' } else { 'Warning' }
+        CheckId          = 'EXO-MAILTIPS-001'
+        Remediation      = 'Run: Set-OrganizationConfig -MailTipsAllTipsEnabled $true'
+    }
+    Add-Setting @settingParams
 
     $externalTips = $orgConfig.MailTipsExternalRecipientsTipsEnabled
-    Add-Setting -Category 'Mail Tips' -Setting 'External Recipients Tips Enabled' `
-        -CurrentValue "$externalTips" -RecommendedValue 'True' `
-        -Status $(if ($externalTips) { 'Pass' } else { 'Warning' }) `
-        -CheckId 'EXO-MAILTIPS-001' `
-        -Remediation 'Run: Set-OrganizationConfig -MailTipsExternalRecipientsTipsEnabled $true'
+    $settingParams = @{
+        Category         = 'Mail Tips'
+        Setting          = 'External Recipients Tips Enabled'
+        CurrentValue     = "$externalTips"
+        RecommendedValue = 'True'
+        Status           = if ($externalTips) { 'Pass' } else { 'Warning' }
+        CheckId          = 'EXO-MAILTIPS-001'
+        Remediation      = 'Run: Set-OrganizationConfig -MailTipsExternalRecipientsTipsEnabled $true'
+    }
+    Add-Setting @settingParams
 
     $groupMetrics = $orgConfig.MailTipsGroupMetricsEnabled
-    Add-Setting -Category 'Mail Tips' -Setting 'Group Metrics Enabled' `
-        -CurrentValue "$groupMetrics" -RecommendedValue 'True' `
-        -Status $(if ($groupMetrics) { 'Pass' } else { 'Review' }) `
-        -CheckId 'EXO-MAILTIPS-001' `
-        -Remediation 'Run: Set-OrganizationConfig -MailTipsGroupMetricsEnabled $true'
+    $settingParams = @{
+        Category         = 'Mail Tips'
+        Setting          = 'Group Metrics Enabled'
+        CurrentValue     = "$groupMetrics"
+        RecommendedValue = 'True'
+        Status           = if ($groupMetrics) { 'Pass' } else { 'Review' }
+        CheckId          = 'EXO-MAILTIPS-001'
+        Remediation      = 'Run: Set-OrganizationConfig -MailTipsGroupMetricsEnabled $true'
+    }
+    Add-Setting @settingParams
 
     $largeAudience = $orgConfig.MailTipsLargeAudienceThreshold
-    Add-Setting -Category 'Mail Tips' -Setting 'Large Audience Threshold' `
-        -CurrentValue "$largeAudience" -RecommendedValue '25 or less' `
-        -Status $(if ($largeAudience -le 25) { 'Pass' } else { 'Review' }) `
-        -CheckId 'EXO-MAILTIPS-001' `
-        -Remediation 'Run: Set-OrganizationConfig -MailTipsLargeAudienceThreshold 25'
+    $settingParams = @{
+        Category         = 'Mail Tips'
+        Setting          = 'Large Audience Threshold'
+        CurrentValue     = "$largeAudience"
+        RecommendedValue = '25 or less'
+        Status           = if ($largeAudience -le 25) { 'Pass' } else { 'Review' }
+        CheckId          = 'EXO-MAILTIPS-001'
+        Remediation      = 'Run: Set-OrganizationConfig -MailTipsLargeAudienceThreshold 25'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not retrieve organization config: $_"
@@ -136,11 +171,16 @@ try {
     $externalInOutlook = Get-ExternalInOutlook -ErrorAction Stop
     $externalTagEnabled = $externalInOutlook.Enabled
 
-    Add-Setting -Category 'Email Security' -Setting 'External Sender Tagging' `
-        -CurrentValue "$externalTagEnabled" -RecommendedValue 'True' `
-        -Status $(if ($externalTagEnabled) { 'Pass' } else { 'Warning' }) `
-        -CheckId 'EXO-EXTTAG-001' `
-        -Remediation 'Run: Set-ExternalInOutlook -Enabled $true. Tags external emails with a visual indicator in Outlook.'
+    $settingParams = @{
+        Category         = 'Email Security'
+        Setting          = 'External Sender Tagging'
+        CurrentValue     = "$externalTagEnabled"
+        RecommendedValue = 'True'
+        Status           = if ($externalTagEnabled) { 'Pass' } else { 'Warning' }
+        CheckId          = 'EXO-EXTTAG-001'
+        Remediation      = 'Run: Set-ExternalInOutlook -Enabled $true. Tags external emails with a visual indicator in Outlook.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check external sender tagging: $_"
@@ -154,11 +194,16 @@ try {
     $defaultDomain = Get-RemoteDomain -Identity Default -ErrorAction Stop
     $autoForward = $defaultDomain.AutoForwardEnabled
 
-    Add-Setting -Category 'Email Security' -Setting 'Auto-Forward to External (Default Domain)' `
-        -CurrentValue "$autoForward" -RecommendedValue 'False' `
-        -Status $(if (-not $autoForward) { 'Pass' } else { 'Fail' }) `
-        -CheckId 'EXO-FORWARD-001' `
-        -Remediation 'Run: Set-RemoteDomain -Identity Default -AutoForwardEnabled $false. Also consider transport rules to block client-side forwarding.'
+    $settingParams = @{
+        Category         = 'Email Security'
+        Setting          = 'Auto-Forward to External (Default Domain)'
+        CurrentValue     = "$autoForward"
+        RecommendedValue = 'False'
+        Status           = if (-not $autoForward) { 'Pass' } else { 'Fail' }
+        CheckId          = 'EXO-FORWARD-001'
+        Remediation      = 'Run: Set-RemoteDomain -Identity Default -AutoForwardEnabled $false. Also consider transport rules to block client-side forwarding.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check remote domain forwarding: $_"
@@ -172,11 +217,16 @@ try {
     $owaPolicies = Get-OwaMailboxPolicy -ErrorAction Stop
     foreach ($policy in $owaPolicies) {
         $additionalStorage = $policy.AdditionalStorageProvidersAvailable
-        Add-Setting -Category 'OWA Policy' -Setting "OWA Additional Storage ($($policy.Name))" `
-            -CurrentValue "$additionalStorage" -RecommendedValue 'False' `
-            -Status $(if (-not $additionalStorage) { 'Pass' } else { 'Warning' }) `
-            -CheckId 'EXO-OWA-001' `
-            -Remediation 'Run: Set-OwaMailboxPolicy -Identity OwaMailboxPolicy-Default -AdditionalStorageProvidersAvailable $false'
+        $settingParams = @{
+            Category         = 'OWA Policy'
+            Setting          = "OWA Additional Storage ($($policy.Name))"
+            CurrentValue     = "$additionalStorage"
+            RecommendedValue = 'False'
+            Status           = if (-not $additionalStorage) { 'Pass' } else { 'Warning' }
+            CheckId          = 'EXO-OWA-001'
+            Remediation      = 'Run: Set-OwaMailboxPolicy -Identity OwaMailboxPolicy-Default -AdditionalStorageProvidersAvailable $false'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -196,12 +246,16 @@ try {
         $domains = $policy.Domains -join '; '
         $hasExternalSharing = $domains -match '\*'
 
-        Add-Setting -Category 'Sharing' -Setting 'Default Calendar External Sharing' `
-            -CurrentValue $(if ($hasExternalSharing) { "Enabled ($domains)" } else { 'Restricted' }) `
-            -RecommendedValue 'Restricted' `
-            -Status $(if (-not $hasExternalSharing) { 'Pass' } else { 'Review' }) `
-            -CheckId 'EXO-SHARING-001' `
-            -Remediation 'Exchange admin center > Organization > Sharing > Default sharing policy. Remove wildcard (*) domains or restrict to CalendarSharingFreeBusySimple.'
+        $settingParams = @{
+            Category         = 'Sharing'
+            Setting          = 'Default Calendar External Sharing'
+            CurrentValue     = $(if ($hasExternalSharing) { "Enabled ($domains)" } else { 'Restricted' })
+            RecommendedValue = 'Restricted'
+            Status           = if (-not $hasExternalSharing) { 'Pass' } else { 'Review' }
+            CheckId          = 'EXO-SHARING-001'
+            Remediation      = 'Exchange admin center > Organization > Sharing > Default sharing policy. Remove wildcard (*) domains or restrict to CalendarSharingFreeBusySimple.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -217,11 +271,16 @@ try {
         Where-Object { $_.AuditBypassEnabled -eq $true }
     $bypassCount = @($bypassedMailboxes).Count
 
-    Add-Setting -Category 'Auditing' -Setting 'Mailboxes with Audit Bypass' `
-        -CurrentValue "$bypassCount" -RecommendedValue '0' `
-        -Status $(if ($bypassCount -eq 0) { 'Pass' } else { 'Fail' }) `
-        -CheckId 'EXO-AUDIT-002' `
-        -Remediation 'Run: Set-MailboxAuditBypassAssociation -Identity <user> -AuditBypassEnabled $false for each bypassed mailbox.'
+    $settingParams = @{
+        Category         = 'Auditing'
+        Setting          = 'Mailboxes with Audit Bypass'
+        CurrentValue     = "$bypassCount"
+        RecommendedValue = '0'
+        Status           = if ($bypassCount -eq 0) { 'Pass' } else { 'Fail' }
+        CheckId          = 'EXO-AUDIT-002'
+        Remediation      = 'Run: Set-MailboxAuditBypassAssociation -Identity <user> -AuditBypassEnabled $false for each bypassed mailbox.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check audit bypass: $_"
@@ -235,11 +294,16 @@ try {
     $transportConfig = Get-TransportConfig -ErrorAction Stop
     $smtpAuthDisabled = $transportConfig.SmtpClientAuthenticationDisabled
 
-    Add-Setting -Category 'Authentication' -Setting 'SMTP AUTH Disabled (Org-Wide)' `
-        -CurrentValue "$smtpAuthDisabled" -RecommendedValue 'True' `
-        -Status $(if ($smtpAuthDisabled) { 'Pass' } else { 'Fail' }) `
-        -CheckId 'EXO-AUTH-002' `
-        -Remediation 'Run: Set-TransportConfig -SmtpClientAuthenticationDisabled $true. Disable SMTP AUTH org-wide and enable per-mailbox only where required.'
+    $settingParams = @{
+        Category         = 'Authentication'
+        Setting          = 'SMTP AUTH Disabled (Org-Wide)'
+        CurrentValue     = "$smtpAuthDisabled"
+        RecommendedValue = 'True'
+        Status           = if ($smtpAuthDisabled) { 'Pass' } else { 'Fail' }
+        CheckId          = 'EXO-AUTH-002'
+        Remediation      = 'Run: Set-TransportConfig -SmtpClientAuthenticationDisabled $true. Disable SMTP AUTH org-wide and enable per-mailbox only where required.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check SMTP AUTH configuration: $_"
@@ -257,12 +321,16 @@ try {
         $assignedRoles = $policy.AssignedRoles -join '; '
         $hasMyApps = $assignedRoles -match 'MyBaseOptions|My Marketplace Apps|My Custom Apps|My ReadWriteMailbox Apps'
 
-        Add-Setting -Category 'Applications' -Setting "Outlook Add-ins Allowed ($($policy.Name))" `
-            -CurrentValue $(if ($hasMyApps) { 'User add-ins allowed' } else { 'Restricted' }) `
-            -RecommendedValue 'Restricted' `
-            -Status $(if (-not $hasMyApps) { 'Pass' } else { 'Review' }) `
-            -CheckId 'EXO-ADDINS-001' `
-            -Remediation 'Exchange admin center > Roles > User roles > Default Role Assignment Policy. Remove MyMarketplaceApps, MyCustomApps, MyReadWriteMailboxApps roles.'
+        $settingParams = @{
+            Category         = 'Applications'
+            Setting          = "Outlook Add-ins Allowed ($($policy.Name))"
+            CurrentValue     = $(if ($hasMyApps) { 'User add-ins allowed' } else { 'Restricted' })
+            RecommendedValue = 'Restricted'
+            Status           = if (-not $hasMyApps) { 'Pass' } else { 'Review' }
+            CheckId          = 'EXO-ADDINS-001'
+            Remediation      = 'Exchange admin center > Roles > User roles > Default Role Assignment Policy. Remove MyMarketplaceApps, MyCustomApps, MyReadWriteMailboxApps roles.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -279,25 +347,32 @@ try {
     foreach ($policy in @($connFilter)) {
         $policyLabel = if ($policy.Name -eq 'Default') { 'Default' } else { $policy.Name }
 
-        # CIS 2.1.12 — IP Allow List should be empty
+        # CIS 2.1.12 -- IP Allow List should be empty
         $ipAllowList = @($policy.IPAllowList)
         $ipAllowCount = $ipAllowList.Count
-        Add-Setting -Category 'Connection Filter' `
-            -Setting "IP Allow List ($policyLabel)" `
-            -CurrentValue $(if ($ipAllowCount -eq 0) { 'Empty' } else { "$ipAllowCount IPs: $($ipAllowList -join ', ')" }) `
-            -RecommendedValue 'Empty (0 IPs)' `
-            -Status $(if ($ipAllowCount -eq 0) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'EXO-CONNFILTER-001' `
-            -Remediation 'Run: Set-HostedConnectionFilterPolicy -Identity <Policy> -IPAllowList @{}. Exchange admin center > Protection > Connection filter > Edit the policy and remove all IP allow list entries.'
+        $settingParams = @{
+            Category         = 'Connection Filter'
+            Setting          = "IP Allow List ($policyLabel)"
+            CurrentValue     = $(if ($ipAllowCount -eq 0) { 'Empty' } else { "$ipAllowCount IPs: $($ipAllowList -join ', ')" })
+            RecommendedValue = 'Empty (0 IPs)'
+            Status           = if ($ipAllowCount -eq 0) { 'Pass' } else { 'Fail' }
+            CheckId          = 'EXO-CONNFILTER-001'
+            Remediation      = 'Run: Set-HostedConnectionFilterPolicy -Identity <Policy> -IPAllowList @{}. Exchange admin center > Protection > Connection filter > Edit the policy and remove all IP allow list entries.'
+        }
+        Add-Setting @settingParams
 
-        # CIS 2.1.13 — Safe List should be off
+        # CIS 2.1.13 -- Safe List should be off
         $safeList = $policy.EnableSafeList
-        Add-Setting -Category 'Connection Filter' `
-            -Setting "Enable Safe List ($policyLabel)" `
-            -CurrentValue "$safeList" -RecommendedValue 'False' `
-            -Status $(if (-not $safeList) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'EXO-CONNFILTER-002' `
-            -Remediation 'Run: Set-HostedConnectionFilterPolicy -Identity <Policy> -EnableSafeList $false. Exchange admin center > Protection > Connection filter > Edit the policy and uncheck "Turn on safe list".'
+        $settingParams = @{
+            Category         = 'Connection Filter'
+            Setting          = "Enable Safe List ($policyLabel)"
+            CurrentValue     = "$safeList"
+            RecommendedValue = 'False'
+            Status           = if (-not $safeList) { 'Pass' } else { 'Fail' }
+            CheckId          = 'EXO-CONNFILTER-002'
+            Remediation      = 'Run: Set-HostedConnectionFilterPolicy -Identity <Policy> -EnableSafeList $false. Exchange admin center > Protection > Connection filter > Edit the policy and uncheck "Turn on safe list".'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -305,7 +380,7 @@ catch {
 }
 
 # ------------------------------------------------------------------
-# 10. Transport Rules — Domain Whitelisting (CIS 6.2.2)
+# 10. Transport Rules -- Domain Whitelisting (CIS 6.2.2)
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking transport rules for domain whitelisting..."
@@ -316,22 +391,29 @@ try {
     })
 
     if ($whitelistRules.Count -eq 0) {
-        Add-Setting -Category 'Transport Rules' `
-            -Setting 'Domain whitelist transport rules' `
-            -CurrentValue 'None found' -RecommendedValue 'No rules whitelisting domains' `
-            -Status 'Pass' `
-            -CheckId 'EXO-TRANSPORT-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Transport Rules'
+            Setting          = 'Domain whitelist transport rules'
+            CurrentValue     = 'None found'
+            RecommendedValue = 'No rules whitelisting domains'
+            Status           = 'Pass'
+            CheckId          = 'EXO-TRANSPORT-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $ruleNames = ($whitelistRules | ForEach-Object { $_.Name }) -join '; '
-        Add-Setting -Category 'Transport Rules' `
-            -Setting 'Domain whitelist transport rules' `
-            -CurrentValue "$($whitelistRules.Count) rules: $ruleNames" `
-            -RecommendedValue 'No rules whitelisting domains' `
-            -Status 'Fail' `
-            -CheckId 'EXO-TRANSPORT-001' `
-            -Remediation 'Exchange admin center > Mail flow > Rules. Remove or disable any transport rules that set SCL to -1 for specific sender domains, as this bypasses spam filtering.'
+        $settingParams = @{
+            Category         = 'Transport Rules'
+            Setting          = 'Domain whitelist transport rules'
+            CurrentValue     = "$($whitelistRules.Count) rules: $ruleNames"
+            RecommendedValue = 'No rules whitelisting domains'
+            Status           = 'Fail'
+            CheckId          = 'EXO-TRANSPORT-001'
+            Remediation      = 'Exchange admin center > Mail flow > Rules. Remove or disable any transport rules that set SCL to -1 for specific sender domains, as this bypasses spam filtering.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -339,43 +421,53 @@ catch {
 }
 
 # ------------------------------------------------------------------
-# 11. Mailbox Auditing Enabled — Sample (CIS 6.1.2)
+# 11. Mailbox Auditing Enabled -- Sample (CIS 6.1.2)
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking mailbox auditing (sampling 50 mailboxes)..."
     $mailboxes = Get-Mailbox -ResultSize 50 -RecipientTypeDetails UserMailbox -ErrorAction Stop
 
     if (@($mailboxes).Count -eq 0) {
-        Add-Setting -Category 'Audit' `
-            -Setting 'Mailbox Auditing (sample)' `
-            -CurrentValue 'No user mailboxes found' -RecommendedValue 'AuditEnabled = True' `
-            -Status 'Review' `
-            -CheckId 'EXO-AUDIT-003' `
-            -Remediation 'No user mailboxes found to sample.'
+        $settingParams = @{
+            Category         = 'Audit'
+            Setting          = 'Mailbox Auditing (sample)'
+            CurrentValue     = 'No user mailboxes found'
+            RecommendedValue = 'AuditEnabled = True'
+            Status           = 'Review'
+            CheckId          = 'EXO-AUDIT-003'
+            Remediation      = 'No user mailboxes found to sample.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $sampleSize = @($mailboxes).Count
         $disabledAudit = @($mailboxes | Where-Object { -not $_.AuditEnabled })
 
         if ($disabledAudit.Count -eq 0) {
-            Add-Setting -Category 'Audit' `
-                -Setting "Mailbox Auditing (sample of $sampleSize)" `
-                -CurrentValue "All $sampleSize sampled mailboxes have auditing enabled" `
-                -RecommendedValue 'AuditEnabled = True' `
-                -Status 'Pass' `
-                -CheckId 'EXO-AUDIT-003' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Audit'
+                Setting          = "Mailbox Auditing (sample of $sampleSize)"
+                CurrentValue     = "All $sampleSize sampled mailboxes have auditing enabled"
+                RecommendedValue = 'AuditEnabled = True'
+                Status           = 'Pass'
+                CheckId          = 'EXO-AUDIT-003'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
             $disabledNames = ($disabledAudit | Select-Object -First 5 | ForEach-Object { $_.UserPrincipalName }) -join '; '
             $suffix = if ($disabledAudit.Count -gt 5) { " (and $($disabledAudit.Count - 5) more)" } else { '' }
-            Add-Setting -Category 'Audit' `
-                -Setting "Mailbox Auditing (sample of $sampleSize)" `
-                -CurrentValue "$($disabledAudit.Count)/$sampleSize disabled: $disabledNames$suffix" `
-                -RecommendedValue 'AuditEnabled = True' `
-                -Status 'Fail' `
-                -CheckId 'EXO-AUDIT-003' `
-                -Remediation 'Run: Set-Mailbox -Identity <UPN> -AuditEnabled $true. Or org-wide: Set-OrganizationConfig -AuditDisabled $false. Exchange admin center > Compliance management > Auditing.'
+            $settingParams = @{
+                Category         = 'Audit'
+                Setting          = "Mailbox Auditing (sample of $sampleSize)"
+                CurrentValue     = "$($disabledAudit.Count)/$sampleSize disabled: $disabledNames$suffix"
+                RecommendedValue = 'AuditEnabled = True'
+                Status           = 'Fail'
+                CheckId          = 'EXO-AUDIT-003'
+                Remediation      = 'Run: Set-Mailbox -Identity <UPN> -AuditEnabled $true. Or org-wide: Set-OrganizationConfig -AuditDisabled $false. Exchange admin center > Compliance management > Auditing.'
+            }
+            Add-Setting @settingParams
         }
     }
 }
@@ -391,21 +483,27 @@ try {
     $sharedMailboxes = Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize 100 -ErrorAction Stop
 
     if ($sharedMailboxes.Count -eq 0) {
-        Add-Setting -Category 'Mailbox Security' `
-            -Setting 'Shared Mailbox Sign-In Blocked' `
-            -CurrentValue 'No shared mailboxes found' `
-            -RecommendedValue 'All shared mailbox accounts disabled' `
-            -Status 'Pass' `
-            -CheckId 'EXO-SHAREDMBX-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Mailbox Security'
+            Setting          = 'Shared Mailbox Sign-In Blocked'
+            CurrentValue     = 'No shared mailboxes found'
+            RecommendedValue = 'All shared mailbox accounts disabled'
+            Status           = 'Pass'
+            CheckId          = 'EXO-SHAREDMBX-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $enabledAccounts = @()
         foreach ($mbx in $sharedMailboxes) {
             try {
-                $mgUser = Invoke-MgGraphRequest -Method GET `
-                    -Uri "/v1.0/users/$($mbx.UserPrincipalName)?`$select=accountEnabled" `
-                    -ErrorAction SilentlyContinue
+                $graphParams = @{
+                    Method      = 'GET'
+                    Uri         = "/v1.0/users/$($mbx.UserPrincipalName)?`$select=accountEnabled"
+                    ErrorAction = 'SilentlyContinue'
+                }
+                $mgUser = Invoke-MgGraphRequest @graphParams
                 if ($mgUser -and $mgUser['accountEnabled'] -eq $true) {
                     $enabledAccounts += $mbx.UserPrincipalName
                 }
@@ -416,24 +514,30 @@ try {
         }
 
         if ($enabledAccounts.Count -eq 0) {
-            Add-Setting -Category 'Mailbox Security' `
-                -Setting 'Shared Mailbox Sign-In Blocked' `
-                -CurrentValue "All $($sharedMailboxes.Count) shared mailbox accounts disabled" `
-                -RecommendedValue 'All shared mailbox accounts disabled' `
-                -Status 'Pass' `
-                -CheckId 'EXO-SHAREDMBX-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Mailbox Security'
+                Setting          = 'Shared Mailbox Sign-In Blocked'
+                CurrentValue     = "All $($sharedMailboxes.Count) shared mailbox accounts disabled"
+                RecommendedValue = 'All shared mailbox accounts disabled'
+                Status           = 'Pass'
+                CheckId          = 'EXO-SHAREDMBX-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
             $upnList = ($enabledAccounts | Select-Object -First 5) -join ', '
             $suffix = if ($enabledAccounts.Count -gt 5) { " (+$($enabledAccounts.Count - 5) more)" } else { '' }
-            Add-Setting -Category 'Mailbox Security' `
-                -Setting 'Shared Mailbox Sign-In Blocked' `
-                -CurrentValue "$($enabledAccounts.Count)/$($sharedMailboxes.Count) enabled: $upnList$suffix" `
-                -RecommendedValue 'All shared mailbox accounts disabled' `
-                -Status 'Fail' `
-                -CheckId 'EXO-SHAREDMBX-001' `
-                -Remediation 'Block sign-in for shared mailbox accounts: Set-AzureADUser -ObjectId <UPN> -AccountEnabled $false. Entra admin center > Users > select shared mailbox user > Properties > Account enabled > No.'
+            $settingParams = @{
+                Category         = 'Mailbox Security'
+                Setting          = 'Shared Mailbox Sign-In Blocked'
+                CurrentValue     = "$($enabledAccounts.Count)/$($sharedMailboxes.Count) enabled: $upnList$suffix"
+                RecommendedValue = 'All shared mailbox accounts disabled'
+                Status           = 'Fail'
+                CheckId          = 'EXO-SHAREDMBX-001'
+                Remediation      = 'Block sign-in for shared mailbox accounts: Set-AzureADUser -ObjectId <UPN> -AccountEnabled $false. Entra admin center > Users > select shared mailbox user > Properties > Account enabled > No.'
+            }
+            Add-Setting @settingParams
         }
     }
 }
@@ -456,33 +560,42 @@ try {
         })
 
         if ($relayConnectors.Count -eq 0) {
-            Add-Setting -Category 'Mail Flow' `
-                -Setting 'Inbound Connectors - Unauthenticated Relay' `
-                -CurrentValue 'No unauthenticated relay connectors found' `
-                -RecommendedValue 'No open relay connectors' `
-                -Status 'Pass' `
-                -CheckId 'EXO-DIRECTSEND-001' `
-                -Remediation 'No action needed.'
+            $settingParams = @{
+                Category         = 'Mail Flow'
+                Setting          = 'Inbound Connectors - Unauthenticated Relay'
+                CurrentValue     = 'No unauthenticated relay connectors found'
+                RecommendedValue = 'No open relay connectors'
+                Status           = 'Pass'
+                CheckId          = 'EXO-DIRECTSEND-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
         }
         else {
             $connectorNames = ($relayConnectors | ForEach-Object { $_.Name }) -join ', '
-            Add-Setting -Category 'Mail Flow' `
-                -Setting 'Inbound Connectors - Unauthenticated Relay' `
-                -CurrentValue "$($relayConnectors.Count) connectors without TLS/domain restriction: $connectorNames" `
-                -RecommendedValue 'No open relay connectors' `
-                -Status 'Fail' `
-                -CheckId 'EXO-DIRECTSEND-001' `
-                -Remediation "Review inbound connectors: $connectorNames. Require TLS and restrict to specific sender domains/IPs. Exchange admin center > Mail flow > Connectors."
+            $settingParams = @{
+                Category         = 'Mail Flow'
+                Setting          = 'Inbound Connectors - Unauthenticated Relay'
+                CurrentValue     = "$($relayConnectors.Count) connectors without TLS/domain restriction: $connectorNames"
+                RecommendedValue = 'No open relay connectors'
+                Status           = 'Fail'
+                CheckId          = 'EXO-DIRECTSEND-001'
+                Remediation      = "Review inbound connectors: $connectorNames. Require TLS and restrict to specific sender domains/IPs. Exchange admin center > Mail flow > Connectors."
+            }
+            Add-Setting @settingParams
         }
     }
     else {
-        Add-Setting -Category 'Mail Flow' `
-            -Setting 'Inbound Connectors - Unauthenticated Relay' `
-            -CurrentValue 'Get-InboundConnector not available' `
-            -RecommendedValue 'No open relay connectors' `
-            -Status 'Review' `
-            -CheckId 'EXO-DIRECTSEND-001' `
-            -Remediation 'Connect to Exchange Online PowerShell to check inbound connector configuration.'
+        $settingParams = @{
+            Category         = 'Mail Flow'
+            Setting          = 'Inbound Connectors - Unauthenticated Relay'
+            CurrentValue     = 'Get-InboundConnector not available'
+            RecommendedValue = 'No open relay connectors'
+            Status           = 'Review'
+            CheckId          = 'EXO-DIRECTSEND-001'
+            Remediation      = 'Connect to Exchange Online PowerShell to check inbound connector configuration.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
