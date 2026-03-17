@@ -28,6 +28,7 @@ param(
     [string]$OutputPath
 )
 
+# Continue on errors: non-critical checks should not block remaining assessments.
 $ErrorActionPreference = 'Continue'
 
 # Verify Graph connection

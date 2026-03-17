@@ -27,7 +27,10 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [string]$OutputPath
+    [string]$OutputPath,
+
+    [Parameter()]
+    [switch]$CheckOnly
 )
 
 # Resolve repo root (parent of this script's directory)
@@ -39,6 +42,23 @@ if (-not $OutputPath) {
 
 $frameworkCsvPath = Join-Path $repoRoot 'Common' 'framework-mappings.csv'
 $checkIdCsvPath   = Join-Path $repoRoot 'controls' 'check-id-mapping.csv'
+
+if ($CheckOnly) {
+    if (-not (Test-Path -Path $OutputPath)) {
+        Write-Warning "Registry not found at $OutputPath - rebuild required."
+        return $false
+    }
+    $registryTime = (Get-Item -Path $OutputPath).LastWriteTime
+    $sourceFiles = @($frameworkCsvPath, $checkIdCsvPath)
+    $staleSource = $sourceFiles | Where-Object { (Get-Item -Path $_).LastWriteTime -gt $registryTime }
+    if ($staleSource) {
+        $names = ($staleSource | ForEach-Object { Split-Path -Leaf $_ }) -join ', '
+        Write-Warning "Registry is stale - $names updated after last build."
+        return $false
+    }
+    Write-Host "Registry is up to date."
+    return $true
+}
 
 # --- Load CSVs ---
 $frameworkRows = Import-Csv -Path $frameworkCsvPath
