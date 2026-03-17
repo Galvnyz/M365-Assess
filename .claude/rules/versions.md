@@ -5,7 +5,7 @@
 
 ## Assessment Suite Version
 
-Current: **0.9.4**
+Current: **0.9.5**
 
 ### Version Locations (3 total)
 

@@ -2,6 +2,18 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.5] - 2026-03-17
+
+### Changed
+- Remove all backtick line continuations from 10 security collectors (1,216 total), replacing with splatting (@params) pattern (#130, #131, #132)
+- Document ErrorActionPreference strategy with inline comments across all 12 collectors (#135)
+
+### Added
+- Write-Warning when progress display helpers (Show-CheckProgress.ps1, Import-ControlRegistry.ps1) are missing (#133)
+- `-CheckOnly` staleness detection switch for Build-Registry.ps1 (#134)
+- Pester regression test scanning collectors for backtick line continuations (#136)
+- CONTRIBUTING.md with error handling convention documentation (#135)
+
 ## [0.9.4] - 2026-03-15
 
 ### Added
