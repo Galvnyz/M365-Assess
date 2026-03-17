@@ -70,8 +70,12 @@ function Add-Setting {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Fetching Conditional Access policies..."
-    $caPolicies = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/identity/conditionalAccess/policies'
+        ErrorAction = 'Stop'
+    }
+    $caPolicies = Invoke-MgGraphRequest @graphParams
     $allPolicies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     $enabledPolicies = @($allPolicies | Where-Object { $_['state'] -eq 'enabled' })
 }
@@ -135,20 +139,28 @@ try {
 
     if ($mfaAdminPolicies.Count -gt 0) {
         $names = ($mfaAdminPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'MFA Required for Admin Roles' `
-            -CurrentValue "Yes ($($mfaAdminPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-MFA-ADMIN-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for Admin Roles'
+            CurrentValue     = "Yes ($($mfaAdminPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-MFA-ADMIN-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'MFA Required for Admin Roles' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-MFA-ADMIN-001' `
-            -Remediation 'Create a CA policy: Target admin directory roles > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for Admin Roles'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-MFA-ADMIN-001'
+            Remediation      = 'Create a CA policy: Target admin directory roles > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -167,20 +179,28 @@ try {
 
     if ($mfaAllPolicies.Count -gt 0) {
         $names = ($mfaAllPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'MFA Required for All Users' `
-            -CurrentValue "Yes ($($mfaAllPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-MFA-ALL-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for All Users'
+            CurrentValue     = "Yes ($($mfaAllPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-MFA-ALL-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'MFA Required for All Users' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-MFA-ALL-001' `
-            -Remediation 'Create a CA policy: Target All users > All cloud apps > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for All Users'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-MFA-ALL-001'
+            Remediation      = 'Create a CA policy: Target All users > All cloud apps > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -200,20 +220,28 @@ try {
 
     if ($legacyBlockPolicies.Count -gt 0) {
         $names = ($legacyBlockPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Legacy Authentication Blocked' `
-            -CurrentValue "Yes ($($legacyBlockPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-LEGACYAUTH-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Legacy Authentication Blocked'
+            CurrentValue     = "Yes ($($legacyBlockPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-LEGACYAUTH-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Legacy Authentication Blocked' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-LEGACYAUTH-001' `
-            -Remediation 'Create a CA policy: Target All users > Conditions > Client apps > Exchange ActiveSync clients + Other clients > Grant > Block access. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Legacy Authentication Blocked'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-LEGACYAUTH-001'
+            Remediation      = 'Create a CA policy: Target All users > Conditions > Client apps > Exchange ActiveSync clients + Other clients > Grant > Block access. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -233,20 +261,28 @@ try {
 
     if ($signinFreqPolicies.Count -gt 0) {
         $names = ($signinFreqPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Frequency for Admin Roles' `
-            -CurrentValue "Yes ($($signinFreqPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-SIGNIN-FREQ-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Frequency for Admin Roles'
+            CurrentValue     = "Yes ($($signinFreqPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-SIGNIN-FREQ-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Frequency for Admin Roles' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-SIGNIN-FREQ-001' `
-            -Remediation 'Create a CA policy: Target admin roles > Session > Sign-in frequency (e.g., 4 hours) + Persistent browser session = Never. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Frequency for Admin Roles'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-SIGNIN-FREQ-001'
+            Remediation      = 'Create a CA policy: Target admin roles > Session > Sign-in frequency (e.g., 4 hours) + Persistent browser session = Never. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -265,20 +301,28 @@ try {
 
     if ($phishResPolicies.Count -gt 0) {
         $names = ($phishResPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Phishing-Resistant MFA for Admins' `
-            -CurrentValue "Yes ($($phishResPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-PHISHRES-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Phishing-Resistant MFA for Admins'
+            CurrentValue     = "Yes ($($phishResPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-PHISHRES-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Phishing-Resistant MFA for Admins' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-PHISHRES-001' `
-            -Remediation 'Create a CA policy: Target admin roles > Grant > Require authentication strength > Phishing-resistant MFA. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Phishing-Resistant MFA for Admins'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-PHISHRES-001'
+            Remediation      = 'Create a CA policy: Target admin roles > Grant > Require authentication strength > Phishing-resistant MFA. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -297,20 +341,28 @@ try {
 
     if ($userRiskPolicies.Count -gt 0) {
         $names = ($userRiskPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'User Risk Policy Configured' `
-            -CurrentValue "Yes ($($userRiskPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-USERRISK-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'User Risk Policy Configured'
+            CurrentValue     = "Yes ($($userRiskPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-USERRISK-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'User Risk Policy Configured' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-USERRISK-001' `
-            -Remediation 'Create a CA policy: Target All users > Conditions > User risk > High > Grant > Require password change + MFA. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'User Risk Policy Configured'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-USERRISK-001'
+            Remediation      = 'Create a CA policy: Target All users > Conditions > User risk > High > Grant > Require password change + MFA. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -329,20 +381,28 @@ try {
 
     if ($signinRiskPolicies.Count -gt 0) {
         $names = ($signinRiskPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Risk Policy Configured' `
-            -CurrentValue "Yes ($($signinRiskPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-SIGNINRISK-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Risk Policy Configured'
+            CurrentValue     = "Yes ($($signinRiskPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-SIGNINRISK-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Risk Policy Configured' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-SIGNINRISK-001' `
-            -Remediation 'Create a CA policy: Target All users > Conditions > Sign-in risk > High, Medium > Grant > Require MFA. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Risk Policy Configured'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-SIGNINRISK-001'
+            Remediation      = 'Create a CA policy: Target All users > Conditions > Sign-in risk > High, Medium > Grant > Require MFA. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -364,20 +424,28 @@ try {
 
     if ($signinRiskBlockPolicies.Count -gt 0) {
         $names = ($signinRiskBlockPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Risk Blocks Medium+High' `
-            -CurrentValue "Yes ($($signinRiskBlockPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-SIGNINRISK-002' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Risk Blocks Medium+High'
+            CurrentValue     = "Yes ($($signinRiskBlockPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-SIGNINRISK-002'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Risk Blocks Medium+High' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-SIGNINRISK-002' `
-            -Remediation 'Create a CA policy: Target All users > Conditions > Sign-in risk > Medium, High > Grant > Block access (or require MFA). Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Risk Blocks Medium+High'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-SIGNINRISK-002'
+            Remediation      = 'Create a CA policy: Target All users > Conditions > Sign-in risk > Medium, High > Grant > Block access (or require MFA). Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -396,20 +464,28 @@ try {
 
     if ($devicePolicies.Count -gt 0) {
         $names = ($devicePolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Managed Device Required' `
-            -CurrentValue "Yes ($($devicePolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-DEVICE-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Managed Device Required'
+            CurrentValue     = "Yes ($($devicePolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-DEVICE-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Managed Device Required' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-DEVICE-001' `
-            -Remediation 'Create a CA policy: Target All users > All cloud apps > Grant > Require device to be marked as compliant (or Hybrid Azure AD joined). Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Managed Device Required'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-DEVICE-001'
+            Remediation      = 'Create a CA policy: Target All users > All cloud apps > Grant > Require device to be marked as compliant (or Hybrid Azure AD joined). Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -433,20 +509,28 @@ try {
 
     if ($secInfoDevicePolicies.Count -gt 0) {
         $names = ($secInfoDevicePolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Managed Device for Security Info Registration' `
-            -CurrentValue "Yes ($($secInfoDevicePolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-DEVICE-002' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Managed Device for Security Info Registration'
+            CurrentValue     = "Yes ($($secInfoDevicePolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-DEVICE-002'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Managed Device for Security Info Registration' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-DEVICE-002' `
-            -Remediation 'Create a CA policy: User actions > Register security information > Grant > Require compliant device. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Managed Device for Security Info Registration'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-DEVICE-002'
+            Remediation      = 'Create a CA policy: User actions > Register security information > Grant > Require compliant device. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -468,20 +552,28 @@ try {
 
     if ($intuneFreqPolicies.Count -gt 0) {
         $names = ($intuneFreqPolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Frequency for Intune Enrollment' `
-            -CurrentValue "Yes ($($intuneFreqPolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-INTUNE-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Frequency for Intune Enrollment'
+            CurrentValue     = "Yes ($($intuneFreqPolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-INTUNE-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Conditional Access' -Setting 'Sign-in Frequency for Intune Enrollment' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-INTUNE-001' `
-            -Remediation 'Create a CA policy: Target Microsoft Intune enrollment app > Session > Sign-in frequency = Every time. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Frequency for Intune Enrollment'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-INTUNE-001'
+            Remediation      = 'Create a CA policy: Target Microsoft Intune enrollment app > Session > Sign-in frequency = Every time. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -503,22 +595,30 @@ try {
 
     if ($deviceCodePolicies.Count -gt 0) {
         $names = ($deviceCodePolicies | ForEach-Object { $_['displayName'] }) -join '; '
-        Add-Setting -Category 'Conditional Access' -Setting 'Device Code Flow Blocked' `
-            -CurrentValue "Yes ($($deviceCodePolicies.Count) policy: $names)" `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Pass' `
-            -CheckId 'CA-DEVICECODE-001' `
-            -Remediation 'No action needed.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Device Code Flow Blocked'
+            CurrentValue     = "Yes ($($deviceCodePolicies.Count) policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-DEVICECODE-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
     }
     else {
         # Device code flow blocking is a newer CA feature — emit Review if no policies exist
         # as the tenant may not have the feature or may handle it differently
-        Add-Setting -Category 'Conditional Access' -Setting 'Device Code Flow Blocked' `
-            -CurrentValue 'No matching CA policy found' `
-            -RecommendedValue 'At least 1 policy' `
-            -Status 'Fail' `
-            -CheckId 'CA-DEVICECODE-001' `
-            -Remediation 'Create a CA policy: Target All users > Conditions > Authentication flows > Device code flow > Grant > Block access. Entra admin center > Protection > Conditional Access.'
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Device Code Flow Blocked'
+            CurrentValue     = 'No matching CA policy found'
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Fail'
+            CheckId          = 'CA-DEVICECODE-001'
+            Remediation      = 'Create a CA policy: Target All users > Conditions > Authentication flows > Device code flow > Grant > Block access. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
