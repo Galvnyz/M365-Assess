@@ -30,6 +30,18 @@ BeforeDiscovery {
                 FullName = $_.FullName
             }
         }
+
+    $collectorFiles = Get-ChildItem -Path $repoRoot -Recurse -Include '*SecurityConfig.ps1', '*RetentionConfig.ps1' |
+        Where-Object {
+            $_.FullName -notmatch '[\\/]tests[\\/]' -and
+            $_.FullName -notmatch '[\\/]\.claude[\\/]'
+        } |
+        ForEach-Object {
+            @{
+                Name     = $_.FullName.Replace($repoRoot.Path, '').TrimStart('\', '/')
+                FullName = $_.FullName
+            }
+        }
 }
 
 Describe 'Script Syntax Validation' {
@@ -45,5 +57,12 @@ Describe 'Script Help Validation' {
     It '<Name> has a non-empty synopsis' -ForEach $helpScripts {
         $help = Get-Help $FullName -ErrorAction SilentlyContinue
         $help.Synopsis | Should -Not -BeNullOrEmpty -Because "$Name should have help documentation"
+    }
+}
+
+Describe 'Backtick Line Continuations' {
+    It '<Name> has no backtick line continuations' -ForEach $collectorFiles {
+        $violations = Select-String -Path $FullName -Pattern '`\s*$'
+        $violations | Should -BeNullOrEmpty -Because "backtick line continuations are prohibited; use splatting instead"
     }
 }
