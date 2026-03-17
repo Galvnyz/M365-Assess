@@ -109,90 +109,156 @@ function Get-TenantSetting {
 # When AllowGuestLookup is disabled, guest users cannot browse the tenant directory
 $guestLookup = Get-TenantSetting -SettingName 'AllowGuestLookup'
 $guestStatus = if ($guestLookup -eq $false) { 'Pass' } elseif ($null -eq $guestLookup) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Guest Access' -Setting 'Guest User Access Restricted' `
-    -CurrentValue $(if ($null -eq $guestLookup) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestLookup)" }) `
-    -RecommendedValue 'True' -Status $guestStatus -CheckId 'POWERBI-GUEST-001' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow guest users to browse and access Power BI content > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Guest Access'
+    Setting          = 'Guest User Access Restricted'
+    CurrentValue     = if ($null -eq $guestLookup) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestLookup)" }
+    RecommendedValue = 'True'
+    Status           = $guestStatus
+    CheckId          = 'POWERBI-GUEST-001'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow guest users to browse and access Power BI content > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.2: External user invitations restricted ────────────
 $guestInvite = Get-TenantSetting -SettingName 'ElevatedGuestsTenant'
 $inviteStatus = if ($guestInvite -eq $false) { 'Pass' } elseif ($null -eq $guestInvite) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Guest Access' -Setting 'External User Invitations Restricted' `
-    -CurrentValue $(if ($null -eq $guestInvite) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestInvite)" }) `
-    -RecommendedValue 'True' -Status $inviteStatus -CheckId 'POWERBI-GUEST-002' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Invite external users to your organization > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Guest Access'
+    Setting          = 'External User Invitations Restricted'
+    CurrentValue     = if ($null -eq $guestInvite) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestInvite)" }
+    RecommendedValue = 'True'
+    Status           = $inviteStatus
+    CheckId          = 'POWERBI-GUEST-002'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Invite external users to your organization > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.3: Guest access to content restricted ──────────────
 $guestContent = Get-TenantSetting -SettingName 'AllowGuestUserToAccessSharedContent'
 $contentStatus = if ($guestContent -eq $false) { 'Pass' } elseif ($null -eq $guestContent) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Guest Access' -Setting 'Guest Access to Content Restricted' `
-    -CurrentValue $(if ($null -eq $guestContent) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestContent)" }) `
-    -RecommendedValue 'True' -Status $contentStatus -CheckId 'POWERBI-GUEST-003' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow Azure Active Directory guest users to access Power BI > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Guest Access'
+    Setting          = 'Guest Access to Content Restricted'
+    CurrentValue     = if ($null -eq $guestContent) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $guestContent)" }
+    RecommendedValue = 'True'
+    Status           = $contentStatus
+    CheckId          = 'POWERBI-GUEST-003'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow Azure Active Directory guest users to access Power BI > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.4: Publish to web restricted ───────────────────────
 $publishToWeb = Get-TenantSetting -SettingName 'WebDashboardsPublishToWebDisabled'
 $publishStatus = if ($publishToWeb -eq $true) { 'Pass' } elseif ($null -eq $publishToWeb) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Sharing' -Setting 'Publish to Web Restricted' `
-    -CurrentValue $(if ($null -eq $publishToWeb) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$publishToWeb" }) `
-    -RecommendedValue 'True' -Status $publishStatus -CheckId 'POWERBI-SHARING-001' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Publish to web > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Sharing'
+    Setting          = 'Publish to Web Restricted'
+    CurrentValue     = if ($null -eq $publishToWeb) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$publishToWeb" }
+    RecommendedValue = 'True'
+    Status           = $publishStatus
+    CheckId          = 'POWERBI-SHARING-001'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Publish to web > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.5: R and Python visuals disabled ───────────────────
 $rPython = Get-TenantSetting -SettingName 'RScriptVisuals'
 $rPythonStatus = if ($rPython -eq $false) { 'Pass' } elseif ($null -eq $rPython) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Sharing' -Setting 'R and Python Visuals Disabled' `
-    -CurrentValue $(if ($null -eq $rPython) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $rPython)" }) `
-    -RecommendedValue 'True' -Status $rPythonStatus -CheckId 'POWERBI-SHARING-002' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > R and Python visuals > Interact with and share R and Python visuals > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Sharing'
+    Setting          = 'R and Python Visuals Disabled'
+    CurrentValue     = if ($null -eq $rPython) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $rPython)" }
+    RecommendedValue = 'True'
+    Status           = $rPythonStatus
+    CheckId          = 'POWERBI-SHARING-002'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > R and Python visuals > Interact with and share R and Python visuals > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.6: Sensitivity labels enabled ──────────────────────
 $sensitivityLabels = Get-TenantSetting -SettingName 'UseSensitivityLabels'
 $labelsStatus = if ($sensitivityLabels -eq $true) { 'Pass' } elseif ($null -eq $sensitivityLabels) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Information Protection' -Setting 'Sensitivity Labels Enabled' `
-    -CurrentValue $(if ($null -eq $sensitivityLabels) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$sensitivityLabels" }) `
-    -RecommendedValue 'True' -Status $labelsStatus -CheckId 'POWERBI-INFOPROT-001' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Information protection > Allow users to apply sensitivity labels for content > Enabled'
+$settingParams = @{
+    Category         = 'Power BI - Information Protection'
+    Setting          = 'Sensitivity Labels Enabled'
+    CurrentValue     = if ($null -eq $sensitivityLabels) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$sensitivityLabels" }
+    RecommendedValue = 'True'
+    Status           = $labelsStatus
+    CheckId          = 'POWERBI-INFOPROT-001'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Information protection > Allow users to apply sensitivity labels for content > Enabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.7: Shareable links restricted ──────────────────────
 $shareLinks = Get-TenantSetting -SettingName 'ShareLinkToEntireOrg'
 $shareStatus = if ($shareLinks -eq $false) { 'Pass' } elseif ($null -eq $shareLinks) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Sharing' -Setting 'Shareable Links Restricted' `
-    -CurrentValue $(if ($null -eq $shareLinks) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $shareLinks)" }) `
-    -RecommendedValue 'True' -Status $shareStatus -CheckId 'POWERBI-SHARING-003' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow shareable links to grant access to everyone in your organization > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Sharing'
+    Setting          = 'Shareable Links Restricted'
+    CurrentValue     = if ($null -eq $shareLinks) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $shareLinks)" }
+    RecommendedValue = 'True'
+    Status           = $shareStatus
+    CheckId          = 'POWERBI-SHARING-003'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow shareable links to grant access to everyone in your organization > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.8: External data sharing restricted ────────────────
 $extDataSharing = Get-TenantSetting -SettingName 'AllowExternalDataSharingReceiverWorksWithShare'
 $extStatus = if ($extDataSharing -eq $false) { 'Pass' } elseif ($null -eq $extDataSharing) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Sharing' -Setting 'External Data Sharing Restricted' `
-    -CurrentValue $(if ($null -eq $extDataSharing) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $extDataSharing)" }) `
-    -RecommendedValue 'True' -Status $extStatus -CheckId 'POWERBI-SHARING-004' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow external data sharing > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Sharing'
+    Setting          = 'External Data Sharing Restricted'
+    CurrentValue     = if ($null -eq $extDataSharing) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $extDataSharing)" }
+    RecommendedValue = 'True'
+    Status           = $extStatus
+    CheckId          = 'POWERBI-SHARING-004'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Export and sharing > Allow external data sharing > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.9: Block ResourceKey Authentication ────────────────
 $blockResKey = Get-TenantSetting -SettingName 'BlockResourceKeyAuthentication'
 $resKeyStatus = if ($blockResKey -eq $true) { 'Pass' } elseif ($null -eq $blockResKey) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Authentication' -Setting 'Block ResourceKey Authentication' `
-    -CurrentValue $(if ($null -eq $blockResKey) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$blockResKey" }) `
-    -RecommendedValue 'True' -Status $resKeyStatus -CheckId 'POWERBI-AUTH-001' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Developer settings > Block ResourceKey Authentication > Enabled'
+$settingParams = @{
+    Category         = 'Power BI - Authentication'
+    Setting          = 'Block ResourceKey Authentication'
+    CurrentValue     = if ($null -eq $blockResKey) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$blockResKey" }
+    RecommendedValue = 'True'
+    Status           = $resKeyStatus
+    CheckId          = 'POWERBI-AUTH-001'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Developer settings > Block ResourceKey Authentication > Enabled'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.10: Service Principal API access restricted ────────
 $spAccess = Get-TenantSetting -SettingName 'ServicePrincipalAccess'
 $spStatus = if ($spAccess -eq $false) { 'Pass' } elseif ($null -eq $spAccess) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Authentication' -Setting 'Service Principal API Access Restricted' `
-    -CurrentValue $(if ($null -eq $spAccess) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $spAccess)" }) `
-    -RecommendedValue 'True' -Status $spStatus -CheckId 'POWERBI-AUTH-002' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Developer settings > Allow service principals to use Power BI APIs > Disabled or restricted to specific security groups'
+$settingParams = @{
+    Category         = 'Power BI - Authentication'
+    Setting          = 'Service Principal API Access Restricted'
+    CurrentValue     = if ($null -eq $spAccess) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $spAccess)" }
+    RecommendedValue = 'True'
+    Status           = $spStatus
+    CheckId          = 'POWERBI-AUTH-002'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Developer settings > Allow service principals to use Power BI APIs > Disabled or restricted to specific security groups'
+}
+Add-Setting @settingParams
 
 # ─── CIS 9.1.11: Service Principal profiles restricted ──────────
 $spProfiles = Get-TenantSetting -SettingName 'CreateServicePrincipalProfile'
 $spProfileStatus = if ($spProfiles -eq $false) { 'Pass' } elseif ($null -eq $spProfiles) { 'Review' } else { 'Fail' }
-Add-Setting -Category 'Power BI - Authentication' -Setting 'Service Principal Profiles Restricted' `
-    -CurrentValue $(if ($null -eq $spProfiles) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $spProfiles)" }) `
-    -RecommendedValue 'True' -Status $spProfileStatus -CheckId 'POWERBI-AUTH-003' `
-    -Remediation 'Power BI Admin Portal > Tenant settings > Developer settings > Allow service principals to create and use profiles > Disabled'
+$settingParams = @{
+    Category         = 'Power BI - Authentication'
+    Setting          = 'Service Principal Profiles Restricted'
+    CurrentValue     = if ($null -eq $spProfiles) { if ($script:settingsError) { $script:settingsError } else { 'Not found' } } else { "$(-not $spProfiles)" }
+    RecommendedValue = 'True'
+    Status           = $spProfileStatus
+    CheckId          = 'POWERBI-AUTH-003'
+    Remediation      = 'Power BI Admin Portal > Tenant settings > Developer settings > Allow service principals to create and use profiles > Disabled'
+}
+Add-Setting @settingParams
 
 # ─── Output ──────────────────────────────────────────────────────
 $report = @($settings)

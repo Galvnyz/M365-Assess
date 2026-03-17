@@ -123,15 +123,24 @@ function Add-Setting {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking Teams external access settings..."
-    $teamsSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/teamwork/teamsAppSettings' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/teamwork/teamsAppSettings'
+        ErrorAction = 'Stop'
+    }
+    $teamsSettings = Invoke-MgGraphRequest @graphParams
 
     $isSideloadingAllowed = $teamsSettings['isChatResourceSpecificConsentEnabled']
-    Add-Setting -Category 'Teams Apps' -Setting 'Chat Resource-Specific Consent' `
-        -CurrentValue "$isSideloadingAllowed" -RecommendedValue 'False' `
-        -Status $(if (-not $isSideloadingAllowed) { 'Pass' } else { 'Review' }) `
-        -CheckId 'TEAMS-APPS-001' `
-        -Remediation 'Run: Set-CsTeamsAppPermissionPolicy -DefaultCatalogAppsType AllowedAppList. Teams admin center > Teams apps > Permission policies.'
+    $settingParams = @{
+        Category         = 'Teams Apps'
+        Setting          = 'Chat Resource-Specific Consent'
+        CurrentValue     = "$isSideloadingAllowed"
+        RecommendedValue = 'False'
+        Status           = if (-not $isSideloadingAllowed) { 'Pass' } else { 'Review' }
+        CheckId          = 'TEAMS-APPS-001'
+        Remediation      = 'Run: Set-CsTeamsAppPermissionPolicy -DefaultCatalogAppsType AllowedAppList. Teams admin center > Teams apps > Permission policies.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not retrieve Teams app settings: $_"
@@ -142,24 +151,38 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking Teams client configuration for unmanaged users..."
-    $teamsClientConfig = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/teamwork/teamsClientConfiguration' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/beta/teamwork/teamsClientConfiguration'
+        ErrorAction = 'Stop'
+    }
+    $teamsClientConfig = Invoke-MgGraphRequest @graphParams
 
     if ($teamsClientConfig) {
         $allowConsumer = $teamsClientConfig['allowTeamsConsumer']
         $allowConsumerInbound = $teamsClientConfig['allowTeamsConsumerInbound']
 
-        Add-Setting -Category 'External Access' -Setting 'Communication with Unmanaged Teams Users' `
-            -CurrentValue "$allowConsumer" -RecommendedValue 'False' `
-            -Status $(if (-not $allowConsumer) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-EXTACCESS-001' `
-            -Remediation 'Run: Set-CsTenantFederationConfiguration -AllowTeamsConsumer $false. Teams admin center > Users > External access > Teams accounts not managed by an organization > Off.'
+        $settingParams = @{
+            Category         = 'External Access'
+            Setting          = 'Communication with Unmanaged Teams Users'
+            CurrentValue     = "$allowConsumer"
+            RecommendedValue = 'False'
+            Status           = if (-not $allowConsumer) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-EXTACCESS-001'
+            Remediation      = 'Run: Set-CsTenantFederationConfiguration -AllowTeamsConsumer $false. Teams admin center > Users > External access > Teams accounts not managed by an organization > Off.'
+        }
+        Add-Setting @settingParams
 
-        Add-Setting -Category 'External Access' -Setting 'External Unmanaged Users Can Initiate Conversations' `
-            -CurrentValue "$allowConsumerInbound" -RecommendedValue 'False' `
-            -Status $(if (-not $allowConsumerInbound) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-EXTACCESS-002' `
-            -Remediation 'Run: Set-CsTenantFederationConfiguration -AllowTeamsConsumerInbound $false. Teams admin center > Users > External access > External users can initiate conversations > Off.'
+        $settingParams = @{
+            Category         = 'External Access'
+            Setting          = 'External Unmanaged Users Can Initiate Conversations'
+            CurrentValue     = "$allowConsumerInbound"
+            RecommendedValue = 'False'
+            Status           = if (-not $allowConsumerInbound) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-EXTACCESS-002'
+            Remediation      = 'Run: Set-CsTenantFederationConfiguration -AllowTeamsConsumerInbound $false. Teams admin center > Users > External access > External users can initiate conversations > Off.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.1.1 — Third-party cloud storage restricted
         $cloudStorageKeys = @('allowDropBox', 'allowBox', 'allowGoogleDrive', 'allowShareFile', 'allowEgnyte')
@@ -170,43 +193,57 @@ try {
             }
         }
         $cloudStorageStatus = if ($enabledStores.Count -eq 0) { 'Pass' } else { 'Fail' }
-        Add-Setting -Category 'Client Configuration' `
-            -Setting 'Third-Party Cloud Storage' `
-            -CurrentValue $(if ($enabledStores.Count -eq 0) { 'All disabled' } else { "Enabled: $($enabledStores -join ', ')" }) `
-            -RecommendedValue 'All disabled' `
-            -Status $cloudStorageStatus `
-            -CheckId 'TEAMS-CLIENT-001' `
-            -Remediation 'Run: Set-CsTeamsClientConfiguration -AllowDropBox $false -AllowBox $false -AllowGoogleDrive $false -AllowShareFile $false -AllowEgnyte $false. Teams admin center > Messaging policies > Manage third-party storage.'
+        $settingParams = @{
+            Category         = 'Client Configuration'
+            Setting          = 'Third-Party Cloud Storage'
+            CurrentValue     = if ($enabledStores.Count -eq 0) { 'All disabled' } else { "Enabled: $($enabledStores -join ', ')" }
+            RecommendedValue = 'All disabled'
+            Status           = $cloudStorageStatus
+            CheckId          = 'TEAMS-CLIENT-001'
+            Remediation      = 'Run: Set-CsTeamsClientConfiguration -AllowDropBox $false -AllowBox $false -AllowGoogleDrive $false -AllowShareFile $false -AllowEgnyte $false. Teams admin center > Messaging policies > Manage third-party storage.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.1.2 — Channel email disabled
         $allowEmail = $teamsClientConfig['allowEmailIntoChannel']
-        Add-Setting -Category 'Client Configuration' `
-            -Setting 'Email Into Channel' `
-            -CurrentValue "$allowEmail" -RecommendedValue 'False' `
-            -Status $(if (-not $allowEmail) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-CLIENT-002' `
-            -Remediation 'Run: Set-CsTeamsClientConfiguration -AllowEmailIntoChannel $false. Teams admin center > Teams settings > Email integration > Users can send emails to a channel email address > Off.'
+        $settingParams = @{
+            Category         = 'Client Configuration'
+            Setting          = 'Email Into Channel'
+            CurrentValue     = "$allowEmail"
+            RecommendedValue = 'False'
+            Status           = if (-not $allowEmail) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-CLIENT-002'
+            Remediation      = 'Run: Set-CsTeamsClientConfiguration -AllowEmailIntoChannel $false. Teams admin center > Teams settings > Email integration > Users can send emails to a channel email address > Off.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.2.1 — External domain access restricted
         $allowFederated = $teamsClientConfig['allowFederatedUsers']
         $allowedDomains = $teamsClientConfig['allowedDomains']
         $domainRestricted = (-not $allowFederated) -or ($allowedDomains -and $allowedDomains.Count -gt 0)
-        Add-Setting -Category 'External Access' `
-            -Setting 'External Domain Access' `
-            -CurrentValue $(if (-not $allowFederated) { 'Disabled' } elseif ($allowedDomains -and $allowedDomains.Count -gt 0) { "Restricted to $($allowedDomains.Count) domains" } else { 'Open to all domains' }) `
-            -RecommendedValue 'Disabled or restricted to specific domains' `
-            -Status $(if ($domainRestricted) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-EXTACCESS-003' `
-            -Remediation 'Run: Set-CsTenantFederationConfiguration -AllowFederatedUsers $false (or restrict with -AllowedDomains). Teams admin center > Users > External access > Choose which external domains your users have access to > Allow only specific external domains.'
+        $settingParams = @{
+            Category         = 'External Access'
+            Setting          = 'External Domain Access'
+            CurrentValue     = if (-not $allowFederated) { 'Disabled' } elseif ($allowedDomains -and $allowedDomains.Count -gt 0) { "Restricted to $($allowedDomains.Count) domains" } else { 'Open to all domains' }
+            RecommendedValue = 'Disabled or restricted to specific domains'
+            Status           = if ($domainRestricted) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-EXTACCESS-003'
+            Remediation      = 'Run: Set-CsTenantFederationConfiguration -AllowFederatedUsers $false (or restrict with -AllowedDomains). Teams admin center > Users > External access > Choose which external domains your users have access to > Allow only specific external domains.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.2.4 — Skype for Business interop disabled
         $allowPublicUsers = $teamsClientConfig['allowPublicUsers']
-        Add-Setting -Category 'External Access' `
-            -Setting 'Skype for Business/Consumer Interop' `
-            -CurrentValue "$allowPublicUsers" -RecommendedValue 'False' `
-            -Status $(if (-not $allowPublicUsers) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-EXTACCESS-004' `
-            -Remediation 'Run: Set-CsTenantFederationConfiguration -AllowPublicUsers $false. Teams admin center > Users > External access > Skype users > Off.'
+        $settingParams = @{
+            Category         = 'External Access'
+            Setting          = 'Skype for Business/Consumer Interop'
+            CurrentValue     = "$allowPublicUsers"
+            RecommendedValue = 'False'
+            Status           = if (-not $allowPublicUsers) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-EXTACCESS-004'
+            Remediation      = 'Run: Set-CsTenantFederationConfiguration -AllowPublicUsers $false. Teams admin center > Users > External access > Skype users > Off.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -218,87 +255,132 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking Teams meeting policy..."
-    $meetingPolicy = Invoke-MgGraphRequest -Method GET `
-        -Uri '/beta/teamwork/teamsMeetingPolicy' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/beta/teamwork/teamsMeetingPolicy'
+        ErrorAction = 'Stop'
+    }
+    $meetingPolicy = Invoke-MgGraphRequest @graphParams
 
     if ($meetingPolicy) {
         $anonymousJoin = $meetingPolicy['allowAnonymousUsersToJoinMeeting']
-        Add-Setting -Category 'Meeting Policy' -Setting 'Anonymous Users Can Join Meeting' `
-            -CurrentValue "$anonymousJoin" -RecommendedValue 'False' `
-            -Status $(if (-not $anonymousJoin) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-001' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $false. Teams admin center > Meetings > Meeting policies > Global > Anonymous users can join a meeting > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Anonymous Users Can Join Meeting'
+            CurrentValue     = "$anonymousJoin"
+            RecommendedValue = 'False'
+            Status           = if (-not $anonymousJoin) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-001'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $false. Teams admin center > Meetings > Meeting policies > Global > Anonymous users can join a meeting > Off.'
+        }
+        Add-Setting @settingParams
 
         # Anonymous/dial-in can't start meeting (CIS 8.5.2)
         $anonStart = $meetingPolicy['allowAnonymousUsersToStartMeeting']
-        Add-Setting -Category 'Meeting Policy' -Setting 'Anonymous Users Can Start Meeting' `
-            -CurrentValue "$anonStart" -RecommendedValue 'False' `
-            -Status $(if (-not $anonStart) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-002' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToStartMeeting $false. Teams admin center > Meetings > Meeting policies > Global > Anonymous users can start a meeting > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Anonymous Users Can Start Meeting'
+            CurrentValue     = "$anonStart"
+            RecommendedValue = 'False'
+            Status           = if (-not $anonStart) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-002'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToStartMeeting $false. Teams admin center > Meetings > Meeting policies > Global > Anonymous users can start a meeting > Off.'
+        }
+        Add-Setting @settingParams
 
         # Auto-admitted users / lobby bypass (CIS 8.5.3)
         $autoAdmit = $meetingPolicy['autoAdmittedUsers']
         $autoAdmitPass = $autoAdmit -eq 'EveryoneInCompanyExcludingGuests' -or $autoAdmit -eq 'EveryoneInSameAndFederatedCompany' -or $autoAdmit -eq 'OrganizerOnly' -or $autoAdmit -eq 'InvitedUsers'
-        Add-Setting -Category 'Meeting Policy' -Setting 'Auto-Admitted Users (Lobby Bypass)' `
-            -CurrentValue "$autoAdmit" -RecommendedValue 'EveryoneInCompanyExcludingGuests or stricter' `
-            -Status $(if ($autoAdmitPass) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-003' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AutoAdmittedUsers EveryoneInCompanyExcludingGuests. Teams admin center > Meetings > Meeting policies > Global > Who can bypass the lobby > People in my org.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Auto-Admitted Users (Lobby Bypass)'
+            CurrentValue     = "$autoAdmit"
+            RecommendedValue = 'EveryoneInCompanyExcludingGuests or stricter'
+            Status           = if ($autoAdmitPass) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-003'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AutoAdmittedUsers EveryoneInCompanyExcludingGuests. Teams admin center > Meetings > Meeting policies > Global > Who can bypass the lobby > People in my org.'
+        }
+        Add-Setting @settingParams
 
         # Dial-in users can't bypass lobby (CIS 8.5.4)
         $pstnBypass = $meetingPolicy['allowPSTNUsersToBypassLobby']
-        Add-Setting -Category 'Meeting Policy' -Setting 'Dial-in Users Bypass Lobby' `
-            -CurrentValue "$pstnBypass" -RecommendedValue 'False' `
-            -Status $(if (-not $pstnBypass) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-004' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowPSTNUsersToBypassLobby $false. Teams admin center > Meetings > Meeting policies > Global > Dial-in users can bypass the lobby > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Dial-in Users Bypass Lobby'
+            CurrentValue     = "$pstnBypass"
+            RecommendedValue = 'False'
+            Status           = if (-not $pstnBypass) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-004'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowPSTNUsersToBypassLobby $false. Teams admin center > Meetings > Meeting policies > Global > Dial-in users can bypass the lobby > Off.'
+        }
+        Add-Setting @settingParams
 
         # External participants can't give/request control (CIS 8.5.7)
         $extControl = $meetingPolicy['allowExternalParticipantGiveRequestControl']
-        Add-Setting -Category 'Meeting Policy' -Setting 'External Participants Can Give/Request Control' `
-            -CurrentValue "$extControl" -RecommendedValue 'False' `
-            -Status $(if (-not $extControl) { 'Pass' } else { 'Warning' }) `
-            -CheckId 'TEAMS-MEETING-005' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowExternalParticipantGiveRequestControl $false. Teams admin center > Meetings > Meeting policies > Global > External participants can give or request control > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'External Participants Can Give/Request Control'
+            CurrentValue     = "$extControl"
+            RecommendedValue = 'False'
+            Status           = if (-not $extControl) { 'Pass' } else { 'Warning' }
+            CheckId          = 'TEAMS-MEETING-005'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowExternalParticipantGiveRequestControl $false. Teams admin center > Meetings > Meeting policies > Global > External participants can give or request control > Off.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.5.5 — Anonymous meeting chat blocked
         $meetingChat = $meetingPolicy['meetingChatEnabledType']
         $chatPass = $meetingChat -ne 'Enabled'
-        Add-Setting -Category 'Meeting Policy' `
-            -Setting 'Meeting Chat for Anonymous Users' `
-            -CurrentValue "$meetingChat" -RecommendedValue 'Disabled or EnabledExceptAnonymous' `
-            -Status $(if ($chatPass) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-006' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -MeetingChatEnabledType EnabledExceptAnonymous. Teams admin center > Meetings > Meeting policies > Global > Meeting chat > On for everyone except anonymous users.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Meeting Chat for Anonymous Users'
+            CurrentValue     = "$meetingChat"
+            RecommendedValue = 'Disabled or EnabledExceptAnonymous'
+            Status           = if ($chatPass) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-006'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -MeetingChatEnabledType EnabledExceptAnonymous. Teams admin center > Meetings > Meeting policies > Global > Meeting chat > On for everyone except anonymous users.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.5.6 — Only organizers can present
         $presenterRole = $meetingPolicy['designatedPresenterRoleMode']
         $presenterPass = $presenterRole -eq 'OrganizerOnlyUserOverride'
-        Add-Setting -Category 'Meeting Policy' `
-            -Setting 'Default Presenter Role' `
-            -CurrentValue "$presenterRole" -RecommendedValue 'OrganizerOnlyUserOverride' `
-            -Status $(if ($presenterPass) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-007' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -DesignatedPresenterRoleMode OrganizerOnlyUserOverride. Teams admin center > Meetings > Meeting policies > Global > Who can present > Only organizers.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Default Presenter Role'
+            CurrentValue     = "$presenterRole"
+            RecommendedValue = 'OrganizerOnlyUserOverride'
+            Status           = if ($presenterPass) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-007'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -DesignatedPresenterRoleMode OrganizerOnlyUserOverride. Teams admin center > Meetings > Meeting policies > Global > Who can present > Only organizers.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.5.8 — External meeting chat off
         $extMeetingChat = $meetingPolicy['allowExternalNonTrustedMeetingChat']
-        Add-Setting -Category 'Meeting Policy' `
-            -Setting 'External Meeting Chat (Non-Trusted)' `
-            -CurrentValue "$extMeetingChat" -RecommendedValue 'False' `
-            -Status $(if (-not $extMeetingChat) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-008' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowExternalNonTrustedMeetingChat $false. Teams admin center > Meetings > Meeting policies > Global > External meeting chat > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'External Meeting Chat (Non-Trusted)'
+            CurrentValue     = "$extMeetingChat"
+            RecommendedValue = 'False'
+            Status           = if (-not $extMeetingChat) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-008'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowExternalNonTrustedMeetingChat $false. Teams admin center > Meetings > Meeting policies > Global > External meeting chat > Off.'
+        }
+        Add-Setting @settingParams
 
         # CIS 8.5.9 — Cloud recording off by default
         $cloudRecording = $meetingPolicy['allowCloudRecording']
-        Add-Setting -Category 'Meeting Policy' `
-            -Setting 'Cloud Recording' `
-            -CurrentValue "$cloudRecording" -RecommendedValue 'False' `
-            -Status $(if (-not $cloudRecording) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'TEAMS-MEETING-009' `
-            -Remediation 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowCloudRecording $false. Teams admin center > Meetings > Meeting policies > Global > Cloud recording > Off.'
+        $settingParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = 'Cloud Recording'
+            CurrentValue     = "$cloudRecording"
+            RecommendedValue = 'False'
+            Status           = if (-not $cloudRecording) { 'Pass' } else { 'Fail' }
+            CheckId          = 'TEAMS-MEETING-009'
+            Remediation      = 'Run: Set-CsTeamsMeetingPolicy -Identity Global -AllowCloudRecording $false. Teams admin center > Meetings > Meeting policies > Global > Cloud recording > Off.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -310,14 +392,24 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking tenant-level Teams settings..."
-    $teamSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/teamwork' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/teamwork'
+        ErrorAction = 'Stop'
+    }
+    $teamSettings = Invoke-MgGraphRequest @graphParams
 
     if ($teamSettings) {
-        Add-Setting -Category 'Teams Settings' -Setting 'Teams Workload Active' `
-            -CurrentValue 'Active' -RecommendedValue 'Active' -Status 'Info' `
-            -CheckId 'TEAMS-INFO-001' `
-            -Remediation 'Informational — confirms Teams service connectivity.'
+        $settingParams = @{
+            Category         = 'Teams Settings'
+            Setting          = 'Teams Workload Active'
+            CurrentValue     = 'Active'
+            RecommendedValue = 'Active'
+            Status           = 'Info'
+            CheckId          = 'TEAMS-INFO-001'
+            Remediation      = 'Informational — confirms Teams service connectivity.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -327,22 +419,30 @@ catch {
 # ------------------------------------------------------------------
 # Teams App Permission Policies (CIS 8.4.1 - Review)
 # ------------------------------------------------------------------
-Add-Setting -Category 'Teams Apps' -Setting 'Third-Party App Permission Policies' `
-    -CurrentValue 'Cannot be fully checked via API' `
-    -RecommendedValue 'Block third-party apps or restrict to approved list' `
-    -Status 'Review' `
-    -CheckId 'TEAMS-APPS-002' `
-    -Remediation 'Teams admin center > Teams apps > Permission policies > Org-wide app settings > Third-party apps > Off (or restrict to approved apps).'
+$settingParams = @{
+    Category         = 'Teams Apps'
+    Setting          = 'Third-Party App Permission Policies'
+    CurrentValue     = 'Cannot be fully checked via API'
+    RecommendedValue = 'Block third-party apps or restrict to approved list'
+    Status           = 'Review'
+    CheckId          = 'TEAMS-APPS-002'
+    Remediation      = 'Teams admin center > Teams apps > Permission policies > Org-wide app settings > Third-party apps > Off (or restrict to approved apps).'
+}
+Add-Setting @settingParams
 
 # ------------------------------------------------------------------
 # Teams Report a Security Concern (CIS 8.6.1 - Review)
 # ------------------------------------------------------------------
-Add-Setting -Category 'Teams Settings' -Setting 'Report a Security Concern Enabled' `
-    -CurrentValue 'Cannot be checked via API' `
-    -RecommendedValue 'Enabled in messaging policies' `
-    -Status 'Review' `
-    -CheckId 'TEAMS-REPORTING-001' `
-    -Remediation 'Teams admin center > Messaging policies > Global (Org-wide default) > Report a security concern > On.'
+$settingParams = @{
+    Category         = 'Teams Settings'
+    Setting          = 'Report a Security Concern Enabled'
+    CurrentValue     = 'Cannot be checked via API'
+    RecommendedValue = 'Enabled in messaging policies'
+    Status           = 'Review'
+    CheckId          = 'TEAMS-REPORTING-001'
+    Remediation      = 'Teams admin center > Messaging policies > Global (Org-wide default) > Report a security concern > On.'
+}
+Add-Setting @settingParams
 
 # ------------------------------------------------------------------
 # Output

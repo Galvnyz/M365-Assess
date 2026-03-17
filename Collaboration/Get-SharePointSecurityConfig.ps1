@@ -86,8 +86,12 @@ function Add-Setting {
 $spoSettings = $null
 try {
     Write-Verbose "Retrieving SharePoint tenant settings..."
-    $spoSettings = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/admin/sharepoint/settings' -ErrorAction Stop
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/admin/sharepoint/settings'
+        ErrorAction = 'Stop'
+    }
+    $spoSettings = Invoke-MgGraphRequest @graphParams
 }
 catch {
     $errMsg = $_.Exception.Message
@@ -130,12 +134,16 @@ try {
         default { 'Review' }
     }
 
-    Add-Setting -Category 'External Sharing' -Setting 'SharePoint External Sharing Level' `
-        -CurrentValue $sharingDisplay `
-        -RecommendedValue 'Existing external users only (or more restrictive)' `
-        -Status $sharingStatus `
-        -CheckId 'SPO-SHARING-001' `
-        -Remediation 'Run: Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly. SharePoint admin center > Policies > Sharing.'
+    $settingParams = @{
+        Category         = 'External Sharing'
+        Setting          = 'SharePoint External Sharing Level'
+        CurrentValue     = $sharingDisplay
+        RecommendedValue = 'Existing external users only (or more restrictive)'
+        Status           = $sharingStatus
+        CheckId          = 'SPO-SHARING-001'
+        Remediation      = 'Run: Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly. SharePoint admin center > Policies > Sharing.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check sharing capability: $_"
@@ -146,11 +154,16 @@ catch {
 # ------------------------------------------------------------------
 try {
     $resharing = $spoSettings['isResharingByExternalUsersEnabled']
-    Add-Setting -Category 'External Sharing' -Setting 'Resharing by External Users' `
-        -CurrentValue "$resharing" -RecommendedValue 'False' `
-        -Status $(if (-not $resharing) { 'Pass' } else { 'Warning' }) `
-        -CheckId 'SPO-SHARING-002' `
-        -Remediation 'Run: Set-SPOTenant -PreventExternalUsersFromResharing $true. SharePoint admin center > Policies > Sharing.'
+    $settingParams = @{
+        Category         = 'External Sharing'
+        Setting          = 'Resharing by External Users'
+        CurrentValue     = "$resharing"
+        RecommendedValue = 'False'
+        Status           = if (-not $resharing) { 'Pass' } else { 'Warning' }
+        CheckId          = 'SPO-SHARING-002'
+        Remediation      = 'Run: Set-SPOTenant -PreventExternalUsersFromResharing $true. SharePoint admin center > Policies > Sharing.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check resharing: $_"
@@ -176,12 +189,16 @@ try {
         default { 'Review' }
     }
 
-    Add-Setting -Category 'External Sharing' -Setting 'Sharing Domain Restriction' `
-        -CurrentValue $restrictDisplay `
-        -RecommendedValue 'Allow or Block list configured' `
-        -Status $restrictStatus `
-        -CheckId 'SPO-SHARING-003' `
-        -Remediation 'Run: Set-SPOTenant -SharingDomainRestrictionMode AllowList -SharingAllowedDomainList "partner.com". SharePoint admin center > Policies > Sharing > Limit sharing by domain.'
+    $settingParams = @{
+        Category         = 'External Sharing'
+        Setting          = 'Sharing Domain Restriction'
+        CurrentValue     = $restrictDisplay
+        RecommendedValue = 'Allow or Block list configured'
+        Status           = $restrictStatus
+        CheckId          = 'SPO-SHARING-003'
+        Remediation      = 'Run: Set-SPOTenant -SharingDomainRestrictionMode AllowList -SharingAllowedDomainList "partner.com". SharePoint admin center > Policies > Sharing > Limit sharing by domain.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check domain restriction: $_"
@@ -192,11 +209,16 @@ catch {
 # ------------------------------------------------------------------
 try {
     $unmanagedSync = $spoSettings['isUnmanagedSyncClientRestricted']
-    Add-Setting -Category 'Sync & Access' -Setting 'Block Sync from Unmanaged Devices' `
-        -CurrentValue "$unmanagedSync" -RecommendedValue 'True' `
-        -Status $(if ($unmanagedSync) { 'Pass' } else { 'Warning' }) `
-        -CheckId 'SPO-SYNC-001' `
-        -Remediation 'Run: Set-SPOTenantSyncClientRestriction -Enable. SharePoint admin center > Settings > Sync > Allow syncing only on computers joined to specific domains.'
+    $settingParams = @{
+        Category         = 'Sync & Access'
+        Setting          = 'Block Sync from Unmanaged Devices'
+        CurrentValue     = "$unmanagedSync"
+        RecommendedValue = 'True'
+        Status           = if ($unmanagedSync) { 'Pass' } else { 'Warning' }
+        CheckId          = 'SPO-SYNC-001'
+        Remediation      = 'Run: Set-SPOTenantSyncClientRestriction -Enable. SharePoint admin center > Settings > Sync > Allow syncing only on computers joined to specific domains.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check sync client restriction: $_"
@@ -207,11 +229,16 @@ catch {
 # ------------------------------------------------------------------
 try {
     $macSync = $spoSettings['isMacSyncAppEnabled']
-    Add-Setting -Category 'Sync & Access' -Setting 'Mac Sync App Enabled' `
-        -CurrentValue "$macSync" -RecommendedValue 'Review' `
-        -Status 'Info' `
-        -CheckId 'SPO-SYNC-002' `
-        -Remediation 'Informational — review based on organizational requirements.'
+    $settingParams = @{
+        Category         = 'Sync & Access'
+        Setting          = 'Mac Sync App Enabled'
+        CurrentValue     = "$macSync"
+        RecommendedValue = 'Review'
+        Status           = 'Info'
+        CheckId          = 'SPO-SYNC-002'
+        Remediation      = 'Informational — review based on organizational requirements.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check Mac sync: $_"
@@ -222,11 +249,16 @@ catch {
 # ------------------------------------------------------------------
 try {
     $loopEnabled = $spoSettings['isLoopEnabled']
-    Add-Setting -Category 'Collaboration Features' -Setting 'Loop Components Enabled' `
-        -CurrentValue "$loopEnabled" -RecommendedValue 'Review' `
-        -Status 'Info' `
-        -CheckId 'SPO-LOOP-001' `
-        -Remediation 'Informational — review based on organizational requirements.'
+    $settingParams = @{
+        Category         = 'Collaboration Features'
+        Setting          = 'Loop Components Enabled'
+        CurrentValue     = "$loopEnabled"
+        RecommendedValue = 'Review'
+        Status           = 'Info'
+        CheckId          = 'SPO-LOOP-001'
+        Remediation      = 'Informational — review based on organizational requirements.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check Loop: $_"
@@ -246,11 +278,16 @@ try {
         default { $loopSharing }
     }
 
-    Add-Setting -Category 'Collaboration Features' -Setting 'OneDrive Loop Sharing' `
-        -CurrentValue $loopSharingDisplay -RecommendedValue 'Restricted or disabled' `
-        -Status 'Info' `
-        -CheckId 'SPO-LOOP-002' `
-        -Remediation 'Informational — review based on organizational requirements.'
+    $settingParams = @{
+        Category         = 'Collaboration Features'
+        Setting          = 'OneDrive Loop Sharing'
+        CurrentValue     = $loopSharingDisplay
+        RecommendedValue = 'Restricted or disabled'
+        Status           = 'Info'
+        CheckId          = 'SPO-LOOP-002'
+        Remediation      = 'Informational — review based on organizational requirements.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check Loop sharing: $_"
@@ -261,20 +298,36 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking idle session timeout policy..."
-    $idlePolicy = Invoke-MgGraphRequest -Method GET `
-        -Uri '/v1.0/policies/activityBasedTimeoutPolicies' -ErrorAction SilentlyContinue
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/policies/activityBasedTimeoutPolicies'
+        ErrorAction = 'SilentlyContinue'
+    }
+    $idlePolicy = Invoke-MgGraphRequest @graphParams
 
     if ($idlePolicy -and $idlePolicy['value'] -and @($idlePolicy['value']).Count -gt 0) {
-        Add-Setting -Category 'Sync & Access' -Setting 'Idle Session Timeout Policy' `
-            -CurrentValue 'Configured' -RecommendedValue 'Configured' -Status 'Pass' `
-            -CheckId 'SPO-SESSION-001' `
-            -Remediation 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
+        $settingParams = @{
+            Category         = 'Sync & Access'
+            Setting          = 'Idle Session Timeout Policy'
+            CurrentValue     = 'Configured'
+            RecommendedValue = 'Configured'
+            Status           = 'Pass'
+            CheckId          = 'SPO-SESSION-001'
+            Remediation      = 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Sync & Access' -Setting 'Idle Session Timeout Policy' `
-            -CurrentValue 'Not configured' -RecommendedValue 'Configured' -Status 'Warning' `
-            -CheckId 'SPO-SESSION-001' `
-            -Remediation 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
+        $settingParams = @{
+            Category         = 'Sync & Access'
+            Setting          = 'Idle Session Timeout Policy'
+            CurrentValue     = 'Not configured'
+            RecommendedValue = 'Configured'
+            Status           = 'Warning'
+            CheckId          = 'SPO-SESSION-001'
+            Remediation      = 'Run: Set-SPOBrowserIdleSignOut -Enabled $true -SignOutAfter ''01:00:00''. M365 admin center > Settings > Org settings > Idle session timeout.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -301,12 +354,16 @@ try {
         default { 'Review' }
     }
 
-    Add-Setting -Category 'External Sharing' -Setting 'Default Sharing Link Type' `
-        -CurrentValue $linkTypeDisplay `
-        -RecommendedValue 'Specific people (direct)' `
-        -Status $linkTypeStatus `
-        -CheckId 'SPO-SHARING-004' `
-        -Remediation 'Run: Set-SPOTenant -DefaultSharingLinkType Direct. SharePoint admin center > Policies > Sharing > File and folder links > Default link type > Specific people.'
+    $settingParams = @{
+        Category         = 'External Sharing'
+        Setting          = 'Default Sharing Link Type'
+        CurrentValue     = $linkTypeDisplay
+        RecommendedValue = 'Specific people (direct)'
+        Status           = $linkTypeStatus
+        CheckId          = 'SPO-SHARING-004'
+        Remediation      = 'Run: Set-SPOTenant -DefaultSharingLinkType Direct. SharePoint admin center > Policies > Sharing > File and folder links > Default link type > Specific people.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check default sharing link type: $_"
@@ -320,11 +377,16 @@ try {
     $guestExpDays = $spoSettings['externalUserExpireInDays']
 
     if ($null -eq $guestExpRequired) {
-        Add-Setting -Category 'External Sharing' -Setting 'Guest Access Expiration' `
-            -CurrentValue 'Not available via API' -RecommendedValue 'Enabled (30 days or less)' `
-            -Status 'Review' `
-            -CheckId 'SPO-SHARING-005' `
-            -Remediation 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
+        $settingParams = @{
+            Category         = 'External Sharing'
+            Setting          = 'Guest Access Expiration'
+            CurrentValue     = 'Not available via API'
+            RecommendedValue = 'Enabled (30 days or less)'
+            Status           = 'Review'
+            CheckId          = 'SPO-SHARING-005'
+            Remediation      = 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $expDisplay = if ($guestExpRequired) { "Enabled ($guestExpDays days)" } else { 'Disabled' }
@@ -332,11 +394,16 @@ try {
                      elseif ($guestExpRequired) { 'Warning' }
                      else { 'Fail' }
 
-        Add-Setting -Category 'External Sharing' -Setting 'Guest Access Expiration' `
-            -CurrentValue $expDisplay -RecommendedValue 'Enabled (30 days or less)' `
-            -Status $expStatus `
-            -CheckId 'SPO-SHARING-005' `
-            -Remediation 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
+        $settingParams = @{
+            Category         = 'External Sharing'
+            Setting          = 'Guest Access Expiration'
+            CurrentValue     = $expDisplay
+            RecommendedValue = 'Enabled (30 days or less)'
+            Status           = $expStatus
+            CheckId          = 'SPO-SHARING-005'
+            Remediation      = 'Run: Set-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 30. SharePoint admin center > Policies > Sharing > Guest access expiration.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -351,11 +418,16 @@ try {
     $emailAttestDays = $spoSettings['emailAttestationReAuthDays']
 
     if ($null -eq $emailAttestation) {
-        Add-Setting -Category 'External Sharing' -Setting 'Reauthentication with Verification Code' `
-            -CurrentValue 'Not available via API' -RecommendedValue 'Enabled (30 days or less)' `
-            -Status 'Review' `
-            -CheckId 'SPO-SHARING-006' `
-            -Remediation 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
+        $settingParams = @{
+            Category         = 'External Sharing'
+            Setting          = 'Reauthentication with Verification Code'
+            CurrentValue     = 'Not available via API'
+            RecommendedValue = 'Enabled (30 days or less)'
+            Status           = 'Review'
+            CheckId          = 'SPO-SHARING-006'
+            Remediation      = 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $attestDisplay = if ($emailAttestation) { "Enabled ($emailAttestDays days)" } else { 'Disabled' }
@@ -363,11 +435,16 @@ try {
                         elseif ($emailAttestation) { 'Warning' }
                         else { 'Fail' }
 
-        Add-Setting -Category 'External Sharing' -Setting 'Reauthentication with Verification Code' `
-            -CurrentValue $attestDisplay -RecommendedValue 'Enabled (30 days or less)' `
-            -Status $attestStatus `
-            -CheckId 'SPO-SHARING-006' `
-            -Remediation 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
+        $settingParams = @{
+            Category         = 'External Sharing'
+            Setting          = 'Reauthentication with Verification Code'
+            CurrentValue     = $attestDisplay
+            RecommendedValue = 'Enabled (30 days or less)'
+            Status           = $attestStatus
+            CheckId          = 'SPO-SHARING-006'
+            Remediation      = 'Run: Set-SPOTenant -EmailAttestationRequired $true -EmailAttestationReAuthDays 30. SharePoint admin center > Policies > Sharing > Verification code reauthentication.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -392,12 +469,16 @@ try {
         default { 'Review' }
     }
 
-    Add-Setting -Category 'External Sharing' -Setting 'Default Sharing Link Permission' `
-        -CurrentValue $permDisplay `
-        -RecommendedValue 'View (read-only)' `
-        -Status $permStatus `
-        -CheckId 'SPO-SHARING-007' `
-        -Remediation 'Run: Set-SPOTenant -DefaultLinkPermission View. SharePoint admin center > Policies > Sharing > File and folder links > Default permission > View.'
+    $settingParams = @{
+        Category         = 'External Sharing'
+        Setting          = 'Default Sharing Link Permission'
+        CurrentValue     = $permDisplay
+        RecommendedValue = 'View (read-only)'
+        Status           = $permStatus
+        CheckId          = 'SPO-SHARING-007'
+        Remediation      = 'Run: Set-SPOTenant -DefaultLinkPermission View. SharePoint admin center > Policies > Sharing > File and folder links > Default permission > View.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check default link permission: $_"
@@ -409,18 +490,28 @@ catch {
 try {
     $legacyAuth = $spoSettings['legacyAuthProtocolsEnabled']
     if ($null -ne $legacyAuth) {
-        Add-Setting -Category 'Authentication' -Setting 'Legacy Authentication Protocols' `
-            -CurrentValue "$legacyAuth" -RecommendedValue 'False' `
-            -Status $(if (-not $legacyAuth) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'SPO-AUTH-001' `
-            -Remediation 'Run: Set-SPOTenant -LegacyAuthProtocolsEnabled $false. SharePoint admin center > Policies > Access control > Apps that do not use modern authentication > Block access.'
+        $settingParams = @{
+            Category         = 'Authentication'
+            Setting          = 'Legacy Authentication Protocols'
+            CurrentValue     = "$legacyAuth"
+            RecommendedValue = 'False'
+            Status           = if (-not $legacyAuth) { 'Pass' } else { 'Fail' }
+            CheckId          = 'SPO-AUTH-001'
+            Remediation      = 'Run: Set-SPOTenant -LegacyAuthProtocolsEnabled $false. SharePoint admin center > Policies > Access control > Apps that do not use modern authentication > Block access.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Authentication' -Setting 'Legacy Authentication Protocols' `
-            -CurrentValue 'Not available via API' -RecommendedValue 'False' `
-            -Status 'Review' `
-            -CheckId 'SPO-AUTH-001' `
-            -Remediation 'Check via SharePoint admin center > Policies > Access control > Apps that do not use modern authentication.'
+        $settingParams = @{
+            Category         = 'Authentication'
+            Setting          = 'Legacy Authentication Protocols'
+            CurrentValue     = 'Not available via API'
+            RecommendedValue = 'False'
+            Status           = 'Review'
+            CheckId          = 'SPO-AUTH-001'
+            Remediation      = 'Check via SharePoint admin center > Policies > Access control > Apps that do not use modern authentication.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -435,8 +526,12 @@ try {
     # Check via beta endpoint for B2B integration property
     $betaSpoSettings = $null
     try {
-        $betaSpoSettings = Invoke-MgGraphRequest -Method GET `
-            -Uri '/beta/admin/sharepoint/settings' -ErrorAction Stop
+        $graphParams = @{
+            Method      = 'GET'
+            Uri         = '/beta/admin/sharepoint/settings'
+            ErrorAction = 'Stop'
+        }
+        $betaSpoSettings = Invoke-MgGraphRequest @graphParams
     }
     catch {
         Write-Verbose "Beta SharePoint settings endpoint not available: $_"
@@ -444,20 +539,28 @@ try {
 
     if ($betaSpoSettings -and $null -ne $betaSpoSettings['isB2BIntegrationEnabled']) {
         $b2bEnabled = $betaSpoSettings['isB2BIntegrationEnabled']
-        Add-Setting -Category 'Authentication' `
-            -Setting 'SharePoint B2B Integration' `
-            -CurrentValue "$b2bEnabled" -RecommendedValue 'True' `
-            -Status $(if ($b2bEnabled) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'SPO-B2B-001' `
-            -Remediation 'Enable B2B integration in SharePoint admin center > Policies > Sharing > More external sharing settings > Enable integration with Azure AD B2B.'
+        $settingParams = @{
+            Category         = 'Authentication'
+            Setting          = 'SharePoint B2B Integration'
+            CurrentValue     = "$b2bEnabled"
+            RecommendedValue = 'True'
+            Status           = if ($b2bEnabled) { 'Pass' } else { 'Fail' }
+            CheckId          = 'SPO-B2B-001'
+            Remediation      = 'Enable B2B integration in SharePoint admin center > Policies > Sharing > More external sharing settings > Enable integration with Azure AD B2B.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Authentication' `
-            -Setting 'SharePoint B2B Integration' `
-            -CurrentValue 'Not available via Graph API' -RecommendedValue 'True' `
-            -Status 'Review' `
-            -CheckId 'SPO-B2B-001' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > check Enable integration with Azure AD B2B.'
+        $settingParams = @{
+            Category         = 'Authentication'
+            Setting          = 'SharePoint B2B Integration'
+            CurrentValue     = 'Not available via Graph API'
+            RecommendedValue = 'True'
+            Status           = 'Review'
+            CheckId          = 'SPO-B2B-001'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > More external sharing settings > check Enable integration with Azure AD B2B.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -481,20 +584,28 @@ try {
             default { $odSharing }
         }
 
-        Add-Setting -Category 'Sharing' `
-            -Setting 'OneDrive External Sharing' `
-            -CurrentValue $odDisplay -RecommendedValue 'Existing guests only or more restrictive' `
-            -Status $(if ($isRestricted) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'SPO-OD-001' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > OneDrive > set to "Existing guests" or more restrictive.'
+        $settingParams = @{
+            Category         = 'Sharing'
+            Setting          = 'OneDrive External Sharing'
+            CurrentValue     = $odDisplay
+            RecommendedValue = 'Existing guests only or more restrictive'
+            Status           = if ($isRestricted) { 'Pass' } else { 'Fail' }
+            CheckId          = 'SPO-OD-001'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > OneDrive > set to "Existing guests" or more restrictive.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Sharing' `
-            -Setting 'OneDrive External Sharing' `
-            -CurrentValue 'Not available via Graph API' -RecommendedValue 'Restricted' `
-            -Status 'Review' `
-            -CheckId 'SPO-OD-001' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > OneDrive > verify sharing level.'
+        $settingParams = @{
+            Category         = 'Sharing'
+            Setting          = 'OneDrive External Sharing'
+            CurrentValue     = 'Not available via Graph API'
+            RecommendedValue = 'Restricted'
+            Status           = 'Review'
+            CheckId          = 'SPO-OD-001'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > OneDrive > verify sharing level.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -508,20 +619,28 @@ try {
     Write-Verbose "Checking infected file download blocking..."
     if ($betaSpoSettings -and $null -ne $betaSpoSettings['disallowInfectedFileDownload']) {
         $blockInfected = $betaSpoSettings['disallowInfectedFileDownload']
-        Add-Setting -Category 'Malware Protection' `
-            -Setting 'Infected File Download Blocked' `
-            -CurrentValue "$blockInfected" -RecommendedValue 'True' `
-            -Status $(if ($blockInfected) { 'Pass' } else { 'Fail' }) `
-            -CheckId 'SPO-MALWARE-002' `
-            -Remediation 'Run: Set-SPOTenant -DisallowInfectedFileDownload $true. SharePoint admin center > Policies > Malware protection.'
+        $settingParams = @{
+            Category         = 'Malware Protection'
+            Setting          = 'Infected File Download Blocked'
+            CurrentValue     = "$blockInfected"
+            RecommendedValue = 'True'
+            Status           = if ($blockInfected) { 'Pass' } else { 'Fail' }
+            CheckId          = 'SPO-MALWARE-002'
+            Remediation      = 'Run: Set-SPOTenant -DisallowInfectedFileDownload $true. SharePoint admin center > Policies > Malware protection.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Malware Protection' `
-            -Setting 'Infected File Download Blocked' `
-            -CurrentValue 'Not available via Graph API' -RecommendedValue 'True' `
-            -Status 'Review' `
-            -CheckId 'SPO-MALWARE-002' `
-            -Remediation 'Connect via SharePoint Online Management Shell: Get-SPOTenant | Select DisallowInfectedFileDownload. Set to $true if not already.'
+        $settingParams = @{
+            Category         = 'Malware Protection'
+            Setting          = 'Infected File Download Blocked'
+            CurrentValue     = 'Not available via Graph API'
+            RecommendedValue = 'True'
+            Status           = 'Review'
+            CheckId          = 'SPO-MALWARE-002'
+            Remediation      = 'Connect via SharePoint Online Management Shell: Get-SPOTenant | Select DisallowInfectedFileDownload. Set to $true if not already.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -536,22 +655,28 @@ try {
     if ($betaSpoSettings -and $null -ne $betaSpoSettings['sharingCapability']) {
         # Security group sharing restriction is only available via SPO PowerShell
         # Graph API does not expose OnlyAllowMembersOfSpecificSecurityGroupsToShareExternally
-        Add-Setting -Category 'Sharing' `
-            -Setting 'External Sharing Restricted by Security Group' `
-            -CurrentValue 'Requires SPO PowerShell verification' `
-            -RecommendedValue 'Enabled (specific security groups only)' `
-            -Status 'Review' `
-            -CheckId 'SPO-SHARING-008' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > "Allow only users in specific security groups to share externally". Verify via: Get-SPOTenant | Select OnlyAllowMembersOfSpecificSecurityGroupsToShareExternally.'
+        $settingParams = @{
+            Category         = 'Sharing'
+            Setting          = 'External Sharing Restricted by Security Group'
+            CurrentValue     = 'Requires SPO PowerShell verification'
+            RecommendedValue = 'Enabled (specific security groups only)'
+            Status           = 'Review'
+            CheckId          = 'SPO-SHARING-008'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > More external sharing settings > "Allow only users in specific security groups to share externally". Verify via: Get-SPOTenant | Select OnlyAllowMembersOfSpecificSecurityGroupsToShareExternally.'
+        }
+        Add-Setting @settingParams
     }
     else {
-        Add-Setting -Category 'Sharing' `
-            -Setting 'External Sharing Restricted by Security Group' `
-            -CurrentValue 'SharePoint settings not available' `
-            -RecommendedValue 'Enabled (specific security groups only)' `
-            -Status 'Review' `
-            -CheckId 'SPO-SHARING-008' `
-            -Remediation 'SharePoint admin center > Policies > Sharing > More external sharing settings > enable security group restriction for external sharing.'
+        $settingParams = @{
+            Category         = 'Sharing'
+            Setting          = 'External Sharing Restricted by Security Group'
+            CurrentValue     = 'SharePoint settings not available'
+            RecommendedValue = 'Enabled (specific security groups only)'
+            Status           = 'Review'
+            CheckId          = 'SPO-SHARING-008'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > More external sharing settings > enable security group restriction for external sharing.'
+        }
+        Add-Setting @settingParams
     }
 }
 catch {
@@ -565,13 +690,16 @@ try {
     Write-Verbose "Checking custom script execution on personal sites..."
     # Custom script settings are not exposed via Graph API
     # They require SPO PowerShell: Get-SPOSite -Identity <OneDrive-URL> | Select DenyAddAndCustomizePages
-    Add-Setting -Category 'Script Execution' `
-        -Setting 'Custom Script on Personal Sites' `
-        -CurrentValue 'Requires SPO PowerShell verification' `
-        -RecommendedValue 'DenyAddAndCustomizePages = Enabled' `
-        -Status 'Review' `
-        -CheckId 'SPO-SCRIPT-001' `
-        -Remediation 'Run: Set-SPOSite -Identity <PersonalSiteUrl> -DenyAddAndCustomizePages 1. SharePoint admin center > Settings > Custom Script > prevent users from running custom script on personal sites.'
+    $settingParams = @{
+        Category         = 'Script Execution'
+        Setting          = 'Custom Script on Personal Sites'
+        CurrentValue     = 'Requires SPO PowerShell verification'
+        RecommendedValue = 'DenyAddAndCustomizePages = Enabled'
+        Status           = 'Review'
+        CheckId          = 'SPO-SCRIPT-001'
+        Remediation      = 'Run: Set-SPOSite -Identity <PersonalSiteUrl> -DenyAddAndCustomizePages 1. SharePoint admin center > Settings > Custom Script > prevent users from running custom script on personal sites.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check custom script on personal sites: $_"
@@ -584,13 +712,16 @@ try {
     Write-Verbose "Checking custom script execution on self-service created sites..."
     # Custom script settings are not exposed via Graph API
     # They require SPO PowerShell: Get-SPOTenant | Select DenyAddAndCustomizePagesForSitesCreatedByUser
-    Add-Setting -Category 'Script Execution' `
-        -Setting 'Custom Script on Self-Service Sites' `
-        -CurrentValue 'Requires SPO PowerShell verification' `
-        -RecommendedValue 'DenyAddAndCustomizePages = Enabled' `
-        -Status 'Review' `
-        -CheckId 'SPO-SCRIPT-002' `
-        -Remediation 'Run: Set-SPOTenant -DenyAddAndCustomizePagesForSitesCreatedByUser 1. SharePoint admin center > Settings > Custom Script > prevent users from running custom script on self-service created sites.'
+    $settingParams = @{
+        Category         = 'Script Execution'
+        Setting          = 'Custom Script on Self-Service Sites'
+        CurrentValue     = 'Requires SPO PowerShell verification'
+        RecommendedValue = 'DenyAddAndCustomizePages = Enabled'
+        Status           = 'Review'
+        CheckId          = 'SPO-SCRIPT-002'
+        Remediation      = 'Run: Set-SPOTenant -DenyAddAndCustomizePagesForSitesCreatedByUser 1. SharePoint admin center > Settings > Custom Script > prevent users from running custom script on self-service created sites.'
+    }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not check custom script on self-service sites: $_"
