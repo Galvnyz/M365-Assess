@@ -216,21 +216,37 @@ if ($folderName -match 'Assessment_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})')
 }
 
 # ------------------------------------------------------------------
-# Load and base64-encode logo
+# Load and base64-encode logo and background from Common/assets/
+# Searches by pattern so any logo-*.png/jpeg or wave/bg-*.png works.
 # ------------------------------------------------------------------
-$logoBase64 = ''
-$logoPath = Join-Path -Path $projectRoot -ChildPath 'Common\assets\m365-assess-logo.png'
-if (Test-Path -Path $logoPath) {
-    $logoBytes = [System.IO.File]::ReadAllBytes($logoPath)
-    $logoBase64 = [Convert]::ToBase64String($logoBytes)
+$assetsDir = Join-Path -Path $projectRoot -ChildPath 'Common\assets'
+
+function Get-AssetBase64 {
+    param([string]$Directory, [string[]]$Patterns)
+    foreach ($pattern in $Patterns) {
+        $file = Get-ChildItem -Path $Directory -Filter $pattern -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($file) {
+            $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            $ext = $file.Extension.TrimStart('.').ToLower()
+            $mime = switch ($ext) {
+                'jpg'  { 'image/jpeg' }
+                'jpeg' { 'image/jpeg' }
+                'svg'  { 'image/svg+xml' }
+                default { 'image/png' }
+            }
+            return @{ Base64 = [Convert]::ToBase64String($bytes); Mime = $mime }
+        }
+    }
+    return $null
 }
 
-$waveBase64 = ''
-$wavePath = Join-Path -Path $projectRoot -ChildPath 'Common\assets\m365-assess-bg.png'
-if (Test-Path -Path $wavePath) {
-    $waveBytes = [System.IO.File]::ReadAllBytes($wavePath)
-    $waveBase64 = [Convert]::ToBase64String($waveBytes)
-}
+$logoAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*logo-white*', '*logo*')
+$logoBase64 = if ($logoAsset) { $logoAsset.Base64 } else { '' }
+$logoMime   = if ($logoAsset) { $logoAsset.Mime }   else { 'image/png' }
+
+$waveAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*wave*', '*bg*')
+$waveBase64 = if ($waveAsset) { $waveAsset.Base64 } else { '' }
+$waveMime   = if ($waveAsset) { $waveAsset.Mime }   else { 'image/png' }
 
 # ------------------------------------------------------------------
 # Compute summary statistics
@@ -2061,13 +2077,13 @@ $null = $tocHtml.AppendLine("</nav>")
 # Assemble full HTML document
 # ------------------------------------------------------------------
 $coverBgStyle = if ($waveBase64) {
-    "background-image: url('data:image/png;base64,$waveBase64'); background-size: cover; background-position: center;"
+    "background-image: url('data:$waveMime;base64,$waveBase64'); background-size: cover; background-position: center;"
 } else {
     'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);'
 }
 
 $logoImgTag = if ($logoBase64) {
-    "<img src='data:image/png;base64,$logoBase64' alt='M365 Assess' class='cover-logo' />"
+    "<img src='data:$logoMime;base64,$logoBase64' alt='M365 Assess' class='cover-logo' />"
 } else {
     "<div class='cover-logo-text'>M365 Assess</div>"
 }
