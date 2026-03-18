@@ -160,7 +160,10 @@ function Show-InteractiveWizard {
         folder. Returns a hashtable of parameter values to drive the assessment.
     #>
     [CmdletBinding()]
-    param()
+    param(
+        [string[]]$PreSelectedSections,
+        [string]$PreSelectedOutputFolder
+    )
 
     # Colorblind-friendly palette
     $cBorder  = 'Cyan'
@@ -218,87 +221,98 @@ function Show-InteractiveWizard {
         Write-Host ''
     }
 
+    # Determine which steps to show and compute dynamic numbering
+    $skipSections = $PreSelectedSections.Count -gt 0
+    $skipOutput   = $PreSelectedOutputFolder -ne ''
+    $totalSteps   = 3  # Tenant + Auth + Confirmation are always shown
+    if (-not $skipSections) { $totalSteps++ }
+    if (-not $skipOutput)   { $totalSteps++ }
+    $currentStep  = 0
+
     # ================================================================
-    # STEP 1: Select Assessment Sections
+    # STEP: Select Assessment Sections (skipped when -Section provided)
     # ================================================================
-    $step1Done = $false
-    while (-not $step1Done) {
-        Show-Header
-        Show-StepHeader -Step 1 -Total 5 -Title 'Select Assessment Sections'
-        Write-Host '  Toggle sections by number, separated by spaces (e.g. 3 or 1 5 10).' -ForegroundColor $cNormal
-        Write-Host '  Press ENTER when done.' -ForegroundColor $cMuted
-        Write-Host ''
+    if ($skipSections) {
+        $selectedSections = $PreSelectedSections
+    }
+    else {
+        $step1Done = $false
+        while (-not $step1Done) {
+            Show-Header
+            $currentStep = 1
+            Show-StepHeader -Step $currentStep -Total $totalSteps -Title 'Select Assessment Sections'
+            Write-Host '  Toggle sections by number, separated by spaces (e.g. 3 or 1 5 10).' -ForegroundColor $cNormal
+            Write-Host '  Press ENTER when done.' -ForegroundColor $cMuted
+            Write-Host ''
 
-        foreach ($key in $sections.Keys) {
-            $s = $sections[$key]
-            $marker = if ($s.Selected) { '●' } else { '○' }
-            $color = if ($s.Selected) { $cNormal } else { $cMuted }
-            Write-Host "  [$key] $marker $($s.Label)" -ForegroundColor $color
-        }
+            foreach ($key in $sections.Keys) {
+                $s = $sections[$key]
+                $marker = if ($s.Selected) { '●' } else { '○' }
+                $color = if ($s.Selected) { $cNormal } else { $cMuted }
+                Write-Host "  [$key] $marker $($s.Label)" -ForegroundColor $color
+            }
 
-        Write-Host ''
-        Write-Host '  [S] Standard    [A] Select all    [N] Select none' -ForegroundColor $cPrompt
-        Write-Host ''
-        Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-        $userChoice = (Read-Host) ?? ''
+            Write-Host ''
+            Write-Host '  [S] Standard    [A] Select all    [N] Select none' -ForegroundColor $cPrompt
+            Write-Host ''
+            Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
+            $userChoice = (Read-Host) ?? ''
 
-        switch ($userChoice.Trim().ToUpper()) {
-            'S' {
-                # Standard sections only (deselect opt-in)
-                # Rebuild dictionary to avoid PS OrderedDictionary in-place mutation bug
-                $optInSections = @('Inventory', 'ActiveDirectory', 'ScubaGear')
-                $rebuilt = [ordered]@{}
-                foreach ($k in @($sections.Keys)) {
-                    $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = ($sections[$k].Name -notin $optInSections) }
+            switch ($userChoice.Trim().ToUpper()) {
+                'S' {
+                    $optInSections = @('Inventory', 'ActiveDirectory', 'ScubaGear')
+                    $rebuilt = [ordered]@{}
+                    foreach ($k in @($sections.Keys)) {
+                        $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = ($sections[$k].Name -notin $optInSections) }
+                    }
+                    $sections = $rebuilt
                 }
-                $sections = $rebuilt
-            }
-            'A' {
-                # All sections including opt-in
-                $rebuilt = [ordered]@{}
-                foreach ($k in @($sections.Keys)) {
-                    $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $true }
+                'A' {
+                    $rebuilt = [ordered]@{}
+                    foreach ($k in @($sections.Keys)) {
+                        $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $true }
+                    }
+                    $sections = $rebuilt
                 }
-                $sections = $rebuilt
-            }
-            'N' {
-                $rebuilt = [ordered]@{}
-                foreach ($k in @($sections.Keys)) {
-                    $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $false }
+                'N' {
+                    $rebuilt = [ordered]@{}
+                    foreach ($k in @($sections.Keys)) {
+                        $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = $false }
+                    }
+                    $sections = $rebuilt
                 }
-                $sections = $rebuilt
-            }
-            '' {
-                $selectedNames = @($sections.Values | Where-Object { $_.Selected } | ForEach-Object { $_.Name })
-                if ($selectedNames.Count -eq 0) {
-                    Write-Host ''
-                    Write-Host '  ✗ Please select at least one section.' -ForegroundColor $cError
-                    Start-Sleep -Seconds 1
+                '' {
+                    $selectedNames = @($sections.Values | Where-Object { $_.Selected } | ForEach-Object { $_.Name })
+                    if ($selectedNames.Count -eq 0) {
+                        Write-Host ''
+                        Write-Host '  ✗ Please select at least one section.' -ForegroundColor $cError
+                        Start-Sleep -Seconds 1
+                    }
+                    else {
+                        $step1Done = $true
+                    }
                 }
-                else {
-                    $step1Done = $true
-                }
-            }
-            default {
-                # Toggle sections by number (space or comma separated, e.g. "1 3 5" or "10")
-                $tokens = $userChoice.Trim() -split '[,\s]+'
-                foreach ($token in $tokens) {
-                    $num = 0
-                    if ($token -ne '' -and [int]::TryParse($token, [ref]$num) -and $sections.Contains("$num")) {
-                        $sections["$num"].Selected = -not $sections["$num"].Selected
+                default {
+                    $tokens = $userChoice.Trim() -split '[,\s]+'
+                    foreach ($token in $tokens) {
+                        $num = 0
+                        if ($token -ne '' -and [int]::TryParse($token, [ref]$num) -and $sections.Contains("$num")) {
+                            $sections["$num"].Selected = -not $sections["$num"].Selected
+                        }
                     }
                 }
             }
         }
+
+        $selectedSections = @($sections.Values | Where-Object { $_.Selected } | ForEach-Object { $_.Name })
     }
 
-    $selectedSections = @($sections.Values | Where-Object { $_.Selected } | ForEach-Object { $_.Name })
-
     # ================================================================
-    # STEP 2: Tenant Identity
+    # STEP: Tenant Identity
     # ================================================================
+    $currentStep++
     Show-Header
-    Show-StepHeader -Step 2 -Total 4 -Title 'Tenant Identity'
+    Show-StepHeader -Step $currentStep -Total $totalSteps -Title 'Tenant Identity'
     Write-Host '  Enter your tenant ID or domain' -ForegroundColor $cNormal
     Write-Host '  (e.g., contoso.onmicrosoft.com):' -ForegroundColor $cMuted
     Write-Host ''
@@ -306,8 +320,9 @@ function Show-InteractiveWizard {
     $tenantInput = (Read-Host) ?? ''
 
     # ================================================================
-    # STEP 3: Authentication Method
+    # STEP: Authentication Method
     # ================================================================
+    $currentStep++
     $step3Done = $false
     $authMethod = 'Interactive'
     $wizClientId = ''
@@ -316,7 +331,7 @@ function Show-InteractiveWizard {
 
     while (-not $step3Done) {
         Show-Header
-        Show-StepHeader -Step 3 -Total 4 -Title 'Authentication Method'
+        Show-StepHeader -Step $currentStep -Total $totalSteps -Title 'Authentication Method'
 
         Write-Host '  [1] Interactive login (browser popup)' -ForegroundColor $cNormal
         Write-Host '  [2] Device code login (choose your browser)' -ForegroundColor $cNormal
@@ -362,37 +377,41 @@ function Show-InteractiveWizard {
     }
 
     # ================================================================
-    # STEP 4: Output Folder
+    # STEP: Output Folder (skipped when -OutputFolder provided)
     # ================================================================
-    $defaultOutput = '.\M365-Assessment'
-    Show-Header
-    Show-StepHeader -Step 4 -Total 4 -Title 'Output Folder'
-    Write-Host '  Assessment results will be saved to:' -ForegroundColor $cNormal
-    Write-Host "    $defaultOutput\" -ForegroundColor $cSuccess
-    Write-Host ''
-    Write-Host '  Press ENTER to accept, or type a custom path:' -ForegroundColor $cMuted
-    do {
-        $outputValid = $true
-        Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-        $outputInput = (Read-Host) ?? ''
-        if ($outputInput.Trim()) {
-            # Reject values that look like email/UPN rather than a folder path
-            if ($outputInput.Trim() -match '@') {
-                Write-Host ''
-                Write-Host '  That looks like an email address or UPN, not a folder path.' -ForegroundColor $cError
-                Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
-                $outputValid = $false
+    if ($skipOutput) {
+        $wizOutputFolder = $PreSelectedOutputFolder
+    }
+    else {
+        $currentStep++
+        $defaultOutput = '.\M365-Assessment'
+        Show-Header
+        Show-StepHeader -Step $currentStep -Total $totalSteps -Title 'Output Folder'
+        Write-Host '  Assessment results will be saved to:' -ForegroundColor $cNormal
+        Write-Host "    $defaultOutput\" -ForegroundColor $cSuccess
+        Write-Host ''
+        Write-Host '  Press ENTER to accept, or type a custom path:' -ForegroundColor $cMuted
+        do {
+            $outputValid = $true
+            Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
+            $outputInput = (Read-Host) ?? ''
+            if ($outputInput.Trim()) {
+                if ($outputInput.Trim() -match '@') {
+                    Write-Host ''
+                    Write-Host '  That looks like an email address or UPN, not a folder path.' -ForegroundColor $cError
+                    Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
+                    $outputValid = $false
+                }
+                elseif ($outputInput.Trim() -match '[<>"|?*]') {
+                    Write-Host ''
+                    Write-Host '  Path contains invalid characters ( < > " | ? * ).' -ForegroundColor $cError
+                    Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
+                    $outputValid = $false
+                }
             }
-            # Reject paths containing characters invalid on Windows
-            elseif ($outputInput.Trim() -match '[<>"|?*]') {
-                Write-Host ''
-                Write-Host '  Path contains invalid characters ( < > " | ? * ).' -ForegroundColor $cError
-                Write-Host "  Press ENTER to use the default ($defaultOutput), or type a valid path:" -ForegroundColor $cMuted
-                $outputValid = $false
-            }
-        }
-    } while (-not $outputValid)
-    $wizOutputFolder = if ($outputInput.Trim()) { $outputInput.Trim() } else { $defaultOutput }
+        } while (-not $outputValid)
+        $wizOutputFolder = if ($outputInput.Trim()) { $outputInput.Trim() } else { $defaultOutput }
+    }
 
     # ================================================================
     # Confirmation
@@ -528,7 +547,14 @@ $isInteractive = -not $PSBoundParameters.ContainsKey('TenantId') -and
 
 if ($isInteractive -and [Environment]::UserInteractive) {
     try {
-        $wizardParams = Show-InteractiveWizard
+        $wizSplat = @{}
+        if ($PSBoundParameters.ContainsKey('Section')) {
+            $wizSplat['PreSelectedSections'] = $Section
+        }
+        if ($PSBoundParameters.ContainsKey('OutputFolder')) {
+            $wizSplat['PreSelectedOutputFolder'] = $OutputFolder
+        }
+        $wizardParams = Show-InteractiveWizard @wizSplat
     }
     catch {
         Write-Warning "Interactive wizard failed: $($_.Exception.Message)"
