@@ -1014,7 +1014,7 @@ $collectorMap = [ordered]@{
         @{ Name = '10-Mail-Flow';        Script = 'Exchange-Online\Get-MailFlowReport.ps1';       Label = 'Mail Flow' }
         @{ Name = '11-Email-Security';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'Email Security' }
         @{ Name = '11b-EXO-Security-Config'; Script = 'Exchange-Online\Get-ExoSecurityConfig.ps1'; Label = 'EXO Security Config' }
-        @{ Name = '12b-DNS-Security-Config'; Script = 'Exchange-Online\Get-DnsSecurityConfig.ps1'; Label = 'DNS Security Config' }
+        # DNS Security Config is deferred — runs after all sections using prefetched DNS cache
     )
     'Intune' = @(
         @{ Name = '13-Device-Summary';       Script = 'Intune\Get-DeviceSummary.ps1';             Label = 'Device Summary' }
@@ -1869,9 +1869,56 @@ foreach ($sectionName in $Section) {
 
 
 # ------------------------------------------------------------------
-# Deferred DNS Authentication (runs after all sections, uses prefetch cache)
+# Deferred DNS checks (runs after all sections, uses prefetch cache)
 # ------------------------------------------------------------------
 if ($script:runDnsAuthentication) {
+    # Collect prefetched DNS cache (started during Graph connect)
+    $dnsCache = @{}
+    if ($script:dnsPrefetchJobs) {
+        Write-Verbose "Collecting DNS prefetch results..."
+        $prefetchResults = $script:dnsPrefetchJobs | Wait-Job | Receive-Job
+        $script:dnsPrefetchJobs | Remove-Job -Force
+        foreach ($pr in $prefetchResults) { $dnsCache[$pr.Domain] = $pr }
+        $script:dnsPrefetchJobs = $null
+    }
+
+    # --- DNS Security Config collector (uses prefetch cache) ---
+    $dnsSecConfigCollector = @{ Name = '12b-DNS-Security-Config'; Label = 'DNS Security Config' }
+    $dnsSecStart = Get-Date
+    $dnsSecCsvPath = Join-Path -Path $assessmentFolder -ChildPath "$($dnsSecConfigCollector.Name).csv"
+    $dnsSecStatus = 'Skipped'
+    $dnsSecItemCount = 0
+    $dnsSecError = ''
+
+    Write-AssessmentLog -Level INFO -Message "Running: $($dnsSecConfigCollector.Label)" -Section 'Email' -Collector $dnsSecConfigCollector.Label
+    try {
+        $dnsSecScriptPath = Join-Path -Path $projectRoot -ChildPath 'Exchange-Online\Get-DnsSecurityConfig.ps1'
+        $dnsSecResults = & $dnsSecScriptPath
+        if ($dnsSecResults) {
+            $dnsSecItemCount = Export-AssessmentCsv -Path $dnsSecCsvPath -Data @($dnsSecResults) -Label $dnsSecConfigCollector.Label
+            $dnsSecStatus = 'Complete'
+        }
+    }
+    catch {
+        $dnsSecError = $_.Exception.Message
+        $dnsSecStatus = 'Failed'
+        Write-AssessmentLog -Level ERROR -Message "DNS Security Config failed: $dnsSecError" -Section 'Email' -Collector $dnsSecConfigCollector.Label
+    }
+
+    $dnsSecDuration = (Get-Date) - $dnsSecStart
+    $summaryResults.Add([PSCustomObject]@{
+        Section   = 'Email'
+        Collector = $dnsSecConfigCollector.Label
+        FileName  = "$($dnsSecConfigCollector.Name).csv"
+        Status    = $dnsSecStatus
+        Items     = $dnsSecItemCount
+        Duration  = '{0:mm\:ss}' -f $dnsSecDuration
+        Error     = $dnsSecError
+    })
+    Show-CollectorResult -Label $dnsSecConfigCollector.Label -Status $dnsSecStatus -Items $dnsSecItemCount -DurationSeconds $dnsSecDuration.TotalSeconds -ErrorMessage $dnsSecError
+    Write-AssessmentLog -Level INFO -Message "Completed: $($dnsSecConfigCollector.Label) -- $dnsSecStatus, $dnsSecItemCount items" -Section 'Email' -Collector $dnsSecConfigCollector.Label
+
+    # --- DNS Authentication enumeration ---
     $dnsStart = Get-Date
     $dnsCsvPath = Join-Path -Path $assessmentFolder -ChildPath "$($dnsCollector.Name).csv"
     $dnsStatus = 'Skipped'
@@ -1882,16 +1929,6 @@ if ($script:runDnsAuthentication) {
 
     try {
         $acceptedDomains = Get-AcceptedDomain -ErrorAction Stop
-
-        # Collect prefetched DNS cache (started during Graph connect)
-        $dnsCache = @{}
-        if ($script:dnsPrefetchJobs) {
-            Write-Verbose "Waiting for DNS prefetch jobs..."
-            $prefetchResults = $script:dnsPrefetchJobs | Wait-Job | Receive-Job
-            $script:dnsPrefetchJobs | Remove-Job -Force
-            foreach ($pr in $prefetchResults) { $dnsCache[$pr.Domain] = $pr }
-            $script:dnsPrefetchJobs = $null
-        }
 
         $dnsResults = foreach ($domain in $acceptedDomains) {
             $domainName = $domain.DomainName
