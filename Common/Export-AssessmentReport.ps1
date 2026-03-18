@@ -3369,6 +3369,16 @@ $html = @"
         .cis-row-info { border-left: 3px solid var(--m365a-neutral); background-color: var(--m365a-neutral-bg); }
         .cis-row-unknown { border-left: 3px solid var(--m365a-medium-gray); background-color: var(--m365a-light-gray); }
 
+        /* Zebra striping for security config tables — subtle overlay on status colors */
+        .cis-row-pass:nth-child(even),
+        .cis-row-fail:nth-child(even),
+        .cis-row-warning:nth-child(even),
+        .cis-row-review:nth-child(even),
+        .cis-row-info:nth-child(even),
+        .cis-row-unknown:nth-child(even) {
+            background-image: linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06));
+        }
+
         /* Framework cross-reference tags */
         .framework-refs { white-space: normal; max-width: 260px; }
         .fw-tag { display: inline-block; padding: 1px 5px; margin: 1px; border-radius: 3px; font-size: 0.72em; font-family: 'Consolas', 'Courier New', monospace; }
