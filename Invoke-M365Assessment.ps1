@@ -240,7 +240,7 @@ function Show-InteractiveWizard {
         Write-Host '  [S] Standard    [A] Select all    [N] Select none' -ForegroundColor $cPrompt
         Write-Host ''
         Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-        $userChoice = Read-Host
+        $userChoice = (Read-Host) ?? ''
 
         switch ($userChoice.Trim().ToUpper()) {
             'S' {
@@ -303,7 +303,7 @@ function Show-InteractiveWizard {
     Write-Host '  (e.g., contoso.onmicrosoft.com):' -ForegroundColor $cMuted
     Write-Host ''
     Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-    $tenantInput = Read-Host
+    $tenantInput = (Read-Host) ?? ''
 
     # ================================================================
     # STEP 3: Authentication Method
@@ -324,7 +324,7 @@ function Show-InteractiveWizard {
         Write-Host '  [4] Skip connection (already connected)' -ForegroundColor $cNormal
         Write-Host ''
         Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-        $authInput = Read-Host
+        $authInput = (Read-Host) ?? ''
 
         switch ($authInput.Trim()) {
             '1' {
@@ -332,7 +332,7 @@ function Show-InteractiveWizard {
                 Write-Host ''
                 Write-Host '  Enter admin UPN for EXO/Purview (optional, press ENTER to skip):' -ForegroundColor $cNormal
                 Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-                $wizUpn = Read-Host
+                $wizUpn = (Read-Host) ?? ''
                 $step3Done = $true
             }
             '2' {
@@ -344,10 +344,10 @@ function Show-InteractiveWizard {
                 Write-Host ''
                 Write-Host '  Enter Application (Client) ID:' -ForegroundColor $cNormal
                 Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-                $wizClientId = Read-Host
+                $wizClientId = (Read-Host) ?? ''
                 Write-Host '  Enter Certificate Thumbprint:' -ForegroundColor $cNormal
                 Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-                $wizCertThumb = Read-Host
+                $wizCertThumb = (Read-Host) ?? ''
                 $step3Done = $true
             }
             '4' {
@@ -374,7 +374,7 @@ function Show-InteractiveWizard {
     do {
         $outputValid = $true
         Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-        $outputInput = Read-Host
+        $outputInput = (Read-Host) ?? ''
         if ($outputInput.Trim()) {
             # Reject values that look like email/UPN rather than a folder path
             if ($outputInput.Trim() -match '@') {
@@ -425,7 +425,7 @@ function Show-InteractiveWizard {
     Write-Host ''
     Write-Host '  Press ENTER to begin, or Q to quit.' -ForegroundColor $cPrompt
     Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
-    $confirmInput = Read-Host
+    $confirmInput = (Read-Host) ?? ''
 
     if ($confirmInput.Trim().ToUpper() -eq 'Q') {
         Write-Host ''
