@@ -141,7 +141,8 @@ else {
         $spfPresent = @()
         foreach ($domain in $authDomains) {
             $domainName = $domain.DomainName
-            $txtRecords = $dnsCache[$domainName].SpfRecords
+            $cacheEntry = $dnsCache[$domainName]
+            $txtRecords = if ($cacheEntry) { $cacheEntry.SpfRecords } else { $null }
             $spfRecord = $txtRecords | Where-Object { $_.Strings -match '^v=spf1' }
             if ($spfRecord) { $spfPresent += $domainName }
             else { $spfMissing += $domainName }
@@ -245,7 +246,8 @@ else {
         $dmarcStrong = @()
         foreach ($domain in $authDomains) {
             $domainName = $domain.DomainName
-            $dmarcRecords = $dnsCache[$domainName].DmarcRecords
+            $cacheEntry = $dnsCache[$domainName]
+            $dmarcRecords = if ($cacheEntry) { $cacheEntry.DmarcRecords } else { $null }
             $dmarcRecord = $dmarcRecords | Where-Object { $_.Strings -match '^v=DMARC1' }
             if (-not $dmarcRecord) {
                 $dmarcMissing += $domainName
