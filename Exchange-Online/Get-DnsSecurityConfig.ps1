@@ -114,25 +114,6 @@ if ($authDomains.Count -eq 0) {
 }
 else {
     # ------------------------------------------------------------------
-    # Batch DNS lookups in parallel (SPF + DMARC for all domains)
-    # ------------------------------------------------------------------
-    Write-Verbose "Resolving DNS records for $($authDomains.Count) domain(s) in parallel..."
-    $domainNames = @($authDomains | ForEach-Object { $_.DomainName })
-    $dnsJobs = @()
-    foreach ($name in $domainNames) {
-        $dnsJobs += Start-ThreadJob -ScriptBlock {
-            param($d)
-            $spf = Resolve-DnsName -Name $d -Type TXT -DnsOnly -ErrorAction SilentlyContinue
-            $dmarc = Resolve-DnsName -Name "_dmarc.$d" -Type TXT -DnsOnly -ErrorAction SilentlyContinue
-            [PSCustomObject]@{ Domain = $d; SpfRecords = $spf; DmarcRecords = $dmarc }
-        } -ArgumentList $name
-    }
-    $dnsResults = $dnsJobs | Wait-Job | Receive-Job
-    $dnsJobs | Remove-Job -Force
-    $dnsCache = @{}
-    foreach ($r in $dnsResults) { $dnsCache[$r.Domain] = $r }
-
-    # ------------------------------------------------------------------
     # 1. SPF Records (CIS 2.1.8)
     # ------------------------------------------------------------------
     try {
@@ -141,8 +122,7 @@ else {
         $spfPresent = @()
         foreach ($domain in $authDomains) {
             $domainName = $domain.DomainName
-            $cacheEntry = $dnsCache[$domainName]
-            $txtRecords = if ($cacheEntry) { $cacheEntry.SpfRecords } else { $null }
+            $txtRecords = Resolve-DnsName -Name $domainName -Type TXT -DnsOnly -ErrorAction SilentlyContinue
             $spfRecord = $txtRecords | Where-Object { $_.Strings -match '^v=spf1' }
             if ($spfRecord) { $spfPresent += $domainName }
             else { $spfMissing += $domainName }
@@ -246,8 +226,7 @@ else {
         $dmarcStrong = @()
         foreach ($domain in $authDomains) {
             $domainName = $domain.DomainName
-            $cacheEntry = $dnsCache[$domainName]
-            $dmarcRecords = if ($cacheEntry) { $cacheEntry.DmarcRecords } else { $null }
+            $dmarcRecords = Resolve-DnsName -Name "_dmarc.$domainName" -Type TXT -DnsOnly -ErrorAction SilentlyContinue
             $dmarcRecord = $dmarcRecords | Where-Object { $_.Strings -match '^v=DMARC1' }
             if (-not $dmarcRecord) {
                 $dmarcMissing += $domainName
