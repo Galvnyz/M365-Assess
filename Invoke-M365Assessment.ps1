@@ -2105,7 +2105,7 @@ if ($script:runDnsAuthentication) {
     Write-AssessmentLog -Level INFO -Message "Running: $($dnsSecConfigCollector.Label)" -Section 'Email' -Collector $dnsSecConfigCollector.Label
     try {
         $dnsSecScriptPath = Join-Path -Path $projectRoot -ChildPath 'Exchange-Online\Get-DnsSecurityConfig.ps1'
-        $dnsSecResults = & $dnsSecScriptPath
+        $dnsSecResults = & $dnsSecScriptPath -AcceptedDomains $acceptedDomains
         if ($dnsSecResults) {
             $dnsSecItemCount = Export-AssessmentCsv -Path $dnsSecCsvPath -Data @($dnsSecResults) -Label $dnsSecConfigCollector.Label
             $dnsSecStatus = 'Complete'

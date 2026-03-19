@@ -6,9 +6,12 @@
     configuration. Produces pass/fail verdicts via Add-Setting for each protocol.
 
     Requires an active Exchange Online connection for Get-AcceptedDomain and
-    Get-DkimSigningConfig cmdlets.
+    Get-DkimSigningConfig cmdlets, unless -AcceptedDomains is provided.
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned to the pipeline.
+.PARAMETER AcceptedDomains
+    Pre-cached accepted domain objects from the orchestrator. When provided,
+    skips the Get-AcceptedDomain call (avoids EXO session timeout issues).
 .EXAMPLE
     PS> . .\Common\Connect-Service.ps1
     PS> Connect-Service -Service ExchangeOnline
@@ -27,7 +30,10 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath
+    [string]$OutputPath,
+
+    [Parameter()]
+    [object[]]$AcceptedDomains
 )
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
@@ -70,14 +76,23 @@ function Add-Setting {
 # Fetch authoritative domains
 # ------------------------------------------------------------------
 $authDomains = @()
-try {
-    Write-Verbose "Fetching accepted domains..."
-    $allDomains = Get-AcceptedDomain -ErrorAction Stop
-    $authDomains = @($allDomains | Where-Object { $_.DomainType -eq 'Authoritative' })
-    Write-Verbose "Found $($authDomains.Count) authoritative domain(s)"
+if ($AcceptedDomains -and $AcceptedDomains.Count -gt 0) {
+    # Use pre-cached domains passed by the orchestrator
+    Write-Verbose "Using $($AcceptedDomains.Count) pre-cached accepted domain(s)"
+    $authDomains = @($AcceptedDomains | Where-Object { $_.DomainType -eq 'Authoritative' })
 }
-catch {
-    Write-Warning "Could not retrieve accepted domains: $_"
+else {
+    try {
+        Write-Verbose "Fetching accepted domains..."
+        $allDomains = Get-AcceptedDomain -ErrorAction Stop
+        $authDomains = @($allDomains | Where-Object { $_.DomainType -eq 'Authoritative' })
+    }
+    catch {
+        Write-Warning "Could not retrieve accepted domains: $_"
+    }
+}
+if ($authDomains.Count -gt 0) {
+    Write-Verbose "Found $($authDomains.Count) authoritative domain(s)"
 }
 
 if ($authDomains.Count -eq 0) {
