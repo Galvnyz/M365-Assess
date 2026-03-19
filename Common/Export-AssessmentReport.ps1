@@ -1754,11 +1754,6 @@ foreach ($c in $summary) {
         $baseCheckId = $row.CheckId -replace '\.\d+$', ''
         $entry = if ($controlRegistry.ContainsKey($baseCheckId)) { $controlRegistry[$baseCheckId] } else { $null }
         $fw = if ($entry) { $entry.frameworks } else { @{} }
-        $cisProfiles = if ($fw.'cis-m365-v6' -and $fw.'cis-m365-v6'.profiles) { $fw.'cis-m365-v6'.profiles } else { @() }
-        $cisId = if ($fw.'cis-m365-v6' -and $fw.'cis-m365-v6'.controlId) { $fw.'cis-m365-v6'.controlId } else { '' }
-        $nistProfiles = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.profiles) { $fw.'nist-800-53'.profiles } else { @() }
-        $nistControlId = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.controlId) { $fw.'nist-800-53'.controlId } else { '' }
-
         # Build dynamic Frameworks hashtable from all loaded framework definitions
         $fwHash = @{}
         foreach ($fwDef in $allFrameworks) {
@@ -1768,6 +1763,8 @@ foreach ($c in $summary) {
                 if ($fwData.profiles) { $fwHash[$fwDef.frameworkId].profiles = @($fwData.profiles) }
             }
         }
+        $cisData = $fwHash['cis-m365-v6']
+        $cisId = if ($cisData) { $cisData.controlId } else { '' }
 
         $allCisFindings.Add([PSCustomObject]@{
             CheckId      = $row.CheckId
@@ -1782,24 +1779,6 @@ foreach ($c in $summary) {
             Source       = $c.Collector
             RiskSeverity = if ($entry) { $entry.riskSeverity } else { 'Medium' }
             Frameworks   = $fwHash
-            # Legacy compat -- remove when #138 ships
-            CisE3L1      = if ($cisProfiles -contains 'E3-L1') { $cisId } else { '' }
-            CisE3L2      = if ($cisProfiles -contains 'E3-L2') { $cisId } else { '' }
-            CisE5L1      = if ($cisProfiles -contains 'E5-L1') { $cisId } else { '' }
-            CisE5L2      = if ($cisProfiles -contains 'E5-L2') { $cisId } else { '' }
-            NistCsf      = if ($fw.'nist-csf')    { $fw.'nist-csf'.controlId }    else { '' }
-            Nist80053         = if ($fw.'nist-800-53')  { $fw.'nist-800-53'.controlId } else { '' }
-            Nist80053Low      = if ($nistProfiles -contains 'Low')      { $nistControlId } else { '' }
-            Nist80053Moderate = if ($nistProfiles -contains 'Moderate') { $nistControlId } else { '' }
-            Nist80053High     = if ($nistProfiles -contains 'High')     { $nistControlId } else { '' }
-            Nist80053Privacy  = if ($nistProfiles -contains 'Privacy')  { $nistControlId } else { '' }
-            Iso27001     = if ($fw.'iso-27001')    { $fw.'iso-27001'.controlId }   else { '' }
-            Stig         = if ($fw.stig)           { $fw.stig.controlId }          else { '' }
-            PciDss       = if ($fw.'pci-dss')      { $fw.'pci-dss'.controlId }     else { '' }
-            Cmmc         = if ($fw.cmmc)           { $fw.cmmc.controlId }          else { '' }
-            Hipaa        = if ($fw.hipaa)          { $fw.hipaa.controlId }         else { '' }
-            CisaScuba    = if ($fw.'cisa-scuba')   { $fw.'cisa-scuba'.controlId }  else { '' }
-            Soc2         = if ($fw.soc2)           { $fw.soc2.controlId }          else { '' }
         })
     }
 }
