@@ -1,0 +1,69 @@
+{
+  "frameworkId": "mitre-attack",
+  "label": "MITRE ATT&CK",
+  "version": "v10",
+  "css": "fw-mitre",
+  "totalControls": 201,
+  "registryKey": "mitre-attack",
+  "csvColumn": "MitreAttack",
+  "displayOrder": 14,
+  "scoring": {
+    "method": "technique-coverage",
+    "tactics": {
+      "TA0043": {
+        "label": "Reconnaissance"
+      },
+      "TA0042": {
+        "label": "Resource Development"
+      },
+      "TA0001": {
+        "label": "Initial Access"
+      },
+      "TA0002": {
+        "label": "Execution"
+      },
+      "TA0003": {
+        "label": "Persistence"
+      },
+      "TA0004": {
+        "label": "Privilege Escalation"
+      },
+      "TA0005": {
+        "label": "Defense Evasion"
+      },
+      "TA0006": {
+        "label": "Credential Access"
+      },
+      "TA0007": {
+        "label": "Discovery"
+      },
+      "TA0008": {
+        "label": "Lateral Movement"
+      },
+      "TA0009": {
+        "label": "Collection"
+      },
+      "TA0011": {
+        "label": "Command and Control"
+      },
+      "TA0010": {
+        "label": "Exfiltration"
+      },
+      "TA0040": {
+        "label": "Impact"
+      }
+    }
+  },
+  "colors": {
+    "light": {
+      "background": "#fef2f2",
+      "color": "#991b1b"
+    },
+    "dark": {
+      "background": "#7F1D1D",
+      "color": "#FCA5A5"
+    }
+  },
+  "controlIdFormat": "T{number}[.{sub}]",
+  "note": "totalControls reflects techniques referenced in CheckID mappings, not the full ATT&CK matrix (356+ techniques)."
+}

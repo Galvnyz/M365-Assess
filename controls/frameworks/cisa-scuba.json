@@ -1,0 +1,44 @@
+{
+  "frameworkId": "cisa-scuba",
+  "label": "CISA SCuBA",
+  "version": "Baselines",
+  "css": "fw-scuba",
+  "totalControls": 134,
+  "registryKey": "cisa-scuba",
+  "csvColumn": "CisaScuba",
+  "displayOrder": 9,
+  "scoring": {
+    "method": "policy-compliance",
+    "products": {
+      "AAD": {
+        "label": "Entra ID (Azure AD)"
+      },
+      "EXO": {
+        "label": "Exchange Online"
+      },
+      "Defender": {
+        "label": "Microsoft Defender"
+      },
+      "SharePoint": {
+        "label": "SharePoint & OneDrive"
+      },
+      "Teams": {
+        "label": "Microsoft Teams"
+      },
+      "PowerPlatform": {
+        "label": "Power Platform"
+      }
+    }
+  },
+  "colors": {
+    "light": {
+      "background": "#fff7ed",
+      "color": "#9a3412"
+    },
+    "dark": {
+      "background": "#7C2D12",
+      "color": "#FDBA74"
+    }
+  },
+  "controlIdFormat": "MS.{product}.{number}v{version}"
+}

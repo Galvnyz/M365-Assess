@@ -1806,6 +1806,7 @@ foreach ($c in $summary) {
             Remediation  = $row.Remediation
             Section      = $c.Section
             Source       = $c.Collector
+            RiskSeverity = if ($entry) { $entry.riskSeverity } else { 'Medium' }
             CisE3L1      = if ($cisProfiles -contains 'E3-L1') { $cisId } else { '' }
             CisE3L2      = if ($cisProfiles -contains 'E3-L2') { $cisId } else { '' }
             CisE5L1      = if ($cisProfiles -contains 'E5-L1') { $cisId } else { '' }
@@ -2003,7 +2004,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $Ski
     $null = $complianceHtml.AppendLine("<table class='data-table matrix-table' id='complianceTable'>")
 
     # Header row — fixed columns + one column per framework
-    $headerCols = "<th scope='col'>Control</th><th scope='col'>Description</th><th scope='col'>Status</th>"
+    $headerCols = "<th scope='col'>Control</th><th scope='col'>Description</th><th scope='col'>Status</th><th scope='col'>Severity</th>"
     foreach ($fwKey in $allFrameworkKeys) {
         $fwInfo = $frameworkLookup[$fwKey]
         $headerCols += "<th scope='col' class='fw-col' data-fw='$($fwInfo.Col)'>$($fwInfo.Label)</th>"
@@ -2027,9 +2028,20 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $Ski
         $settingText = ConvertTo-HtmlSafe -Text $finding.Setting
 
         $null = $complianceHtml.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'>")
+        $severityClass = switch ($finding.RiskSeverity) {
+            'Critical' { 'badge-critical' }
+            'High'     { 'badge-failed' }
+            'Medium'   { 'badge-warning' }
+            'Low'      { 'badge-info' }
+            'Info'     { 'badge-neutral' }
+            default    { 'badge-neutral' }
+        }
+        $severityBadge = "<span class='badge $severityClass'>$($finding.RiskSeverity)</span>"
+
         $null = $complianceHtml.AppendLine("<td class='cis-id'>$checkRef</td>")
         $null = $complianceHtml.AppendLine("<td>$settingText</td>")
         $null = $complianceHtml.AppendLine("<td>$statusBadge</td>")
+        $null = $complianceHtml.AppendLine("<td>$severityBadge</td>")
 
         # One cell per framework
         foreach ($fwKey in $allFrameworkKeys) {
@@ -2065,6 +2077,7 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $Ski
             c  = $_.CheckId
             s  = $_.Section
             st = $_.Status
+            sv = $_.RiskSeverity
             fw = $fwMap
         }
     }) | ConvertTo-Json -Compress -Depth 3
@@ -2095,7 +2108,9 @@ if ($issues.Count -gt 0) {
     $null = $issuesHtml.AppendLine("<thead><tr><th scope='col'>Severity</th><th scope='col'>Section</th><th scope='col'>Collector</th><th scope='col'>Description</th><th scope='col'>Recommended Action</th></tr></thead>")
     $null = $issuesHtml.AppendLine("<tbody>")
 
-    foreach ($issue in $issues) {
+    $severityOrder = @{ 'ERROR' = 0; 'WARNING' = 1 }
+    $sortedIssues = @($issues | Sort-Object -Property { if ($severityOrder.ContainsKey($_.Severity)) { $severityOrder[$_.Severity] } else { 99 } })
+    foreach ($issue in $sortedIssues) {
         $badge = Get-SeverityBadge -Severity $issue.Severity
         $null = $issuesHtml.AppendLine("<tr>")
         $null = $issuesHtml.AppendLine("<td>$badge</td>")
@@ -3285,6 +3300,7 @@ $html = @"
         .badge-warning { background: var(--m365a-warning-bg); color: #856404; }
         .badge-info { background: var(--m365a-info-bg); color: #0c5460; }
         .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
+        .badge-critical { background: #991b1b; color: #fef2f2; }
 
         /* ----------------------------------------------------------
            Section

@@ -110,7 +110,7 @@ jobs:
           TAG="v1.2.0"
           BASE="https://raw.githubusercontent.com/Galvnyz/CheckID/$TAG/data"
           curl -sL "$BASE/registry.json" -o controls/registry.json
-          for f in cis-m365-v6 nist-800-53-r5 soc2-tsc; do
+          for f in cis-controls-v8 cis-m365-v6 cisa-scuba cmmc essential-eight fedramp hipaa iso-27001 mitre-attack nist-800-53-r5 nist-csf pci-dss-v4 soc2-tsc stig; do
             curl -sL "$BASE/frameworks/$f.json" -o "controls/frameworks/$f.json"
           done
 

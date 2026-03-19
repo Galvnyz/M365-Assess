@@ -1,0 +1,73 @@
+{
+  "frameworkId": "essential-eight",
+  "label": "ASD Essential Eight",
+  "version": "2023",
+  "publisher": "Australian Signals Directorate (ASD)",
+  "url": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight",
+  "css": "fw-e8",
+  "totalControls": 24,
+  "registryKey": "essential-eight",
+  "csvColumn": "EssentialEight",
+  "displayOrder": 11,
+  "scoring": {
+    "method": "maturity-level",
+    "maturityLevels": {
+      "ML1": {
+        "label": "Maturity Level One",
+        "description": "Partly aligned with the intent of the mitigation strategy"
+      },
+      "ML2": {
+        "label": "Maturity Level Two",
+        "description": "Mostly aligned with the intent of the mitigation strategy"
+      },
+      "ML3": {
+        "label": "Maturity Level Three",
+        "description": "Fully aligned with the intent of the mitigation strategy"
+      }
+    }
+  },
+  "strategies": {
+    "P1": {
+      "label": "Application Control",
+      "description": "Execution of unapproved programs is prevented on workstations and servers"
+    },
+    "P2": {
+      "label": "Patch Applications",
+      "description": "Security vulnerabilities in applications are patched or mitigated within an appropriate timeframe"
+    },
+    "P3": {
+      "label": "Configure Microsoft Office Macro Settings",
+      "description": "Microsoft Office macros are disabled for users that do not have a demonstrated business requirement"
+    },
+    "P4": {
+      "label": "User Application Hardening",
+      "description": "Web browsers and applications are hardened to reduce the attack surface"
+    },
+    "P5": {
+      "label": "Restrict Administrative Privileges",
+      "description": "Requests for privileged access are validated and privileged accounts are restricted and monitored"
+    },
+    "P6": {
+      "label": "Patch Operating Systems",
+      "description": "Security vulnerabilities in operating systems are patched or mitigated within an appropriate timeframe"
+    },
+    "P7": {
+      "label": "Multi-Factor Authentication",
+      "description": "Stronger authentication is required to access sensitive data and systems"
+    },
+    "P8": {
+      "label": "Regular Backups",
+      "description": "Data, applications, and configuration settings are backed up and can be restored"
+    }
+  },
+  "controlIdFormat": "ML{level}-P{strategy}",
+  "m365Coverage": {
+    "note": "Essential Eight coverage through M365 configuration assessment focuses on strategies assessable via cloud settings. P8 (Regular Backups) is not mapped because backup validation requires infrastructure-level assessment beyond M365 configuration export.",
+    "mappedStrategies": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
+    "unmappedStrategies": ["P8"]
+  },
+  "colors": {
+    "light": { "background": "#fefce8", "color": "#854d0e" },
+    "dark": { "background": "#713F12", "color": "#FDE047" }
+  }
+}

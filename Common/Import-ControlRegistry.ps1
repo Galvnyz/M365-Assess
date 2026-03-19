@@ -45,6 +45,7 @@ function Import-ControlRegistry {
             $entry.frameworks[$prop.Name] = $prop.Value
         }
 
+        $entry.riskSeverity = 'Medium'  # default, overridden from risk-severity.json below
         $lookup[$check.checkId] = $entry
 
         # Build CIS reverse lookup
@@ -55,5 +56,17 @@ function Import-ControlRegistry {
     }
 
     $lookup['__cisReverseLookup'] = $cisReverse
+
+    # Load risk severity overlay
+    $severityPath = Join-Path -Path $ControlsPath -ChildPath 'risk-severity.json'
+    if (Test-Path -Path $severityPath) {
+        $severityData = Get-Content -Path $severityPath -Raw | ConvertFrom-Json
+        foreach ($prop in $severityData.checks.PSObject.Properties) {
+            if ($lookup.ContainsKey($prop.Name)) {
+                $lookup[$prop.Name].riskSeverity = $prop.Value
+            }
+        }
+    }
+
     return $lookup
 }

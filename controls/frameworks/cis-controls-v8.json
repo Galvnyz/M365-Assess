@@ -1,0 +1,63 @@
+{
+  "frameworkId": "cis-controls-v8",
+  "label": "CIS Controls v8.1",
+  "version": "8.1",
+  "css": "fw-cis-ctrl",
+  "totalControls": 153,
+  "registryKey": "cis-controls-v8",
+  "csvColumn": "CisControlsV8",
+  "displayOrder": 12,
+  "scoring": {
+    "method": "profile-compliance",
+    "profiles": {
+      "IG1": {
+        "label": "Implementation Group 1",
+        "css": "fw-cis-ctrl",
+        "profileKey": "IG1",
+        "controlCount": 56
+      },
+      "IG2": {
+        "label": "Implementation Group 2",
+        "css": "fw-cis-ctrl",
+        "profileKey": "IG2",
+        "controlCount": 130
+      },
+      "IG3": {
+        "label": "Implementation Group 3",
+        "css": "fw-cis-ctrl-ig3",
+        "profileKey": "IG3",
+        "controlCount": 153
+      }
+    }
+  },
+  "colors": {
+    "light": {
+      "background": "#dbeafe",
+      "color": "#1e40af"
+    },
+    "dark": {
+      "background": "#1E3A5F",
+      "color": "#60A5FA"
+    }
+  },
+  "controls": {
+    "1": "Inventory and Control of Enterprise Assets",
+    "2": "Inventory and Control of Software Assets",
+    "3": "Data Protection",
+    "4": "Secure Configuration of Enterprise Assets and Software",
+    "5": "Account Management",
+    "6": "Access Control Management",
+    "7": "Continuous Vulnerability Management",
+    "8": "Audit Log Management",
+    "9": "Email and Web Browser Protections",
+    "10": "Malware Defenses",
+    "11": "Data Recovery",
+    "12": "Network Infrastructure Management",
+    "13": "Network Monitoring and Defense",
+    "14": "Security Awareness and Skills Training",
+    "15": "Service Provider Management",
+    "16": "Application Software Security",
+    "17": "Incident Response Management",
+    "18": "Penetration Testing"
+  }
+}

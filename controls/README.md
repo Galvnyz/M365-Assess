@@ -27,10 +27,21 @@ M365-Assess repo
 
 | File | Purpose |
 |------|---------|
-| `registry.json` | 233 security checks with framework mappings (CIS, NIST, SOC 2, ISO, STIG, PCI, CMMC, HIPAA, CISA SCuBA) |
-| `frameworks/cis-m365-v6.json` | CIS profile definitions (E3/E5, L1/L2 groupings) |
-| `frameworks/nist-800-53-r5.json` | NIST 800-53 Rev 5 control mappings |
-| `frameworks/soc2-tsc.json` | SOC 2 Trust Services Criteria mappings |
+| `registry.json` | 244 security checks with framework mappings across 14 frameworks |
+| `frameworks/cis-controls-v8.json` | CIS Controls v8 mappings |
+| `frameworks/cis-m365-v6.json` | CIS M365 v6 profile definitions (E3/E5, L1/L2) |
+| `frameworks/cisa-scuba.json` | CISA SCuBA baseline definitions |
+| `frameworks/cmmc.json` | CMMC 2.0 practice/domain definitions |
+| `frameworks/essential-eight.json` | Australian Essential Eight maturity model |
+| `frameworks/fedramp.json` | FedRAMP control baselines |
+| `frameworks/hipaa.json` | HIPAA Security Rule safeguards |
+| `frameworks/iso-27001.json` | ISO 27001:2022 Annex A controls |
+| `frameworks/mitre-attack.json` | MITRE ATT&CK technique mappings |
+| `frameworks/nist-800-53-r5.json` | NIST 800-53 Rev 5 with Low/Moderate/High/Privacy baselines |
+| `frameworks/nist-csf.json` | NIST CSF 2.0 function/category mappings |
+| `frameworks/pci-dss-v4.json` | PCI DSS v4.0.1 requirement definitions |
+| `frameworks/soc2-tsc.json` | SOC 2 Trust Services Criteria |
+| `frameworks/stig.json` | DISA STIG M365 rules |
 
 ## Updating Registry Data
 
