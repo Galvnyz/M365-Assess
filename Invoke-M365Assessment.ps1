@@ -68,6 +68,9 @@
     Limit the compliance overview to specific framework families.
 .PARAMETER CustomBranding
     Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor.
+.PARAMETER CisBenchmarkVersion
+    CIS benchmark version to use for framework rendering. Defaults to 'v6'
+    (CIS Microsoft 365 v6.0.1). Set to 'v7' when CIS v7.0 data is available.
 .EXAMPLE
     PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
 
@@ -165,7 +168,11 @@ param(
     [string[]]$FrameworkFilter,
 
     [Parameter()]
-    [hashtable]$CustomBranding
+    [hashtable]$CustomBranding,
+
+    [Parameter()]
+    [ValidatePattern('^v\d+$')]
+    [string]$CisBenchmarkVersion = 'v6'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -2398,6 +2405,7 @@ if (Test-Path -Path $reportScriptPath) {
         if ($SkipExecutiveSummary) { $reportParams['SkipExecutiveSummary'] = $true }
         if ($FrameworkFilter) { $reportParams['FrameworkFilter'] = $FrameworkFilter }
         if ($CustomBranding) { $reportParams['CustomBranding'] = $CustomBranding }
+        $reportParams['CisFrameworkId'] = "cis-m365-$CisBenchmarkVersion"
 
         $reportOutput = & $reportScriptPath @reportParams
         foreach ($line in $reportOutput) {

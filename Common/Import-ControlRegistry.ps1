@@ -16,7 +16,10 @@ function Import-ControlRegistry {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [string]$ControlsPath
+        [string]$ControlsPath,
+
+        [Parameter()]
+        [string]$CisFrameworkId = 'cis-m365-v6'
     )
 
     $registryPath = Join-Path -Path $ControlsPath -ChildPath 'registry.json'
@@ -48,8 +51,8 @@ function Import-ControlRegistry {
         $entry.riskSeverity = 'Medium'  # default, overridden from risk-severity.json below
         $lookup[$check.checkId] = $entry
 
-        # Build CIS reverse lookup
-        $cisMapping = $check.frameworks.'cis-m365-v6'
+        # Build CIS reverse lookup (parameterized for version upgrades)
+        $cisMapping = $check.frameworks.$CisFrameworkId
         if ($cisMapping -and $cisMapping.controlId) {
             $cisReverse[$cisMapping.controlId] = $check.checkId
         }
