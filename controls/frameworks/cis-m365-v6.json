@@ -2,8 +2,10 @@
   "frameworkId": "cis-m365-v6",
   "label": "CIS Microsoft 365 v6.0.1",
   "version": "6.0.1",
+  "description": "Center for Internet Security benchmark for Microsoft 365 tenant configuration",
   "css": "fw-cis",
   "totalControls": 139,
+  "displayOrder": 1,
   "scoring": {
     "method": "profile-compliance",
     "profiles": {

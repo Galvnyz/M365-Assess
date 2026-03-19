@@ -5,6 +5,8 @@ Describe 'Export-AssessmentReport HTML structure' {
         # verify the template strings are present in the script source instead.
         $scriptPath = "$PSScriptRoot/../../Common/Export-AssessmentReport.ps1"
         $html = Get-Content -Path $scriptPath -Raw
+        $overviewPath = "$PSScriptRoot/../../Common/Export-ComplianceOverview.ps1"
+        $overviewSrc = Get-Content -Path $overviewPath -Raw
     }
 
     Context 'Dual-metric framework cards' {
@@ -15,11 +17,11 @@ Describe 'Export-AssessmentReport HTML structure' {
         }
 
         It 'Should include data-catalog-total attribute on framework cards' {
-            $html | Should -Match 'data-catalog-total'
+            $overviewSrc | Should -Match 'data-catalog-total'
         }
 
         It 'Should include stat-sublabel in card HTML generation' {
-            $html | Should -Match 'stat-sublabel'
+            $overviewSrc | Should -Match 'stat-sublabel'
         }
     }
 
@@ -64,11 +66,11 @@ Describe 'Export-AssessmentReport HTML structure' {
         }
 
         It 'Should include data-section attribute on compliance table rows' {
-            $html | Should -Match "data-section="
+            $overviewSrc | Should -Match "data-section="
         }
 
         It 'Should embed complianceData JSON blob' {
-            $html | Should -Match 'var complianceData\s*='
+            $overviewSrc | Should -Match 'var complianceData\s*='
         }
     }
 
@@ -96,16 +98,16 @@ Describe 'Export-AssessmentReport HTML structure' {
     }
 
     Context 'Section filter UI' {
-        It 'Should include section filter HTML structure' {
-            $html | Should -Match "id='sectionFilter'"
-            $html | Should -Match 'section-checkbox'
-            $html | Should -Match "id='sectionSelectAll'"
-            $html | Should -Match "id='sectionSelectNone'"
+        It 'Should include section filter HTML structure in overview' {
+            $overviewSrc | Should -Match "id='sectionFilter'"
+            $overviewSrc | Should -Match 'section-checkbox'
+            $overviewSrc | Should -Match "id='sectionSelectAll'"
+            $overviewSrc | Should -Match "id='sectionSelectNone'"
         }
 
-        It 'Should include no-results placeholder' {
-            $html | Should -Match "id='complianceNoResults'"
-            $html | Should -Match 'no-results'
+        It 'Should include no-results placeholder in overview' {
+            $overviewSrc | Should -Match "id='complianceNoResults'"
+            $overviewSrc | Should -Match 'no-results'
         }
 
         It 'Should include section filter CSS' {
@@ -114,36 +116,86 @@ Describe 'Export-AssessmentReport HTML structure' {
         }
     }
 
-    Context 'NIST 800-53 baseline profiles' {
-        It 'Should include NIST baseline keys in framework lookup' {
-            $html | Should -Match "'NIST-Low'"
-            $html | Should -Match "'NIST-Moderate'"
-            $html | Should -Match "'NIST-High'"
-            $html | Should -Match "'NIST-Privacy'"
+    Context 'JSON-driven framework rendering' {
+        It 'Should dot-source Import-FrameworkDefinitions' {
+            $html | Should -Match 'Import-FrameworkDefinitions\.ps1'
         }
 
-        It 'Should include nistProfileKeys variable' {
-            $html | Should -Match '\$nistProfileKeys'
+        It 'Should dot-source Export-ComplianceOverview' {
+            $html | Should -Match 'Export-ComplianceOverview\.ps1'
         }
 
-        It 'Should include NIST profile columns in finding data' {
+        It 'Should call Import-FrameworkDefinitions with FrameworksPath' {
+            $html | Should -Match 'Import-FrameworkDefinitions\s+-FrameworksPath'
+        }
+
+        It 'Should call Export-ComplianceOverview with required parameters' {
+            $html | Should -Match 'Export-ComplianceOverview\s+-Findings'
+        }
+
+        It 'Should include Frameworks hashtable in finding object' {
+            $html | Should -Match 'Frameworks\s*=\s*\$fwHash'
+        }
+
+        It 'Should retain legacy flat properties for XLSX compat' {
+            $html | Should -Match 'CisE3L1'
             $html | Should -Match 'Nist80053Low'
             $html | Should -Match 'Nist80053Moderate'
             $html | Should -Match 'Nist80053High'
             $html | Should -Match 'Nist80053Privacy'
         }
 
-        It 'Should include all frameworks checked by default in framework selector' {
-            $html | Should -Match "checked>"
+        It 'Should include legacy compat comment' {
+            $html | Should -Match 'Legacy compat.*#138'
         }
 
-        It 'Should treat NIST baselines as profile cards' {
-            $html | Should -Match 'cisProfileKeys.*-or.*nistProfileKeys'
+        It 'Should not contain hardcoded frameworkLookup hashtable' {
+            $html | Should -Not -Match '\$frameworkLookup\s*='
         }
 
-        It 'Should read NIST catalog counts from framework definition JSON' {
-            $html | Should -Match 'nist-800-53-r5\.json'
-            $html | Should -Match 'controlCount'
+        It 'Should not contain allFrameworkKeys array' {
+            $html | Should -Not -Match '\$allFrameworkKeys\s*='
+        }
+
+        It 'Should not contain cisProfileKeys or nistProfileKeys arrays' {
+            $html | Should -Not -Match '\$cisProfileKeys\s*='
+            $html | Should -Not -Match '\$nistProfileKeys\s*='
+        }
+
+        It 'Should not contain catalog CSV loading' {
+            $html | Should -Not -Match '\$catalogFiles\s*='
+            $html | Should -Not -Match '\$catalogCounts\s*='
+        }
+    }
+
+    Context 'Export-ComplianceOverview structure' {
+        It 'Should accept Frameworks parameter as hashtable array' {
+            $overviewSrc | Should -Match '\[hashtable\[\]\]\$Frameworks'
+        }
+
+        It 'Should use frameworkId for data-fw attributes' {
+            $overviewSrc | Should -Match "data-fw='\`$\(\`$fw\.frameworkId\)'"
+        }
+
+        It 'Should use frameworkId for checkbox values' {
+            $overviewSrc | Should -Match "value='\`$\(\`$fw\.frameworkId\)'"
+        }
+
+        It 'Should use totalControls from framework definition' {
+            $overviewSrc | Should -Match '\$fw\.totalControls'
+        }
+
+        It 'Should check scoringMethod for profile-based cards' {
+            $overviewSrc | Should -Match "scoringMethod\s*-eq\s*'profile-compliance'"
+        }
+
+        It 'Should access finding data via Frameworks hashtable' {
+            $overviewSrc | Should -Match '\$finding\.Frameworks'
+        }
+
+        It 'Should apply FrameworkFilter internally' {
+            $overviewSrc | Should -Match '\$FrameworkFilter'
+            $overviewSrc | Should -Match 'filterFamily'
         }
     }
 

@@ -161,7 +161,7 @@ param(
     [switch]$SkipExecutiveSummary,
 
     [Parameter()]
-    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2')]
+    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8')]
     [string[]]$FrameworkFilter,
 
     [Parameter()]

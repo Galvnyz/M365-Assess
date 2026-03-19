@@ -1,8 +1,11 @@
 {
-  "frameworkId": "soc2-tsc",
+  "frameworkId": "soc2",
   "label": "SOC 2 Trust Services Criteria",
   "version": "2022",
+  "description": "AICPA Trust Services Criteria for service organization controls",
   "css": "fw-soc2",
+  "totalControls": 11,
+  "displayOrder": 10,
   "scoring": {
     "method": "criteria-coverage",
     "criteria": {

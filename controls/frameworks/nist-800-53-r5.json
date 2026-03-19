@@ -2,8 +2,10 @@
   "frameworkId": "nist-800-53",
   "label": "NIST SP 800-53 Rev 5",
   "version": "5.2.0",
+  "description": "Federal information system security and privacy controls",
   "css": "fw-nist",
   "totalControls": 1189,
+  "displayOrder": 2,
   "scoring": {
     "method": "profile-compliance",
     "profiles": {

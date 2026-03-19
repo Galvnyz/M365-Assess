@@ -45,36 +45,26 @@ Describe 'Metadata Consistency' {
         }
     }
 
-    Context 'Framework count consistency' {
-        It 'Should have frameworkLookup entries matching allFrameworkKeys count' {
-            # Parse the ordered key list from the script
-            $keyMatch = [regex]::Match($reportScript, '\$allFrameworkKeys\s*=\s*@\(([^)]+)\)')
-            $keyMatch.Success | Should -Be $true -Because '$allFrameworkKeys must be defined in Export-AssessmentReport.ps1'
-
-            $keyList = $keyMatch.Groups[1].Value -split ',' |
-                ForEach-Object { $_.Trim().Trim("'").Trim('"') } |
-                Where-Object { $_ -ne '' }
-
-            # Parse frameworkLookup keys (lines like 'KEY' = @{ Col = )
-            $lookupKeys = [regex]::Matches($reportScript, "^\s+'([A-Z][A-Za-z0-9-]+)'\s*=\s*@\{\s*Col\s*=", [System.Text.RegularExpressions.RegexOptions]::Multiline) |
-                ForEach-Object { $_.Groups[1].Value }
-
-            $lookupKeys.Count | Should -Be $keyList.Count -Because "frameworkLookup entries ($($lookupKeys.Count)) should match allFrameworkKeys count ($($keyList.Count))"
+    Context 'Framework definitions consistency' {
+        It 'Should dot-source Import-FrameworkDefinitions in the report script' {
+            $reportScript | Should -Match 'Import-FrameworkDefinitions\.ps1' -Because 'report must load framework definitions dynamically'
         }
 
-        It 'Should have every allFrameworkKeys entry present in frameworkLookup' {
-            $keyMatch = [regex]::Match($reportScript, '\$allFrameworkKeys\s*=\s*@\(([^)]+)\)')
-            $keyMatch.Success | Should -Be $true
+        It 'Should load all framework JSONs via Import-FrameworkDefinitions' {
+            . "$projectRoot/Common/Import-FrameworkDefinitions.ps1"
+            $fws = Import-FrameworkDefinitions -FrameworksPath "$projectRoot/controls/frameworks"
+            $fws.Count | Should -BeGreaterOrEqual 14 -Because 'all framework JSONs should load successfully'
+        }
 
-            $keyList = $keyMatch.Groups[1].Value -split ',' |
-                ForEach-Object { $_.Trim().Trim("'").Trim('"') } |
-                Where-Object { $_ -ne '' }
+        It 'Should have every framework JSON specify a frameworkId matching a registry key' {
+            . "$projectRoot/Common/Import-FrameworkDefinitions.ps1"
+            $fws = Import-FrameworkDefinitions -FrameworksPath "$projectRoot/controls/frameworks"
+            $regFwKeys = @($registry.checks | ForEach-Object {
+                if ($_.frameworks) { $_.frameworks.PSObject.Properties.Name }
+            } | Sort-Object -Unique)
 
-            $lookupKeys = [regex]::Matches($reportScript, "^\s+'([A-Z][A-Za-z0-9-]+)'\s*=\s*@\{\s*Col\s*=", [System.Text.RegularExpressions.RegexOptions]::Multiline) |
-                ForEach-Object { $_.Groups[1].Value }
-
-            foreach ($key in $keyList) {
-                $lookupKeys | Should -Contain $key -Because "'$key' is listed in allFrameworkKeys but has no entry in frameworkLookup"
+            foreach ($fw in $fws) {
+                $regFwKeys | Should -Contain $fw.frameworkId -Because "framework '$($fw.frameworkId)' should be referenced in at least one registry entry"
             }
         }
     }

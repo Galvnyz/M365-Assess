@@ -83,7 +83,7 @@ param(
     [switch]$SkipExecutiveSummary,
 
     [Parameter()]
-    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2')]
+    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8')]
     [string[]]$FrameworkFilter,
 
     [Parameter()]
@@ -101,47 +101,10 @@ $controlsPath = Join-Path -Path $projectRoot -ChildPath 'controls'
 $controlRegistry = Import-ControlRegistry -ControlsPath $controlsPath
 
 # ------------------------------------------------------------------
-# Framework lookup table
+# Framework definitions (auto-discovered from JSON)
 # ------------------------------------------------------------------
-$frameworkLookup = @{
-    'CIS-E3-L1'  = @{ Col = 'CisE3L1';   Label = 'CIS E3 L1';          Css = 'fw-cis' }
-    'CIS-E3-L2'  = @{ Col = 'CisE3L2';   Label = 'CIS E3 L2';          Css = 'fw-cis-l2' }
-    'CIS-E5-L1'  = @{ Col = 'CisE5L1';   Label = 'CIS E5 L1';          Css = 'fw-cis' }
-    'CIS-E5-L2'  = @{ Col = 'CisE5L2';   Label = 'CIS E5 L2';          Css = 'fw-cis-l2' }
-    'NIST-Low'     = @{ Col = 'Nist80053Low';      Label = 'NIST Low';      Css = 'fw-nist' }
-    'NIST-Moderate'= @{ Col = 'Nist80053Moderate';  Label = 'NIST Moderate'; Css = 'fw-nist' }
-    'NIST-High'    = @{ Col = 'Nist80053High';      Label = 'NIST High';     Css = 'fw-nist-high' }
-    'NIST-Privacy' = @{ Col = 'Nist80053Privacy';   Label = 'NIST Privacy';  Css = 'fw-nist-privacy' }
-    'NIST-CSF'   = @{ Col = 'NistCsf';    Label = 'NIST CSF 2.0';       Css = 'fw-csf' }
-    'ISO-27001'  = @{ Col = 'Iso27001';   Label = 'ISO 27001:2022';     Css = 'fw-iso' }
-    'STIG'       = @{ Col = 'Stig';       Label = 'DISA STIG';          Css = 'fw-stig' }
-    'PCI-DSS'    = @{ Col = 'PciDss';     Label = 'PCI DSS v4.0.1';     Css = 'fw-pci' }
-    'CMMC'       = @{ Col = 'Cmmc';       Label = 'CMMC 2.0';           Css = 'fw-cmmc' }
-    'HIPAA'      = @{ Col = 'Hipaa';      Label = 'HIPAA';              Css = 'fw-hipaa' }
-    'CISA-SCuBA' = @{ Col = 'CisaScuba';  Label = 'CISA SCuBA';         Css = 'fw-scuba' }
-    'SOC-2'      = @{ Col = 'Soc2';       Label = 'SOC 2 TSC';          Css = 'fw-soc2' }
-}
-# Ordered list for consistent rendering (all frameworks always included)
-$allFrameworkKeys = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2','NIST-Low','NIST-Moderate','NIST-High','NIST-Privacy','NIST-CSF','ISO-27001','STIG','PCI-DSS','CMMC','HIPAA','CISA-SCuBA','SOC-2')
-$cisProfileKeys = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2')
-$nistProfileKeys = @('NIST-Low','NIST-Moderate','NIST-High','NIST-Privacy')
-if ($FrameworkFilter) {
-    $fwPrefixMap = @{
-        'CIS'   = @('CIS-E3-L1','CIS-E3-L2','CIS-E5-L1','CIS-E5-L2')
-        'NIST'  = @('NIST-Low','NIST-Moderate','NIST-High','NIST-Privacy','NIST-CSF')
-        'ISO'   = @('ISO-27001')
-        'STIG'  = @('STIG')
-        'PCI'   = @('PCI-DSS')
-        'CMMC'  = @('CMMC')
-        'HIPAA' = @('HIPAA')
-        'CISA'  = @('CISA-SCuBA')
-        'SOC2'  = @('SOC-2')
-    }
-    $allowedKeys = @($FrameworkFilter | ForEach-Object { $fwPrefixMap[$_] } | ForEach-Object { $_ })
-    $allFrameworkKeys = @($allFrameworkKeys | Where-Object { $_ -in $allowedKeys })
-    $cisProfileKeys = @($cisProfileKeys | Where-Object { $_ -in $allFrameworkKeys })
-    $nistProfileKeys = @($nistProfileKeys | Where-Object { $_ -in $allFrameworkKeys })
-}
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Import-FrameworkDefinitions.ps1')
+$allFrameworks = Import-FrameworkDefinitions -FrameworksPath (Join-Path -Path $projectRoot -ChildPath 'controls/frameworks')
 
 # ------------------------------------------------------------------
 # Validate input
@@ -1770,7 +1733,7 @@ foreach ($tocSection in $sections) {
 # ------------------------------------------------------------------
 # Build unified Compliance Overview section
 # ------------------------------------------------------------------
-$complianceHtml = [System.Text.StringBuilder]::new()
+$complianceHtml = ''
 $allCisFindings = [System.Collections.Generic.List[PSCustomObject]]::new()
 
 # Scan all completed collector CSVs for CheckId-mapped findings
@@ -1795,6 +1758,17 @@ foreach ($c in $summary) {
         $cisId = if ($fw.'cis-m365-v6' -and $fw.'cis-m365-v6'.controlId) { $fw.'cis-m365-v6'.controlId } else { '' }
         $nistProfiles = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.profiles) { $fw.'nist-800-53'.profiles } else { @() }
         $nistControlId = if ($fw.'nist-800-53' -and $fw.'nist-800-53'.controlId) { $fw.'nist-800-53'.controlId } else { '' }
+
+        # Build dynamic Frameworks hashtable from all loaded framework definitions
+        $fwHash = @{}
+        foreach ($fwDef in $allFrameworks) {
+            $fwData = $fw.($fwDef.frameworkId)
+            if ($fwData) {
+                $fwHash[$fwDef.frameworkId] = @{ controlId = $fwData.controlId }
+                if ($fwData.profiles) { $fwHash[$fwDef.frameworkId].profiles = @($fwData.profiles) }
+            }
+        }
+
         $allCisFindings.Add([PSCustomObject]@{
             CheckId      = $row.CheckId
             CisControl   = $cisId
@@ -1807,6 +1781,8 @@ foreach ($c in $summary) {
             Section      = $c.Section
             Source       = $c.Collector
             RiskSeverity = if ($entry) { $entry.riskSeverity } else { 'Medium' }
+            Frameworks   = $fwHash
+            # Legacy compat -- remove when #138 ships
             CisE3L1      = if ($cisProfiles -contains 'E3-L1') { $cisId } else { '' }
             CisE3L2      = if ($cisProfiles -contains 'E3-L2') { $cisId } else { '' }
             CisE5L1      = if ($cisProfiles -contains 'E5-L1') { $cisId } else { '' }
@@ -1829,260 +1805,8 @@ foreach ($c in $summary) {
 }
 
 if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $SkipComplianceOverview) {
-
-    # Load framework catalog CSVs to get total control counts
-    $catalogCounts = @{}
-    $frameworksDir = Join-Path -Path $projectRoot -ChildPath 'assets/frameworks'
-    $catalogFiles = @{
-        'CIS-E3-L1'   = 'cis-e3-l1.csv'
-        'CIS-E3-L2'   = 'cis-e3-l2.csv'
-        'CIS-E5-L1'   = 'cis-e5-l1.csv'
-        'CIS-E5-L2'   = 'cis-e5-l2.csv'
-        'NIST-CSF'     = 'nist-csf-2.0.csv'
-        'ISO-27001'    = 'iso-27001-2022.csv'
-        'STIG'         = 'disa-stig-m365.csv'
-        'PCI-DSS'      = 'pci-dss-v4.csv'
-        'CMMC'         = 'cmmc-nist-800-171-r2.csv'
-        'HIPAA'        = 'hipaa-security-rule.csv'
-        'CISA-SCuBA'   = 'cisa-scuba-baselines.csv'
-    }
-    foreach ($fwKey in $allFrameworkKeys) {
-        if ($catalogFiles.ContainsKey($fwKey)) {
-            $catPath = Join-Path -Path $frameworksDir -ChildPath $catalogFiles[$fwKey]
-            if (Test-Path -Path $catPath) {
-                $catData = Import-Csv -Path $catPath
-                $catalogCounts[$fwKey] = @($catData).Count
-            }
-        }
-    }
-    # Load NIST 800-53 baseline counts from framework definition
-    $nistFwDefPath = Join-Path -Path $projectRoot -ChildPath 'controls/frameworks/nist-800-53-r5.json'
-    if (Test-Path -Path $nistFwDefPath) {
-        $nistFwDef = Get-Content -Path $nistFwDefPath -Raw | ConvertFrom-Json
-        if ($nistFwDef.scoring -and $nistFwDef.scoring.profiles) {
-            foreach ($profileName in @('Low','Moderate','High','Privacy')) {
-                $profileDef = $nistFwDef.scoring.profiles.$profileName
-                if ($profileDef -and $profileDef.controlCount) {
-                    $catalogCounts["NIST-$profileName"] = [int]$profileDef.controlCount
-                }
-            }
-        }
-    }
-    # Overall CIS status counts (for status filter labels)
-    $cisPass = @($allCisFindings | Where-Object { $_.Status -eq 'Pass' }).Count
-    $cisFail = @($allCisFindings | Where-Object { $_.Status -eq 'Fail' }).Count
-    $cisWarn = @($allCisFindings | Where-Object { $_.Status -eq 'Warning' }).Count
-    $cisReview = @($allCisFindings | Where-Object { $_.Status -eq 'Review' }).Count
-    $cisInfo = @($allCisFindings | Where-Object { $_.Status -eq 'Info' }).Count
-    $knownStatuses = @('Pass', 'Fail', 'Warning', 'Review', 'Info')
-    $cisUnknown = @($allCisFindings | Where-Object { $_.Status -notin $knownStatuses }).Count
-
-    $null = $complianceHtml.AppendLine("<details class='section' open>")
-    $null = $complianceHtml.AppendLine("<summary><h2>Compliance Overview</h2></summary>")
-    $null = $complianceHtml.AppendLine("<p>Security findings mapped across compliance frameworks. Use the selector below to choose which frameworks to display.</p>")
-
-    # Informational disclaimer
-    $null = $complianceHtml.AppendLine("<div class='cis-disclaimer'>")
-    $null = $complianceHtml.AppendLine("<strong>Informational Notice</strong>")
-    $null = $complianceHtml.AppendLine("<p>This compliance assessment is provided for <strong>informational purposes only</strong> and does not constitute a comprehensive security assessment, audit, or certification. Results reflect automated checks at a point in time and should not be considered conclusive. For a thorough security evaluation, consider engaging a qualified security professional.</p>")
-    $null = $complianceHtml.AppendLine("</div>")
-
-    # Framework multi-selector
-    $null = $complianceHtml.AppendLine("<div class='fw-selector' id='fwSelector'>")
-    $null = $complianceHtml.AppendLine("<span class='fw-selector-label'>Frameworks:</span>")
-    foreach ($fwKey in $allFrameworkKeys) {
-        $fwInfo = $frameworkLookup[$fwKey]
-        $null = $complianceHtml.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fwInfo.Col)' checked> $($fwInfo.Label)</label>")
-    }
-    $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
-    $null = $complianceHtml.AppendLine("</div>")
-
-    # Status distribution bar chart
-    $cisTotal = $allCisFindings.Count
-    if ($cisTotal -gt 0) {
-        $segments = @(
-            @{ Css = 'pass'; Pct = [math]::Round(($cisPass / $cisTotal) * 100, 1); Count = $cisPass; Label = 'Pass' }
-            @{ Css = 'fail'; Pct = [math]::Round(($cisFail / $cisTotal) * 100, 1); Count = $cisFail; Label = 'Fail' }
-            @{ Css = 'warning'; Pct = [math]::Round(($cisWarn / $cisTotal) * 100, 1); Count = $cisWarn; Label = 'Warning' }
-            @{ Css = 'review'; Pct = [math]::Round(($cisReview / $cisTotal) * 100, 1); Count = $cisReview; Label = 'Review' }
-        )
-        if ($cisInfo -gt 0) {
-            $segments += @{ Css = 'info'; Pct = [math]::Round(($cisInfo / $cisTotal) * 100, 1); Count = $cisInfo; Label = 'Info' }
-        }
-        if ($cisUnknown -gt 0) {
-            $segments += @{ Css = 'unknown'; Pct = [math]::Round(($cisUnknown / $cisTotal) * 100, 1); Count = $cisUnknown; Label = 'Unknown' }
-        }
-        $barChart = Get-SvgHorizontalBar -Segments $segments
-        $null = $complianceHtml.AppendLine("<div class='compliance-status-bar'>")
-        $null = $complianceHtml.AppendLine("<div class='compliance-bar-header'><span class='compliance-bar-title'>Finding Status Distribution</span><span class='compliance-bar-total'>$cisTotal controls assessed</span></div>")
-        $null = $complianceHtml.AppendLine($barChart)
-        $null = $complianceHtml.AppendLine("<div class='hbar-legend'>")
-        foreach ($seg in $segments) {
-            if ($seg.Count -gt 0) {
-                $null = $complianceHtml.AppendLine("<span class='hbar-legend-item'><span class='chart-legend-dot dot-$(switch ($seg.Css) { 'pass' { 'success' } 'fail' { 'danger' } 'warning' { 'warning' } 'review' { 'info' } 'info' { 'neutral' } default { 'muted' } })'></span>$($seg.Label) ($($seg.Count))</span>")
-            }
-        }
-        $null = $complianceHtml.AppendLine("</div>")
-        $null = $complianceHtml.AppendLine("</div>")
-    }
-
-    # Framework coverage cards (all frameworks)
-    $null = $complianceHtml.AppendLine("<div class='exec-summary' id='fwCards'>")
-    foreach ($fwKey in $allFrameworkKeys) {
-        $fwInfo = $frameworkLookup[$fwKey]
-        $col = $fwInfo.Col
-        if ($fwKey -in $cisProfileKeys -or $fwKey -in $nistProfileKeys) {
-            # CIS/NIST profile card — pass rate as primary, coverage bar as secondary
-            $profileFindings = @($allCisFindings | Where-Object { $_.$col -and $_.$col -ne '' })
-            $profilePass = @($profileFindings | Where-Object { $_.Status -eq 'Pass' }).Count
-            $profileScored = $profileFindings.Count
-            $profileScore = if ($profileScored -gt 0) { [math]::Round(($profilePass / $profileScored) * 100, 1) } else { 0 }
-            $scoreDisplay = if ($profileScored -gt 0) { "$profileScore%" } else { 'N/A' }
-            $scoreClass = if ($profileScored -eq 0) { '' } elseif ($profileScore -ge 80) { 'success' } elseif ($profileScore -ge 60) { 'warning' } else { 'danger' }
-            $catalogTotal = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
-            $coverageLabel = if ($catalogTotal -gt 0) { "$($profileFindings.Count) of $catalogTotal assessed" } else { "$($profileFindings.Count) assessed" }
-            $coveragePct = if ($catalogTotal -gt 0) { [math]::Min(100, [math]::Round(($profileScored / $catalogTotal) * 100, 0)) } else { 0 }
-            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$col' data-catalog-total='$catalogTotal'><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div></div>")
-        }
-        else {
-            # Non-CIS card — pass rate as primary, coverage bar as secondary
-            $mappedFindings = @($allCisFindings | Where-Object { $_.$col -and $_.$col -ne '' })
-            $mappedControls = @($mappedFindings | ForEach-Object { $_.$col -split ';' } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | Sort-Object -Unique)
-            $mappedCount = $mappedControls.Count
-            $mappedPass = @($mappedFindings | Where-Object { $_.Status -eq 'Pass' }).Count
-            $mappedTotal = $mappedFindings.Count
-            $passRate = if ($mappedTotal -gt 0) { [math]::Round(($mappedPass / $mappedTotal) * 100, 1) } else { 0 }
-            $passDisplay = if ($mappedTotal -gt 0) { "$passRate%" } else { 'N/A' }
-            $passClass = if ($mappedTotal -eq 0) { '' } elseif ($passRate -ge 80) { 'success' } elseif ($passRate -ge 60) { 'warning' } else { 'danger' }
-            $totalCount = if ($catalogCounts.ContainsKey($fwKey)) { $catalogCounts[$fwKey] } else { 0 }
-            $coveragePct = if ($totalCount -gt 0) { [math]::Min(100, [math]::Round(($mappedCount / $totalCount) * 100, 0)) } else { 0 }
-            $coverageLabel = if ($totalCount -gt 0) { "$mappedTotal of $totalCount assessed" } else { "$mappedTotal assessed" }
-            $coverageBarHtml = if ($totalCount -gt 0) { "<div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div>" } else { '' }
-            $null = $complianceHtml.AppendLine("<div class='stat-card fw-card $passClass' data-fw='$col' data-catalog-total='$totalCount'><div class='stat-value'>$passDisplay</div><div class='stat-label'>$($fwInfo.Label)</div><div class='stat-sublabel'>$coverageLabel</div>$coverageBarHtml</div>")
-        }
-    }
-    $null = $complianceHtml.AppendLine("</div>")
-
-    # Status filter (multi-select checkboxes)
-    $null = $complianceHtml.AppendLine("<div class='status-filter' id='statusFilter'>")
-    $null = $complianceHtml.AppendLine("<span class='status-filter-label'>Status:</span>")
-    $null = $complianceHtml.AppendLine("<label class='status-checkbox status-fail'><input type='checkbox' value='fail' checked> Fail ($cisFail)</label>")
-    if ($cisWarn -gt 0) {
-        $null = $complianceHtml.AppendLine("<label class='status-checkbox status-warning'><input type='checkbox' value='warning' checked> Warning ($cisWarn)</label>")
-    }
-    if ($cisReview -gt 0) {
-        $null = $complianceHtml.AppendLine("<label class='status-checkbox status-review'><input type='checkbox' value='review' checked> Review ($cisReview)</label>")
-    }
-    $null = $complianceHtml.AppendLine("<label class='status-checkbox status-pass'><input type='checkbox' value='pass' checked> Pass ($cisPass)</label>")
-    if ($cisInfo -gt 0) {
-        $null = $complianceHtml.AppendLine("<label class='status-checkbox status-info'><input type='checkbox' value='info' checked> Info ($cisInfo)</label>")
-    }
-    if ($cisUnknown -gt 0) {
-        $null = $complianceHtml.AppendLine("<label class='status-checkbox status-unknown'><input type='checkbox' value='unknown' checked> Unknown ($cisUnknown)</label>")
-    }
-    if ($cisInfo -gt 0) {
-        $null = $complianceHtml.AppendLine("<span class='info-note-inline'><span class='badge badge-neutral'>Info</span> = no pass/fail criteria; not included in pass rates</span>")
-    }
-    $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
-    $null = $complianceHtml.AppendLine("</div>")
-
-    # Section filter (scopes compliance view by assessment domain)
-    $uniqueSections = @($allCisFindings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
-    if ($uniqueSections.Count -gt 1) {
-        $null = $complianceHtml.AppendLine("<div class='section-filter' id='sectionFilter'>")
-        $null = $complianceHtml.AppendLine("<span class='section-filter-label'>Sections:</span>")
-        foreach ($sec in $uniqueSections) {
-            $secCount = @($allCisFindings | Where-Object { $_.Section -eq $sec }).Count
-            $null = $complianceHtml.AppendLine("<label class='section-checkbox'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $sec)' checked> $(ConvertTo-HtmlSafe -Text $sec) ($secCount)</label>")
-        }
-        $null = $complianceHtml.AppendLine("<span class='fw-selector-actions'><button type='button' id='sectionSelectAll' class='fw-action-btn'>All</button><button type='button' id='sectionSelectNone' class='fw-action-btn'>None</button></span>")
-        $null = $complianceHtml.AppendLine("</div>")
-    }
-
-    # Unified compliance matrix table (all frameworks as columns)
-    $null = $complianceHtml.AppendLine("<div class='table-wrapper'>")
-    $null = $complianceHtml.AppendLine("<table class='data-table matrix-table' id='complianceTable'>")
-
-    # Header row — fixed columns + one column per framework
-    $headerCols = "<th scope='col'>Control</th><th scope='col'>Description</th><th scope='col'>Status</th><th scope='col'>Severity</th>"
-    foreach ($fwKey in $allFrameworkKeys) {
-        $fwInfo = $frameworkLookup[$fwKey]
-        $headerCols += "<th scope='col' class='fw-col' data-fw='$($fwInfo.Col)'>$($fwInfo.Label)</th>"
-    }
-    $null = $complianceHtml.AppendLine("<thead><tr>$headerCols</tr></thead>")
-    $null = $complianceHtml.AppendLine("<tbody>")
-
-    # Sort findings by CheckId (groups by collector area)
-    $matrixFindings = @($allCisFindings | Sort-Object -Property CheckId)
-    foreach ($finding in $matrixFindings) {
-        $statusClass = switch ($finding.Status) {
-            'Pass'    { 'badge-success' }
-            'Fail'    { 'badge-failed' }
-            'Warning' { 'badge-warning' }
-            'Review'  { 'badge-info' }
-            'Info'    { 'badge-neutral' }
-            default   { 'badge-skipped' }
-        }
-        $statusBadge = "<span class='badge $statusClass'>$($finding.Status)</span>"
-        $checkRef = ConvertTo-HtmlSafe -Text $finding.CheckId
-        $settingText = ConvertTo-HtmlSafe -Text $finding.Setting
-
-        $null = $complianceHtml.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'>")
-        $severityClass = switch ($finding.RiskSeverity) {
-            'Critical' { 'badge-critical' }
-            'High'     { 'badge-failed' }
-            'Medium'   { 'badge-warning' }
-            'Low'      { 'badge-info' }
-            'Info'     { 'badge-neutral' }
-            default    { 'badge-neutral' }
-        }
-        $severityBadge = "<span class='badge $severityClass'>$($finding.RiskSeverity)</span>"
-
-        $null = $complianceHtml.AppendLine("<td class='cis-id'>$checkRef</td>")
-        $null = $complianceHtml.AppendLine("<td>$settingText</td>")
-        $null = $complianceHtml.AppendLine("<td>$statusBadge</td>")
-        $null = $complianceHtml.AppendLine("<td>$severityBadge</td>")
-
-        # One cell per framework
-        foreach ($fwKey in $allFrameworkKeys) {
-            $fwInfo = $frameworkLookup[$fwKey]
-            $col = $fwInfo.Col
-            $val = $finding.$col
-            if ($val -and $val -ne '') {
-                $tags = ($val -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object {
-                    "<span class='fw-tag $($fwInfo.Css)'>$(ConvertTo-HtmlSafe -Text $_)</span>"
-                }) -join ''
-                $null = $complianceHtml.AppendLine("<td class='fw-col framework-refs' data-fw='$col'>$tags</td>")
-            }
-            else {
-                $null = $complianceHtml.AppendLine("<td class='fw-col framework-refs' data-fw='$col'><span class='fw-unmapped'>&mdash;</span></td>")
-            }
-        }
-        $null = $complianceHtml.AppendLine("</tr>")
-    }
-
-    $null = $complianceHtml.AppendLine("</tbody></table>")
-    $null = $complianceHtml.AppendLine("</div>")
-    $null = $complianceHtml.AppendLine("<div id='complianceNoResults' class='no-results' style='display:none'><p>No findings match the current filter selection.</p></div>")
-
-    # Embed compliance data for client-side filtering/recalculation
-    $complianceJson = @($allCisFindings | ForEach-Object {
-        $fwMap = [ordered]@{}
-        foreach ($fwKey in $allFrameworkKeys) {
-            $fwCol = $frameworkLookup[$fwKey].Col
-            $val = $_.$fwCol
-            if ($val -and $val -ne '') { $fwMap[$fwCol] = $val }
-        }
-        [PSCustomObject]@{
-            c  = $_.CheckId
-            s  = $_.Section
-            st = $_.Status
-            sv = $_.RiskSeverity
-            fw = $fwMap
-        }
-    }) | ConvertTo-Json -Compress -Depth 3
-    $null = $complianceHtml.AppendLine("<script>var complianceData = $complianceJson;</script>")
-    $null = $complianceHtml.AppendLine("</details>")
+    . (Join-Path -Path $PSScriptRoot -ChildPath 'Export-ComplianceOverview.ps1')
+    $complianceHtml = Export-ComplianceOverview -Findings @($allCisFindings) -ControlRegistry $controlRegistry -Frameworks $allFrameworks -FrameworkFilter $FrameworkFilter -Sections @($summary | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
 }
 
 # ------------------------------------------------------------------
@@ -3494,6 +3218,12 @@ $html = @"
         .fw-hipaa { background: #fdf2f8; color: #9d174d; }
         .fw-scuba { background: #fff7ed; color: #9a3412; }
         .fw-soc2  { background: #eff6ff; color: #1e3a5f; }
+        .fw-fedramp { background: #fef3c7; color: #78350f; }
+        .fw-essential8 { background: #ecfdf5; color: #14532d; }
+        .fw-mitre { background: #fef2f2; color: #7f1d1d; }
+        .fw-cisv8 { background: #e0f2fe; color: #0c4a6e; }
+        .fw-default { background: #e2e8f0; color: #334155; }
+        .fw-profile-tag { display: inline-block; padding: 0 3px; margin-left: 2px; border-radius: 2px; font-size: 0.68em; background: rgba(0,0,0,0.06); color: inherit; vertical-align: middle; }
         .fw-unmapped { color: var(--m365a-border); font-size: 0.85em; }
 
         /* Framework multi-selector */
@@ -3642,6 +3372,12 @@ $html = @"
         body.dark-theme .fw-hipaa  { background: #831843; color: #F9A8D4; }
         body.dark-theme .fw-scuba  { background: #7C2D12; color: #FDBA74; }
         body.dark-theme .fw-soc2   { background: #1E3A5F; color: #60A5FA; }
+        body.dark-theme .fw-fedramp { background: #78350F; color: #FCD34D; }
+        body.dark-theme .fw-essential8 { background: #064E3B; color: #6EE7B7; }
+        body.dark-theme .fw-mitre { background: #7F1D1D; color: #FCA5A5; }
+        body.dark-theme .fw-cisv8 { background: #0C4A6E; color: #7DD3FC; }
+        body.dark-theme .fw-default { background: #334155; color: #CBD5E1; }
+        body.dark-theme .fw-profile-tag { background: rgba(255,255,255,0.1); }
 
         body.dark-theme .cloud-commercial { background: #1E3A5F; color: #93C5FD; border-color: #334155; }
         body.dark-theme .cloud-gcc { background: #064E3B; color: #6EE7B7; border-color: #334155; }
@@ -3995,12 +3731,12 @@ $html += @"
         $($sectionHtml.ToString())
 "@
 
-if ($complianceHtml.Length -gt 0) {
+if ($complianceHtml) {
     $html += @"
 
         <a id="compliance-overview"></a>
         <h1>Compliance Overview</h1>
-        $($complianceHtml.ToString())
+        $complianceHtml
 "@
 }
 
