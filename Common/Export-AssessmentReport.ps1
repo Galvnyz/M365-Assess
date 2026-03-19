@@ -40,6 +40,9 @@
 .PARAMETER FrameworkFilter
     Limit the compliance overview to specific framework families. Valid values:
     CIS, NIST, ISO, STIG, PCI, CMMC, HIPAA, CISA, SOC2. Default: all frameworks.
+.PARAMETER CustomBranding
+    Hashtable for white-label reports. Supported keys: CompanyName (string),
+    LogoPath (file path to PNG/JPEG/SVG), AccentColor (hex color like '#1a56db').
 .EXAMPLE
     PS> .\Common\Export-AssessmentReport.ps1 -AssessmentFolder '.\M365-Assessment\Assessment_20260306_195618'
 
@@ -81,7 +84,10 @@ param(
 
     [Parameter()]
     [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2')]
-    [string[]]$FrameworkFilter
+    [string[]]$FrameworkFilter,
+
+    [Parameter()]
+    [hashtable]$CustomBranding
 )
 
 $ErrorActionPreference = 'Stop'
@@ -271,6 +277,23 @@ $logoMime   = if ($logoAsset) { $logoAsset.Mime }   else { 'image/png' }
 $waveAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*wave*', '*bg*')
 $waveBase64 = if ($waveAsset) { $waveAsset.Base64 } else { '' }
 $waveMime   = if ($waveAsset) { $waveAsset.Mime }   else { 'image/png' }
+
+$brandName = 'M365 Assess'
+$accentColor = ''
+if ($CustomBranding) {
+    if ($CustomBranding.ContainsKey('LogoPath') -and (Test-Path -Path $CustomBranding.LogoPath)) {
+        $customLogoBytes = [System.IO.File]::ReadAllBytes($CustomBranding.LogoPath)
+        $logoBase64 = [Convert]::ToBase64String($customLogoBytes)
+        $ext = [System.IO.Path]::GetExtension($CustomBranding.LogoPath).TrimStart('.').ToLower()
+        $logoMime = switch ($ext) { 'jpg' { 'image/jpeg' } 'jpeg' { 'image/jpeg' } 'svg' { 'image/svg+xml' } default { 'image/png' } }
+    }
+    if ($CustomBranding.ContainsKey('CompanyName')) {
+        $brandName = $CustomBranding.CompanyName
+    }
+    if ($CustomBranding.ContainsKey('AccentColor')) {
+        $accentColor = $CustomBranding.AccentColor
+    }
+}
 
 # ------------------------------------------------------------------
 # Compute summary statistics
@@ -2107,10 +2130,12 @@ $coverBgStyle = if ($waveBase64) {
 }
 
 $logoImgTag = if ($logoBase64) {
-    "<img src='data:$logoMime;base64,$logoBase64' alt='M365 Assess' class='cover-logo' />"
+    "<img src='data:$logoMime;base64,$logoBase64' alt='$brandName' class='cover-logo' />"
 } else {
-    "<div class='cover-logo-text'>M365 Assess</div>"
+    "<div class='cover-logo-text'>$brandName</div>"
 }
+
+$accentCss = if ($accentColor) { "<style>:root { --m365a-accent: $accentColor; }</style>" } else { '' }
 
 $html = @"
 <!DOCTYPE html>
@@ -3801,6 +3826,7 @@ $html = @"
             }
         }
     </style>
+$accentCss
 </head>
 <body>
     <!-- Theme Toggle -->

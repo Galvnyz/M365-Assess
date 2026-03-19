@@ -66,6 +66,8 @@
     Omit the executive summary hero panel from the HTML report.
 .PARAMETER FrameworkFilter
     Limit the compliance overview to specific framework families.
+.PARAMETER CustomBranding
+    Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor.
 .EXAMPLE
     PS> .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
 
@@ -160,7 +162,10 @@ param(
 
     [Parameter()]
     [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2')]
-    [string[]]$FrameworkFilter
+    [string[]]$FrameworkFilter,
+
+    [Parameter()]
+    [hashtable]$CustomBranding
 )
 
 $ErrorActionPreference = 'Stop'
@@ -2213,6 +2218,7 @@ if (Test-Path -Path $reportScriptPath) {
         if ($SkipCoverPage) { $reportParams['SkipCoverPage'] = $true }
         if ($SkipExecutiveSummary) { $reportParams['SkipExecutiveSummary'] = $true }
         if ($FrameworkFilter) { $reportParams['FrameworkFilter'] = $FrameworkFilter }
+        if ($CustomBranding) { $reportParams['CustomBranding'] = $CustomBranding }
 
         $reportOutput = & $reportScriptPath @reportParams
         foreach ($line in $reportOutput) {
