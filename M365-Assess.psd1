@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'Invoke-M365Assessment.ps1'
-    ModuleVersion     = '0.9.5'
+    ModuleVersion     = '0.9.6'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -100,7 +100,7 @@
             Tags         = @('Microsoft365', 'M365', 'Security', 'Assessment', 'EntraID', 'Exchange', 'Intune', 'Defender', 'SharePoint', 'Teams', 'PowerBI', 'ScubaGear', 'CIS')
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v0.9.5 - Code Quality: remove backtick continuations from all collectors, add robustness improvements, Pester regression guard'
+            ReleaseNotes = 'v0.9.6 - Report Refactor: JSON-driven framework rendering, wizard report options, CI quality gates, bug fixes'
         }
     }
 }

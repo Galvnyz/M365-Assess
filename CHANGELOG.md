@@ -2,6 +2,31 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.6] - 2026-03-19
+
+### Added
+- JSON-driven framework rendering: auto-discover frameworks from `controls/frameworks/*.json` via `Import-FrameworkDefinitions.ps1` (#67)
+- `Export-ComplianceOverview.ps1`: extracted compliance overview into standalone function (~230 lines)
+- `Frameworks` hashtable on each finding object for dynamic framework access
+- Wizard Report Options step: toggle Compliance Overview, Cover Page, Executive Summary, Remove Branding, and Limit Frameworks interactively
+- Numbered framework sub-selector with all 13 families and Select All/None shortcuts
+- `-AcceptedDomains` parameter on `Get-DnsSecurityConfig.ps1` for cached domain passthrough
+- CSS classes for new framework tags: `.fw-fedramp`, `.fw-essential8`, `.fw-mitre`, `.fw-cisv8`, `.fw-default`, `.fw-profile-tag` (light + dark theme)
+- 13 Pester tests for `Import-FrameworkDefinitions`
+- `FedRAMP`, `Essential8`, `MITRE`, `CISv8` added to `-FrameworkFilter` ValidateSet
+
+### Changed
+- Compliance overview now renders 14 framework-level columns (down from 16 profile-level columns) with inline profile tags
+- CI consolidated from 5 jobs to 3: single "Quality Gates" job (lint + smoke + version), full Pester, and push-only CheckID sync
+- Branch protection enabled on `main` requiring Quality Gates to pass before merge
+- Public group owner check uses client-side visibility filter (avoids `Directory.Read.All` requirement)
+- Orchestrator passes cached accepted domains to deferred DNS collector (avoids EXO session timeout)
+- Framework JSON fixes: `displayOrder`/`description` added to cis-m365-v6 and nist-800-53, `soc2-tsc` frameworkId corrected to `soc2`, Unicode corruption fixed in hipaa/stig/cmmc
+
+### Removed
+- 12 catalog CSV files in `assets/frameworks/` (replaced by `totalControls` in framework JSONs, -2,833 lines)
+- Hardcoded `$frameworkLookup`, `$allFrameworkKeys`, `$cisProfileKeys`, `$nistProfileKeys` from report script
+
 ## [0.9.5] - 2026-03-17
 
 ### Changed
