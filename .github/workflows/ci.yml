@@ -5,12 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
 
 jobs:
   quality-gates:
+    if: github.event_name != 'schedule'
     name: Quality Gates
     runs-on: windows-latest
     steps:
@@ -90,6 +94,7 @@ jobs:
           Write-Host "Version consistency: manifest=$expected, README badge matches, runtime readers use manifest" -ForegroundColor Green
 
   test:
+    if: github.event_name != 'schedule'
     name: Pester Tests (Full)
     runs-on: windows-latest
     steps:
@@ -133,7 +138,7 @@ jobs:
 
   sync-checkid:
     name: Sync CheckID Fallback Cache
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

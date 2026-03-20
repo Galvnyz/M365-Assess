@@ -1,0 +1,41 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Strip 'v' prefix for changelog matching
+          SEMVER="${VERSION#v}"
+          # Extract the section between this version header and the next
+          NOTES=$(awk "/^## \\[${SEMVER}\\]/{found=1;next} /^## \\[/{if(found)exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${VERSION}"
+          fi
+          # Use EOF delimiter for multiline
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}

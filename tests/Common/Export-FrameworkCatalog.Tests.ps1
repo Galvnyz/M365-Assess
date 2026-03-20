@@ -211,6 +211,69 @@ Describe 'Export-FrameworkCatalog - Scoring Engine' {
         }
     }
 
+    Context 'Standalone mode - HTML file output' {
+        BeforeAll {
+            $standaloneCheckIds = @(
+                'ENTRA-CLOUDADMIN-001', 'CA-MFA-ADMIN-001', 'CA-LEGACYAUTH-001',
+                'EXO-AUDIT-001', 'EXO-FORWARD-001', 'DEFENDER-SAFELINK-001',
+                'SPO-SHARING-001', 'TEAMS-EXTERNAL-001', 'DNS-SPF-001',
+                'ENTRA-CONSENT-001', 'ENTRA-PASSWORD-001', 'CA-MFA-ALL-001'
+            ) | Where-Object { $registry.ContainsKey($_) }
+            $standaloneFindings = @($standaloneCheckIds | ForEach-Object { New-MockFinding -CheckId $_ })
+            $standaloneDir = Join-Path -Path $TestDrive -ChildPath 'standalone'
+            New-Item -ItemType Directory -Path $standaloneDir -Force | Out-Null
+        }
+
+        It 'Writes a complete HTML file with DOCTYPE' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $outPath = Join-Path -Path $standaloneDir -ChildPath 'nist-csf-catalog.html'
+            Export-FrameworkCatalog -Findings $standaloneFindings -Framework $fw -ControlRegistry $registry -Mode Standalone -OutputPath $outPath -TenantName 'TestTenant'
+            Test-Path -Path $outPath | Should -BeTrue
+            $content = Get-Content -Path $outPath -Raw
+            $content | Should -Match '<!DOCTYPE html>'
+            $content | Should -Match 'NIST CSF'
+            $content | Should -Match 'TestTenant'
+        }
+
+        It 'Contains embedded CSS with theme variables' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $outPath = Join-Path -Path $standaloneDir -ChildPath 'nist-csf-css.html'
+            Export-FrameworkCatalog -Findings $standaloneFindings -Framework $fw -ControlRegistry $registry -Mode Standalone -OutputPath $outPath -TenantName 'TestTenant'
+            $content = Get-Content -Path $outPath -Raw
+            $content | Should -Match '--m365a-primary'
+            $content | Should -Match 'badge-success'
+        }
+
+        It 'Contains group breakdown table and findings' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $outPath = Join-Path -Path $standaloneDir -ChildPath 'nist-csf-tables.html'
+            Export-FrameworkCatalog -Findings $standaloneFindings -Framework $fw -ControlRegistry $registry -Mode Standalone -OutputPath $outPath -TenantName 'TestTenant'
+            $content = Get-Content -Path $outPath -Raw
+            $content | Should -Match 'catalog-groups'
+            $content | Should -Match 'catalog-findings'
+        }
+
+        It 'Includes dark theme toggle script' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'iso-27001' }
+            $outPath = Join-Path -Path $standaloneDir -ChildPath 'iso-toggle.html'
+            Export-FrameworkCatalog -Findings $standaloneFindings -Framework $fw -ControlRegistry $registry -Mode Standalone -OutputPath $outPath -TenantName 'TestTenant'
+            $content = Get-Content -Path $outPath -Raw
+            $content | Should -Match 'dark-theme|theme-toggle'
+        }
+
+        It 'Standalone works for all 14 frameworks' {
+            foreach ($fw in $allFrameworks) {
+                $safeName = $fw.frameworkId -replace '[^a-zA-Z0-9]', '-'
+                $outPath = Join-Path -Path $standaloneDir -ChildPath "$safeName-all.html"
+                Export-FrameworkCatalog -Findings $standaloneFindings -Framework $fw -ControlRegistry $registry -Mode Standalone -OutputPath $outPath -TenantName 'TestTenant' -WarningAction SilentlyContinue
+                Test-Path -Path $outPath | Should -BeTrue -Because "$($fw.frameworkId) should write a file"
+                $content = Get-Content -Path $outPath -Raw
+                $content | Should -Match $fw.label -Because "$($fw.frameworkId) should contain its label"
+                $content | Should -Match '<!DOCTYPE html>' -Because "$($fw.frameworkId) should be a complete HTML document"
+            }
+        }
+    }
+
     Context 'Integration - all 14 frameworks' {
         It 'Produces valid GroupedResult for every framework' {
             $checkIds = @(

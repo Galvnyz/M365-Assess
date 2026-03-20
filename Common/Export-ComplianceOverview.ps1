@@ -121,7 +121,6 @@ function Export-ComplianceOverview {
 
         if ($isProfileBased -and $fw.profiles) {
             # Profile-based card (CIS, NIST) -- pass rate as primary, coverage bar as secondary
-            # A finding maps to this framework if it has data in Frameworks[$fwId]
             $profileFindings = @($Findings | Where-Object { $_.Frameworks -and $_.Frameworks.ContainsKey($fwId) })
             $profilePass = @($profileFindings | Where-Object { $_.Status -eq 'Pass' }).Count
             $profileScored = $profileFindings.Count
@@ -132,7 +131,31 @@ function Export-ComplianceOverview {
             $coverageLabel = if ($catalogTotal -gt 0) { "$profileScored of $catalogTotal assessed" } else { "$profileScored assessed" }
             $coveragePct = if ($catalogTotal -gt 0) { [math]::Min(100, [math]::Round(($profileScored / $catalogTotal) * 100, 0)) } else { 0 }
             $tooltip = if ($fw.description) { " title='$(ConvertTo-HtmlSafe -Text $fw.description)'" } else { '' }
-            $null = $html.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$fwId' data-catalog-total='$catalogTotal'$tooltip><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fw.label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div></div>")
+
+            # Detect level-based profiles (L1/L2 suffix) for sub-metric breakdown
+            $profileKeys = @($fw.profiles.PSObject.Properties.Name)
+            $levelKeys = @($profileKeys | ForEach-Object { if ($_ -match '-L(\d+)$') { "L$($Matches[1])" } } | Sort-Object -Unique)
+            $levelBreakdownHtml = ''
+            if ($levelKeys.Count -ge 2) {
+                foreach ($level in $levelKeys) {
+                    $levelProfiles = @($profileKeys | Where-Object { $_ -like "*-$level" })
+                    $levelFindings = @($profileFindings | Where-Object {
+                        $fwData = $_.Frameworks[$fwId]
+                        $fwProfiles = if ($fwData.profiles) { @($fwData.profiles) } else { @() }
+                        $matched = $false
+                        foreach ($lp in $levelProfiles) { if ($lp -in $fwProfiles) { $matched = $true; break } }
+                        $matched
+                    })
+                    $lvlTotal = $levelFindings.Count
+                    $lvlPass = @($levelFindings | Where-Object { $_.Status -eq 'Pass' }).Count
+                    $lvlRate = if ($lvlTotal -gt 0) { [math]::Round(($lvlPass / $lvlTotal) * 100, 1) } else { 0 }
+                    $lvlClass = if ($lvlTotal -eq 0) { 'neutral' } elseif ($lvlRate -ge 80) { 'success' } elseif ($lvlRate -ge 60) { 'warning' } else { 'danger' }
+                    $lvlDisplay = if ($lvlTotal -gt 0) { "$lvlRate%" } else { 'N/A' }
+                    $levelBreakdownHtml += "<div class='profile-level-row'><span class='profile-level-label'>$level</span><span class='badge badge-$lvlClass' style='font-size:7.5pt;padding:2px 6px;'>$lvlDisplay</span><span class='profile-level-detail'>$lvlPass/$lvlTotal pass</span></div>"
+                }
+            }
+
+            $null = $html.AppendLine("<div class='stat-card fw-card $scoreClass' data-fw='$fwId' data-catalog-total='$catalogTotal'$tooltip><div class='stat-value'>$scoreDisplay</div><div class='stat-label'>$($fw.label)</div><div class='stat-sublabel'>$coverageLabel</div><div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div><div class='coverage-label'>$coveragePct% coverage</div>$levelBreakdownHtml</div>")
         }
         else {
             # Non-profile card -- pass rate as primary, coverage bar as secondary

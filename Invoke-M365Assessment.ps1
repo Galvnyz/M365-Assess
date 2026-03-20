@@ -70,6 +70,9 @@
     Limit the compliance overview to specific framework families.
 .PARAMETER CustomBranding
     Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor.
+.PARAMETER FrameworkExport
+    Generate standalone per-framework HTML catalog exports. Specify framework
+    families or 'All'. Output files are named _<Framework>-Catalog_<tenant>.html.
 .PARAMETER CisBenchmarkVersion
     CIS benchmark version to use for framework rendering. Defaults to 'v6'
     (CIS Microsoft 365 v6.0.1). Set to 'v7' when CIS v7.0 data is available.
@@ -174,6 +177,10 @@ param(
 
     [Parameter()]
     [hashtable]$CustomBranding,
+
+    [Parameter()]
+    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','All')]
+    [string[]]$FrameworkExport,
 
     [Parameter()]
     [ValidatePattern('^v\d+$')]
@@ -2424,6 +2431,7 @@ if (Test-Path -Path $reportScriptPath) {
         if ($SkipPdf) { $reportParams['SkipPdf'] = $true }
         if ($FrameworkFilter) { $reportParams['FrameworkFilter'] = $FrameworkFilter }
         if ($CustomBranding) { $reportParams['CustomBranding'] = $CustomBranding }
+        if ($FrameworkExport) { $reportParams['FrameworkExport'] = $FrameworkExport }
         $reportParams['CisFrameworkId'] = "cis-m365-$CisBenchmarkVersion"
 
         $reportOutput = & $reportScriptPath @reportParams

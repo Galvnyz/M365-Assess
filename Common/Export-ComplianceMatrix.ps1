@@ -219,6 +219,63 @@ $summaryParams = @{
 }
 $summaryData | Export-Excel @summaryParams
 
+# Sheet 3 - Grouped by Framework (CIS M365 profile-compliance breakdown)
+$cisFw = $allFrameworks | Where-Object { $_.frameworkId -like 'cis-m365-*' } | Select-Object -First 1
+if ($cisFw -and $findings.Count -gt 0) {
+    $catalogPath = Join-Path -Path $PSScriptRoot -ChildPath 'Export-FrameworkCatalog.ps1'
+    if (Test-Path -Path $catalogPath) {
+        . $catalogPath
+        # Build finding objects compatible with the scoring engine
+        $catalogFindings = @($sortedFindings | ForEach-Object {
+            $fwHash = @{}
+            foreach ($fwDef in $allFrameworks) {
+                $baseId = $_.CheckId -replace '\.\d+$', ''
+                if ($controlRegistry.ContainsKey($baseId) -and $controlRegistry[$baseId].frameworks) {
+                    $fwObj = $controlRegistry[$baseId].frameworks
+                    if ($fwObj.PSObject.Properties.Name -contains $fwDef.frameworkId) {
+                        $fwHash[$fwDef.frameworkId] = $fwObj.($fwDef.frameworkId)
+                    }
+                }
+            }
+            [PSCustomObject]@{
+                CheckId      = $_.CheckId
+                Setting      = $_.Setting
+                Status       = $_.Status
+                RiskSeverity = 'Medium'
+                Section      = $_.Source
+                Frameworks   = $fwHash
+            }
+        })
+
+        $groupedResult = Export-FrameworkCatalog -Findings $catalogFindings -Framework $cisFw -ControlRegistry $controlRegistry -Mode Grouped -WarningAction SilentlyContinue
+        if ($groupedResult -and $groupedResult.Groups) {
+            $groupedRows = [System.Collections.Generic.List[PSCustomObject]]::new()
+            foreach ($group in $groupedResult.Groups) {
+                $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
+                $groupedRows.Add([PSCustomObject][ordered]@{
+                    Profile      = $group.Key
+                    Label        = $group.Label
+                    Total        = $group.Total
+                    Mapped       = $group.Mapped
+                    Passed       = $group.Passed
+                    Failed       = $group.Failed
+                    Other        = $group.Other
+                    'Pass Rate %' = $grpPassRate
+                })
+            }
+            $groupedParams = @{
+                Path          = $outputFile
+                WorksheetName = 'Grouped by Profile'
+                AutoSize      = $true
+                FreezeTopRow  = $true
+                BoldTopRow    = $true
+                TableStyle    = 'Medium9'
+            }
+            $groupedRows | Export-Excel @groupedParams
+        }
+    }
+}
+
 # ------------------------------------------------------------------
 # Apply conditional formatting
 # ------------------------------------------------------------------
