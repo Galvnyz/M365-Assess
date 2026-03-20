@@ -12,6 +12,7 @@
 
 **Read-only Microsoft 365 security assessment for IT consultants and administrators**
 
+[![CI](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml/badge.svg)](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml)
 [![PowerShell 7.x](https://img.shields.io/badge/PowerShell-7.x-blue?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 [![Read-Only](https://img.shields.io/badge/Operations-Read--Only-brightgreen)](.)
 [![Version](https://img.shields.io/badge/version-0.9.7-blue)](.)
@@ -276,6 +277,26 @@ Connect-Service -Service Graph -Scopes 'User.Read.All','UserAuthenticationMethod
 
 # Run a single collector
 .\Entra\Get-MfaReport.ps1
+```
+
+### Standalone Scripts
+
+Individual collectors and report generation can run independently of the full assessment:
+
+| Script | Purpose |
+|--------|---------|
+| `Entra/Get-MfaReport.ps1` | MFA enrollment and capability report |
+| `Entra/Get-InactiveUsers.ps1` | Users inactive for 90+ days |
+| `Exchange-Online/Get-MailFlowReport.ps1` | Mail flow rules and connectors |
+| `Common/Export-AssessmentReport.ps1` | Regenerate HTML report from existing CSVs |
+| `Common/Export-ComplianceMatrix.ps1` | Generate XLSX compliance matrix |
+
+Each collector requires a Graph or Exchange Online connection first:
+
+```powershell
+. .\Common\Connect-Service.ps1
+Connect-Service -Service Graph -Scopes 'User.Read.All','AuditLog.Read.All'
+.\Entra\Get-InactiveUsers.ps1 -DaysInactive 90
 ```
 
 ## Getting Help
