@@ -35,14 +35,32 @@ function Export-FrameworkCatalog {
         [Parameter()][string]$TenantName
     )
 
-    if ($Mode -eq 'Inline') {
-        return '<!-- Inline mode not yet implemented -->'
-    }
     if ($Mode -eq 'Standalone') {
         return '<!-- Standalone mode not yet implemented -->'
     }
 
-    # --- Grouped mode ---
+    # --- Common: resolve framework mappings and score ---
+    $scoredResult = Invoke-FrameworkScoring -Findings $Findings -Framework $Framework -ControlRegistry $ControlRegistry
+
+    if ($Mode -eq 'Grouped') {
+        return $scoredResult
+    }
+
+    # --- Inline mode: render HTML fragment ---
+    return ConvertTo-CatalogInlineHtml -Framework $Framework -ScoredResult $scoredResult -MappedFindings $scoredResult.MappedFindings
+}
+
+# ---------------------------------------------------------------------------
+# Private: run scoring engine and return GroupedResult + MappedFindings
+# ---------------------------------------------------------------------------
+function Invoke-FrameworkScoring {
+    [CmdletBinding()]
+    param(
+        [PSCustomObject[]]$Findings,
+        [hashtable]$Framework,
+        [hashtable]$ControlRegistry
+    )
+
     $fwId = $Framework.frameworkId
     $scoringMethod = $Framework.scoringMethod
     Write-Verbose "Export-FrameworkCatalog: Processing '$fwId' with scoring method '$scoringMethod'"
@@ -52,7 +70,6 @@ function Export-FrameworkCatalog {
     foreach ($finding in $Findings) {
         $fwMapping = $null
 
-        # Try finding.Frameworks.$fwId first
         if ($finding.Frameworks -and $finding.Frameworks.PSObject.Properties.Name -contains $fwId) {
             $fwMapping = $finding.Frameworks.$fwId
         }
@@ -60,7 +77,6 @@ function Export-FrameworkCatalog {
             $fwMapping = $finding.Frameworks[$fwId]
         }
 
-        # Fallback to registry
         if (-not $fwMapping -and $finding.CheckId -and $ControlRegistry.ContainsKey($finding.CheckId)) {
             $regEntry = $ControlRegistry[$finding.CheckId]
             if ($regEntry.frameworks -and $regEntry.frameworks.PSObject.Properties.Name -contains $fwId) {
@@ -98,7 +114,7 @@ function Export-FrameworkCatalog {
 
     Write-Verbose "Export-FrameworkCatalog: Mapped $($mappedFindings.Count) of $($Findings.Count) findings to '$fwId'"
 
-    # Validate scoring method; fall back to control-coverage if unrecognized
+    # Validate scoring method
     $validMethods = @(
         'profile-compliance', 'function-coverage', 'control-coverage',
         'technique-coverage', 'maturity-level', 'severity-coverage',
@@ -129,13 +145,129 @@ function Export-FrameworkCatalog {
     $passRate = if ($totalMapped -gt 0) { [math]::Round($totalPassed / $totalMapped, 2) } else { 0 }
 
     return @{
-        Groups  = @($groups)
-        Summary = @{
+        Groups         = @($groups)
+        Summary        = @{
             TotalControls  = [int]$Framework.totalControls
             MappedControls = $totalMapped
             PassRate       = $passRate
         }
+        MappedFindings = $mappedFindings
     }
+}
+
+# ---------------------------------------------------------------------------
+# Private: render Inline HTML fragment for a single framework catalog
+# ---------------------------------------------------------------------------
+function ConvertTo-CatalogInlineHtml {
+    [CmdletBinding()]
+    param(
+        [hashtable]$Framework,
+        [hashtable]$ScoredResult,
+        [System.Collections.Generic.List[hashtable]]$MappedFindings
+    )
+
+    $fwId = $Framework.frameworkId
+    $fwLabel = $Framework.label
+    $fwCss = if ($Framework.css) { $Framework.css } else { 'fw-default' }
+    $summary = $ScoredResult.Summary
+    $groups = $ScoredResult.Groups
+
+    $html = [System.Text.StringBuilder]::new(4096)
+
+    # Outer collapsible section
+    $null = $html.AppendLine("<details class='section catalog-section' data-fw='$fwId'>")
+    $null = $html.AppendLine("<summary><h3><span class='fw-tag $fwCss'>$fwLabel</span> Framework Catalog</h3></summary>")
+
+    # Zero-mapped placeholder
+    if ($summary.MappedControls -eq 0) {
+        $null = $html.AppendLine("<p class='catalog-empty'>No assessed findings map to this framework.</p>")
+        $null = $html.AppendLine("</details>")
+        return $html.ToString()
+    }
+
+    # Overall summary bar
+    $passRatePct = [math]::Round($summary.PassRate * 100, 1)
+    $passClass = if ($passRatePct -ge 80) { 'success' } elseif ($passRatePct -ge 60) { 'warning' } else { 'danger' }
+    $coveragePct = if ($summary.TotalControls -gt 0) { [math]::Min(100, [math]::Round(($summary.MappedControls / $summary.TotalControls) * 100, 0)) } else { 0 }
+
+    $null = $html.AppendLine("<div class='catalog-summary'>")
+    $null = $html.AppendLine("<div class='catalog-stats'>")
+    $null = $html.AppendLine("<span class='catalog-stat'><strong>Pass Rate:</strong> <span class='badge badge-$passClass'>$passRatePct%</span></span>")
+    $null = $html.AppendLine("<span class='catalog-stat'><strong>Mapped:</strong> $($summary.MappedControls) of $($summary.TotalControls) controls</span>")
+    $null = $html.AppendLine("<span class='catalog-stat'><strong>Scoring:</strong> $($Framework.scoringMethod)</span>")
+    $null = $html.AppendLine("</div>")
+    if ($summary.TotalControls -gt 0) {
+        $null = $html.AppendLine("<div class='coverage-bar'><div class='coverage-fill' style='width: $coveragePct%'></div></div>")
+        $null = $html.AppendLine("<div class='coverage-label'>$coveragePct% coverage</div>")
+    }
+    $null = $html.AppendLine("</div>")
+
+    # Group breakdown table
+    $null = $html.AppendLine("<table class='catalog-groups'><thead><tr>")
+    $null = $html.AppendLine("<th>Group</th><th>Label</th><th>Mapped</th><th>Passed</th><th>Failed</th><th>Other</th><th>Pass Rate</th>")
+    $null = $html.AppendLine("</tr></thead><tbody>")
+
+    foreach ($group in $groups) {
+        $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
+        $grpClass = if ($group.Mapped -eq 0) { '' } elseif ($grpPassRate -ge 80) { 'success' } elseif ($grpPassRate -ge 60) { 'warning' } else { 'danger' }
+
+        $null = $html.AppendLine("<tr>")
+        $null = $html.AppendLine("<td><span class='fw-tag $fwCss'>$($group.Key)</span></td>")
+        $null = $html.AppendLine("<td>$($group.Label)</td>")
+        $totalDisplay = if ($group.Total -gt 0) { "$($group.Mapped)/$($group.Total)" } else { "$($group.Mapped)" }
+        $null = $html.AppendLine("<td>$totalDisplay</td>")
+        $null = $html.AppendLine("<td>$($group.Passed)</td>")
+        $null = $html.AppendLine("<td>$($group.Failed)</td>")
+        $null = $html.AppendLine("<td>$($group.Other)</td>")
+        $passDisplay = if ($group.Mapped -gt 0) { "$grpPassRate%" } else { '&mdash;' }
+        $badgeCss = switch ($grpClass) { 'success' { 'badge-success' } 'warning' { 'badge-warning' } 'danger' { 'badge-failed' } default { 'badge-neutral' } }
+        $null = $html.AppendLine("<td><span class='badge $badgeCss'>$passDisplay</span></td>")
+        $null = $html.AppendLine("</tr>")
+    }
+
+    $null = $html.AppendLine("</tbody></table>")
+
+    # Findings detail table (collapsible)
+    $null = $html.AppendLine("<details class='catalog-findings-detail'>")
+    $null = $html.AppendLine("<summary><strong>Detailed Findings ($($summary.MappedControls) mapped)</strong></summary>")
+    $null = $html.AppendLine("<table class='cis-table catalog-findings'><thead><tr>")
+    $null = $html.AppendLine("<th>Status</th><th>Check ID</th><th>Setting</th><th>Control ID</th><th>Severity</th>")
+    $null = $html.AppendLine("</tr></thead><tbody>")
+
+    foreach ($mf in $MappedFindings) {
+        $finding = $mf.Finding
+        $statusBadge = switch ($finding.Status) {
+            'Pass'    { 'badge-success' }
+            'Fail'    { 'badge-failed' }
+            'Warning' { 'badge-warning' }
+            'Review'  { 'badge-info' }
+            'Info'    { 'badge-neutral' }
+            default   { 'badge-neutral' }
+        }
+        $severityBadge = switch ($finding.RiskSeverity) {
+            'Critical' { 'badge-critical' }
+            'High'     { 'badge-failed' }
+            'Medium'   { 'badge-warning' }
+            'Low'      { 'badge-info' }
+            default    { 'badge-neutral' }
+        }
+        $controlDisplay = $mf.ControlId -replace ';', '; '
+        $rowClass = if ($finding.Status -eq 'Pass') { 'cis-row-pass' } elseif ($finding.Status -eq 'Fail') { 'cis-row-fail' } else { '' }
+
+        $null = $html.AppendLine("<tr class='$rowClass'>")
+        $null = $html.AppendLine("<td><span class='badge $statusBadge'>$($finding.Status)</span></td>")
+        $null = $html.AppendLine("<td class='cis-id'>$($finding.CheckId)</td>")
+        $null = $html.AppendLine("<td>$($finding.Setting)</td>")
+        $null = $html.AppendLine("<td><span class='fw-tag $fwCss'>$controlDisplay</span></td>")
+        $null = $html.AppendLine("<td><span class='badge $severityBadge'>$($finding.RiskSeverity)</span></td>")
+        $null = $html.AppendLine("</tr>")
+    }
+
+    $null = $html.AppendLine("</tbody></table>")
+    $null = $html.AppendLine("</details>")
+    $null = $html.AppendLine("</details>")
+
+    return $html.ToString()
 }
 
 # ---------------------------------------------------------------------------

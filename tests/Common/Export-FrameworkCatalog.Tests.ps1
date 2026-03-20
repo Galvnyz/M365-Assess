@@ -152,6 +152,65 @@ Describe 'Export-FrameworkCatalog - Scoring Engine' {
         }
     }
 
+    Context 'Inline mode - HTML output' {
+        BeforeAll {
+            $inlineCheckIds = @(
+                'ENTRA-CLOUDADMIN-001', 'CA-MFA-ADMIN-001', 'CA-LEGACYAUTH-001',
+                'EXO-AUDIT-001', 'EXO-FORWARD-001', 'DEFENDER-SAFELINK-001',
+                'SPO-SHARING-001', 'TEAMS-EXTERNAL-001', 'DNS-SPF-001',
+                'ENTRA-CONSENT-001', 'ENTRA-PASSWORD-001', 'CA-MFA-ALL-001'
+            ) | Where-Object { $registry.ContainsKey($_) }
+            $inlineFindings = @($inlineCheckIds | ForEach-Object { New-MockFinding -CheckId $_ })
+        }
+
+        It 'Returns HTML string containing framework label' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $html = Export-FrameworkCatalog -Findings $inlineFindings -Framework $fw -ControlRegistry $registry -Mode Inline
+            $html | Should -BeOfType [string]
+            $html | Should -Match 'NIST CSF'
+            $html | Should -Match '<details'
+            $html | Should -Match 'badge-success|badge-failed'
+        }
+
+        It 'Returns placeholder message for zero mapped findings' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $fakeFindings = @([PSCustomObject]@{
+                CheckId = 'FAKE-001'; Setting = 'Fake'; Status = 'Pass'
+                RiskSeverity = 'Low'; Section = 'Test'; Frameworks = @{}
+            })
+            $html = Export-FrameworkCatalog -Findings $fakeFindings -Framework $fw -ControlRegistry $registry -Mode Inline
+            $html | Should -Match 'No assessed findings map to this framework'
+        }
+
+        It 'Contains coverage bar with percentage' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $html = Export-FrameworkCatalog -Findings $inlineFindings -Framework $fw -ControlRegistry $registry -Mode Inline
+            $html | Should -Match 'coverage-bar'
+            $html | Should -Match 'coverage-fill'
+        }
+
+        It 'Contains group breakdown table rows' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $html = Export-FrameworkCatalog -Findings $inlineFindings -Framework $fw -ControlRegistry $registry -Mode Inline
+            $html | Should -Match '<table'
+            $html | Should -Match '<tr'
+        }
+
+        It 'Contains findings detail table with CheckId column' {
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'nist-csf' }
+            $html = Export-FrameworkCatalog -Findings $inlineFindings -Framework $fw -ControlRegistry $registry -Mode Inline
+            $html | Should -Match 'CheckId|Check ID'
+        }
+
+        It 'Inline HTML for all 14 frameworks is valid' {
+            foreach ($fw in $allFrameworks) {
+                $html = Export-FrameworkCatalog -Findings $inlineFindings -Framework $fw -ControlRegistry $registry -Mode Inline -WarningAction SilentlyContinue
+                $html | Should -BeOfType [string] -Because "$($fw.frameworkId) should return HTML"
+                $html | Should -Match $fw.label -Because "$($fw.frameworkId) HTML should contain its label"
+            }
+        }
+    }
+
     Context 'Integration - all 14 frameworks' {
         It 'Produces valid GroupedResult for every framework' {
             $checkIds = @(
