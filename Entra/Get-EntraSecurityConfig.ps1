@@ -1500,17 +1500,13 @@ try {
     Write-Verbose "Checking password protection on-premises setting..."
 
     # Check if tenant uses directory sync (hybrid) -- on-prem check is irrelevant for cloud-only
+    # Reuse $orgSettings from section 14 (LinkedIn check) which fetches /beta/organization/{tenantId}
     $isCloudOnly = $true
-    try {
-        $orgCheck = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/organization' -ErrorAction Stop
-        $orgList = if ($orgCheck -and $orgCheck['value']) { @($orgCheck['value']) } else { @() }
-        if ($orgList.Count -gt 0 -and $orgList[0]['onPremisesSyncEnabled'] -eq $true) {
-            $isCloudOnly = $false
-        }
+    if ($orgSettings -and $orgSettings['onPremisesSyncEnabled'] -eq $true) {
+        $isCloudOnly = $false
     }
-    catch {
-        Write-Verbose "Could not check directory sync status: $_"
-        $isCloudOnly = $null  # Unknown -- fall through to normal check
+    elseif (-not $orgSettings) {
+        $isCloudOnly = $null  # Org data not available -- fall through to normal check
     }
 
     if ($isCloudOnly -eq $true) {

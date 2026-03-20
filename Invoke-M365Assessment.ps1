@@ -2066,7 +2066,7 @@ foreach ($sectionName in $Section) {
     # DNS Authentication: deferred until after all sections complete
     if ($sectionName -eq 'Email') {
         $script:runDnsAuthentication = $true
-        # Cache accepted domains for deferred DNS checks (avoids EXO session timeout)
+        # Cache accepted domains and DKIM data for deferred DNS checks (avoids EXO session timeout)
         if (-not $SkipConnection) {
             try {
                 $script:cachedAcceptedDomains = @(Get-AcceptedDomain -ErrorAction Stop)
@@ -2074,6 +2074,13 @@ foreach ($sectionName in $Section) {
             }
             catch {
                 Write-AssessmentLog -Level WARN -Message "Could not cache accepted domains: $($_.Exception.Message)" -Section 'Email'
+            }
+            try {
+                $script:cachedDkimConfigs = @(Get-DkimSigningConfig -ErrorAction Stop)
+                Write-AssessmentLog -Level INFO -Message "Cached $($script:cachedDkimConfigs.Count) DKIM config(s) for deferred DNS" -Section 'Email'
+            }
+            catch {
+                Write-Verbose "Could not cache DKIM configs: $($_.Exception.Message)"
             }
         }
     }
@@ -2117,7 +2124,8 @@ if ($script:runDnsAuthentication) {
     Write-AssessmentLog -Level INFO -Message "Running: $($dnsSecConfigCollector.Label)" -Section 'Email' -Collector $dnsSecConfigCollector.Label
     try {
         $dnsSecScriptPath = Join-Path -Path $projectRoot -ChildPath 'Exchange-Online\Get-DnsSecurityConfig.ps1'
-        $dnsSecResults = & $dnsSecScriptPath -AcceptedDomains $acceptedDomains
+        $dnsSecDkimData = if ($script:cachedDkimConfigs) { $script:cachedDkimConfigs } else { $null }
+        $dnsSecResults = & $dnsSecScriptPath -AcceptedDomains $acceptedDomains -DkimConfigs $dnsSecDkimData
         if ($dnsSecResults) {
             $dnsSecItemCount = Export-AssessmentCsv -Path $dnsSecCsvPath -Data @($dnsSecResults) -Label $dnsSecConfigCollector.Label
             $dnsSecStatus = 'Complete'

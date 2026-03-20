@@ -6,12 +6,15 @@
     configuration. Produces pass/fail verdicts via Add-Setting for each protocol.
 
     Requires an active Exchange Online connection for Get-AcceptedDomain and
-    Get-DkimSigningConfig cmdlets, unless -AcceptedDomains is provided.
+    Get-DkimSigningConfig cmdlets, unless pre-cached data is provided via parameters.
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned to the pipeline.
 .PARAMETER AcceptedDomains
     Pre-cached accepted domain objects from the orchestrator. When provided,
     skips the Get-AcceptedDomain call (avoids EXO session timeout issues).
+.PARAMETER DkimConfigs
+    Pre-cached DKIM signing configuration objects from the orchestrator. When provided,
+    skips the Get-DkimSigningConfig call (EXO may be disconnected during deferred DNS checks).
 .EXAMPLE
     PS> . .\Common\Connect-Service.ps1
     PS> Connect-Service -Service ExchangeOnline
@@ -33,7 +36,10 @@ param(
     [string]$OutputPath,
 
     [Parameter()]
-    [object[]]$AcceptedDomains
+    [object[]]$AcceptedDomains,
+
+    [Parameter()]
+    [object[]]$DkimConfigs
 )
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
@@ -181,14 +187,16 @@ else {
     # ------------------------------------------------------------------
     try {
         Write-Verbose "Checking DKIM configuration..."
-        # Use try/catch instead of Get-Command guard -- Get-DkimSigningConfig is lazily
-        # loaded in REST-based EXO sessions and won't appear via Get-Command until invoked.
-        $dkimConfigs = Get-DkimSigningConfig -ErrorAction Stop
+        # Use pre-cached DKIM data when available (orchestrator caches before EXO disconnect).
+        # Fall back to direct cmdlet call with try/catch for standalone execution.
+        if (-not $DkimConfigs) {
+            $DkimConfigs = @(Get-DkimSigningConfig -ErrorAction Stop)
+        }
         $dkimMissing = @()
         $dkimEnabled = @()
         foreach ($domain in $authDomains) {
             $domainName = $domain.DomainName
-            $config = $dkimConfigs | Where-Object { $_.Domain -eq $domainName }
+            $config = $DkimConfigs | Where-Object { $_.Domain -eq $domainName }
             if ($config -and $config.Enabled) { $dkimEnabled += $domainName }
             else { $dkimMissing += $domainName }
         }
