@@ -137,16 +137,10 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'Frameworks\s*=\s*\$fwHash'
         }
 
-        It 'Should retain legacy flat properties for XLSX compat' {
-            $html | Should -Match 'CisE3L1'
-            $html | Should -Match 'Nist80053Low'
-            $html | Should -Match 'Nist80053Moderate'
-            $html | Should -Match 'Nist80053High'
-            $html | Should -Match 'Nist80053Privacy'
-        }
-
-        It 'Should include legacy compat comment' {
-            $html | Should -Match 'Legacy compat.*#138'
+        It 'Should not contain legacy flat framework properties' {
+            $html | Should -Not -Match 'CisE3L1\s*='
+            $html | Should -Not -Match 'Nist80053Low\s*='
+            $html | Should -Not -Match 'Nist80053Privacy\s*='
         }
 
         It 'Should not contain hardcoded frameworkLookup hashtable' {

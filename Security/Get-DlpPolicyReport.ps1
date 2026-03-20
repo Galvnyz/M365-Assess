@@ -41,206 +41,171 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Verify Purview/Compliance connection
-try {
-    $null = Get-Command -Name Get-Label -ErrorAction Stop
-    # Test that the session is actually active by calling a lightweight cmdlet
-    $null = Get-Label -ErrorAction Stop | Select-Object -First 1
-}
-catch {
-    # Try an alternative check - the Get-Label command may exist but the session may not be active
-    try {
-        $null = Get-Command -Name Get-DlpCompliancePolicy -ErrorAction Stop
-    }
-    catch {
-        Write-Error "Not connected to Purview (Security & Compliance). Run Connect-Service -Service Purview first."
-        return
-    }
-}
-
 $results = [System.Collections.Generic.List[PSCustomObject]]::new()
 
 # --- DLP Compliance Policies ---
-$dlpPoliciesAvailable = $true
+Write-Verbose "Retrieving DLP compliance policies..."
 try {
-    $null = Get-Command -Name Get-DlpCompliancePolicy -ErrorAction Stop
+    $dlpPolicies = Get-DlpCompliancePolicy -ErrorAction Stop
+
+    if (-not $dlpPolicies -or @($dlpPolicies).Count -eq 0) {
+        Write-Verbose "No DLP compliance policies found."
+    }
+    else {
+        foreach ($policy in @($dlpPolicies)) {
+            # Build a locations summary from the workload-specific location properties
+            $locations = [System.Collections.Generic.List[string]]::new()
+
+            if ($policy.ExchangeLocation -and @($policy.ExchangeLocation).Count -gt 0) {
+                $locations.Add("Exchange")
+            }
+            if ($policy.SharePointLocation -and @($policy.SharePointLocation).Count -gt 0) {
+                $locations.Add("SharePoint")
+            }
+            if ($policy.OneDriveLocation -and @($policy.OneDriveLocation).Count -gt 0) {
+                $locations.Add("OneDrive")
+            }
+            if ($policy.TeamsLocation -and @($policy.TeamsLocation).Count -gt 0) {
+                $locations.Add("Teams")
+            }
+            if ($policy.EndpointDlpLocation -and @($policy.EndpointDlpLocation).Count -gt 0) {
+                $locations.Add("Endpoints")
+            }
+
+            $locationSummary = if ($locations.Count -gt 0) {
+                $locations -join ', '
+            }
+            else {
+                'None'
+            }
+
+            $mode = if ($policy.Mode) { $policy.Mode } else { 'N/A' }
+            $enabled = if ($null -ne $policy.Enabled) { $policy.Enabled } else { $mode -ne 'Disable' }
+
+            $details = "Mode=$mode; Locations=$locationSummary"
+
+            $results.Add([PSCustomObject]@{
+                ItemType = 'DlpPolicy'
+                Name     = $policy.Name
+                Enabled  = $enabled
+                Priority = if ($null -ne $policy.Priority) { $policy.Priority } else { 'N/A' }
+                Details  = $details
+            })
+        }
+        Write-Verbose "Found $(@($dlpPolicies).Count) DLP compliance policies."
+    }
 }
 catch {
-    $dlpPoliciesAvailable = $false
-    Write-Warning "Get-DlpCompliancePolicy cmdlet not found. DLP features may not be available for this tenant. Skipping DLP policies."
-}
-
-if ($dlpPoliciesAvailable) {
-    Write-Verbose "Retrieving DLP compliance policies..."
-    try {
-        $dlpPolicies = Get-DlpCompliancePolicy -ErrorAction Stop
-
-        if (-not $dlpPolicies -or @($dlpPolicies).Count -eq 0) {
-            Write-Verbose "No DLP compliance policies found."
-        }
-        else {
-            foreach ($policy in @($dlpPolicies)) {
-                # Build a locations summary from the workload-specific location properties
-                $locations = [System.Collections.Generic.List[string]]::new()
-
-                if ($policy.ExchangeLocation -and @($policy.ExchangeLocation).Count -gt 0) {
-                    $locations.Add("Exchange")
-                }
-                if ($policy.SharePointLocation -and @($policy.SharePointLocation).Count -gt 0) {
-                    $locations.Add("SharePoint")
-                }
-                if ($policy.OneDriveLocation -and @($policy.OneDriveLocation).Count -gt 0) {
-                    $locations.Add("OneDrive")
-                }
-                if ($policy.TeamsLocation -and @($policy.TeamsLocation).Count -gt 0) {
-                    $locations.Add("Teams")
-                }
-                if ($policy.EndpointDlpLocation -and @($policy.EndpointDlpLocation).Count -gt 0) {
-                    $locations.Add("Endpoints")
-                }
-
-                $locationSummary = if ($locations.Count -gt 0) {
-                    $locations -join ', '
-                }
-                else {
-                    'None'
-                }
-
-                $mode = if ($policy.Mode) { $policy.Mode } else { 'N/A' }
-                $enabled = if ($null -ne $policy.Enabled) { $policy.Enabled } else { $mode -ne 'Disable' }
-
-                $details = "Mode=$mode; Locations=$locationSummary"
-
-                $results.Add([PSCustomObject]@{
-                    ItemType = 'DlpPolicy'
-                    Name     = $policy.Name
-                    Enabled  = $enabled
-                    Priority = if ($null -ne $policy.Priority) { $policy.Priority } else { 'N/A' }
-                    Details  = $details
-                })
-            }
-            Write-Verbose "Found $(@($dlpPolicies).Count) DLP compliance policies."
-        }
+    if ($_.Exception.Message -match 'is not recognized') {
+        Write-Warning "Get-DlpCompliancePolicy not available. Skipping DLP policies."
     }
-    catch {
+    else {
         Write-Warning "Failed to retrieve DLP compliance policies: $_"
     }
 }
 
 # --- DLP Compliance Rules ---
-$dlpRulesAvailable = $true
+Write-Verbose "Retrieving DLP compliance rules..."
 try {
-    $null = Get-Command -Name Get-DlpComplianceRule -ErrorAction Stop
-}
-catch {
-    $dlpRulesAvailable = $false
-    Write-Warning "Get-DlpComplianceRule cmdlet not found. Skipping DLP rules."
-}
+    $dlpRules = Get-DlpComplianceRule -ErrorAction Stop
 
-if ($dlpRulesAvailable) {
-    Write-Verbose "Retrieving DLP compliance rules..."
-    try {
-        $dlpRules = Get-DlpComplianceRule -ErrorAction Stop
+    if (-not $dlpRules -or @($dlpRules).Count -eq 0) {
+        Write-Verbose "No DLP compliance rules found."
+    }
+    else {
+        foreach ($rule in @($dlpRules)) {
+            # Build a conditions summary
+            $conditionParts = [System.Collections.Generic.List[string]]::new()
 
-        if (-not $dlpRules -or @($dlpRules).Count -eq 0) {
-            Write-Verbose "No DLP compliance rules found."
-        }
-        else {
-            foreach ($rule in @($dlpRules)) {
-                # Build a conditions summary
-                $conditionParts = [System.Collections.Generic.List[string]]::new()
-
-                if ($rule.ContentContainsSensitiveInformation) {
-                    $sensitiveTypes = @($rule.ContentContainsSensitiveInformation)
-                    $typeNames = foreach ($st in $sensitiveTypes) {
-                        if ($st.Name) { $st.Name } elseif ($st.name) { $st.name } else { 'SensitiveInfo' }
-                    }
-                    $conditionParts.Add("SensitiveInfo=($($typeNames -join ', '))")
+            if ($rule.ContentContainsSensitiveInformation) {
+                $sensitiveTypes = @($rule.ContentContainsSensitiveInformation)
+                $typeNames = foreach ($st in $sensitiveTypes) {
+                    if ($st.Name) { $st.Name } elseif ($st.name) { $st.name } else { 'SensitiveInfo' }
                 }
+                $conditionParts.Add("SensitiveInfo=($($typeNames -join ', '))")
+            }
 
-                if ($rule.ParentPolicyName) {
-                    $conditionParts.Add("Policy=$($rule.ParentPolicyName)")
-                }
+            if ($rule.ParentPolicyName) {
+                $conditionParts.Add("Policy=$($rule.ParentPolicyName)")
+            }
 
-                if ($rule.BlockAccess) {
-                    $conditionParts.Add("BlockAccess=$($rule.BlockAccess)")
-                }
+            if ($rule.BlockAccess) {
+                $conditionParts.Add("BlockAccess=$($rule.BlockAccess)")
+            }
 
-                if ($rule.NotifyUser) {
-                    $notifyUsers = if ($rule.NotifyUser -is [System.Collections.IEnumerable] -and $rule.NotifyUser -isnot [string]) {
-                        ($rule.NotifyUser | ForEach-Object { $_.ToString() }) -join ', '
-                    }
-                    else {
-                        [string]$rule.NotifyUser
-                    }
-                    $conditionParts.Add("NotifyUser=$notifyUsers")
-                }
-
-                $conditionSummary = if ($conditionParts.Count -gt 0) {
-                    $conditionParts -join '; '
+            if ($rule.NotifyUser) {
+                $notifyUsers = if ($rule.NotifyUser -is [System.Collections.IEnumerable] -and $rule.NotifyUser -isnot [string]) {
+                    ($rule.NotifyUser | ForEach-Object { $_.ToString() }) -join ', '
                 }
                 else {
-                    'No conditions specified'
+                    [string]$rule.NotifyUser
                 }
-
-                $enabled = if ($null -ne $rule.Disabled) { -not $rule.Disabled } else { $true }
-
-                $results.Add([PSCustomObject]@{
-                    ItemType = 'DlpRule'
-                    Name     = $rule.Name
-                    Enabled  = $enabled
-                    Priority = if ($null -ne $rule.Priority) { $rule.Priority } else { 'N/A' }
-                    Details  = $conditionSummary
-                })
+                $conditionParts.Add("NotifyUser=$notifyUsers")
             }
-            Write-Verbose "Found $(@($dlpRules).Count) DLP compliance rules."
+
+            $conditionSummary = if ($conditionParts.Count -gt 0) {
+                $conditionParts -join '; '
+            }
+            else {
+                'No conditions specified'
+            }
+
+            $enabled = if ($null -ne $rule.Disabled) { -not $rule.Disabled } else { $true }
+
+            $results.Add([PSCustomObject]@{
+                ItemType = 'DlpRule'
+                Name     = $rule.Name
+                Enabled  = $enabled
+                Priority = if ($null -ne $rule.Priority) { $rule.Priority } else { 'N/A' }
+                Details  = $conditionSummary
+            })
         }
+        Write-Verbose "Found $(@($dlpRules).Count) DLP compliance rules."
     }
-    catch {
+}
+catch {
+    if ($_.Exception.Message -match 'is not recognized') {
+        Write-Warning "Get-DlpComplianceRule not available. Skipping DLP rules."
+    }
+    else {
         Write-Warning "Failed to retrieve DLP compliance rules: $_"
     }
 }
 
 # --- Sensitivity Labels ---
-$labelsAvailable = $true
+Write-Verbose "Retrieving sensitivity labels..."
 try {
-    $null = Get-Command -Name Get-Label -ErrorAction Stop
+    $labels = Get-Label -ErrorAction Stop
+
+    if (-not $labels -or @($labels).Count -eq 0) {
+        Write-Verbose "No sensitivity labels found."
+    }
+    else {
+        foreach ($label in @($labels)) {
+            $tooltip = if ($label.Tooltip) { $label.Tooltip } else { 'No description' }
+            $parentLabel = if ($label.ParentId) { "ParentId=$($label.ParentId); " } else { '' }
+            $contentType = if ($label.ContentType) { "ContentType=$($label.ContentType); " } else { '' }
+
+            $details = "${parentLabel}${contentType}Tooltip=$tooltip"
+
+            $enabled = if ($null -ne $label.Disabled) { -not $label.Disabled } else { $true }
+
+            $results.Add([PSCustomObject]@{
+                ItemType = 'SensitivityLabel'
+                Name     = $label.DisplayName
+                Enabled  = $enabled
+                Priority = if ($null -ne $label.Priority) { $label.Priority } else { 'N/A' }
+                Details  = $details
+            })
+        }
+        Write-Verbose "Found $(@($labels).Count) sensitivity labels."
+    }
 }
 catch {
-    $labelsAvailable = $false
-    Write-Warning "Get-Label cmdlet not found. Sensitivity labels may not be available for this tenant. Skipping sensitivity labels."
-}
-
-if ($labelsAvailable) {
-    Write-Verbose "Retrieving sensitivity labels..."
-    try {
-        $labels = Get-Label -ErrorAction Stop
-
-        if (-not $labels -or @($labels).Count -eq 0) {
-            Write-Verbose "No sensitivity labels found."
-        }
-        else {
-            foreach ($label in @($labels)) {
-                $tooltip = if ($label.Tooltip) { $label.Tooltip } else { 'No description' }
-                $parentLabel = if ($label.ParentId) { "ParentId=$($label.ParentId); " } else { '' }
-                $contentType = if ($label.ContentType) { "ContentType=$($label.ContentType); " } else { '' }
-
-                $details = "${parentLabel}${contentType}Tooltip=$tooltip"
-
-                $enabled = if ($null -ne $label.Disabled) { -not $label.Disabled } else { $true }
-
-                $results.Add([PSCustomObject]@{
-                    ItemType = 'SensitivityLabel'
-                    Name     = $label.DisplayName
-                    Enabled  = $enabled
-                    Priority = if ($null -ne $label.Priority) { $label.Priority } else { 'N/A' }
-                    Details  = $details
-                })
-            }
-            Write-Verbose "Found $(@($labels).Count) sensitivity labels."
-        }
+    if ($_.Exception.Message -match 'is not recognized') {
+        Write-Warning "Get-Label not available. Skipping sensitivity labels."
     }
-    catch {
+    else {
         Write-Warning "Failed to retrieve sensitivity labels: $_"
     }
 }
