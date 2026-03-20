@@ -181,55 +181,54 @@ else {
     # ------------------------------------------------------------------
     try {
         Write-Verbose "Checking DKIM configuration..."
-        $dkimAvailable = Get-Command -Name Get-DkimSigningConfig -ErrorAction SilentlyContinue
-        if ($dkimAvailable) {
-            $dkimConfigs = Get-DkimSigningConfig -ErrorAction Stop
-            $dkimMissing = @()
-            $dkimEnabled = @()
-            foreach ($domain in $authDomains) {
-                $domainName = $domain.DomainName
-                $config = $dkimConfigs | Where-Object { $_.Domain -eq $domainName }
-                if ($config -and $config.Enabled) { $dkimEnabled += $domainName }
-                else { $dkimMissing += $domainName }
-            }
+        # Use try/catch instead of Get-Command guard -- Get-DkimSigningConfig is lazily
+        # loaded in REST-based EXO sessions and won't appear via Get-Command until invoked.
+        $dkimConfigs = Get-DkimSigningConfig -ErrorAction Stop
+        $dkimMissing = @()
+        $dkimEnabled = @()
+        foreach ($domain in $authDomains) {
+            $domainName = $domain.DomainName
+            $config = $dkimConfigs | Where-Object { $_.Domain -eq $domainName }
+            if ($config -and $config.Enabled) { $dkimEnabled += $domainName }
+            else { $dkimMissing += $domainName }
+        }
 
-            if ($dkimMissing.Count -eq 0) {
-                $settingParams = @{
-                    Category         = 'DNS Authentication'
-                    Setting          = 'DKIM Signing'
-                    CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled"
-                    RecommendedValue = 'DKIM for all domains'
-                    Status           = 'Pass'
-                    CheckId          = 'DNS-DKIM-001'
-                    Remediation      = 'No action needed.'
-                }
-                Add-Setting @settingParams
+        if ($dkimMissing.Count -eq 0) {
+            $settingParams = @{
+                Category         = 'DNS Authentication'
+                Setting          = 'DKIM Signing'
+                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled"
+                RecommendedValue = 'DKIM for all domains'
+                Status           = 'Pass'
+                CheckId          = 'DNS-DKIM-001'
+                Remediation      = 'No action needed.'
             }
-            else {
-                $settingParams = @{
-                    Category         = 'DNS Authentication'
-                    Setting          = 'DKIM Signing'
-                    CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')"
-                    RecommendedValue = 'DKIM for all domains'
-                    Status           = 'Fail'
-                    CheckId          = 'DNS-DKIM-001'
-                    Remediation      = "Enable DKIM for: $($dkimMissing -join ', '). Run: New-DkimSigningConfig -DomainName <domain> -Enabled `$true. Microsoft 365 Defender > Email & collaboration > Policies > DKIM."
-                }
-                Add-Setting @settingParams
-            }
+            Add-Setting @settingParams
         }
         else {
             $settingParams = @{
                 Category         = 'DNS Authentication'
                 Setting          = 'DKIM Signing'
-                CurrentValue     = 'Get-DkimSigningConfig cmdlet not available'
+                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')"
                 RecommendedValue = 'DKIM for all domains'
-                Status           = 'Review'
+                Status           = 'Fail'
                 CheckId          = 'DNS-DKIM-001'
-                Remediation      = 'Connect to Exchange Online PowerShell to check DKIM configuration.'
+                Remediation      = "Enable DKIM for: $($dkimMissing -join ', '). Run: New-DkimSigningConfig -DomainName <domain> -Enabled `$true. Microsoft 365 Defender > Email & collaboration > Policies > DKIM."
             }
             Add-Setting @settingParams
         }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $settingParams = @{
+            Category         = 'DNS Authentication'
+            Setting          = 'DKIM Signing'
+            CurrentValue     = 'Get-DkimSigningConfig cmdlet not available'
+            RecommendedValue = 'DKIM for all domains'
+            Status           = 'Review'
+            CheckId          = 'DNS-DKIM-001'
+            Remediation      = 'Connect to Exchange Online PowerShell to check DKIM configuration.'
+        }
+        Add-Setting @settingParams
     }
     catch {
         Write-Warning "Could not check DKIM configuration: $_"

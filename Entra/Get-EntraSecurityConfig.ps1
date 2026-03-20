@@ -1057,29 +1057,32 @@ catch {
     Write-Verbose "Could not check SKU licenses: $_"
 }
 
-try {
-    Write-Verbose "Checking PIM role assignments..."
-    $graphParams = @{
-        Method      = 'GET'
-        Uri         = '/beta/roleManagement/directory/roleAssignmentScheduleInstances'
-        ErrorAction = 'Stop'
-    }
-    $pimRoleAssignments = Invoke-MgGraphRequest @graphParams
+# Skip PIM API query entirely when no P2 license -- empty results from PIM APIs
+# on unlicensed tenants would be falsely interpreted as "no permanent assignments"
+if (-not $hasPimLicense) {
+    $pimAvailable = $false
+    $script:pimMessage = 'PIM not licensed (Entra ID P2 required) -- cannot verify role assignment permanence'
 }
-catch {
-    if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
-        $pimAvailable = $false
-        if ($hasPimLicense) {
+else {
+    try {
+        Write-Verbose "Checking PIM role assignments..."
+        $graphParams = @{
+            Method      = 'GET'
+            Uri         = '/beta/roleManagement/directory/roleAssignmentScheduleInstances'
+            ErrorAction = 'Stop'
+        }
+        $pimRoleAssignments = Invoke-MgGraphRequest @graphParams
+    }
+    catch {
+        if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
+            $pimAvailable = $false
             $script:pimMessage = 'PIM is available but not configured in this tenant'
         }
         else {
-            $script:pimMessage = 'Requires Entra ID P2 license (included in M365 E5)'
+            Write-Warning "Could not check PIM role assignments: $_"
+            $pimAvailable = $false
+            $script:pimMessage = "Could not check PIM: $($_.Exception.Message)"
         }
-    }
-    else {
-        Write-Warning "Could not check PIM role assignments: $_"
-        $pimAvailable = $false
-        $script:pimMessage = "Could not check PIM: $($_.Exception.Message)"
     }
 }
 
@@ -1477,7 +1480,7 @@ try {
 
     $settingParams = @{
         Category         = 'Organization Settings'
-        Setting          = 'User Consent for Applications'
+        Setting          = 'Org-Level App Consent Restriction'
         CurrentValue     = $(if ($isRestricted) { 'Restricted' } else { "Allowed: $($consentSetting -join ', ')" })
         RecommendedValue = 'Do not allow user consent'
         Status           = $(if ($isRestricted) { 'Pass' } else { 'Fail' })
@@ -1495,8 +1498,35 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking password protection on-premises setting..."
+
+    # Check if tenant uses directory sync (hybrid) -- on-prem check is irrelevant for cloud-only
+    $isCloudOnly = $true
+    try {
+        $orgCheck = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/organization' -ErrorAction Stop
+        $orgList = if ($orgCheck -and $orgCheck['value']) { @($orgCheck['value']) } else { @() }
+        if ($orgList.Count -gt 0 -and $orgList[0]['onPremisesSyncEnabled'] -eq $true) {
+            $isCloudOnly = $false
+        }
+    }
+    catch {
+        Write-Verbose "Could not check directory sync status: $_"
+        $isCloudOnly = $null  # Unknown -- fall through to normal check
+    }
+
+    if ($isCloudOnly -eq $true) {
+        $settingParams = @{
+            Category         = 'Password Management'
+            Setting          = 'Password Protection On-Premises'
+            CurrentValue     = 'Not applicable (cloud-only tenant)'
+            RecommendedValue = 'True (if hybrid)'
+            Status           = 'Info'
+            CheckId          = 'ENTRA-PASSWORD-005'
+            Remediation      = 'Not applicable for cloud-only tenants. If you configure hybrid identity in the future, enable on-premises password protection.'
+        }
+        Add-Setting @settingParams
+    }
     # Reuse $pwSettings from section 8 if available
-    if ($pwSettings) {
+    elseif ($pwSettings) {
         $onPremEntry = if ($pwSettings['values']) { $pwSettings['values'] | Where-Object { $_['name'] -eq 'EnableBannedPasswordCheckOnPremises' } } else { $null }
         $onPremEnabled = if ($onPremEntry) { $onPremEntry['value'] } else { $null }
         $settingParams = @{

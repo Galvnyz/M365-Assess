@@ -632,7 +632,7 @@ try {
             CurrentValue     = "$autoForward"
             RecommendedValue = 'Off'
             Status           = if ($autoForward -eq 'Off') { 'Pass' } else { 'Warning' }
-            CheckId          = 'EXO-FORWARD-001'
+            CheckId          = 'DEFENDER-OUTBOUND-001'
             Remediation      = 'Run: Set-HostedOutboundSpamFilterPolicy -Identity <PolicyName> -AutoForwardingMode Off. Security admin center > Anti-spam > Outbound policy > Auto-forwarding rules > Off.'
         }
         Add-Setting @settingParams

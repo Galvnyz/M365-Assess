@@ -15,6 +15,10 @@ Describe 'Get-CASecurityConfig' {
         # Default mock for all Graph API calls
         Mock Invoke-MgGraphRequest {
             param($Method, $Uri)
+            # Security Defaults disabled (CA policies are active)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $false }
+            }
             # Return CA policies that cover all 12 checks
             return @{ value = @(
                 # Policy 1: MFA for admin roles (check 1) + sign-in frequency (check 4)
@@ -255,8 +259,12 @@ Describe 'Get-CASecurityConfig - No Policies' {
 
         function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
 
-        # Return no CA policies
+        # Return no CA policies and Security Defaults disabled
         Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $false }
+            }
             return @{ value = @() }
         }
 
@@ -267,10 +275,70 @@ Describe 'Get-CASecurityConfig - No Policies' {
         $settings.Count | Should -BeGreaterThan 0
     }
 
-    It 'All checks should Fail when no policies exist' {
+    It 'All checks should Fail when no policies exist and SD is off' {
         foreach ($s in $settings) {
             $s.Status | Should -Be 'Fail' `
-                -Because "Setting '$($s.Setting)' should fail with no CA policies"
+                -Because "Setting '$($s.Setting)' should fail with no CA policies and SD off"
+        }
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - Security Defaults Enabled' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # Security Defaults on, no CA policies (typical for SD-enabled tenants)
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $true }
+            }
+            return @{ value = @() }
+        }
+
+        . "$PSScriptRoot/../../Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'Returns settings with Security Defaults enabled' {
+        $settings.Count | Should -BeGreaterThan 0
+    }
+
+    It 'SD-covered checks are Info when Security Defaults is enabled' {
+        $sdCoveredSettings = @(
+            'MFA Required for Admin Roles'
+            'MFA Required for All Users'
+            'Legacy Authentication Blocked'
+            'Sign-in Risk Blocks Medium+High'
+        )
+        foreach ($settingName in $sdCoveredSettings) {
+            $check = $settings | Where-Object { $_.Setting -eq $settingName }
+            $check | Should -Not -BeNullOrEmpty -Because "$settingName should exist"
+            $check.Status | Should -Be 'Info' `
+                -Because "$settingName should be Info when covered by Security Defaults"
+            $check.CurrentValue | Should -Match 'Security Defaults' `
+                -Because "$settingName should mention Security Defaults"
+        }
+    }
+
+    It 'Non-SD checks still Fail when Security Defaults is enabled' {
+        $nonSdSettings = @(
+            'User Risk Policy Configured'
+            'Managed Device Required'
+            'Device Code Flow Blocked'
+        )
+        foreach ($settingName in $nonSdSettings) {
+            $check = $settings | Where-Object { $_.Setting -eq $settingName }
+            $check | Should -Not -BeNullOrEmpty -Because "$settingName should exist"
+            $check.Status | Should -Be 'Fail' `
+                -Because "$settingName is not covered by Security Defaults"
         }
     }
 

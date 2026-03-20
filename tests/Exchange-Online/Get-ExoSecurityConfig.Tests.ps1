@@ -118,6 +118,11 @@ Describe 'Get-ExoSecurityConfig' {
 
         Mock Invoke-MgGraphRequest {
             param($Method, $Uri)
+            if ($Uri -like '*/subscribedSkus*') {
+                return @{ value = @(
+                    @{ skuId = '06ebc4ee-1bb5-47dd-8120-11324bc54e06'; skuPartNumber = 'SPE_E5'; capabilityStatus = 'Enabled' }
+                )}
+            }
             return @{ accountEnabled = $false }
         }
 

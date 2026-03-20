@@ -123,7 +123,7 @@ Describe 'Get-EntraSecurityConfig' {
                 }
                 '*/subscribedSkus' {
                     return @{ value = @(
-                        @{ skuPartNumber = 'SPE_E5'; prepaidUnits = @{ enabled = 10 }; consumedUnits = 5 }
+                        @{ skuId = '06ebc4ee-1bb5-47dd-8120-11324bc54e06'; skuPartNumber = 'SPE_E5'; capabilityStatus = 'Enabled'; prepaidUnits = @{ enabled = 10 }; consumedUnits = 5 }
                     )}
                 }
                 '*/policies/activityBasedTimeoutPolicies' {

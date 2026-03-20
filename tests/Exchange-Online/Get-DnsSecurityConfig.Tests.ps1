@@ -38,18 +38,16 @@ Describe 'Get-DnsSecurityConfig' {
             return $null
         }
 
-        # Mock Get-Command to indicate DKIM cmdlet is available
+        # Mock Get-Command for Update-CheckProgress guard
         Mock Get-Command {
             param($Name, $ErrorAction)
-            if ($Name -eq 'Get-DkimSigningConfig') {
-                return [PSCustomObject]@{ Name = 'Get-DkimSigningConfig' }
-            }
             if ($Name -eq 'Update-CheckProgress') {
                 return [PSCustomObject]@{ Name = 'Update-CheckProgress' }
             }
             return $null
         }
 
+        # DKIM is now checked via try/catch instead of Get-Command guard
         Mock Get-DkimSigningConfig {
             return @([PSCustomObject]@{
                 Domain  = 'contoso.com'
