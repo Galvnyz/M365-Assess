@@ -67,6 +67,22 @@ function Add-Setting {
 }
 
 # ------------------------------------------------------------------
+# Check Security Defaults status
+# ------------------------------------------------------------------
+$securityDefaultsEnabled = $false
+try {
+    Write-Verbose "Checking Security Defaults status..."
+    $sdPolicy = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $securityDefaultsEnabled = $sdPolicy['isEnabled'] -eq $true
+    if ($securityDefaultsEnabled) {
+        Write-Verbose "Security Defaults is enabled -- CA checks covered by SD will be marked Info."
+    }
+}
+catch {
+    Write-Verbose "Could not check Security Defaults status: $_"
+}
+
+# ------------------------------------------------------------------
 # Fetch Conditional Access policies
 # ------------------------------------------------------------------
 try {
@@ -151,6 +167,18 @@ try {
         }
         Add-Setting @settingParams
     }
+    elseif ($securityDefaultsEnabled) {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for Admin Roles'
+            CurrentValue     = 'Covered by Security Defaults'
+            RecommendedValue = 'At least 1 policy (or Security Defaults)'
+            Status           = 'Info'
+            CheckId          = 'CA-MFA-ADMIN-001'
+            Remediation      = 'Security Defaults enforces MFA for all admin roles. For granular control, disable Security Defaults and create Conditional Access policies.'
+        }
+        Add-Setting @settingParams
+    }
     else {
         $settingParams = @{
             Category         = 'Conditional Access'
@@ -188,6 +216,18 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-MFA-ALL-001'
             Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($securityDefaultsEnabled) {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for All Users'
+            CurrentValue     = 'Covered by Security Defaults'
+            RecommendedValue = 'At least 1 policy (or Security Defaults)'
+            Status           = 'Info'
+            CheckId          = 'CA-MFA-ALL-001'
+            Remediation      = 'Security Defaults enforces MFA for all users. For granular control, disable Security Defaults and create Conditional Access policies.'
         }
         Add-Setting @settingParams
     }
@@ -229,6 +269,18 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-LEGACYAUTH-001'
             Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($securityDefaultsEnabled) {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Legacy Authentication Blocked'
+            CurrentValue     = 'Covered by Security Defaults'
+            RecommendedValue = 'At least 1 policy (or Security Defaults)'
+            Status           = 'Info'
+            CheckId          = 'CA-LEGACYAUTH-001'
+            Remediation      = 'Security Defaults blocks legacy authentication protocols. For granular control, disable Security Defaults and create Conditional Access policies.'
         }
         Add-Setting @settingParams
     }
@@ -433,6 +485,18 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-SIGNINRISK-002'
             Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($securityDefaultsEnabled) {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Sign-in Risk Blocks Medium+High'
+            CurrentValue     = 'Partially covered by Security Defaults (blocks high-risk sign-ins)'
+            RecommendedValue = 'At least 1 policy (or Security Defaults for partial coverage)'
+            Status           = 'Info'
+            CheckId          = 'CA-SIGNINRISK-002'
+            Remediation      = 'Security Defaults blocks high-risk sign-ins but does not provide granular medium-risk controls. For full coverage, disable Security Defaults and create Conditional Access policies with Entra ID P2.'
         }
         Add-Setting @settingParams
     }

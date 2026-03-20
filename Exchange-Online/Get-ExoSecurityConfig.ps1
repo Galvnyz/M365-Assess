@@ -97,14 +97,41 @@ try {
     }
     Add-Setting @settingParams
 
-    # Customer Lockbox
+    # Customer Lockbox -- Fail when E5 licensed (lockbox is available), Review when not
     $lockbox = $orgConfig.CustomerLockBoxEnabled
+    $lockboxStatus = 'Review'
+    if ($lockbox) {
+        $lockboxStatus = 'Pass'
+    }
+    else {
+        # Check if tenant has E5 or E5 Compliance license (lockbox is included)
+        $hasLockboxLicense = $false
+        try {
+            $lockboxSkus = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
+            $lockboxSkuList = if ($lockboxSkus -and $lockboxSkus['value']) { @($lockboxSkus['value']) } else { @() }
+            $e5SkuIds = @(
+                '06ebc4ee-1bb5-47dd-8120-11324bc54e06'  # SPE_E5 (M365 E5)
+                'cd2925a3-5076-4233-8931-638a8c94f773'  # SPE_E5_NOPSTNCONF
+                'd17b27af-3f49-4822-99f9-56a661538792'  # M365_E5_COMPLIANCE
+            )
+            foreach ($sku in $lockboxSkuList) {
+                if ($sku['skuId'] -in $e5SkuIds -and $sku['capabilityStatus'] -eq 'Enabled') {
+                    $hasLockboxLicense = $true
+                    break
+                }
+            }
+        }
+        catch {
+            Write-Verbose "Could not check license SKUs for lockbox: $_"
+        }
+        $lockboxStatus = if ($hasLockboxLicense) { 'Fail' } else { 'Review' }
+    }
     $settingParams = @{
         Category         = 'Security'
         Setting          = 'Customer Lockbox Enabled'
         CurrentValue     = "$lockbox"
         RecommendedValue = 'True (E5 license)'
-        Status           = if ($lockbox) { 'Pass' } else { 'Review' }
+        Status           = $lockboxStatus
         CheckId          = 'EXO-LOCKBOX-001'
         Remediation      = 'M365 admin center > Settings > Org settings > Security & privacy > Customer Lockbox > Require approval. Requires E5 or equivalent.'
     }
