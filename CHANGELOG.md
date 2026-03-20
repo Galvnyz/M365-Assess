@@ -2,6 +2,25 @@
 
 All notable changes to M365 Assess are documented here. This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.9.7] - 2026-03-19
+
+### Added
+- XLSX export auto-discovers framework columns from JSON definitions (#138)
+- `-CisBenchmarkVersion` parameter for future CIS v7.0 upgrade path (#156)
+- CheckID PSGallery module as primary registry source with local fallback (#139)
+- Profile-based frameworks render as inline tags in XLSX (e.g., `1.1.1 [E3-L1] [E5-L1]`)
+- 3 new Pester tests for Import-ControlRegistry (severity overlay, CisFrameworkId, fallback)
+
+### Changed
+- DLP collector removes redundant session checks, saving ~15-30s per run (#164)
+- XLSX export uses 14 dynamic framework columns (was 13 hardcoded)
+- Import-ControlRegistry accepts `-CisFrameworkId` parameter for reverse lookup
+- CI sync-checkid job renamed to reflect fallback cache role
+
+### Removed
+- 17 legacy flat framework properties from finding object (CisE3L1, Nist80053Low, etc.)
+- Redundant `Get-Command` and `Get-Label` session checks from DLP collector
+
 ## [0.9.6] - 2026-03-19
 
 ### Added
