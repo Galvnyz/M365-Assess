@@ -103,6 +103,32 @@ function Import-FrameworkDefinitions {
             $filterFamily = ($fwId -split '-')[0].ToUpper()
         }
 
+        # Preserve raw scoring sub-structures for catalog rendering
+        $scoringData = @{}
+        if ($def.scoring) {
+            foreach ($prop in $def.scoring.PSObject.Properties) {
+                $scoringData[$prop.Name] = $prop.Value
+            }
+        }
+
+        # Preserve top-level structural keys outside scoring (strategies, controls, etc.)
+        # Convert PSCustomObjects to hashtables so callers can use .Keys
+        $extraKeys = @('strategies', 'controls', 'sections', 'nonAutomatableCriteria', 'licensingProfiles', 'groupBy')
+        $extraData = @{}
+        foreach ($key in $extraKeys) {
+            if ($def.PSObject.Properties.Name -contains $key) {
+                $val = $def.$key
+                if ($val -is [System.Management.Automation.PSCustomObject]) {
+                    $ht = @{}
+                    foreach ($p in $val.PSObject.Properties) { $ht[$p.Name] = $p.Value }
+                    $extraData[$key] = $ht
+                }
+                else {
+                    $extraData[$key] = $val
+                }
+            }
+        }
+
         $frameworks.Add(@{
             frameworkId   = $fwId
             label         = [string]$def.label
@@ -113,6 +139,8 @@ function Import-FrameworkDefinitions {
             scoringMethod = $scoringMethod
             profiles      = $profiles
             filterFamily  = $filterFamily
+            scoringData   = $scoringData
+            extraData     = $extraData
         })
     }
 

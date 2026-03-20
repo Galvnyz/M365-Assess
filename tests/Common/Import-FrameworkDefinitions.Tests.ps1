@@ -133,4 +133,33 @@ Describe 'Import-FrameworkDefinitions' {
         $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
         $result[0].frameworkId | Should -Be 'cis-m365-v6'
     }
+
+    It 'Each framework includes scoringData from the scoring object' {
+        $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
+        foreach ($fw in $result) {
+            $fw.Keys | Should -Contain 'scoringData'
+            $fw.scoringData | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    It 'Essential Eight includes strategies in extraData' {
+        $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
+        $e8 = $result | Where-Object { $_.frameworkId -eq 'essential-eight' }
+        $e8.Keys | Should -Contain 'extraData'
+        $e8.extraData.Keys | Should -Contain 'strategies'
+        $e8.extraData.strategies.Keys | Should -Contain 'P1'
+    }
+
+    It 'SOC2 includes nonAutomatableCriteria in extraData' {
+        $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
+        $soc2 = $result | Where-Object { $_.frameworkId -eq 'soc2' }
+        $soc2.extraData.Keys | Should -Contain 'nonAutomatableCriteria'
+    }
+
+    It 'Frameworks without extra top-level keys have empty extraData' {
+        $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
+        $stig = $result | Where-Object { $_.frameworkId -eq 'stig' }
+        $stig.Keys | Should -Contain 'extraData'
+        $stig.extraData.Count | Should -Be 0
+    }
 }

@@ -34,6 +34,7 @@
         'Common\Export-AssessmentReport.ps1'
         'Common\Export-ComplianceMatrix.ps1'
         'Common\Export-ComplianceOverview.ps1'
+        'Common\Export-FrameworkCatalog.ps1'
         'Common\Import-ControlRegistry.ps1'
         'Common\Import-FrameworkDefinitions.ps1'
         'Common\Show-CheckProgress.ps1'

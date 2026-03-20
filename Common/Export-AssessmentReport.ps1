@@ -1796,6 +1796,23 @@ if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $Ski
 }
 
 # ------------------------------------------------------------------
+# Build framework catalog HTML fragments for per-framework posture pages
+# ------------------------------------------------------------------
+$catalogHtml = ''
+if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0) {
+    . (Join-Path -Path $PSScriptRoot -ChildPath 'Export-FrameworkCatalog.ps1')
+    $catalogFrameworks = $allFrameworks
+    if ($FrameworkFilter -and $FrameworkFilter.Count -gt 0) {
+        $catalogFrameworks = @($allFrameworks | Where-Object { $_.filterFamily -in $FrameworkFilter })
+    }
+    foreach ($fw in $catalogFrameworks) {
+        $fwCatalog = Export-FrameworkCatalog -Findings @($allCisFindings) -Framework $fw `
+            -ControlRegistry $controlRegistry -Mode Inline
+        if ($fwCatalog) { $catalogHtml += $fwCatalog }
+    }
+}
+
+# ------------------------------------------------------------------
 # Export Compliance Matrix XLSX (optional — requires ImportExcel module)
 # ------------------------------------------------------------------
 try {
@@ -3723,6 +3740,15 @@ if ($complianceHtml) {
         <a id="compliance-overview"></a>
         <h1>Compliance Overview</h1>
         $complianceHtml
+"@
+}
+
+if ($catalogHtml) {
+    $html += @"
+
+        <a id="framework-catalogs"></a>
+        <h1>Framework Catalogs</h1>
+        $catalogHtml
 "@
 }
 
