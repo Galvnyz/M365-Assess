@@ -14745,7 +14745,10 @@
         "nist-800-53": {
           "controlId": "AC-2(2);AC-6(1)",
           "title": "Automated Temporary and Emergency Account Management; Authorize Access to Security Functions",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -14757,6 +14760,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.2"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -14773,7 +14781,10 @@
         "nist-800-53": {
           "controlId": "AC-2(4);AU-2",
           "title": "Automated Audit Actions; Event Logging",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -14803,7 +14814,11 @@
         "nist-800-53": {
           "controlId": "IA-2(1);AC-6(5)",
           "title": "Multi-factor Authentication to Privileged Accounts; Privileged Accounts",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-03",
@@ -14815,6 +14830,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.4;6.5"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -14831,7 +14851,10 @@
         "nist-800-53": {
           "controlId": "AC-2(2);AC-2(3)",
           "title": "Automated Temporary and Emergency Account Management; Disable Accounts",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -14840,6 +14863,11 @@
         "mitre-attack": {
           "controlId": "T1078.004",
           "title": "Valid Accounts: Cloud Accounts"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management"
         }
       }
     },
@@ -14856,7 +14884,11 @@
         "nist-800-53": {
           "controlId": "AU-6;IR-5",
           "title": "Audit Record Review, Analysis, and Reporting; Incident Monitoring",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "DE.AE-03;DE.CM-01",
@@ -14886,7 +14918,11 @@
         "nist-800-53": {
           "controlId": "AC-6(5);AC-2",
           "title": "Privileged Accounts; Account Management",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05;PR.AA-03",
@@ -14901,6 +14937,11 @@
         },
         "essential-eight": {
           "controlId": "ML2-P4;ML3-P4"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -14917,7 +14958,10 @@
         "nist-800-53": {
           "controlId": "AC-6;AC-2",
           "title": "Least Privilege; Account Management",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1484.001",
@@ -14925,6 +14969,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.8"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -14941,11 +14990,19 @@
         "nist-800-53": {
           "controlId": "AC-6(5);AC-3",
           "title": "Privileged Accounts; Access Enforcement",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1098",
           "title": "Valid Accounts: Cloud Accounts; Account Manipulation"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -14962,11 +15019,20 @@
         "nist-800-53": {
           "controlId": "AC-3;AC-4",
           "title": "Access Enforcement; Information Flow Enforcement",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1213.002",
           "title": "Data from Information Repositories: Sharepoint"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.6",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Restriction of Logical Access"
         }
       }
     },
@@ -14983,11 +15049,19 @@
         "nist-800-53": {
           "controlId": "IA-5;AC-6(5)",
           "title": "Authenticator Management; Privileged Accounts",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1556;T1078.004",
           "title": "Modify Authentication Process; Valid Accounts: Cloud Accounts"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management"
         }
       }
     },
@@ -15004,7 +15078,11 @@
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2)",
           "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-Privileged Accounts",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-03",
@@ -15016,6 +15094,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.3;6.4"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.6",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Restriction of Logical Access"
         }
       }
     },
@@ -15023,7 +15106,7 @@
       "checkId": "CA-RISKPOLICY-001",
       "name": "CA policy combines sign-in risk and user risk (anti-pattern)",
       "category": "RISKPOLICY",
-      "collector": "CA",
+      "collector": "CAEvaluator",
       "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E5"
@@ -15032,11 +15115,19 @@
         "nist-800-53": {
           "controlId": "AC-7;SI-4",
           "title": "Unsuccessful Logon Attempts; System Monitoring",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004",
           "title": "Valid Accounts: Cloud Accounts"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC7.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Monitoring of System Components"
         }
       }
     },
@@ -15044,7 +15135,7 @@
       "checkId": "CA-ROLECOVERAGE-001",
       "name": "CA policies targeting directory roles miss active Tier-0 roles",
       "category": "ROLECOVERAGE",
-      "collector": "CA",
+      "collector": "CAEvaluator",
       "hasAutomatedCheck": true,
       "licensing": {
         "minimum": "E3"
@@ -15053,7 +15144,10 @@
         "nist-800-53": {
           "controlId": "AC-6(5);AC-3",
           "title": "Privileged Accounts; Access Enforcement",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -15065,6 +15159,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.5;6.8"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -15081,11 +15180,20 @@
         "nist-800-53": {
           "controlId": "IA-5;CM-6",
           "title": "Authenticator Management; Configuration Settings",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1552.004",
           "title": "Valid Accounts: Cloud Accounts; Unsecured Credentials: Private Keys"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC8.1",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Change Management"
         }
       }
     },
@@ -15102,7 +15210,10 @@
         "nist-800-53": {
           "controlId": "AC-2(3);IA-5",
           "title": "Disable Accounts; Authenticator Management",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1552",
@@ -15110,6 +15221,11 @@
         },
         "cis-controls-v8": {
           "controlId": "5.3;16.9"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management"
         }
       }
     },
@@ -15126,7 +15242,10 @@
         "nist-800-53": {
           "controlId": "AC-6(1);AC-6(5);SA-9",
           "title": "Authorize Access to Security Functions; Privileged Accounts; External Information System Services",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05;ID.SC-02",
@@ -15138,6 +15257,11 @@
         },
         "cis-controls-v8": {
           "controlId": "6.8;18.3"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3;CC9.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization; Vendor Risk Mitigation"
         }
       }
     },
@@ -15154,11 +15278,19 @@
         "nist-800-53": {
           "controlId": "AC-6(1);SA-9",
           "title": "Authorize Access to Security Functions; External Information System Services",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1550.001",
           "title": "Application Access Token"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3;CC9.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization; Vendor Risk Mitigation"
         }
       }
     },
@@ -15175,7 +15307,10 @@
         "nist-800-53": {
           "controlId": "AC-6(5);SA-9;AC-2",
           "title": "Privileged Accounts; External Information System Services; Account Management",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1098.003;T1078.004",
@@ -15183,6 +15318,11 @@
         },
         "cis-controls-v8": {
           "controlId": "5.4;6.8"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -15199,11 +15339,20 @@
         "nist-800-53": {
           "controlId": "AC-6;AC-6(1)",
           "title": "Least Privilege; Authorize Access to Security Functions",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004",
           "title": "Valid Accounts: Cloud Accounts"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -15220,11 +15369,19 @@
         "nist-800-53": {
           "controlId": "CM-6;CM-7",
           "title": "Configuration Settings; Least Functionality",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1098",
           "title": "Account Manipulation"
+        },
+        "soc2": {
+          "controlId": "CC8.1",
+          "evidenceType": "config-export",
+          "title": "Change Management"
         }
       }
     },
@@ -15241,11 +15398,20 @@
         "nist-800-53": {
           "controlId": "AC-6;AC-6(1)",
           "title": "Least Privilege; Authorize Access to Security Functions",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1550.001",
           "title": "Valid Accounts: Cloud Accounts; Application Access Token"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -15262,11 +15428,19 @@
         "nist-800-53": {
           "controlId": "AC-6(5);AC-2",
           "title": "Privileged Accounts; Account Management",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "mitre-attack": {
           "controlId": "T1078.004",
           "title": "Valid Accounts: Cloud Accounts"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -15283,7 +15457,11 @@
         "nist-800-53": {
           "controlId": "AC-2(3);AC-2",
           "title": "Disable Accounts; Account Management",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-01;PR.AA-05",
@@ -15301,6 +15479,11 @@
         },
         "mitre-attack": {
           "controlId": "T1078;T1078.004"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management"
         }
       }
     },
@@ -15317,12 +15500,19 @@
         "cis-m365-v6": {
           "controlId": "1.1.1",
           "title": "Ensure Administrative accounts are cloud-only",
-          "profiles": ["E3-L1", "E5-L1"]
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
         },
         "nist-800-53": {
           "controlId": "AC-6(5);AC-2",
           "title": "Privileged Accounts; Account Management",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-03;PR.AA-05",
@@ -15337,6 +15527,11 @@
         },
         "mitre-attack": {
           "controlId": "T1078;T1078.001"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -15353,7 +15548,11 @@
         "nist-800-53": {
           "controlId": "AC-3;AC-6",
           "title": "Access Enforcement; Least Privilege",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -15365,7 +15564,10 @@
         "cis-m365-v6": {
           "controlId": "5.1.2.1",
           "title": "Ensure Conditional Access policies do not exclude admins",
-          "profiles": ["E3-L1", "E5-L1"]
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
         },
         "iso-27001": {
           "controlId": "A.5.15;A.8.3",
@@ -15373,6 +15575,11 @@
         },
         "mitre-attack": {
           "controlId": "T1556;T1548"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -15389,7 +15596,10 @@
         "nist-800-53": {
           "controlId": "AC-6(7);AC-2(7)",
           "title": "Review of User Privileges; Privileged User Accounts",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -15404,6 +15614,11 @@
         },
         "mitre-attack": {
           "controlId": "T1078.004;T1098"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
         }
       }
     },
@@ -15420,7 +15635,10 @@
         "nist-800-53": {
           "controlId": "AC-6(10);CM-7(5)",
           "title": "Prohibit Non-Privileged Users from Executing Privileged Functions; Authorized Software",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05;PR.PS-01",
@@ -15435,6 +15653,11 @@
         },
         "mitre-attack": {
           "controlId": "T1098.003;T1550.001"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC8.1",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Change Management"
         }
       }
     },
@@ -15451,7 +15674,9 @@
         "nist-800-53": {
           "controlId": "AC-3(2);CM-5(1)",
           "title": "Dual Authorization; Automated Access Enforcement",
-          "profiles": ["High"]
+          "profiles": [
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05;PR.PS-01",
@@ -15466,6 +15691,11 @@
         },
         "mitre-attack": {
           "controlId": "T1485;T1489"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC8.1",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Change Management"
         }
       }
     },
@@ -15482,7 +15712,10 @@
         "nist-800-53": {
           "controlId": "AC-6(1);AC-6(2)",
           "title": "Authorize Access to Security Functions; Non-Privileged Access for Nonsecurity Functions",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-05",
@@ -15497,6 +15730,11 @@
         },
         "mitre-attack": {
           "controlId": "T1078.004"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization"
         }
       }
     },
@@ -15513,7 +15751,10 @@
         "nist-800-53": {
           "controlId": "AC-2(2);CP-2",
           "title": "Automated Temporary and Emergency Account Management; Contingency Plan",
-          "profiles": ["Moderate", "High"]
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "PR.AA-01;RC.RP-01",
@@ -15525,7 +15766,10 @@
         "cis-m365-v6": {
           "controlId": "1.1.4",
           "title": "Ensure two emergency access accounts have been defined",
-          "profiles": ["E3-L1", "E5-L1"]
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
         },
         "iso-27001": {
           "controlId": "A.5.30;A.5.29",
@@ -15533,6 +15777,11 @@
         },
         "mitre-attack": {
           "controlId": "T1531"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2;CC9.1",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Credentials Management; Risk Mitigation"
         }
       }
     },
@@ -15549,7 +15798,11 @@
         "nist-800-53": {
           "controlId": "AU-6;IR-4;SI-4",
           "title": "Audit Record Review, Analysis, and Reporting; Incident Handling; System Monitoring",
-          "profiles": ["Low", "Moderate", "High"]
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
         },
         "nist-csf": {
           "controlId": "DE.AE-02;DE.CM-01",
@@ -15564,6 +15817,11 @@
         },
         "mitre-attack": {
           "controlId": "T1485;T1561"
+        },
+        "soc2": {
+          "controlId": "CC7.2;CC7.3;CC7.4",
+          "evidenceType": "config-export",
+          "title": "Monitoring of System Components; Evaluation of Detected Events; Response to Events"
         }
       }
     }
