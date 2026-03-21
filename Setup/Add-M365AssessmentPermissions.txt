@@ -13,10 +13,12 @@
       ────────────────
       Tenant        → Graph: Organization, Domain, Policy, User, Group
       Identity      → Graph: User, AuditLog, MFA methods, Roles, Policy, Apps, Directory
+                      + EntApp collector: ServicePrincipals, AppRoleAssignments, OAuth2Grants
       Licensing     → Graph: Organization, User
       Email         → Exchange Online RBAC role groups
       Intune        → Graph: DeviceManagement (devices + config)
       Security      → Graph: SecurityEvents  +  Exchange Online RBAC  +  Purview/Compliance roles
+                      + Stryker Readiness: DeviceManagement RBAC, audit events, CA policies
       Collaboration → Graph: SharePoint tenant settings, Teams settings
       Hybrid        → Graph: Organization, Domain
       Inventory     → Graph: Groups, Teams, Channels, Reports, Sites, Users
@@ -104,7 +106,7 @@
     Graph permissions only — no AdminUpn required.
 
 .NOTES
-    Version  : 4.1.0
+    Version  : 4.2.0
     Author   : Companion script for Invoke-M365Assessment.ps1 by Daren9m
 
     Required modules:
@@ -163,7 +165,9 @@ $requiredGraphPermissions = @(
     @{ Name = 'Directory.Read.All';                      Sections = 'Identity'                               ; Reason = 'Devices, admin units, role templates' }
     # ── Intune ────────────────────────────────────────────────────────────────
     @{ Name = 'DeviceManagementManagedDevices.Read.All'; Sections = 'Intune'                                 ; Reason = 'Managed device inventory and compliance state' }
-    @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune'                                 ; Reason = 'Configuration profiles and compliance policies' }
+    @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune, Security'                       ; Reason = 'Configuration profiles, compliance policies, Multi-Admin Approval policies' }
+    @{ Name = 'DeviceManagementRBAC.Read.All';           Sections = 'Security'                               ; Reason = 'Intune RBAC role definitions and assignments (scope tag audit)' }
+    @{ Name = 'DeviceManagementApps.Read.All';           Sections = 'Security'                               ; Reason = 'Intune audit events including device wipe/retire/delete actions' }
     # ── Security ──────────────────────────────────────────────────────────────
     @{ Name = 'SecurityEvents.Read.All';                 Sections = 'Security'                               ; Reason = 'Secure Score, improvement actions, security alerts' }
     # ── Collaboration ─────────────────────────────────────────────────────────
@@ -261,7 +265,7 @@ function Write-Info { param([string]$M) Write-Host "    . $M" -ForegroundColor W
 # BANNER + PRE-FLIGHT
 # ==============================================================================
 
-Write-Banner -Title 'M365 Assessment - Full Permission Configurator v4.1.0'
+Write-Banner -Title 'M365 Assessment - Full Permission Configurator v4.2.0'
 
 if ($WhatIfPreference) {
     Write-Host '  *** WHATIF MODE - no changes will be made ***' -ForegroundColor Yellow
