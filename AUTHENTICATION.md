@@ -31,6 +31,21 @@ For environments where a browser cannot open (headless servers, remote SSH sessi
 
 For unattended or scheduled runs using an Entra ID App Registration with certificate credentials. Requires pre-configured API permissions.
 
+### Quick Start (Auto-Create)
+
+If you don't have an App Registration yet, the setup script creates everything from scratch -- app registration, self-signed certificate, and all permissions in one command:
+
+```powershell
+.\Setup\Add-M365AssessmentPermissions.txt `
+    -TenantId 'contoso.onmicrosoft.com' `
+    -AdminUpn 'admin@contoso.onmicrosoft.com' `
+    -CreateNew
+```
+
+This creates an app named "M365-Assess-Reader" with a 2-year certificate and assigns all required Graph permissions, compliance directory roles, and Exchange RBAC role groups. The script prints the `ClientId` and `CertificateThumbprint` to use with the assessment.
+
+### Running the Assessment
+
 ```powershell
 .\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
     -ClientId '00000000-0000-0000-0000-000000000000' `

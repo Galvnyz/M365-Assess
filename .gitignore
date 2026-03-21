@@ -24,6 +24,7 @@ SCF/
 SecFrame/
 
 # Credentials and certificates
+.m365assess.json
 .env
 .env.*
 *.pfx

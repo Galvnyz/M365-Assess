@@ -155,9 +155,17 @@ function Invoke-FrameworkScoring {
     $totalPassed = ($mappedFindings | Where-Object { $_.Finding.Status -eq 'Pass' } |
         ForEach-Object { $_.Finding.CheckId } | Select-Object -Unique).Count
     $passRate = if ($totalMapped -gt 0) { [math]::Round($totalPassed / $totalMapped, 2) } else { 0 }
-    # Sum covered controls across groups (unique framework controlIds with findings)
-    $totalCovered = 0
-    foreach ($g in $groups) { $totalCovered += $g.Covered }
+    # Deduplicate covered controls across all groups by unique framework controlId
+    # (profiles overlap -- E5-L1 includes E3-L1 -- so summing per-group would double-count)
+    $allCoveredIds = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($mf in $mappedFindings) {
+        if ($mf.ControlId) {
+            foreach ($cid in ($mf.ControlId -split ';')) {
+                [void]$allCoveredIds.Add($cid.Trim())
+            }
+        }
+    }
+    $totalCovered = $allCoveredIds.Count
 
     return @{
         Groups         = @($groups)
@@ -704,19 +712,30 @@ function Invoke-ProfileCompliance {
         $controlCount = if ($profileInfo -is [hashtable] -and $profileInfo.ContainsKey('controlCount')) { [int]$profileInfo.controlCount } else { 0 }
 
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
+        $coveredControlIds = [System.Collections.Generic.HashSet[string]]::new()
         foreach ($mf in $MappedFindings) {
             # If finding has profiles array, check membership; otherwise include in all profiles
+            $inProfile = $false
             if ($mf.Profiles -and $mf.Profiles.Count -gt 0) {
-                if ($profileKey -in $mf.Profiles) {
-                    $bucket.Add($mf.Finding)
-                }
+                if ($profileKey -in $mf.Profiles) { $inProfile = $true }
             }
             else {
+                $inProfile = $true
+            }
+
+            if ($inProfile) {
                 $bucket.Add($mf.Finding)
+                # Track unique framework controlIds (e.g. CIS "1.1.1") not CheckIds
+                # to avoid inflating coverage when multiple checks map to same control
+                if ($mf.ControlId) {
+                    foreach ($cid in ($mf.ControlId -split ';')) {
+                        [void]$coveredControlIds.Add($cid.Trim())
+                    }
+                }
             }
         }
 
-        $groups.Add((New-ScoringGroup -Key $profileKey -Label $label -Total $controlCount -GroupFindings $bucket))
+        $groups.Add((New-ScoringGroup -Key $profileKey -Label $label -Total $controlCount -GroupFindings $bucket -Covered $coveredControlIds.Count))
     }
     return @($groups)
 }
