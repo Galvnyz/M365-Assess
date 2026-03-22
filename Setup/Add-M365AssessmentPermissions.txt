@@ -468,7 +468,14 @@ if ($PSCmdlet.ParameterSetName -eq 'CreateNew') {
 }
 
 # ==============================================================================
-# STEP 2 - RESOLVE APP REGISTRATION (app-only, certificate)
+# STEP 2 - RESOLVE APP + CONNECT DELEGATED FOR PERMISSION ASSIGNMENT
+#
+# All permission assignment steps (Graph API, directory roles) require
+# elevated privileges that the target app itself may not have. Instead of
+# using app-only auth (which fails with 403 if the app lacks
+# AppRoleAssignment.ReadWrite.All), we use a single delegated admin session
+# for Steps 2-4. The admin's Global Administrator role inherits the ability
+# to grant any permission.
 # ==============================================================================
 
 Write-Step 'Validating certificate...'
@@ -479,22 +486,46 @@ if (-not $cert) {
 }
 Write-OK "Certificate: $($cert.Subject)  [Expires: $($cert.NotAfter.ToString('yyyy-MM-dd'))]"
 
-# If only a display name was provided, do a brief delegated lookup to get the AppId
+# Connect delegated for all Graph operations (Steps 2-4)
+if ($AdminUpn) {
+    Write-Step "Connecting to Microsoft Graph (delegated as $AdminUpn)..."
+    Write-Info 'Delegated session used for all Graph steps (permission grants + directory roles).'
+
+    $prevWam = $env:MSAL_ALLOW_WAM
+    $env:MSAL_ALLOW_WAM = '0'
+    try {
+        Connect-MgGraph -TenantId $TenantId `
+            -Scopes 'Application.ReadWrite.All', 'AppRoleAssignment.ReadWrite.All', 'RoleManagement.ReadWrite.Directory', 'Directory.Read.All' `
+            -NoWelcome `
+            -ErrorAction Stop
+        $ctx = Get-MgContext
+        Write-OK "Connected (delegated) as: $($ctx.Account)"
+    }
+    catch {
+        throw "Delegated Graph connection failed: $($_.Exception.Message). Ensure the account has Global Administrator or Application Administrator rights."
+    }
+    finally {
+        $env:MSAL_ALLOW_WAM = $prevWam
+    }
+}
+else {
+    # No AdminUpn -- fall back to app-only (will work only if app already has sufficient perms)
+    Write-Step 'Connecting to Microsoft Graph (app-only, certificate)...'
+    Write-Info 'No -AdminUpn provided. App-only session may lack permission to grant roles. Use -AdminUpn for full setup.'
+    Connect-MgGraph -TenantId $TenantId -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -NoWelcome
+    $ctx = Get-MgContext
+    Write-OK "Connected (app-only) | AuthType: $($ctx.AuthType)"
+}
+
+# Resolve app and SP (works with either auth type)
 if ($PSCmdlet.ParameterSetName -eq 'ByDisplayName') {
-    Write-Step 'Resolving AppId from display name (brief delegated connection)...'
-    Connect-MgGraph -TenantId $TenantId -Scopes 'Application.Read.All' -NoWelcome
+    Write-Step 'Resolving AppId from display name...'
     $apps = @(Get-MgApplication -Filter "displayName eq '$AppDisplayName'" -ErrorAction Stop)
     if ($apps.Count -eq 0) { throw "No application found with displayName '$AppDisplayName'." }
     if ($apps.Count -gt 1) { throw "Multiple apps share displayName '$AppDisplayName' - use -ClientId." }
     $ClientId = $apps[0].AppId
-    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
     Write-OK "Resolved AppId: $ClientId"
 }
-
-Write-Step 'Connecting to Microsoft Graph (app-only, certificate)...'
-Connect-MgGraph -TenantId $TenantId -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -NoWelcome
-$ctx = Get-MgContext
-Write-OK "Connected (app-only) | AuthType: $($ctx.AuthType)"
 
 Write-Step 'Resolving App Registration and Service Principal...'
 
@@ -576,138 +607,92 @@ else {
 }
 
 # ==============================================================================
-# STEP 4 - PURVIEW / COMPLIANCE ENTRA DIRECTORY ROLES (delegated Graph)
+# STEP 4 - PURVIEW / COMPLIANCE ENTRA DIRECTORY ROLES
 #
-# Assigning directory roles requires RoleManagement.ReadWrite.Directory.
-# The app-only session used in Step 3 cannot grant itself that permission
-# without already having it — a chicken-and-egg problem on first run.
-# We therefore reconnect using a delegated session (-AdminUpn) which inherits
-# the caller's Privileged Role Administrator / Global Administrator rights.
+# Uses the same delegated Graph session from Step 2 — no reconnection needed.
+# If running app-only (no AdminUpn), this step is skipped.
 # ==============================================================================
 
 $complianceResults = [System.Collections.Generic.List[PSCustomObject]]::new()
 
-# Disconnect the app-only session before reconnecting as delegated
-Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-
 if ($SkipComplianceRoles) {
     Write-Step 'Compliance directory roles - SKIPPED (-SkipComplianceRoles specified)'
 }
-else {
-    if (-not $AdminUpn) {
-        Write-Warn 'Compliance directory role assignment requires -AdminUpn (delegated Graph connection).'
-        Write-Warn 'Skipping compliance roles step. Re-run with -AdminUpn to complete this step.'
-        foreach ($roleDef in $requiredComplianceRoles) {
-            $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Skipped'; Sections = $roleDef.Sections })
-        }
+elseif (-not $AdminUpn) {
+    Write-Warn 'Compliance directory role assignment requires -AdminUpn (delegated Graph connection).'
+    Write-Warn 'Skipping compliance roles step. Re-run with -AdminUpn to complete this step.'
+    foreach ($roleDef in $requiredComplianceRoles) {
+        $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Skipped'; Sections = $roleDef.Sections })
     }
-    else {
-        Write-Step "Connecting to Microsoft Graph (delegated as $AdminUpn) for directory role assignments..."
-        Write-Info 'Delegated session required: RoleManagement.ReadWrite.Directory cannot be self-assigned app-only.'
-        Write-Info 'Disabling WAM broker to prevent popup being hidden behind terminal window.'
+}
+else {
+    # Reuses the delegated Graph session from Step 2 — no reconnection needed
+    Write-Step "Assigning Entra ID directory roles for compliance/security access ($($requiredComplianceRoles.Count) roles)..."
 
-        # Disable the WAM broker for this connection — WAM intercepts the auth popup
-        # and hides it behind the terminal window in embedded/non-default console hosts.
-        # Setting this environment variable forces the standard interactive browser flow.
-        $prevWam = $env:MSAL_ALLOW_WAM
-        $env:MSAL_ALLOW_WAM = '0'
+    foreach ($roleDef in $requiredComplianceRoles) {
+        $roleName       = $roleDef.DisplayName
+        $roleTemplateId = $roleDef.TemplateId
 
-        $delegatedConnected = $false
-        try {
-            Connect-MgGraph -TenantId $TenantId `
-                -Scopes 'RoleManagement.ReadWrite.Directory', 'Directory.Read.All' `
-                -NoWelcome `
-                -ErrorAction Stop
-            $delegatedCtx = Get-MgContext
-            if ($delegatedCtx.Account -ne $AdminUpn) {
-                Write-Warn "Connected as $($delegatedCtx.Account) — expected $AdminUpn. Verify this account has Privileged Role Administrator rights."
-            }
-            $delegatedConnected = $true
-            Write-OK "Connected (delegated) as: $($delegatedCtx.Account)"
-        }
-        catch {
-            Write-Fail "Delegated Graph connection failed: $($_.Exception.Message)"
-            Write-Warn 'Compliance roles step skipped. Resolve connectivity and re-run.'
-            foreach ($roleDef in $requiredComplianceRoles) {
-                $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Failed'; Sections = $roleDef.Sections })
-            }
-        }
-        finally {
-            # Restore WAM setting to whatever it was before this script changed it
-            $env:MSAL_ALLOW_WAM = $prevWam
-        }
-
-        if ($delegatedConnected) {
-            Write-Step "Assigning Entra ID directory roles for compliance/security access ($($requiredComplianceRoles.Count) roles)..."
-
-            foreach ($roleDef in $requiredComplianceRoles) {
-                $roleName       = $roleDef.DisplayName
-                $roleTemplateId = $roleDef.TemplateId
-
-                # Activate the directory role in the tenant if not already active
-                $dirRole = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
-                if (-not $dirRole) {
-                    if ($PSCmdlet.ShouldProcess($roleName, 'Activate directory role in tenant')) {
-                        try {
-                            $dirRole = New-MgDirectoryRole -BodyParameter @{ roleTemplateId = $roleTemplateId } -ErrorAction Stop
-                            Write-Info "$roleName - activated in tenant"
-                        }
-                        catch {
-                            Write-Fail "$roleName - could not activate role: $($_.Exception.Message)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
-                            continue
-                        }
-                    }
-                    else {
-                        Write-Host "    [WhatIf] Would activate directory role: $roleName" -ForegroundColor DarkYellow
-                        $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
-                        continue
-                    }
+        $dirRole = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
+        if (-not $dirRole) {
+            if ($PSCmdlet.ShouldProcess($roleName, 'Activate directory role in tenant')) {
+                try {
+                    $dirRole = New-MgDirectoryRole -BodyParameter @{ roleTemplateId = $roleTemplateId } -ErrorAction Stop
+                    Write-Info "$roleName - activated in tenant"
                 }
-
-                # Check existing membership — use SP-specific call to avoid type/paging misses
-                $existingMembers = @(
-                    Get-MgDirectoryRoleMemberAsServicePrincipal -DirectoryRoleId $dirRole.Id -All -ErrorAction SilentlyContinue |
-                    Select-Object -ExpandProperty Id
-                )
-
-                if ($existingMembers -contains $sp.Id) {
-                    Write-Skip "$roleName - already assigned"
-                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
+                catch {
+                    Write-Fail "$roleName - could not activate role: $($_.Exception.Message)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
                     continue
                 }
+            }
+            else {
+                Write-Host "    [WhatIf] Would activate directory role: $roleName" -ForegroundColor DarkYellow
+                $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
+                continue
+            }
+        }
 
-                if ($PSCmdlet.ShouldProcess($roleName, "Assign to $spDisplayName")) {
-                    try {
-                        New-MgDirectoryRoleMemberByRef `
-                            -DirectoryRoleId $dirRole.Id `
-                            -BodyParameter @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($sp.Id)" } `
-                            -ErrorAction Stop
-                        Write-OK "$roleName  [$($roleDef.Sections)]"
-                        $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Added'; Sections = $roleDef.Sections })
-                    }
-                    catch {
-                        if ($_.Exception.Message -match 'already exist') {
-                            Write-Skip "$roleName - already assigned (confirmed via error)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
-                        }
-                        else {
-                            Write-Fail "$roleName - $($_.Exception.Message)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
-                        }
-                    }
+        $existingMembers = @(
+            Get-MgDirectoryRoleMemberAsServicePrincipal -DirectoryRoleId $dirRole.Id -All -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty Id
+        )
+
+        if ($existingMembers -contains $sp.Id) {
+            Write-Skip "$roleName - already assigned"
+            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
+            continue
+        }
+
+        if ($PSCmdlet.ShouldProcess($roleName, "Assign to $spDisplayName")) {
+            try {
+                New-MgDirectoryRoleMemberByRef `
+                    -DirectoryRoleId $dirRole.Id `
+                    -BodyParameter @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($sp.Id)" } `
+                    -ErrorAction Stop
+                Write-OK "$roleName  [$($roleDef.Sections)]"
+                $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Added'; Sections = $roleDef.Sections })
+            }
+            catch {
+                if ($_.Exception.Message -match 'already exist') {
+                    Write-Skip "$roleName - already assigned (confirmed via error)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
                 }
                 else {
-                    Write-Host "    [WhatIf] Would assign role: $roleName  [$($roleDef.Sections)]" -ForegroundColor DarkYellow
-                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
+                    Write-Fail "$roleName - $($_.Exception.Message)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
                 }
             }
-
-            Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-            Write-Info 'Disconnected delegated Graph session'
+        }
+        else {
+            Write-Host "    [WhatIf] Would assign role: $roleName  [$($roleDef.Sections)]" -ForegroundColor DarkYellow
+            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
         }
     }
 }
+
+# Disconnect Graph (delegated session) before EXO step
+Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 
 # ==============================================================================
 # STEP 5 - EXCHANGE ONLINE RBAC ROLE GROUPS (delegated — platform requirement)
