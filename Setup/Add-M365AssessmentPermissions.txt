@@ -1,8 +1,9 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Configures every permission required by Invoke-M365Assessment.ps1 on an existing
-    App Registration — Microsoft Graph API permissions, Exchange Online RBAC role groups,
+    Configures every permission required by Invoke-M365Assessment.ps1 — optionally
+    creating a new App Registration and self-signed certificate from scratch.
+    Covers Microsoft Graph API permissions, Exchange Online RBAC role groups,
     and Microsoft Purview / Compliance role assignments via Graph directory roles.
 
 .DESCRIPTION
@@ -13,10 +14,12 @@
       ────────────────
       Tenant        → Graph: Organization, Domain, Policy, User, Group
       Identity      → Graph: User, AuditLog, MFA methods, Roles, Policy, Apps, Directory
+                      + EntApp collector: ServicePrincipals, AppRoleAssignments, OAuth2Grants
       Licensing     → Graph: Organization, User
       Email         → Exchange Online RBAC role groups
       Intune        → Graph: DeviceManagement (devices + config)
       Security      → Graph: SecurityEvents  +  Exchange Online RBAC  +  Purview/Compliance roles
+                      + Stryker Readiness: DeviceManagement RBAC, audit events, CA policies
       Collaboration → Graph: SharePoint tenant settings, Teams settings
       Hybrid        → Graph: Organization, Domain
       Inventory     → Graph: Groups, Teams, Channels, Reports, Sites, Users
@@ -58,21 +61,32 @@
 .PARAMETER TenantId
     Tenant ID or domain (e.g. 'contoso.onmicrosoft.com').
 
+.PARAMETER CreateNew
+    Creates a new App Registration and self-signed certificate from scratch.
+    Uses delegated auth (browser login) for the bootstrap, then switches to
+    app-only for permission assignment. Requires -AdminUpn.
+
 .PARAMETER ClientId
     Application (Client) ID of the App Registration being configured.
 
 .PARAMETER AppDisplayName
-    Display name of the App Registration. Used when -ClientId is not supplied.
-    Aborts if multiple apps share the same name — use -ClientId in that case.
+    Display name of the App Registration. When used with -CreateNew, specifies
+    the name for the new app (default: 'M365-Assess-Reader'). When used alone,
+    looks up an existing app by name.
 
 .PARAMETER CertificateThumbprint
     Thumbprint of the certificate in Cert:\CurrentUser\My used for app-only
     Graph authentication. Must also be uploaded to the App Registration.
+    Not required with -CreateNew (the script generates a certificate).
+
+.PARAMETER CertificateExpiryYears
+    Number of years before the generated certificate expires. Default: 2.
+    Only used with -CreateNew.
 
 .PARAMETER AdminUpn
     UPN of an Exchange Administrator or Global Administrator account, used for
-    the delegated Exchange Online session. Required unless -SkipExchangeRbac
-    is specified.
+    delegated sessions (app creation, compliance roles, Exchange RBAC).
+    Required with -CreateNew and for EXO/compliance steps.
 
 .PARAMETER SkipGraph
     Skip the Microsoft Graph API permission assignment step.
@@ -88,10 +102,22 @@
 
 .EXAMPLE
     PS> .\Add-M365AssessmentPermissions.ps1 `
+            -TenantId 'contoso.onmicrosoft.com' `
+            -AdminUpn 'admin@contoso.onmicrosoft.com' `
+            -CreateNew
+
+    Creates a new app registration named 'M365-Assess-Reader' with a 2-year
+    self-signed certificate, then assigns all required permissions. Prints
+    the ClientId and thumbprint for use with Invoke-M365Assessment.ps1.
+
+.EXAMPLE
+    PS> .\Add-M365AssessmentPermissions.ps1 `
             -TenantId              'contoso.onmicrosoft.com' `
             -ClientId              '00000000-0000-0000-0000-000000000000' `
             -CertificateThumbprint 'ABC123DEF456' `
             -AdminUpn              'admin@contoso.onmicrosoft.com'
+
+    Configures an existing app registration with all required permissions.
 
 .EXAMPLE
     PS> .\Add-M365AssessmentPermissions.ps1 `
@@ -104,7 +130,7 @@
     Graph permissions only — no AdminUpn required.
 
 .NOTES
-    Version  : 4.1.0
+    Version  : 4.3.0
     Author   : Companion script for Invoke-M365Assessment.ps1 by Daren9m
 
     Required modules:
@@ -118,16 +144,27 @@ param(
     [Parameter(Mandatory)]
     [string]$TenantId,
 
+    [Parameter(ParameterSetName = 'CreateNew', Mandatory)]
+    [switch]$CreateNew,
+
     [Parameter(ParameterSetName = 'ByClientId', Mandatory)]
     [string]$ClientId,
 
     [Parameter(ParameterSetName = 'ByDisplayName', Mandatory)]
+    [Parameter(ParameterSetName = 'CreateNew')]
     [string]$AppDisplayName,
 
-    [Parameter(Mandatory)]
+    [Parameter(ParameterSetName = 'ByClientId', Mandatory)]
+    [Parameter(ParameterSetName = 'ByDisplayName', Mandatory)]
     [string]$CertificateThumbprint,
 
-    [Parameter()]
+    [Parameter(ParameterSetName = 'CreateNew')]
+    [ValidateRange(1, 10)]
+    [int]$CertificateExpiryYears = 2,
+
+    [Parameter(ParameterSetName = 'CreateNew', Mandatory)]
+    [Parameter(ParameterSetName = 'ByClientId')]
+    [Parameter(ParameterSetName = 'ByDisplayName')]
     [string]$AdminUpn,
 
     [Parameter()]
@@ -163,7 +200,9 @@ $requiredGraphPermissions = @(
     @{ Name = 'Directory.Read.All';                      Sections = 'Identity'                               ; Reason = 'Devices, admin units, role templates' }
     # ── Intune ────────────────────────────────────────────────────────────────
     @{ Name = 'DeviceManagementManagedDevices.Read.All'; Sections = 'Intune'                                 ; Reason = 'Managed device inventory and compliance state' }
-    @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune'                                 ; Reason = 'Configuration profiles and compliance policies' }
+    @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune, Security'                       ; Reason = 'Configuration profiles, compliance policies, Multi-Admin Approval policies' }
+    @{ Name = 'DeviceManagementRBAC.Read.All';           Sections = 'Security'                               ; Reason = 'Intune RBAC role definitions and assignments (scope tag audit)' }
+    @{ Name = 'DeviceManagementApps.Read.All';           Sections = 'Security'                               ; Reason = 'Intune audit events including device wipe/retire/delete actions' }
     # ── Security ──────────────────────────────────────────────────────────────
     @{ Name = 'SecurityEvents.Read.All';                 Sections = 'Security'                               ; Reason = 'Secure Score, improvement actions, security alerts' }
     # ── Collaboration ─────────────────────────────────────────────────────────
@@ -261,7 +300,7 @@ function Write-Info { param([string]$M) Write-Host "    . $M" -ForegroundColor W
 # BANNER + PRE-FLIGHT
 # ==============================================================================
 
-Write-Banner -Title 'M365 Assessment - Full Permission Configurator v4.1.0'
+Write-Banner -Title 'M365 Assessment - Full Permission Configurator v4.3.0'
 
 if ($WhatIfPreference) {
     Write-Host '  *** WHATIF MODE - no changes will be made ***' -ForegroundColor Yellow
@@ -305,7 +344,138 @@ if ($missingModules.Count -gt 0) {
 }
 
 # ==============================================================================
-# STEP 2 - RESOLVE APP REGISTRATION (app-only, certificate)
+# STEP 1b - BOOTSTRAP: CREATE APP REGISTRATION + CERTIFICATE (CreateNew only)
+#
+# When -CreateNew is specified, the script creates everything from scratch:
+#   1. Connect delegated (browser login) — no app exists yet
+#   2. Generate a self-signed certificate in Cert:\CurrentUser\My
+#   3. Create the App Registration with the certificate uploaded
+#   4. Create the Service Principal
+#   5. Set $ClientId and $CertificateThumbprint for downstream steps
+#   6. Disconnect delegated session
+#
+# After this block, the script flows into the normal Steps 2-5 using the
+# newly created app and certificate — no further changes needed downstream.
+# ==============================================================================
+
+$bootstrapCreated = $false
+
+if ($PSCmdlet.ParameterSetName -eq 'CreateNew') {
+    if (-not $AppDisplayName) { $AppDisplayName = 'M365-Assess-Reader' }
+
+    Write-Step "Bootstrapping new app registration '$AppDisplayName'..."
+    Write-Info 'This requires a one-time delegated login (browser) to create the app.'
+
+    # --- Connect delegated for bootstrap ---
+    $prevWam = $env:MSAL_ALLOW_WAM
+    $env:MSAL_ALLOW_WAM = '0'
+    try {
+        Connect-MgGraph -TenantId $TenantId `
+            -Scopes 'Application.ReadWrite.All' `
+            -NoWelcome `
+            -ErrorAction Stop
+        $bootstrapCtx = Get-MgContext
+        Write-OK "Connected (delegated) as: $($bootstrapCtx.Account)"
+    }
+    catch {
+        throw "Delegated Graph connection failed: $($_.Exception.Message). " +
+              'Ensure the account has Application Administrator or Global Administrator rights.'
+    }
+    finally {
+        $env:MSAL_ALLOW_WAM = $prevWam
+    }
+
+    # --- Check for duplicate app name ---
+    $existingApps = @(Get-MgApplication -Filter "displayName eq '$AppDisplayName'" -ErrorAction Stop)
+    if ($existingApps.Count -gt 0) {
+        $existingId = $existingApps[0].AppId
+        Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+        throw "An app named '$AppDisplayName' already exists (AppId: $existingId). " +
+              "Use -ClientId '$existingId' -CertificateThumbprint <thumbprint> to configure " +
+              'the existing app, or choose a different -AppDisplayName.'
+    }
+
+    # --- Generate self-signed certificate ---
+    Write-Step "Generating self-signed certificate (CN=M365-Assess-$TenantId, $CertificateExpiryYears yr)..."
+    $certSubject = "CN=M365-Assess-$TenantId"
+    $cert = New-SelfSignedCertificate `
+        -Subject $certSubject `
+        -CertStoreLocation 'Cert:\CurrentUser\My' `
+        -KeyExportPolicy Exportable `
+        -KeySpec Signature `
+        -KeyLength 2048 `
+        -KeyAlgorithm RSA `
+        -HashAlgorithm SHA256 `
+        -NotAfter (Get-Date).AddYears($CertificateExpiryYears)
+    $CertificateThumbprint = $cert.Thumbprint
+    Write-OK "Certificate created: $certSubject"
+    Write-OK "Thumbprint: $CertificateThumbprint"
+    Write-OK "Expires: $($cert.NotAfter.ToString('yyyy-MM-dd'))"
+
+    # --- Export public key (.cer) for portability ---
+    $cerPath = Join-Path (Get-Location) "M365-Assess-$TenantId.cer"
+    Export-Certificate -Cert $cert -FilePath $cerPath -Type CERT | Out-Null
+    Write-OK "Public key exported: $cerPath"
+
+    # --- Create app registration with certificate ---
+    Write-Step "Creating app registration '$AppDisplayName'..."
+    $keyCredential = @{
+        Type          = 'AsymmetricX509Cert'
+        Usage         = 'Verify'
+        Key           = [System.Convert]::ToBase64String($cert.RawData)
+        DisplayName   = $certSubject
+        StartDateTime = $cert.NotBefore.ToUniversalTime().ToString('o')
+        EndDateTime   = $cert.NotAfter.ToUniversalTime().ToString('o')
+    }
+
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, 'Create new app registration')) {
+        $newApp = New-MgApplication `
+            -DisplayName $AppDisplayName `
+            -SignInAudience 'AzureADMyOrg' `
+            -KeyCredentials @($keyCredential) `
+            -ErrorAction Stop
+        $ClientId = $newApp.AppId
+        Write-OK "App created: $AppDisplayName"
+        Write-OK "Application (client) ID: $ClientId"
+        Write-OK "Object ID: $($newApp.Id)"
+    }
+
+    # --- Create service principal ---
+    Write-Step 'Creating service principal...'
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, 'Create service principal')) {
+        $newSp = New-MgServicePrincipal -AppId $ClientId -ErrorAction Stop
+        Write-OK "Service principal created (ObjectId: $($newSp.Id))"
+    }
+
+    # --- Disconnect bootstrap session ---
+    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+    Write-Info 'Disconnected bootstrap delegated session'
+
+    # --- Wait for AAD replication ---
+    Write-Info 'Waiting 10 seconds for Azure AD replication...'
+    Start-Sleep -Seconds 10
+
+    $bootstrapCreated = $true
+
+    # WhatIf guard — downstream steps require the real app + cert to exist
+    if ($WhatIfPreference) {
+        Write-Host ''
+        Write-Host '  [WhatIf] Would create app registration, certificate, and service principal,' -ForegroundColor DarkYellow
+        Write-Host '           then proceed with permission assignment (Graph, Compliance, EXO).'    -ForegroundColor DarkYellow
+        Write-Host '  [WhatIf] Re-run without -WhatIf to execute.' -ForegroundColor DarkYellow
+        return
+    }
+}
+
+# ==============================================================================
+# STEP 2 - RESOLVE APP + CONNECT DELEGATED FOR PERMISSION ASSIGNMENT
+#
+# All permission assignment steps (Graph API, directory roles) require
+# elevated privileges that the target app itself may not have. Instead of
+# using app-only auth (which fails with 403 if the app lacks
+# AppRoleAssignment.ReadWrite.All), we use a single delegated admin session
+# for Steps 2-4. The admin's Global Administrator role inherits the ability
+# to grant any permission.
 # ==============================================================================
 
 Write-Step 'Validating certificate...'
@@ -316,22 +486,46 @@ if (-not $cert) {
 }
 Write-OK "Certificate: $($cert.Subject)  [Expires: $($cert.NotAfter.ToString('yyyy-MM-dd'))]"
 
-# If only a display name was provided, do a brief delegated lookup to get the AppId
+# Connect delegated for all Graph operations (Steps 2-4)
+if ($AdminUpn) {
+    Write-Step "Connecting to Microsoft Graph (delegated as $AdminUpn)..."
+    Write-Info 'Delegated session used for all Graph steps (permission grants + directory roles).'
+
+    $prevWam = $env:MSAL_ALLOW_WAM
+    $env:MSAL_ALLOW_WAM = '0'
+    try {
+        Connect-MgGraph -TenantId $TenantId `
+            -Scopes 'Application.ReadWrite.All', 'AppRoleAssignment.ReadWrite.All', 'RoleManagement.ReadWrite.Directory', 'Directory.Read.All' `
+            -NoWelcome `
+            -ErrorAction Stop
+        $ctx = Get-MgContext
+        Write-OK "Connected (delegated) as: $($ctx.Account)"
+    }
+    catch {
+        throw "Delegated Graph connection failed: $($_.Exception.Message). Ensure the account has Global Administrator or Application Administrator rights."
+    }
+    finally {
+        $env:MSAL_ALLOW_WAM = $prevWam
+    }
+}
+else {
+    # No AdminUpn -- fall back to app-only (will work only if app already has sufficient perms)
+    Write-Step 'Connecting to Microsoft Graph (app-only, certificate)...'
+    Write-Info 'No -AdminUpn provided. App-only session may lack permission to grant roles. Use -AdminUpn for full setup.'
+    Connect-MgGraph -TenantId $TenantId -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -NoWelcome
+    $ctx = Get-MgContext
+    Write-OK "Connected (app-only) | AuthType: $($ctx.AuthType)"
+}
+
+# Resolve app and SP (works with either auth type)
 if ($PSCmdlet.ParameterSetName -eq 'ByDisplayName') {
-    Write-Step 'Resolving AppId from display name (brief delegated connection)...'
-    Connect-MgGraph -TenantId $TenantId -Scopes 'Application.Read.All' -NoWelcome
+    Write-Step 'Resolving AppId from display name...'
     $apps = @(Get-MgApplication -Filter "displayName eq '$AppDisplayName'" -ErrorAction Stop)
     if ($apps.Count -eq 0) { throw "No application found with displayName '$AppDisplayName'." }
     if ($apps.Count -gt 1) { throw "Multiple apps share displayName '$AppDisplayName' - use -ClientId." }
     $ClientId = $apps[0].AppId
-    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
     Write-OK "Resolved AppId: $ClientId"
 }
-
-Write-Step 'Connecting to Microsoft Graph (app-only, certificate)...'
-Connect-MgGraph -TenantId $TenantId -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -NoWelcome
-$ctx = Get-MgContext
-Write-OK "Connected (app-only) | AuthType: $($ctx.AuthType)"
 
 Write-Step 'Resolving App Registration and Service Principal...'
 
@@ -413,138 +607,92 @@ else {
 }
 
 # ==============================================================================
-# STEP 4 - PURVIEW / COMPLIANCE ENTRA DIRECTORY ROLES (delegated Graph)
+# STEP 4 - PURVIEW / COMPLIANCE ENTRA DIRECTORY ROLES
 #
-# Assigning directory roles requires RoleManagement.ReadWrite.Directory.
-# The app-only session used in Step 3 cannot grant itself that permission
-# without already having it — a chicken-and-egg problem on first run.
-# We therefore reconnect using a delegated session (-AdminUpn) which inherits
-# the caller's Privileged Role Administrator / Global Administrator rights.
+# Uses the same delegated Graph session from Step 2 — no reconnection needed.
+# If running app-only (no AdminUpn), this step is skipped.
 # ==============================================================================
 
 $complianceResults = [System.Collections.Generic.List[PSCustomObject]]::new()
 
-# Disconnect the app-only session before reconnecting as delegated
-Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-
 if ($SkipComplianceRoles) {
     Write-Step 'Compliance directory roles - SKIPPED (-SkipComplianceRoles specified)'
 }
-else {
-    if (-not $AdminUpn) {
-        Write-Warn 'Compliance directory role assignment requires -AdminUpn (delegated Graph connection).'
-        Write-Warn 'Skipping compliance roles step. Re-run with -AdminUpn to complete this step.'
-        foreach ($roleDef in $requiredComplianceRoles) {
-            $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Skipped'; Sections = $roleDef.Sections })
-        }
+elseif (-not $AdminUpn) {
+    Write-Warn 'Compliance directory role assignment requires -AdminUpn (delegated Graph connection).'
+    Write-Warn 'Skipping compliance roles step. Re-run with -AdminUpn to complete this step.'
+    foreach ($roleDef in $requiredComplianceRoles) {
+        $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Skipped'; Sections = $roleDef.Sections })
     }
-    else {
-        Write-Step "Connecting to Microsoft Graph (delegated as $AdminUpn) for directory role assignments..."
-        Write-Info 'Delegated session required: RoleManagement.ReadWrite.Directory cannot be self-assigned app-only.'
-        Write-Info 'Disabling WAM broker to prevent popup being hidden behind terminal window.'
+}
+else {
+    # Reuses the delegated Graph session from Step 2 — no reconnection needed
+    Write-Step "Assigning Entra ID directory roles for compliance/security access ($($requiredComplianceRoles.Count) roles)..."
 
-        # Disable the WAM broker for this connection — WAM intercepts the auth popup
-        # and hides it behind the terminal window in embedded/non-default console hosts.
-        # Setting this environment variable forces the standard interactive browser flow.
-        $prevWam = $env:MSAL_ALLOW_WAM
-        $env:MSAL_ALLOW_WAM = '0'
+    foreach ($roleDef in $requiredComplianceRoles) {
+        $roleName       = $roleDef.DisplayName
+        $roleTemplateId = $roleDef.TemplateId
 
-        $delegatedConnected = $false
-        try {
-            Connect-MgGraph -TenantId $TenantId `
-                -Scopes 'RoleManagement.ReadWrite.Directory', 'Directory.Read.All' `
-                -NoWelcome `
-                -ErrorAction Stop
-            $delegatedCtx = Get-MgContext
-            if ($delegatedCtx.Account -ne $AdminUpn) {
-                Write-Warn "Connected as $($delegatedCtx.Account) — expected $AdminUpn. Verify this account has Privileged Role Administrator rights."
-            }
-            $delegatedConnected = $true
-            Write-OK "Connected (delegated) as: $($delegatedCtx.Account)"
-        }
-        catch {
-            Write-Fail "Delegated Graph connection failed: $($_.Exception.Message)"
-            Write-Warn 'Compliance roles step skipped. Resolve connectivity and re-run.'
-            foreach ($roleDef in $requiredComplianceRoles) {
-                $complianceResults.Add([PSCustomObject]@{ Role = $roleDef.DisplayName; Status = 'Failed'; Sections = $roleDef.Sections })
-            }
-        }
-        finally {
-            # Restore WAM setting to whatever it was before this script changed it
-            $env:MSAL_ALLOW_WAM = $prevWam
-        }
-
-        if ($delegatedConnected) {
-            Write-Step "Assigning Entra ID directory roles for compliance/security access ($($requiredComplianceRoles.Count) roles)..."
-
-            foreach ($roleDef in $requiredComplianceRoles) {
-                $roleName       = $roleDef.DisplayName
-                $roleTemplateId = $roleDef.TemplateId
-
-                # Activate the directory role in the tenant if not already active
-                $dirRole = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
-                if (-not $dirRole) {
-                    if ($PSCmdlet.ShouldProcess($roleName, 'Activate directory role in tenant')) {
-                        try {
-                            $dirRole = New-MgDirectoryRole -BodyParameter @{ roleTemplateId = $roleTemplateId } -ErrorAction Stop
-                            Write-Info "$roleName - activated in tenant"
-                        }
-                        catch {
-                            Write-Fail "$roleName - could not activate role: $($_.Exception.Message)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
-                            continue
-                        }
-                    }
-                    else {
-                        Write-Host "    [WhatIf] Would activate directory role: $roleName" -ForegroundColor DarkYellow
-                        $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
-                        continue
-                    }
+        $dirRole = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
+        if (-not $dirRole) {
+            if ($PSCmdlet.ShouldProcess($roleName, 'Activate directory role in tenant')) {
+                try {
+                    $dirRole = New-MgDirectoryRole -BodyParameter @{ roleTemplateId = $roleTemplateId } -ErrorAction Stop
+                    Write-Info "$roleName - activated in tenant"
                 }
-
-                # Check existing membership — use SP-specific call to avoid type/paging misses
-                $existingMembers = @(
-                    Get-MgDirectoryRoleMemberAsServicePrincipal -DirectoryRoleId $dirRole.Id -All -ErrorAction SilentlyContinue |
-                    Select-Object -ExpandProperty Id
-                )
-
-                if ($existingMembers -contains $sp.Id) {
-                    Write-Skip "$roleName - already assigned"
-                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
+                catch {
+                    Write-Fail "$roleName - could not activate role: $($_.Exception.Message)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
                     continue
                 }
+            }
+            else {
+                Write-Host "    [WhatIf] Would activate directory role: $roleName" -ForegroundColor DarkYellow
+                $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
+                continue
+            }
+        }
 
-                if ($PSCmdlet.ShouldProcess($roleName, "Assign to $spDisplayName")) {
-                    try {
-                        New-MgDirectoryRoleMemberByRef `
-                            -DirectoryRoleId $dirRole.Id `
-                            -BodyParameter @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($sp.Id)" } `
-                            -ErrorAction Stop
-                        Write-OK "$roleName  [$($roleDef.Sections)]"
-                        $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Added'; Sections = $roleDef.Sections })
-                    }
-                    catch {
-                        if ($_.Exception.Message -match 'already exist') {
-                            Write-Skip "$roleName - already assigned (confirmed via error)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
-                        }
-                        else {
-                            Write-Fail "$roleName - $($_.Exception.Message)"
-                            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
-                        }
-                    }
+        $existingMembers = @(
+            Get-MgDirectoryRoleMemberAsServicePrincipal -DirectoryRoleId $dirRole.Id -All -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty Id
+        )
+
+        if ($existingMembers -contains $sp.Id) {
+            Write-Skip "$roleName - already assigned"
+            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
+            continue
+        }
+
+        if ($PSCmdlet.ShouldProcess($roleName, "Assign to $spDisplayName")) {
+            try {
+                New-MgDirectoryRoleMemberByRef `
+                    -DirectoryRoleId $dirRole.Id `
+                    -BodyParameter @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($sp.Id)" } `
+                    -ErrorAction Stop
+                Write-OK "$roleName  [$($roleDef.Sections)]"
+                $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Added'; Sections = $roleDef.Sections })
+            }
+            catch {
+                if ($_.Exception.Message -match 'already exist') {
+                    Write-Skip "$roleName - already assigned (confirmed via error)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'AlreadyPresent'; Sections = $roleDef.Sections })
                 }
                 else {
-                    Write-Host "    [WhatIf] Would assign role: $roleName  [$($roleDef.Sections)]" -ForegroundColor DarkYellow
-                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
+                    Write-Fail "$roleName - $($_.Exception.Message)"
+                    $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'Failed'; Sections = $roleDef.Sections })
                 }
             }
-
-            Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-            Write-Info 'Disconnected delegated Graph session'
+        }
+        else {
+            Write-Host "    [WhatIf] Would assign role: $roleName  [$($roleDef.Sections)]" -ForegroundColor DarkYellow
+            $complianceResults.Add([PSCustomObject]@{ Role = $roleName; Status = 'WhatIf'; Sections = $roleDef.Sections })
         }
     }
 }
+
+# Disconnect Graph (delegated session) before EXO step
+Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 
 # ==============================================================================
 # STEP 5 - EXCHANGE ONLINE RBAC ROLE GROUPS (delegated — platform requirement)
@@ -687,6 +835,57 @@ elseif ($totalFailed -gt 0) {
 else {
     Write-Host '  All permissions configured successfully.' -ForegroundColor Green
     Write-Host '  The app registration is ready for use with Invoke-M365Assessment.ps1.' -ForegroundColor Green
+}
+
+if ($bootstrapCreated) {
+    Write-Host ''
+    Write-Banner -Title 'New App Registration Details'
+    Write-Host "  App Display Name         : $AppDisplayName"          -ForegroundColor Green
+    Write-Host "  Application (Client) ID  : $ClientId"               -ForegroundColor Green
+    Write-Host "  Certificate Thumbprint   : $CertificateThumbprint"  -ForegroundColor Green
+    Write-Host "  Certificate Subject      : CN=M365-Assess-$TenantId" -ForegroundColor White
+    Write-Host "  Certificate Expires      : $($cert.NotAfter.ToString('yyyy-MM-dd'))" -ForegroundColor White
+    Write-Host "  Public Key Exported      : $cerPath"                -ForegroundColor White
+    Write-Host ''
+    Write-Host '  Run the assessment with:' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host "    .\Invoke-M365Assessment.ps1 -TenantId '$TenantId'" -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host '  Credentials are saved automatically and will be used by the assessment.' -ForegroundColor DarkGray
+    Write-Host ''
+}
+
+# ------------------------------------------------------------------
+# Save credentials to .m365assess.json for auto-detect by the assessment
+# ------------------------------------------------------------------
+if ($ClientId -and $CertificateThumbprint -and -not $WhatIfPreference) {
+    $configPath = Join-Path $PSScriptRoot '..\.m365assess.json'
+    $configPath = [System.IO.Path]::GetFullPath($configPath)
+    $config = @{}
+    if (Test-Path $configPath) {
+        try {
+            $config = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
+        }
+        catch {
+            Write-Verbose "Could not read existing config: $_"
+            $config = @{}
+        }
+    }
+
+    $appName = if ($AppDisplayName) { $AppDisplayName }
+               elseif ($app) { $app.DisplayName }
+               else { '' }
+
+    $config[$TenantId] = @{
+        clientId    = $ClientId
+        thumbprint  = $CertificateThumbprint
+        appName     = $appName
+        saved       = (Get-Date).ToString('yyyy-MM-dd')
+    }
+
+    $config | ConvertTo-Json -Depth 3 | Set-Content -Path $configPath -Encoding UTF8
+    Write-OK "Credentials saved to $configPath"
+    Write-Info "The assessment will auto-detect these credentials when run with -TenantId '$TenantId'"
 }
 
 Write-Host ''

@@ -122,12 +122,12 @@ catch {
 # ------------------------------------------------------------------
 $allServicePrincipals = @()
 try {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching service principals..."
-    $spUri = '/v1.0/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,servicePrincipalType,keyCredentials,passwordCredentials,accountEnabled,appRoleAssignedTo&$top=999'
+    $spUri = '/v1.0/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,servicePrincipalType,keyCredentials,passwordCredentials,accountEnabled&$top=999'
     $spResponse = Invoke-MgGraphRequest -Method GET -Uri $spUri -ErrorAction Stop
     $allServicePrincipals = if ($spResponse -and $spResponse['value']) { @($spResponse['value']) } else { @() }
 
-    # Handle pagination
     $nextLink = $spResponse['@odata.nextLink']
     while ($nextLink) {
         $spResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
@@ -136,12 +136,12 @@ try {
         }
         $nextLink = $spResponse['@odata.nextLink']
     }
+    $sw.Stop()
+    Write-Verbose "Fetched $($allServicePrincipals.Count) service principals in $($sw.Elapsed.TotalSeconds.ToString('F1'))s"
 }
 catch {
     Write-Warning "Could not fetch service principals: $_"
 }
-
-Write-Verbose "Found $($allServicePrincipals.Count) service principals"
 
 # Separate regular apps from managed identities
 $regularApps = @($allServicePrincipals | Where-Object { $_['servicePrincipalType'] -ne 'ManagedIdentity' })
@@ -152,6 +152,7 @@ $managedIdentities = @($allServicePrincipals | Where-Object { $_['servicePrincip
 # ------------------------------------------------------------------
 $spRoleAssignments = @{}
 try {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching directory role assignments for service principals..."
     $roleAssignUri = '/v1.0/roleManagement/directory/roleAssignments?$top=999'
     $roleResponse = Invoke-MgGraphRequest -Method GET -Uri $roleAssignUri -ErrorAction Stop
@@ -184,7 +185,7 @@ catch {
 $graphPermissionMap = @{}
 try {
     Write-Verbose "Fetching Microsoft Graph service principal for permission mapping..."
-    $graphSpUri = "/v1.0/servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=appRoles,oauth2PermissionScopes"
+    $graphSpUri = "/v1.0/servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id,appRoles,oauth2PermissionScopes"
     $graphSp = Invoke-MgGraphRequest -Method GET -Uri $graphSpUri -ErrorAction Stop
     $graphSpValue = if ($graphSp -and $graphSp['value'] -and $graphSp['value'].Count -gt 0) { $graphSp['value'][0] } else { $null }
     if ($graphSpValue) {
@@ -198,6 +199,87 @@ try {
 }
 catch {
     Write-Warning "Could not fetch Graph permission definitions: $_"
+}
+
+# ------------------------------------------------------------------
+# Bulk-fetch oauth2PermissionGrants (tenant-wide, single fast query)
+# ------------------------------------------------------------------
+$spOAuth2Map = @{}
+try {
+    Write-Verbose "Bulk-fetching oauth2 permission grants..."
+    $oauthUri = '/v1.0/oauth2PermissionGrants?$top=999'
+    $oauthResponse = Invoke-MgGraphRequest -Method GET -Uri $oauthUri -ErrorAction Stop
+    $allOAuth2 = if ($oauthResponse -and $oauthResponse['value']) { @($oauthResponse['value']) } else { @() }
+
+    $nextLink = $oauthResponse['@odata.nextLink']
+    while ($nextLink) {
+        $oauthResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
+        if ($oauthResponse -and $oauthResponse['value']) {
+            $allOAuth2 += @($oauthResponse['value'])
+        }
+        $nextLink = $oauthResponse['@odata.nextLink']
+    }
+
+    foreach ($grant in $allOAuth2) {
+        $grantClientId = $grant['clientId']
+        if (-not $spOAuth2Map.ContainsKey($grantClientId)) { $spOAuth2Map[$grantClientId] = @() }
+        $spOAuth2Map[$grantClientId] += $grant
+    }
+    Write-Verbose "Indexed oauth2 grants for $($spOAuth2Map.Keys.Count) principals"
+}
+catch {
+    Write-Warning "Could not bulk-fetch oauth2 grants: $_"
+}
+
+# ------------------------------------------------------------------
+# Bulk-fetch appRoleAssignments from the RESOURCE side (fast)
+# Instead of querying each SP's appRoleAssignments (N calls), we query
+# the Microsoft Graph SP's appRoleAssignedTo — this returns ALL grants
+# to Graph permissions across all SPs in one paginated call.
+# ------------------------------------------------------------------
+$spAppRoleMap = @{}
+try {
+    Write-Verbose "Bulk-fetching app role assignments from Graph resource SP..."
+    $graphSpIdValue = $graphSpValue['id']
+    if ($graphSpIdValue) {
+        $araUri = "/v1.0/servicePrincipals/$graphSpIdValue/appRoleAssignedTo?`$top=999"
+        $araResponse = Invoke-MgGraphRequest -Method GET -Uri $araUri -ErrorAction Stop
+        $allAssigned = if ($araResponse -and $araResponse['value']) { @($araResponse['value']) } else { @() }
+
+        $nextLink = $araResponse['@odata.nextLink']
+        while ($nextLink) {
+            $araResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
+            if ($araResponse -and $araResponse['value']) {
+                $allAssigned += @($araResponse['value'])
+            }
+            $nextLink = $araResponse['@odata.nextLink']
+        }
+
+        foreach ($a in $allAssigned) {
+            $principalId = $a['principalId']
+            if (-not $spAppRoleMap.ContainsKey($principalId)) { $spAppRoleMap[$principalId] = @() }
+            $spAppRoleMap[$principalId] += $a
+        }
+        Write-Verbose "Indexed $($allAssigned.Count) Graph app role assignments across $($spAppRoleMap.Keys.Count) principals"
+    }
+}
+catch {
+    Write-Warning "Could not bulk-fetch app role assignments: $_"
+}
+
+# ------------------------------------------------------------------
+# Helpers: look up cached permission data (zero API calls per check)
+# ------------------------------------------------------------------
+function Get-SpAppRoleAssignments {
+    param([string]$SpId)
+    if ($spAppRoleMap.ContainsKey($SpId)) { return @($spAppRoleMap[$SpId]) }
+    return @()
+}
+
+function Get-SpOAuth2Grants {
+    param([string]$SpId)
+    if ($spOAuth2Map.ContainsKey($SpId)) { return @($spOAuth2Map[$SpId]) }
+    return @()
 }
 
 # ------------------------------------------------------------------
@@ -234,6 +316,8 @@ try {
     $cutoffDate = (Get-Date).AddDays(-90).ToString('yyyy-MM-ddTHH:mm:ssZ')
     $inactiveWithCreds = @()
 
+    # Fetch signInActivity only for the small subset with credentials (avoids
+    # the 60-120s penalty of including signInActivity in the bulk SP query)
     foreach ($sp in $appsWithCreds) {
         try {
             $signInUri = "/v1.0/servicePrincipals/$($sp['id'])?`$select=signInActivity"
@@ -263,33 +347,6 @@ catch {
     Write-Warning "Could not check inactive app credentials: $_"
 }
 
-# ------------------------------------------------------------------
-# Helper: Fetch app role assignments for a service principal
-# ------------------------------------------------------------------
-function Get-SpAppRoleAssignments {
-    param([string]$SpId)
-    try {
-        $uri = "/v1.0/servicePrincipals/$SpId/appRoleAssignments"
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
-        if ($response -and $response['value']) { return @($response['value']) }
-    }
-    catch { Write-Verbose "Could not fetch appRoleAssignments for SP $SpId" }
-    return @()
-}
-
-# ------------------------------------------------------------------
-# Helper: Fetch delegated permission grants for a service principal
-# ------------------------------------------------------------------
-function Get-SpOAuth2Grants {
-    param([string]$SpId)
-    try {
-        $uri = "/v1.0/servicePrincipals/$SpId/oauth2PermissionGrants"
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
-        if ($response -and $response['value']) { return @($response['value']) }
-    }
-    catch { Write-Verbose "Could not fetch oauth2PermissionGrants for SP $SpId" }
-    return @()
-}
 
 # ------------------------------------------------------------------
 # Identify foreign apps (appOwnerOrganizationId != tenant ID)

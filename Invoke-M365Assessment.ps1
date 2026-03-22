@@ -823,6 +823,68 @@ if ($isInteractive -and [Environment]::UserInteractive) {
 }
 
 # ------------------------------------------------------------------
+# Auto-detect saved credentials from .m365assess.json or cert store
+# When TenantId is known but no auth params provided, check for saved
+# credentials from a previous Setup run. This enables zero-config
+# repeat runs: just provide -TenantId and the rest is automatic.
+# ------------------------------------------------------------------
+if ($TenantId -and -not $ClientId -and -not $CertificateThumbprint -and
+    -not $ManagedIdentity -and -not $UseDeviceCode -and -not $SkipConnection -and
+    -not $ClientSecret) {
+
+    $autoDetected = $false
+
+    # Strategy 1: Check .m365assess.json config file
+    $configPath = Join-Path $PSScriptRoot '.m365assess.json'
+    if (Test-Path $configPath) {
+        try {
+            $savedConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
+            if ($savedConfig.ContainsKey($TenantId)) {
+                $entry = $savedConfig[$TenantId]
+                $savedThumbprint = $entry['thumbprint']
+                # Verify the certificate still exists in the user's cert store
+                $savedCert = Get-Item "Cert:\CurrentUser\My\$savedThumbprint" -ErrorAction SilentlyContinue
+                if ($savedCert) {
+                    $ClientId = $entry['clientId']
+                    $CertificateThumbprint = $savedThumbprint
+                    $autoDetected = $true
+                    $appLabel = if ($entry['appName']) { " ($($entry['appName']))" } else { '' }
+                    Write-Verbose "Auto-detected saved credentials for $TenantId$appLabel"
+                }
+                else {
+                    Write-Verbose "Saved cert $savedThumbprint for $TenantId not found in cert store -- skipping auto-detect"
+                }
+            }
+        }
+        catch {
+            Write-Verbose "Could not read .m365assess.json: $_"
+        }
+    }
+
+    # Strategy 2: Cert store auto-detect (CN=M365-Assess-{TenantId})
+    if (-not $autoDetected) {
+        $certSubject = "CN=M365-Assess-$TenantId"
+        $matchingCerts = @(Get-ChildItem -Path 'Cert:\CurrentUser\My' -ErrorAction SilentlyContinue |
+            Where-Object { $_.Subject -eq $certSubject -and $_.NotAfter -gt (Get-Date) } |
+            Sort-Object -Property NotAfter -Descending)
+        if ($matchingCerts.Count -gt 0) {
+            $detectedCert = $matchingCerts[0]
+            $CertificateThumbprint = $detectedCert.Thumbprint
+            # Try to find the ClientId from the config file or leave it for manual entry
+            if ($savedConfig -and $savedConfig.ContainsKey($TenantId)) {
+                $ClientId = $savedConfig[$TenantId]['clientId']
+                $autoDetected = $true
+                Write-Verbose "Auto-detected cert $certSubject (thumbprint: $CertificateThumbprint) with saved ClientId"
+            }
+            else {
+                Write-Verbose "Found cert $certSubject but no saved ClientId -- certificate auth requires -ClientId"
+                $CertificateThumbprint = $null  # Reset -- can't use without ClientId
+            }
+        }
+    }
+}
+
+# ------------------------------------------------------------------
 # Helper: Export results to CSV
 # ------------------------------------------------------------------
 function Export-AssessmentCsv {
