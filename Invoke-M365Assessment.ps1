@@ -1484,11 +1484,6 @@ if (-not $SkipConnection) {
         $compatErrors += $missingModules
     }
 
-    # CheckID module is optional (local registry.json fallback exists) but recommended
-    if (-not (Get-Module -ListAvailable -Name CheckID)) {
-        Write-Verbose "CheckID module not installed. Using local controls/registry.json fallback. For versioned registry data: Install-Module CheckID -Scope CurrentUser"
-    }
-
     if ($compatErrors.Count -gt 0) {
         Write-Host ''
         Write-Host '  ╔══════════════════════════════════════════════════════════╗' -ForegroundColor Magenta

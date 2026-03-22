@@ -144,8 +144,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Fetch CheckID data
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v1.2.0"
+          TAG=$(gh api repos/Galvnyz/CheckID/tags --jq '.[0].name')
+          echo "Syncing from CheckID $TAG"
           BASE="https://raw.githubusercontent.com/Galvnyz/CheckID/$TAG/data"
           curl -sL "$BASE/registry.json" -o controls/registry.json
           for f in cis-controls-v8 cis-m365-v6 cisa-scuba cmmc essential-eight fedramp hipaa iso-27001 mitre-attack nist-800-53-r5 nist-csf pci-dss-v4 soc2-tsc stig; do

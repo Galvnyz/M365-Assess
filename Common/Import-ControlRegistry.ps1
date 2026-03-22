@@ -2,15 +2,15 @@
 .SYNOPSIS
     Loads the control registry and builds lookup tables for the report layer.
 .DESCRIPTION
-    Loads check data from the CheckID PSGallery module (primary) or falls back
-    to the local controls/registry.json file (offline/air-gapped). Returns a
-    hashtable keyed by CheckId with framework mappings and risk severity.
+    Loads check data from the local controls/registry.json file (synced from
+    CheckID via CI). Returns a hashtable keyed by CheckId with framework
+    mappings and risk severity.
 
     Also builds a reverse lookup from CIS control IDs to CheckIds (stored
     under the special key '__cisReverseLookup') for backward compatibility
     with CSVs that still use the CisControl column.
 .PARAMETER ControlsPath
-    Path to the controls/ directory containing registry.json (fallback) and
+    Path to the controls/ directory containing registry.json and
     risk-severity.json (local overlay).
 .PARAMETER CisFrameworkId
     Framework ID for the active CIS benchmark version, used for the reverse
@@ -29,33 +29,15 @@ function Import-ControlRegistry {
         [string]$CisFrameworkId = 'cis-m365-v6'
     )
 
-    $checks = $null
-
-    # Primary: load from CheckID PSGallery module
-    if (Get-Module -ListAvailable -Name CheckID) {
-        try {
-            Import-Module CheckID -ErrorAction Stop
-            $checks = @(Get-CheckRegistry -ErrorAction Stop)
-            Write-Verbose "Loaded $($checks.Count) checks from CheckID module"
-        }
-        catch {
-            Write-Warning "CheckID module available but failed to load: $_"
-            $checks = $null
-        }
+    $registryPath = Join-Path -Path $ControlsPath -ChildPath 'registry.json'
+    if (-not (Test-Path -Path $registryPath)) {
+        Write-Warning "Control registry not found: $registryPath"
+        return @{}
     }
 
-    # Fallback: load from local controls/registry.json
-    if (-not $checks) {
-        $registryPath = Join-Path -Path $ControlsPath -ChildPath 'registry.json'
-        if (-not (Test-Path -Path $registryPath)) {
-            Write-Warning "Control registry not found: $registryPath"
-            return @{}
-        }
-
-        $raw = Get-Content -Path $registryPath -Raw | ConvertFrom-Json
-        $checks = @($raw.checks)
-        Write-Verbose "Loaded $($checks.Count) checks from local registry.json"
-    }
+    $raw = Get-Content -Path $registryPath -Raw | ConvertFrom-Json
+    $checks = @($raw.checks)
+    Write-Verbose "Loaded $($checks.Count) checks from local registry.json"
 
     # Build hashtable keyed by CheckId
     $lookup = @{}
