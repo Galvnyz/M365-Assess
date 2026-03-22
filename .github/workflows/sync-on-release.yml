@@ -3,6 +3,12 @@ name: Sync CheckID on Release
 on:
   repository_dispatch:
     types: [checkid-released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'CheckID tag to sync (e.g. v1.3.0)'
+        required: true
+        default: 'v1.3.0'
 
 permissions:
   contents: write
@@ -19,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: |
-          TAG="${{ github.event.client_payload.tag }}"
+          TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           echo "Syncing from CheckID $TAG"
           BASE="https://raw.githubusercontent.com/Galvnyz/CheckID/$TAG/data"
           curl -sL "$BASE/registry.json" -o controls/registry.json
@@ -38,7 +44,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: |
-          TAG="${{ github.event.client_payload.tag }}"
+          TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           BRANCH="chore/sync-checkid-$TAG"
           git checkout -b "$BRANCH"
           git add controls/
@@ -58,7 +64,7 @@ Review the diff and merge when ready." \
 
       - name: Summary
         run: |
-          TAG="${{ github.event.client_payload.tag }}"
+          TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           if [ "${{ steps.diff.outputs.changed }}" = "true" ]; then
             echo "### CheckID $TAG sync PR created" >> "$GITHUB_STEP_SUMMARY"
           else
