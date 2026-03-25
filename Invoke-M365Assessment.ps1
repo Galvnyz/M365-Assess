@@ -2008,18 +2008,43 @@ foreach ($sectionName in $Section) {
                 $scriptLines.Add("& '$scriptPath' -OutputPath '$childCsvPath'")
 
                 $childScriptFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "m365assess_pbi_$([System.IO.Path]::GetRandomFileName()).ps1"
+                $childOutputFile = [System.IO.Path]::ChangeExtension($childScriptFile, '.log')
                 Set-Content -Path $childScriptFile -Value ($scriptLines -join "`n") -Encoding UTF8
+                $childTimeoutSec = 30
                 try {
-                    $childOutput = & pwsh -NoProfile -File $childScriptFile 2>&1
-                    $childErrors = @($childOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
-                    $childWarnings = @($childOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+                    $childProc = Start-Process -FilePath 'pwsh' -ArgumentList '-NoProfile', '-File', $childScriptFile `
+                        -RedirectStandardOutput $childOutputFile -RedirectStandardError ([System.IO.Path]::ChangeExtension($childScriptFile, '.err')) `
+                        -NoNewWindow -PassThru
 
-                    foreach ($w in $childWarnings) {
-                        Write-AssessmentLog -Level WARN -Message $w.Message -Section $sectionName -Collector $collector.Label
+                    # Poll with countdown so the user sees progress instead of a frozen screen
+                    $exited = $false
+                    for ($waited = 0; $waited -lt $childTimeoutSec; $waited += 5) {
+                        $exited = $childProc.WaitForExit(5000)
+                        if ($exited) { break }
+                        $remaining = $childTimeoutSec - $waited - 5
+                        if ($remaining -gt 0) {
+                            Write-Host "    Waiting for Power BI response... (${remaining}s until timeout)" -ForegroundColor Gray
+                        }
                     }
 
-                    if ($childErrors.Count -gt 0) {
-                        throw ($childErrors | Select-Object -First 1).Exception.Message
+                    if (-not $exited) {
+                        $childProc.Kill()
+                        $childProc.WaitForExit(5000)
+                        throw "Child process timed out after ${childTimeoutSec}s — Power BI connection or API is unresponsive. Verify the account has Power BI Service Administrator role. The assessment will continue without Power BI data."
+                    }
+
+                    # Read captured output for warnings/errors
+                    $childStdout = if (Test-Path $childOutputFile) { Get-Content -Path $childOutputFile -Raw } else { '' }
+                    $childStderr = $childErrFile = [System.IO.Path]::ChangeExtension($childScriptFile, '.err')
+                    $childStderrContent = if (Test-Path $childErrFile) { Get-Content -Path $childErrFile -Raw } else { '' }
+
+                    if ($childStderrContent) {
+                        Write-AssessmentLog -Level WARN -Message "Child process stderr: $($childStderrContent.Trim())" -Section $sectionName -Collector $collector.Label
+                    }
+
+                    if ($childProc.ExitCode -ne 0) {
+                        $errDetail = if ($childStderrContent) { $childStderrContent.Trim() } else { "Exit code $($childProc.ExitCode)" }
+                        throw "Child process failed: $errDetail"
                     }
 
                     if (Test-Path -Path $childCsvPath) {
@@ -2033,6 +2058,8 @@ foreach ($sectionName in $Section) {
                 }
                 finally {
                     Remove-Item -Path $childScriptFile -ErrorAction SilentlyContinue
+                    Remove-Item -Path $childOutputFile -ErrorAction SilentlyContinue
+                    Remove-Item -Path ([System.IO.Path]::ChangeExtension($childScriptFile, '.err')) -ErrorAction SilentlyContinue
                 }
 
                 # Skip normal in-process execution
