@@ -991,6 +991,13 @@ foreach ($sectionName in $sections) {
                 $dmarcDetail = if ($dmarcMonitoring -gt 0) { "<div class='dns-stat-detail'>$dmarcMonitoring monitoring</div>" } else { '' }
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $dmarcClass'><div class='dns-stat-value'>$dmarcEnforced / $totalDomains</div><div class='dns-stat-label'>DMARC Enforced</div>$dmarcDetail</div>")
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $dkimClass'><div class='dns-stat-value'>$dkimConfigured / $totalDomains</div><div class='dns-stat-label'>DKIM</div></div>")
+                $dkimMismatchCount = 0
+                if ($dnsColumns -contains 'DKIMStatus') {
+                    $dkimMismatchCount = @($dnsData | Where-Object { $_.DKIMStatus -match '^Mismatch' }).Count
+                }
+                if ($dkimMismatchCount -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='dns-stat danger'><div class='dns-stat-value'>$dkimMismatchCount</div><div class='dns-stat-label'>DKIM Mismatch</div></div>")
+                }
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $mtaStsClass'><div class='dns-stat-value'>$mtaStsConfigured / $totalDomains</div><div class='dns-stat-label'>MTA-STS</div></div>")
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $tlsRptClass'><div class='dns-stat-value'>$tlsRptConfigured / $totalDomains</div><div class='dns-stat-label'>TLS-RPT</div></div>")
                 if ($dnsColumns -contains 'PublicDNSConfirm') {
@@ -1711,6 +1718,18 @@ foreach ($sectionName in $sections) {
                     if ($badgeClass) {
                         $val = "<span class='badge $badgeClass'>$val</span>"
                     }
+                }
+                # Special rendering for DKIMStatus column
+                if ($col -eq 'DKIMStatus') {
+                    $cellCss = ''
+                    if ($val -match '^Mismatch') {
+                        $cellCss = " class='dkim-mismatch'"
+                    }
+                    elseif ($val -match 'EXO Confirmed') {
+                        $cellCss = " class='dkim-exo-confirmed'"
+                    }
+                    $null = $sectionHtml.AppendLine("<td$cellCss>$val</td>")
+                    continue
                 }
                 # Remediation column — add copy-to-clipboard button for PowerShell commands
                 if ($col -eq 'Remediation' -and $row.Remediation -match '^(Set|Get|New|Remove|Update|Enable|Disable|Add|Connect|Grant|Revoke|Install|Uninstall|Import|Export)-') {
@@ -2770,6 +2789,22 @@ $html = @"
             font-size: 7.5pt;
             color: var(--m365a-medium-gray);
             margin-top: 2px;
+        }
+        .dkim-mismatch {
+            background: #fff3cd;
+            color: #856404;
+            font-weight: 600;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        .dkim-exo-confirmed {
+            background: #d4edda;
+            color: #155724;
+            font-weight: 600;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            font-size: 0.85rem;
         }
         .dns-protocols {
             margin-top: 12px;

@@ -221,6 +221,20 @@ Describe 'Export-AssessmentReport HTML structure' {
         }
     }
 
+    Context 'DKIM mismatch rendering' {
+        It 'Should include dkim-mismatch CSS class for mismatch styling' {
+            $html | Should -Match 'dkim-mismatch'
+        }
+
+        It 'Should include dkim-exo-confirmed CSS class' {
+            $html | Should -Match 'dkim-exo-confirmed'
+        }
+
+        It 'Should include EXO Confirmed badge text in conditional rendering' {
+            $html | Should -Match 'EXO Confirmed'
+        }
+    }
+
     Context 'Copy-to-clipboard for remediation' {
         It 'Should include copyRemediation JavaScript function' {
             $html | Should -Match 'function copyRemediation'

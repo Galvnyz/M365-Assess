@@ -2351,6 +2351,32 @@ if ($script:runDnsAuthentication) {
             }
             catch { Write-Verbose "DKIM selector2 lookup failed for $domainName`: $_" }
 
+            # ------- DKIM EXO cross-reference -------
+            $dkimStatus = 'N/A'
+            $dkimDnsFound = ($dkimSelector1 -ne 'Not configured') -or ($dkimSelector2 -ne 'Not configured')
+            if ($script:cachedDkimConfigs) {
+                $exoDkim = $script:cachedDkimConfigs | Where-Object { $_.Domain -eq $domainName }
+                $exoDkimEnabled = $exoDkim -and $exoDkim.Enabled
+
+                if ($dkimDnsFound -and $exoDkimEnabled) {
+                    $dkimStatus = 'OK'
+                }
+                elseif (-not $dkimDnsFound -and $exoDkimEnabled) {
+                    if ($domainName -match '\.onmicrosoft\.com$') {
+                        $dkimStatus = 'EXO Confirmed (DNS not public for .onmicrosoft.com)'
+                    }
+                    else {
+                        $dkimStatus = 'Mismatch: EXO enabled but DNS CNAME not found'
+                    }
+                }
+                elseif ($dkimDnsFound -and -not $exoDkimEnabled) {
+                    $dkimStatus = 'Mismatch: DNS CNAME exists but EXO signing disabled'
+                }
+                else {
+                    $dkimStatus = 'Not configured'
+                }
+            }
+
             # ------- MTA-STS (RFC 8461) -------
             $mtaSts = 'Not configured'
             try {
@@ -2412,6 +2438,7 @@ if ($script:runDnsAuthentication) {
                 DMARCDuplicates  = $dmarcDuplicates
                 DKIMSelector1    = $dkimSelector1
                 DKIMSelector2    = $dkimSelector2
+                DKIMStatus       = $dkimStatus
                 MTASTS           = $mtaSts
                 TLSRPT           = $tlsRpt
                 PublicDNSConfirm = $publicDnsConfirmed
