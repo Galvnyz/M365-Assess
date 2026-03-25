@@ -1284,7 +1284,7 @@ $collectorMap = [ordered]@{
     'Email' = @(
         @{ Name = '09-Mailbox-Summary';  Script = 'Exchange-Online\Get-MailboxSummary.ps1';       Label = 'Mailbox Summary' }
         @{ Name = '10-Mail-Flow';        Script = 'Exchange-Online\Get-MailFlowReport.ps1';       Label = 'Mail Flow' }
-        @{ Name = '11-Email-Security';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'Email Security' }
+        @{ Name = '11-EXO-Email-Policies';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'EXO Email Policies' }
         @{ Name = '11b-EXO-Security-Config'; Script = 'Exchange-Online\Get-ExoSecurityConfig.ps1'; Label = 'EXO Security Config' }
         # DNS Security Config is deferred — runs after all sections using prefetched DNS cache
     )
@@ -1344,8 +1344,8 @@ $collectorMap = [ordered]@{
 # DNS Authentication collector (runs after Email section)
 # ------------------------------------------------------------------
 $dnsCollector = @{
-    Name   = '12-DNS-Authentication'
-    Label  = 'DNS Authentication'
+    Name   = '12-DNS-Email-Authentication'
+    Label  = 'DNS Email Authentication'
 }
 
 # ------------------------------------------------------------------

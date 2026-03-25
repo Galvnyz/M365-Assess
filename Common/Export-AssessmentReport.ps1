@@ -541,11 +541,12 @@ foreach ($sectionName in $sections) {
     # Reorder Email collectors for natural report flow
     if ($sectionName -eq 'Email') {
         $emailOrder = @{
-            '09-Mailbox-Summary.csv'       = 0
-            '11b-EXO-Security-Config.csv'  = 1
-            '11-Email-Security.csv'        = 2
-            '10-Mail-Flow.csv'             = 3
-            '12-DNS-Authentication.csv'    = 4
+            '09-Mailbox-Summary.csv'           = 0
+            '11b-EXO-Security-Config.csv'      = 1
+            '11-EXO-Email-Policies.csv'        = 2
+            '10-Mail-Flow.csv'                 = 3
+            '12-DNS-Email-Authentication.csv'  = 4
+            '12b-DNS-Security-Config.csv'      = 5
         }
         $sectionCollectors = @($sectionCollectors | Sort-Object -Property @{
             Expression = { if ($emailOrder.ContainsKey($_.FileName)) { $emailOrder[$_.FileName] } else { 99 } }
@@ -844,7 +845,7 @@ foreach ($sectionName in $sections) {
         # Pre-load email CSVs
         $mbxCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '09-Mailbox-Summary.csv'
         $exoCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11b-EXO-Security-Config.csv'
-        $polCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11-Email-Security.csv'
+        $polCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11-EXO-Email-Policies.csv'
 
         $mbxData = if (Test-Path $mbxCsvPath) { @(Import-Csv $mbxCsvPath) } else { @() }
         $exoData = if (Test-Path $exoCsvPath) { @(Import-Csv $exoCsvPath) } else { @() }
@@ -855,7 +856,7 @@ foreach ($sectionName in $sections) {
         $hasPolicies = $polData.Count -gt 0
 
         # Also pre-load DNS Authentication data
-        $dnsCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '12-DNS-Authentication.csv'
+        $dnsCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '12-DNS-Email-Authentication.csv'
         $dnsData = if (Test-Path $dnsCsvPath) { @(Import-Csv $dnsCsvPath) } else { @() }
         $hasDns = $dnsData.Count -gt 0
 
@@ -1586,7 +1587,7 @@ foreach ($sectionName in $sections) {
         # ----------------------------------------------------------
         $rowCount = @($data).Count
         $isScubaGear = ($c.FileName -eq '27-ScubaGear-Baseline.csv')
-        $collectorDisplay = if ($c.FileName -eq '11-Email-Security.csv') { 'Email Policies' } else { $c.Collector }
+        $collectorDisplay = if ($c.FileName -eq '11-EXO-Email-Policies.csv') { 'EXO Email Policies' } else { $c.Collector }
         $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
