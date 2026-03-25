@@ -916,7 +916,7 @@ foreach ($sectionName in $sections) {
                     $exoDonut = Get-SvgMultiDonut -Segments $exoSegments -CenterLabel "$exoTotal" -Size 130 -StrokeWidth 12
 
                     $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
-                    $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>EXO Security Config</div>")
+                    $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>EXO Security Config <span class='source-badge source-exo'>EXO</span></div>")
                     $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
                     $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
                     $null = $sectionHtml.AppendLine($exoDonut)
@@ -983,7 +983,7 @@ foreach ($sectionName in $sections) {
                 $publicClass = if ($publicConfirmed -eq $totalDomains) { 'success' } elseif ($publicConfirmed -gt 0) { 'warning' } else { 'danger' }
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
-                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Authentication</div>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Authentication <span class='source-badge source-dns'>DNS</span></div>")
 
                 # DNS stat cards — compact 2-column grid for column context
                 $null = $sectionHtml.AppendLine("<div class='dns-stats-col'>")
@@ -1018,7 +1018,7 @@ foreach ($sectionName in $sections) {
             # --- Below: Email Policies as responsive grid ---
             if ($hasPolicies) {
                 $null = $sectionHtml.AppendLine("<div class='email-dash-policies'>")
-                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies</div>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies <span class='source-badge source-exo'>EXO</span></div>")
                 $null = $sectionHtml.AppendLine("<div class='policy-grid'>")
                 foreach ($policy in $polData) {
                     $policyEnabled = ($policy.Enabled -eq 'True')
@@ -2684,6 +2684,25 @@ $html = @"
             margin-bottom: 14px;
             padding-bottom: 8px;
             border-bottom: 2px solid var(--m365a-border);
+        }
+        .source-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+        .source-exo {
+            background: var(--m365a-accent, #0078d4);
+            color: #fff;
+        }
+        .source-dns {
+            background: #6c757d;
+            color: #fff;
         }
         .email-dash-dns {
             margin-top: 20px;

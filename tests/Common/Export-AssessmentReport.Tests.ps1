@@ -207,6 +207,20 @@ Describe 'Export-AssessmentReport HTML structure' {
         }
     }
 
+    Context 'Data source badges' {
+        It 'Should include source-badge CSS class' {
+            $html | Should -Match 'source-badge'
+        }
+
+        It 'Should include EXO source badge' {
+            $html | Should -Match 'source-exo'
+        }
+
+        It 'Should include DNS source badge' {
+            $html | Should -Match 'source-dns'
+        }
+    }
+
     Context 'Copy-to-clipboard for remediation' {
         It 'Should include copyRemediation JavaScript function' {
             $html | Should -Match 'function copyRemediation'
