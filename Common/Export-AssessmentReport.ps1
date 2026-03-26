@@ -537,15 +537,17 @@ $sectionDescriptions = @{
 
 foreach ($sectionName in $sections) {
     $sectionCollectors = @($summary | Where-Object { $_.Section -eq $sectionName })
+    $dnsSubsectionRendered = $false
 
     # Reorder Email collectors for natural report flow
     if ($sectionName -eq 'Email') {
         $emailOrder = @{
-            '09-Mailbox-Summary.csv'       = 0
-            '11b-EXO-Security-Config.csv'  = 1
-            '11-Email-Security.csv'        = 2
-            '10-Mail-Flow.csv'             = 3
-            '12-DNS-Authentication.csv'    = 4
+            '09-Mailbox-Summary.csv'           = 0
+            '11b-EXO-Security-Config.csv'      = 1
+            '11-EXO-Email-Policies.csv'        = 2
+            '10-Mail-Flow.csv'                 = 3
+            '12-DNS-Email-Authentication.csv'  = 4
+            '12b-DNS-Security-Config.csv'      = 5
         }
         $sectionCollectors = @($sectionCollectors | Sort-Object -Property @{
             Expression = { if ($emailOrder.ContainsKey($_.FileName)) { $emailOrder[$_.FileName] } else { 99 } }
@@ -844,7 +846,7 @@ foreach ($sectionName in $sections) {
         # Pre-load email CSVs
         $mbxCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '09-Mailbox-Summary.csv'
         $exoCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11b-EXO-Security-Config.csv'
-        $polCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11-Email-Security.csv'
+        $polCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '11-EXO-Email-Policies.csv'
 
         $mbxData = if (Test-Path $mbxCsvPath) { @(Import-Csv $mbxCsvPath) } else { @() }
         $exoData = if (Test-Path $exoCsvPath) { @(Import-Csv $exoCsvPath) } else { @() }
@@ -855,7 +857,7 @@ foreach ($sectionName in $sections) {
         $hasPolicies = $polData.Count -gt 0
 
         # Also pre-load DNS Authentication data
-        $dnsCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '12-DNS-Authentication.csv'
+        $dnsCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '12-DNS-Email-Authentication.csv'
         $dnsData = if (Test-Path $dnsCsvPath) { @(Import-Csv $dnsCsvPath) } else { @() }
         $hasDns = $dnsData.Count -gt 0
 
@@ -914,7 +916,7 @@ foreach ($sectionName in $sections) {
                     $exoDonut = Get-SvgMultiDonut -Segments $exoSegments -CenterLabel "$exoTotal" -Size 130 -StrokeWidth 12
 
                     $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
-                    $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>EXO Security Config</div>")
+                    $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>EXO Security Config <span class='source-badge source-exo'>Exch Online</span></div>")
                     $null = $sectionHtml.AppendLine("<div class='dash-panel'>")
                     $null = $sectionHtml.AppendLine("<div class='dash-panel-donut'>")
                     $null = $sectionHtml.AppendLine($exoDonut)
@@ -981,7 +983,7 @@ foreach ($sectionName in $sections) {
                 $publicClass = if ($publicConfirmed -eq $totalDomains) { 'success' } elseif ($publicConfirmed -gt 0) { 'warning' } else { 'danger' }
 
                 $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
-                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Authentication</div>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Authentication <span class='source-badge source-dns'>Live DNS Check</span></div>")
 
                 # DNS stat cards — compact 2-column grid for column context
                 $null = $sectionHtml.AppendLine("<div class='dns-stats-col'>")
@@ -989,6 +991,13 @@ foreach ($sectionName in $sections) {
                 $dmarcDetail = if ($dmarcMonitoring -gt 0) { "<div class='dns-stat-detail'>$dmarcMonitoring monitoring</div>" } else { '' }
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $dmarcClass'><div class='dns-stat-value'>$dmarcEnforced / $totalDomains</div><div class='dns-stat-label'>DMARC Enforced</div>$dmarcDetail</div>")
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $dkimClass'><div class='dns-stat-value'>$dkimConfigured / $totalDomains</div><div class='dns-stat-label'>DKIM</div></div>")
+                $dkimMismatchCount = 0
+                if ($dnsColumns -contains 'DKIMStatus') {
+                    $dkimMismatchCount = @($dnsData | Where-Object { $_.DKIMStatus -match '^Mismatch' }).Count
+                }
+                if ($dkimMismatchCount -gt 0) {
+                    $null = $sectionHtml.AppendLine("<div class='dns-stat danger'><div class='dns-stat-value'>$dkimMismatchCount</div><div class='dns-stat-label'>DKIM Mismatch</div></div>")
+                }
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $mtaStsClass'><div class='dns-stat-value'>$mtaStsConfigured / $totalDomains</div><div class='dns-stat-label'>MTA-STS</div></div>")
                 $null = $sectionHtml.AppendLine("<div class='dns-stat $tlsRptClass'><div class='dns-stat-value'>$tlsRptConfigured / $totalDomains</div><div class='dns-stat-label'>TLS-RPT</div></div>")
                 if ($dnsColumns -contains 'PublicDNSConfirm') {
@@ -1016,7 +1025,7 @@ foreach ($sectionName in $sections) {
             # --- Below: Email Policies as responsive grid ---
             if ($hasPolicies) {
                 $null = $sectionHtml.AppendLine("<div class='email-dash-policies'>")
-                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies</div>")
+                $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Email Policies <span class='source-badge source-exo'>Exch Online</span></div>")
                 $null = $sectionHtml.AppendLine("<div class='policy-grid'>")
                 foreach ($policy in $polData) {
                     $policyEnabled = ($policy.Enabled -eq 'True')
@@ -1586,7 +1595,18 @@ foreach ($sectionName in $sections) {
         # ----------------------------------------------------------
         $rowCount = @($data).Count
         $isScubaGear = ($c.FileName -eq '27-ScubaGear-Baseline.csv')
-        $collectorDisplay = if ($c.FileName -eq '11-Email-Security.csv') { 'Email Policies' } else { $c.Collector }
+        $collectorDisplay = if ($c.FileName -eq '11-EXO-Email-Policies.csv') { 'EXO Email Policies' } else { $c.Collector }
+
+        # Insert DNS subsection divider before the first DNS table
+        $isDnsTable = $c.FileName -match '^12[b]?-DNS-'
+        if ($isDnsTable -and -not $dnsSubsectionRendered) {
+            $null = $sectionHtml.AppendLine("<div class='dns-subsection-divider'>")
+            $null = $sectionHtml.AppendLine("<h3>DNS Authentication</h3>")
+            $null = $sectionHtml.AppendLine("<p class='source-note'>The following data was retrieved via public DNS queries against each verified domain.</p>")
+            $null = $sectionHtml.AppendLine("</div>")
+            $dnsSubsectionRendered = $true
+        }
+
         $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
@@ -1698,6 +1718,18 @@ foreach ($sectionName in $sections) {
                     if ($badgeClass) {
                         $val = "<span class='badge $badgeClass'>$val</span>"
                     }
+                }
+                # Special rendering for DKIMStatus column
+                if ($col -eq 'DKIMStatus') {
+                    $cellCss = ''
+                    if ($val -match '^Mismatch') {
+                        $cellCss = " class='dkim-mismatch'"
+                    }
+                    elseif ($val -match 'EXO Confirmed') {
+                        $cellCss = " class='dkim-exo-confirmed'"
+                    }
+                    $null = $sectionHtml.AppendLine("<td$cellCss>$val</td>")
+                    continue
                 }
                 # Remediation column — add copy-to-clipboard button for PowerShell commands
                 if ($col -eq 'Remediation' -and $row.Remediation -match '^(Set|Get|New|Remove|Update|Enable|Disable|Add|Connect|Grant|Revoke|Install|Uninstall|Import|Export)-') {
@@ -2672,6 +2704,25 @@ $html = @"
             padding-bottom: 8px;
             border-bottom: 2px solid var(--m365a-border);
         }
+        .source-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+        .source-exo {
+            background: var(--m365a-accent, #0078d4);
+            color: #fff;
+        }
+        .source-dns {
+            background: #6c757d;
+            color: #fff;
+        }
         .email-dash-dns {
             margin-top: 20px;
             padding-top: 20px;
@@ -2738,6 +2789,22 @@ $html = @"
             font-size: 7.5pt;
             color: var(--m365a-medium-gray);
             margin-top: 2px;
+        }
+        .dkim-mismatch {
+            background: #fff3cd;
+            color: #856404;
+            font-weight: 600;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        .dkim-exo-confirmed {
+            background: #d4edda;
+            color: #155724;
+            font-weight: 600;
+            padding: 0.15em 0.5em;
+            border-radius: 3px;
+            font-size: 0.85rem;
         }
         .dns-protocols {
             margin-top: 12px;
@@ -3135,6 +3202,27 @@ $html = @"
         .data-table th.sort-desc::after {
             content: ' \25BC';
             opacity: 0.8;
+        }
+
+        /* DNS subsection divider */
+        .dns-subsection-divider {
+            margin: 2rem 0 1rem;
+            padding: 0.75rem 1rem;
+            border-left: 4px solid var(--m365a-accent);
+            background: var(--m365a-card-bg);
+            border: 1px solid var(--m365a-border);
+            border-left: 4px solid var(--m365a-accent);
+            border-radius: 0 6px 6px 0;
+        }
+        .dns-subsection-divider h3 {
+            margin: 0 0 0.25rem;
+            font-size: 1.05rem;
+            color: var(--m365a-text);
+        }
+        .dns-subsection-divider .source-note {
+            font-size: 0.85rem;
+            color: var(--m365a-medium-gray);
+            margin: 0;
         }
 
         /* Collapsible data sub-sections */

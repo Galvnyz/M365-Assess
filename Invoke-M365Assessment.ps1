@@ -1284,7 +1284,7 @@ $collectorMap = [ordered]@{
     'Email' = @(
         @{ Name = '09-Mailbox-Summary';  Script = 'Exchange-Online\Get-MailboxSummary.ps1';       Label = 'Mailbox Summary' }
         @{ Name = '10-Mail-Flow';        Script = 'Exchange-Online\Get-MailFlowReport.ps1';       Label = 'Mail Flow' }
-        @{ Name = '11-Email-Security';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'Email Security' }
+        @{ Name = '11-EXO-Email-Policies';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'EXO Email Policies' }
         @{ Name = '11b-EXO-Security-Config'; Script = 'Exchange-Online\Get-ExoSecurityConfig.ps1'; Label = 'EXO Security Config' }
         # DNS Security Config is deferred — runs after all sections using prefetched DNS cache
     )
@@ -1344,8 +1344,8 @@ $collectorMap = [ordered]@{
 # DNS Authentication collector (runs after Email section)
 # ------------------------------------------------------------------
 $dnsCollector = @{
-    Name   = '12-DNS-Authentication'
-    Label  = 'DNS Authentication'
+    Name   = '12-DNS-Email-Authentication'
+    Label  = 'DNS Email Authentication'
 }
 
 # ------------------------------------------------------------------
@@ -2003,23 +2003,67 @@ foreach ($sectionName in $Section) {
                     $scriptLines.Add("`$connectParams['ClientId'] = '$ClientId'")
                     $scriptLines.Add("`$connectParams['ClientSecret'] = (ConvertTo-SecureString '$plainSecret' -AsPlainText -Force)")
                 }
-                if ($UseDeviceCode)         { $scriptLines.Add('$connectParams["UseDeviceCode"] = $true') }
+                # On macOS/Linux, interactive browser auth hangs silently for Power BI.
+                # Force device code flow unless a service principal is configured.
+                if ($UseDeviceCode) {
+                    $scriptLines.Add('$connectParams["UseDeviceCode"] = $true')
+                }
+                elseif (-not $IsWindows -and -not ($ClientId -and ($CertificateThumbprint -or $ClientSecret))) {
+                    $scriptLines.Add('$connectParams["UseDeviceCode"] = $true')
+                    Write-Host "    Using device code auth (interactive browser not supported on this platform)" -ForegroundColor Yellow
+                }
                 $scriptLines.Add("try { & '$connectServicePath' @connectParams } catch { Write-Error `$_; exit 1 }")
                 $scriptLines.Add("& '$scriptPath' -OutputPath '$childCsvPath'")
 
                 $childScriptFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "m365assess_pbi_$([System.IO.Path]::GetRandomFileName()).ps1"
+                $childOutputFile = [System.IO.Path]::ChangeExtension($childScriptFile, '.log')
+                $childErrFile    = [System.IO.Path]::ChangeExtension($childScriptFile, '.err')
                 Set-Content -Path $childScriptFile -Value ($scriptLines -join "`n") -Encoding UTF8
+                $childTimeoutSec = if ($UseDeviceCode -or (-not $IsWindows -and -not ($ClientId -and ($CertificateThumbprint -or $ClientSecret)))) { 120 } else { 30 }
+                $childNeedsConsole = $UseDeviceCode -or (-not $IsWindows -and -not ($ClientId -and ($CertificateThumbprint -or $ClientSecret)))
                 try {
-                    $childOutput = & pwsh -NoProfile -File $childScriptFile 2>&1
-                    $childErrors = @($childOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
-                    $childWarnings = @($childOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
-
-                    foreach ($w in $childWarnings) {
-                        Write-AssessmentLog -Level WARN -Message $w.Message -Section $sectionName -Collector $collector.Label
+                    if ($childNeedsConsole) {
+                        # Device code auth: don't redirect output so the user sees the
+                        # login prompt. Use a background job with timeout instead.
+                        $childProc = Start-Process -FilePath 'pwsh' -ArgumentList '-NoProfile', '-File', $childScriptFile `
+                            -NoNewWindow -PassThru
+                    }
+                    else {
+                        # Service principal / Windows interactive: redirect output for
+                        # clean console and capture errors.
+                        $childProc = Start-Process -FilePath 'pwsh' -ArgumentList '-NoProfile', '-File', $childScriptFile `
+                            -RedirectStandardOutput $childOutputFile -RedirectStandardError $childErrFile `
+                            -NoNewWindow -PassThru
                     }
 
-                    if ($childErrors.Count -gt 0) {
-                        throw ($childErrors | Select-Object -First 1).Exception.Message
+                    # Poll with countdown so the user sees progress instead of a frozen screen
+                    $exited = $false
+                    for ($waited = 0; $waited -lt $childTimeoutSec; $waited += 5) {
+                        $exited = $childProc.WaitForExit(5000)
+                        if ($exited) { break }
+                        $remaining = $childTimeoutSec - $waited - 5
+                        if ($remaining -gt 0 -and -not $childNeedsConsole) {
+                            Write-Host "    Waiting for Power BI response... (${remaining}s until timeout)" -ForegroundColor Gray
+                        }
+                    }
+
+                    if (-not $exited) {
+                        $childProc.Kill()
+                        $childProc.WaitForExit(5000)
+                        throw "Child process timed out after ${childTimeoutSec}s — Power BI connection or API is unresponsive. Verify the account has Power BI Service Administrator role. The assessment will continue without Power BI data."
+                    }
+
+                    # Read captured output for warnings/errors (only when redirected)
+                    if (-not $childNeedsConsole) {
+                        $childStderrContent = if (Test-Path $childErrFile) { Get-Content -Path $childErrFile -Raw } else { '' }
+                        if ($childStderrContent) {
+                            Write-AssessmentLog -Level WARN -Message "Child process stderr: $($childStderrContent.Trim())" -Section $sectionName -Collector $collector.Label
+                        }
+                    }
+
+                    if ($childProc.ExitCode -ne 0) {
+                        $errDetail = if (-not $childNeedsConsole -and (Test-Path $childErrFile)) { (Get-Content -Path $childErrFile -Raw).Trim() } else { "Exit code $($childProc.ExitCode)" }
+                        throw "Child process failed: $errDetail"
                     }
 
                     if (Test-Path -Path $childCsvPath) {
@@ -2033,6 +2077,8 @@ foreach ($sectionName in $Section) {
                 }
                 finally {
                     Remove-Item -Path $childScriptFile -ErrorAction SilentlyContinue
+                    Remove-Item -Path $childOutputFile -ErrorAction SilentlyContinue
+                    Remove-Item -Path $childErrFile -ErrorAction SilentlyContinue
                 }
 
                 # Skip normal in-process execution
@@ -2351,6 +2397,32 @@ if ($script:runDnsAuthentication) {
             }
             catch { Write-Verbose "DKIM selector2 lookup failed for $domainName`: $_" }
 
+            # ------- DKIM EXO cross-reference -------
+            $dkimStatus = 'N/A'
+            $dkimDnsFound = ($dkimSelector1 -ne 'Not configured') -or ($dkimSelector2 -ne 'Not configured')
+            if ($script:cachedDkimConfigs) {
+                $exoDkim = @($script:cachedDkimConfigs | Where-Object { $_.Domain -eq $domainName })
+                $exoDkimEnabled = [bool]($exoDkim | Where-Object { $_.Enabled })
+
+                if ($dkimDnsFound -and $exoDkimEnabled) {
+                    $dkimStatus = 'OK'
+                }
+                elseif (-not $dkimDnsFound -and $exoDkimEnabled) {
+                    if ($domainName -match '\.onmicrosoft\.com$') {
+                        $dkimStatus = 'EXO Confirmed (DNS not public for .onmicrosoft.com)'
+                    }
+                    else {
+                        $dkimStatus = 'Mismatch: EXO enabled but DNS CNAME not found'
+                    }
+                }
+                elseif ($dkimDnsFound -and -not $exoDkimEnabled) {
+                    $dkimStatus = 'Mismatch: DNS CNAME exists but EXO signing disabled'
+                }
+                else {
+                    $dkimStatus = 'Not configured'
+                }
+            }
+
             # ------- MTA-STS (RFC 8461) -------
             $mtaSts = 'Not configured'
             try {
@@ -2412,6 +2484,7 @@ if ($script:runDnsAuthentication) {
                 DMARCDuplicates  = $dmarcDuplicates
                 DKIMSelector1    = $dkimSelector1
                 DKIMSelector2    = $dkimSelector2
+                DKIMStatus       = $dkimStatus
                 MTASTS           = $mtaSts
                 TLSRPT           = $tlsRpt
                 PublicDNSConfirm = $publicDnsConfirmed

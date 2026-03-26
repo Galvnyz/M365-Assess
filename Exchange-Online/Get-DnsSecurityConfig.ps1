@@ -205,11 +205,17 @@ else {
             else { $dkimMissing += $domainName }
         }
 
+        $dkimOnMsft = @($dkimEnabled | Where-Object { $_ -match '\.onmicrosoft\.com$' })
+        $dkimOnMsftNote = ''
+        if ($dkimOnMsft.Count -gt 0) {
+            $dkimOnMsftNote = " ($($dkimOnMsft.Count) .onmicrosoft.com domain(s) EXO-confirmed; DNS CNAME may not be publicly resolvable)"
+        }
+
         if ($dkimMissing.Count -eq 0) {
             $settingParams = @{
                 Category         = 'DNS Authentication'
                 Setting          = 'DKIM Signing'
-                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled"
+                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled$dkimOnMsftNote"
                 RecommendedValue = 'DKIM for all domains'
                 Status           = 'Pass'
                 CheckId          = 'DNS-DKIM-001'
@@ -221,7 +227,7 @@ else {
             $settingParams = @{
                 Category         = 'DNS Authentication'
                 Setting          = 'DKIM Signing'
-                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')"
+                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains -- missing: $($dkimMissing -join ', ')$dkimOnMsftNote"
                 RecommendedValue = 'DKIM for all domains'
                 Status           = 'Fail'
                 CheckId          = 'DNS-DKIM-001'

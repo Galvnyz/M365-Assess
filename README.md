@@ -174,9 +174,9 @@ M365-Assessment/
     08-License-Summary.csv
     09-Mailbox-Summary.csv
     10-Mail-Flow.csv
-    11-Email-Security.csv
+    11-EXO-Email-Policies.csv
     11b-EXO-Security-Config.csv
-    12-DNS-Authentication.csv
+    12-DNS-Email-Authentication.csv
     13-Device-Summary.csv
     14-Compliance-Policies.csv
     15-Config-Profiles.csv
