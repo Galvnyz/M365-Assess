@@ -184,10 +184,14 @@ param(
 
     [Parameter()]
     [ValidatePattern('^v\d+$')]
-    [string]$CisBenchmarkVersion = 'v6'
+    [string]$CisBenchmarkVersion = 'v6',
+
+    [Parameter()]
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
+$isInteractive = -not $NonInteractive
 
 # ------------------------------------------------------------------
 # Version — read from module manifest (single source of truth)
