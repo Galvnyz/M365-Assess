@@ -109,6 +109,8 @@
     to authenticate in (useful for multi-profile machines).
 #>
 #Requires -Version 7.0
+
+function Invoke-M365Assessment {
 [CmdletBinding()]
 param(
     [Parameter()]
@@ -189,7 +191,7 @@ $ErrorActionPreference = 'Stop'
 # ------------------------------------------------------------------
 # Version — read from module manifest (single source of truth)
 # ------------------------------------------------------------------
-$projectRoot = Split-Path -Parent $PSCommandPath
+$projectRoot = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { $PSScriptRoot }
 $script:AssessmentVersion = (Import-PowerShellDataFile -Path "$projectRoot/M365-Assess.psd1").ModuleVersion
 
 # ------------------------------------------------------------------
@@ -831,7 +833,7 @@ if ($TenantId -and -not $ClientId -and -not $CertificateThumbprint -and
     $autoDetected = $false
 
     # Strategy 1: Check .m365assess.json config file
-    $configPath = Join-Path $PSScriptRoot '.m365assess.json'
+    $configPath = Join-Path $projectRoot '.m365assess.json'
     if (Test-Path $configPath) {
         try {
             $savedConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
@@ -2746,3 +2748,14 @@ if (Test-Path -Path $reportScriptPath) {
 Show-AssessmentSummary -SummaryResults @($summaryResults) -Issues @($issues) -Duration $overallDuration -AssessmentFolder $assessmentFolder -SectionCount $Section.Count -Version $script:AssessmentVersion
 
 # Summary is exported to _Assessment-Summary.csv for programmatic access
+
+} # end function Invoke-M365Assessment
+
+# ------------------------------------------------------------------
+# Backward-compatible direct invocation: when this script is called
+# directly (not dot-sourced from the module .psm1), invoke the
+# function so '.\Invoke-M365Assessment.ps1 -Section Tenant ...' works.
+# ------------------------------------------------------------------
+if ($MyInvocation.InvocationName -ne '.') {
+    Invoke-M365Assessment @args
+}

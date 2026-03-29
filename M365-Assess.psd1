@@ -2,7 +2,7 @@
     # Module manifest for M365-Assess
     # Generated: 2026-03-08
 
-    RootModule        = 'Invoke-M365Assessment.ps1'
+    RootModule        = 'M365-Assess.psm1'
     ModuleVersion     = '0.9.8'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
@@ -24,11 +24,18 @@
         @{ ModuleName = 'Microsoft.Graph.Identity.SignIns';             ModuleVersion = '2.25.0' }
     )
 
+    # Functions to export from this module
+    FunctionsToExport = @('Invoke-M365Assessment')
+    CmdletsToExport   = @()
+    VariablesToExport = @()
+    AliasesToExport   = @()
+
     # Scripts included in this module
     ScriptsToProcess  = @()
 
     # Files included in this module package
     FileList          = @(
+        'M365-Assess.psm1'
         'Invoke-M365Assessment.ps1'
         'Common\Connect-Service.ps1'
         'Common\Resolve-DnsRecord.ps1'
