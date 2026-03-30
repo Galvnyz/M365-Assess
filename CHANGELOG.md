@@ -4,6 +4,33 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-30
+
+### Added
+- **First public release** -- M365 Assess is now a proper PowerShell module ready for PSGallery publishing
+- 8 Graph sub-modules declared in manifest RequiredModules (was 3) -- `Install-Module M365-Assess` now pulls in all dependencies
+- 37 new Pester tests across 6 files: Connect-Service, Resolve-DnsRecord, Test-BlockedScripts, SecureScoreReport, StrykerIncidentReadiness, HybridSyncReport
+- Interactive optional module install prompt -- users are offered to install ImportExcel and MicrosoftPowerBIMgmt when missing (default N)
+- ImportExcel pre-flight detection with XLSX export skip warning
+- Module version table displayed after successful repair
+- Coverage summary in CI workflow job summary
+- Skip-nav link, `.sr-only` utility, ARIA attributes, and table captions for HTML report accessibility
+- `docs/QUICKSTART.md` for first-run setup on fresh Windows machines
+
+### Changed
+- **Dark mode CSS variables** -- cloud badges, DKIM badges, and status badges now use CSS variables instead of hardcoded hex; 11 redundant `body.dark-theme` overrides removed
+- **Error handling standardized** -- `Assert-GraphConnection` helper replaces 56 duplicated connection checks across 28 collectors (-252 lines)
+- All `ErrorActionPreference = 'Continue'` files now have explanatory comments
+- README updated for `src/M365-Assess/` module structure -- all examples use `Import-Module` pattern
+- "Azure AD Connect" renamed to "Microsoft Entra Connect" throughout
+- Null comparisons updated to PowerShell best-practice `$null -ne $_` form
+- Magic `Start-Sleep` values replaced with named `$errorDisplayDelay` constant
+- Empty check progress now shows feedback message instead of silent return
+
+### Fixed
+- DKIM badges had no dark mode support -- appeared as light-theme colors on dark backgrounds
+- Hardcoded badge text colors broke dark mode contrast in some themes
+
 ## [0.9.9] - 2026-03-29
 
 ### Changed

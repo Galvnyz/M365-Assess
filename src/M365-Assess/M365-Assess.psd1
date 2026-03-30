@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '0.9.9'
+    ModuleVersion     = '1.0.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -147,7 +147,7 @@
                              'PowerBI', 'CIS', 'NIST', 'SOC2', 'HIPAA', 'ZeroTrust', 'SecurityBaseline')
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v0.9.9 - PSGallery prep: repo restructured to src/M365-Assess/, orchestrator decomposed into 8 focused modules, ScubaGear decoupled, .psm1 module structure, 21 PSGallery readiness tests'
+            ReleaseNotes = 'v1.0.0 - First public release: 169 automated security checks across 12 domains, 14 compliance frameworks, dark mode CSS variables, standardized error handling, 50+ Pester tests, full Graph dependency manifest'
         }
     }
 }
