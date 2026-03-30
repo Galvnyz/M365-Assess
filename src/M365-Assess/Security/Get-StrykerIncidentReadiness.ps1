@@ -25,20 +25,12 @@ param(
     [string]$OutputPath
 )
 
+# Continue on errors: individual checks query different Graph endpoints and some
+# may fail due to missing licenses or permissions without invalidating the rest.
 $ErrorActionPreference = 'Continue'
 
 # ── Verify Graph connection ──────────────────────────────────────────
-try {
-    $context = Get-MgContext
-    if (-not $context) {
-        Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-        return
-    }
-}
-catch {
-    Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-    return
-}
+if (-not (Assert-GraphConnection)) { return }
 
 Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction SilentlyContinue
 Import-Module -Name Microsoft.Graph.Identity.SignIns -ErrorAction SilentlyContinue

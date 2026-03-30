@@ -41,17 +41,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Verify Graph connection
-try {
-    $context = Get-MgContext
-    if (-not $context) {
-        Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph -Scopes 'SecurityEvents.Read.All' first."
-        return
-    }
-}
-catch {
-    Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph -Scopes 'SecurityEvents.Read.All' first."
-    return
-}
+if (-not (Assert-GraphConnection)) { return }
 
 # Ensure required Graph submodule is loaded (PS 7.x does not auto-import)
 Import-Module -Name Microsoft.Graph.Security -ErrorAction Stop

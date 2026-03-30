@@ -32,17 +32,7 @@ param(
 $ErrorActionPreference = 'Continue'
 
 # Verify Graph connection
-try {
-    $context = Get-MgContext
-    if (-not $context) {
-        Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-        return
-    }
-}
-catch {
-    Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-    return
-}
+if (-not (Assert-GraphConnection)) { return }
 
 # Detect app-only auth — Teams Graph APIs (/v1.0/teamwork/*) do not support
 # application-only context and return HTTP 412 "not supported in application-only context".

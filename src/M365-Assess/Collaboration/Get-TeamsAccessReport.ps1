@@ -35,17 +35,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Verify Graph connection
-try {
-    $context = Get-MgContext
-    if (-not $context) {
-        Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-        return
-    }
-}
-catch {
-    Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
-    return
-}
+if (-not (Assert-GraphConnection)) { return }
 
 # Initialize result properties with defaults
 $allowGuestAccess = $null
