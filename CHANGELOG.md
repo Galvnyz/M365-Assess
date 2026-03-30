@@ -4,13 +4,27 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-03-29
+
+### Changed
+- **Repo restructure** — all module files moved to `src/M365-Assess/` for clean PSGallery publishing (`Publish-Module -Path ./src/M365-Assess`)
+- **Orchestrator decomposition** — `Invoke-M365Assessment.ps1` reduced from 2,761 to 971 lines; 8 focused modules extracted to `Orchestrator/` directory
+- **`.psm1` module structure** — proper `M365-Assess.psm1` wrapper with `FunctionsToExport`, `Import-Module` and `Get-Command` now work correctly
+- **Assets consolidated** — two `assets/` folders merged into single `src/M365-Assess/assets/` (branding + SKU data)
+
+### Removed
+- **ScubaGear integration** — removed wrapper, permissions script, docs, and all tool-specific code paths. CISA SCuBA compliance framework data retained
+
 ### Added
-- **Interactive Module Repair** — orchestrator detects missing or incompatible modules before connecting and offers a guided two-tier repair flow (install missing modules, then EXO downgrade if needed) with automatic re-validation
-- **`-NonInteractive` parameter** — suppresses all interactive prompts for module installation, EXO downgrade, and script unblocking; required issues exit with logged fix commands, optional issues skip sections with warnings. Also triggers automatically when `[Environment]::UserInteractive` is false
-- **Blocked script detection** — detects NTFS Zone.Identifier marks on Windows (ZIP download scenario) and offers to unblock, or logs the command in non-interactive mode
-- **Section-aware module detection** — only flags modules required by the selected sections (e.g., EXO is not checked when running `-Section Identity,Licensing`)
-- **EXO version pinning** — installs and downgrades to ExchangeOnlineManagement 3.7.1 to avoid MSAL conflicts with Graph SDK 2.x
-- **msalruntime.dll auto-fix** — copies missing `msalruntime.dll` from EXO module path on Windows
+- **PSGallery publish workflow** — `release.yml` validates, creates GitHub Release, and publishes to PSGallery on version tags
+- **21 PSGallery readiness tests** — manifest validation, FileList integrity, module loading, package hygiene
+- **Expanded PSGallery tags** — Compliance, Audit, NIST, SOC2, HIPAA, ZeroTrust, SecurityBaseline
+- PSGallery install instructions in README and release process in CONTRIBUTING.md
+- Interactive Module Repair with `-NonInteractive` support
+- Blocked script detection (NTFS Zone.Identifier)
+- Section-aware module detection
+- EXO version pinning to 3.7.1
+- msalruntime.dll auto-fix
 - 24 Pester tests for module repair, headless mode, and blocked script detection
 
 ## [0.9.8] - 2026-03-20
