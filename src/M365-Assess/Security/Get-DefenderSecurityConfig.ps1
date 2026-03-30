@@ -74,6 +74,59 @@ function Add-Setting {
 }
 
 # ------------------------------------------------------------------
+# Detect active preset security policies (Standard / Strict)
+# Policies managed by presets enforce known-good values and should
+# not be flagged as misconfigured when their property values differ
+# from custom policy conventions.
+# ------------------------------------------------------------------
+$script:presetPolicyNames = @{}
+$script:eopRules = @()
+try {
+    $eopRuleAvailable = Get-Command -Name Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue
+    if ($eopRuleAvailable) {
+        $script:eopRules = @(Get-EOPProtectionPolicyRule -ErrorAction Stop)
+        foreach ($rule in $script:eopRules) {
+            $tier = if ($rule.Identity -match 'Strict') { 'Strict' } elseif ($rule.Identity -match 'Standard') { 'Standard' } else { $null }
+            if ($tier -and $rule.State -eq 'Enabled') {
+                # Map exact policy names from the rule to their preset tier
+                # Each rule references the specific policies it manages:
+                #   HostedContentFilterPolicy, AntiPhishPolicy, MalwareFilterPolicy
+                # These names include a numeric suffix (e.g., "Standard Preset Security Policy1774914322474")
+                if ($rule.HostedContentFilterPolicy) { $script:presetPolicyNames[$rule.HostedContentFilterPolicy] = $tier }
+                if ($rule.AntiPhishPolicy)            { $script:presetPolicyNames[$rule.AntiPhishPolicy] = $tier }
+                if ($rule.MalwareFilterPolicy)        { $script:presetPolicyNames[$rule.MalwareFilterPolicy] = $tier }
+            }
+        }
+        # Also check ATP rules for Safe Links / Safe Attachments
+        $atpRuleAvailable = Get-Command -Name Get-ATPProtectionPolicyRule -ErrorAction SilentlyContinue
+        if ($atpRuleAvailable) {
+            $atpRules = @(Get-ATPProtectionPolicyRule -ErrorAction Stop)
+            foreach ($rule in $atpRules) {
+                $tier = if ($rule.Identity -match 'Strict') { 'Strict' } elseif ($rule.Identity -match 'Standard') { 'Standard' } else { $null }
+                if ($tier -and $rule.State -eq 'Enabled') {
+                    if ($rule.SafeLinksPolicy)       { $script:presetPolicyNames[$rule.SafeLinksPolicy] = $tier }
+                    if ($rule.SafeAttachmentPolicy)   { $script:presetPolicyNames[$rule.SafeAttachmentPolicy] = $tier }
+                }
+            }
+        }
+        if ($script:presetPolicyNames.Count -gt 0) {
+            Write-Verbose "Active preset-managed policies: $($script:presetPolicyNames.Keys -join ', ')"
+        }
+    }
+}
+catch {
+    Write-Verbose "Could not query preset policy rules: $_"
+}
+
+function Test-PresetPolicy {
+    param([string]$PolicyName)
+    if ($script:presetPolicyNames.ContainsKey($PolicyName)) {
+        return $script:presetPolicyNames[$PolicyName]
+    }
+    return $null
+}
+
+# ------------------------------------------------------------------
 # 1. Anti-Phishing Policies
 # ------------------------------------------------------------------
 try {
@@ -82,6 +135,22 @@ try {
 
     foreach ($policy in @($antiPhishPolicies)) {
         $policyLabel = if ($policy.IsDefault) { 'Default' } else { $policy.Name }
+        $presetTier = Test-PresetPolicy -PolicyName $policy.Name
+
+        # Preset-managed policies enforce known-good values
+        if ($presetTier) {
+            $settingParams = @{
+                Category         = 'Anti-Phishing'
+                Setting          = "Policy ($policyLabel)"
+                CurrentValue     = "Managed by $presetTier preset security policy"
+                RecommendedValue = 'Preset security policy active'
+                Status           = 'Pass'
+                CheckId          = 'DEFENDER-ANTIPHISH-001'
+                Remediation      = 'No action needed -- settings enforced by preset security policy.'
+            }
+            Add-Setting @settingParams
+            continue
+        }
 
         # Phishing threshold
         $threshold = $policy.PhishThresholdLevel
@@ -199,6 +268,22 @@ try {
 
     foreach ($policy in @($antiSpamPolicies)) {
         $policyLabel = if ($policy.IsDefault) { 'Default' } else { $policy.Name }
+        $presetTier = Test-PresetPolicy -PolicyName $policy.Name
+
+        # Preset-managed policies enforce known-good values
+        if ($presetTier) {
+            $settingParams = @{
+                Category         = 'Anti-Spam'
+                Setting          = "Policy ($policyLabel)"
+                CurrentValue     = "Managed by $presetTier preset security policy"
+                RecommendedValue = 'Preset security policy active'
+                Status           = 'Pass'
+                CheckId          = 'DEFENDER-ANTISPAM-001'
+                Remediation      = 'No action needed -- settings enforced by preset security policy.'
+            }
+            Add-Setting @settingParams
+            continue
+        }
 
         # Bulk complaint level threshold
         $bcl = $policy.BulkThreshold
@@ -327,6 +412,20 @@ try {
 
     foreach ($policy in @($malwarePolicies)) {
         $policyLabel = if ($policy.IsDefault) { 'Default' } else { $policy.Name }
+        $presetTier = Test-PresetPolicy -PolicyName $policy.Name
+        if ($presetTier) {
+            $settingParams = @{
+                Category         = 'Anti-Malware'
+                Setting          = "Policy ($policyLabel)"
+                CurrentValue     = "Managed by $presetTier preset security policy"
+                RecommendedValue = 'Preset security policy active'
+                Status           = 'Pass'
+                CheckId          = 'DEFENDER-MALWARE-001'
+                Remediation      = 'No action needed -- settings enforced by preset security policy.'
+            }
+            Add-Setting @settingParams
+            continue
+        }
 
         # Common attachment type filter
         $commonFilter = $policy.EnableFileFilter
@@ -401,6 +500,20 @@ try {
         else {
             foreach ($policy in @($safeLinks)) {
                 $policyLabel = $policy.Name
+                $presetTier = Test-PresetPolicy -PolicyName $policy.Name
+                if ($presetTier) {
+                    $settingParams = @{
+                        Category         = 'Safe Links'
+                        Setting          = "Policy ($policyLabel)"
+                        CurrentValue     = "Managed by $presetTier preset security policy"
+                        RecommendedValue = 'Preset security policy active'
+                        Status           = 'Pass'
+                        CheckId          = 'DEFENDER-SAFELINKS-001'
+                        Remediation      = 'No action needed -- settings enforced by preset security policy.'
+                    }
+                    Add-Setting @settingParams
+                    continue
+                }
 
                 # URL scanning
                 $scanUrls = $policy.ScanUrls
@@ -501,6 +614,20 @@ try {
         else {
             foreach ($policy in @($safeAttachments)) {
                 $policyLabel = $policy.Name
+                $presetTier = Test-PresetPolicy -PolicyName $policy.Name
+                if ($presetTier) {
+                    $settingParams = @{
+                        Category         = 'Safe Attachments'
+                        Setting          = "Policy ($policyLabel)"
+                        CurrentValue     = "Managed by $presetTier preset security policy"
+                        RecommendedValue = 'Preset security policy active'
+                        Status           = 'Pass'
+                        CheckId          = 'DEFENDER-SAFEATTACH-001'
+                        Remediation      = 'No action needed -- settings enforced by preset security policy.'
+                    }
+                    Add-Setting @settingParams
+                    continue
+                }
 
                 # Enabled
                 $enabled = $policy.Enable
@@ -772,10 +899,9 @@ catch {
 # 9. Priority Account Protection (CIS 2.4.1, 2.4.2)
 # ------------------------------------------------------------------
 try {
-    $eopRuleAvailable = Get-Command -Name Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue
-    if ($eopRuleAvailable) {
-        Write-Verbose "Checking priority account protection..."
-        $eopRules = Get-EOPProtectionPolicyRule -ErrorAction Stop
+    if ($script:eopRules.Count -gt 0) {
+        Write-Verbose "Checking priority account protection (using cached preset rules)..."
+        $eopRules = $script:eopRules
 
         # CIS 2.4.1 - Priority account protection is configured
         $strictRule = $eopRules | Where-Object { $_.Identity -match 'Strict' }
@@ -826,7 +952,7 @@ try {
         $settingParams = @{
             Category         = 'Priority Accounts'
             Setting          = 'Preset Security Policies Configured'
-            CurrentValue     = 'Get-EOPProtectionPolicyRule not available'
+            CurrentValue     = 'No preset policy rules found'
             RecommendedValue = 'Strict or Standard preset policy'
             Status           = 'Review'
             CheckId          = 'DEFENDER-PRIORITY-001'
@@ -836,7 +962,7 @@ try {
         $settingParams = @{
             Category         = 'Priority Accounts'
             Setting          = 'Strict Preset Covers Priority Users'
-            CurrentValue     = 'Get-EOPProtectionPolicyRule not available'
+            CurrentValue     = 'No preset policy rules found'
             RecommendedValue = 'Strict preset targets priority accounts'
             Status           = 'Review'
             CheckId          = 'DEFENDER-PRIORITY-002'
