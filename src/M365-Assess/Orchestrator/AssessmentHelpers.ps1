@@ -1,3 +1,27 @@
+# ------------------------------------------------------------------
+# Helper: Assert-GraphConnection — verify Graph SDK is connected
+# Returns $true if connected, $false (with Write-Error) if not.
+# Used by collectors to fail fast with a consistent message.
+# ------------------------------------------------------------------
+function Assert-GraphConnection {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    try {
+        $context = Get-MgContext
+        if (-not $context) {
+            Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
+            return $false
+        }
+    }
+    catch {
+        Write-Error "Not connected to Microsoft Graph. Run Connect-Service -Service Graph first."
+        return $false
+    }
+    return $true
+}
+
 function Export-AssessmentCsv {
     [CmdletBinding()]
     param(

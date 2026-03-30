@@ -179,6 +179,7 @@ Describe 'Get-CASecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
     }
 
@@ -268,6 +269,7 @@ Describe 'Get-CASecurityConfig - No Policies' {
             return @{ value = @() }
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
     }
 
@@ -304,6 +306,7 @@ Describe 'Get-CASecurityConfig - Security Defaults Enabled' {
             return @{ value = @() }
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
     }
 

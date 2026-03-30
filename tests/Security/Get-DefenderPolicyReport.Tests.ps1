@@ -61,6 +61,7 @@ Describe 'Get-DefenderPolicyReport' {
         }
 
         # Run the script by dot-sourcing it; capture output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderPolicyReport.ps1"
     }
 
@@ -152,6 +153,7 @@ Describe 'Get-DefenderPolicyReport - Not Connected' {
         # Wrap in try/catch to absorb the terminating error; verify no PSCustomObject was emitted.
         $captured = @()
         try {
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
             $captured = @(. "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderPolicyReport.ps1")
         }
         catch {
@@ -181,6 +183,7 @@ Describe 'Get-DefenderPolicyReport - No Defender License' {
     }
 
     It 'Writes a warning and returns nothing when no Defender license' {
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $output = . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderPolicyReport.ps1" -WarningAction SilentlyContinue 3>&1
         $objects = @($output | Where-Object { $_ -is [PSCustomObject] })
         $objects.Count | Should -Be 0
@@ -232,6 +235,7 @@ Describe 'Get-DefenderPolicyReport - OutputPath' {
     }
 
     It 'Exports CSV when OutputPath is specified and writes confirmation message' {
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $msg = . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderPolicyReport.ps1" -OutputPath $script:csvPath
         $msg | Should -Match 'Exported'
         Test-Path $script:csvPath | Should -Be $true

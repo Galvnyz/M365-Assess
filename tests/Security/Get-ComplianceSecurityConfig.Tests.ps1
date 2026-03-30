@@ -29,6 +29,7 @@ Describe 'Get-ComplianceSecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1"
     }
 
@@ -124,6 +125,7 @@ Describe 'Get-ComplianceSecurityConfig - Cmdlets Not Available' {
         # so Get-Command returns $null for each, triggering the 'Review' paths
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1"
     }
 

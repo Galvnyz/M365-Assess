@@ -64,6 +64,7 @@ Describe 'Get-AdminRoleReport' {
         }
 
         # Run the collector
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-AdminRoleReport.ps1"
     }
 
@@ -102,6 +103,7 @@ Describe 'Get-AdminRoleReport - Edge Cases' {
         BeforeAll {
             Mock Get-MgDirectoryRole { return @() }
             Mock Get-MgDirectoryRoleMember { return @() }
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
             $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-AdminRoleReport.ps1"
         }
 
@@ -116,6 +118,7 @@ Describe 'Get-AdminRoleReport - Edge Cases' {
                 return @([PSCustomObject]@{ Id = 'empty-role'; DisplayName = 'Empty Role' })
             }
             Mock Get-MgDirectoryRoleMember { return @() }
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
             $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-AdminRoleReport.ps1"
         }
 

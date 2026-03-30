@@ -39,6 +39,7 @@ Describe 'Get-FormsSecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-FormsSecurityConfig.ps1"
     }
 
@@ -164,6 +165,7 @@ Describe 'Get-FormsSecurityConfig - Insecure Settings Fail' {
             }
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-FormsSecurityConfig.ps1"
     }
 
@@ -194,6 +196,7 @@ Describe 'Get-FormsSecurityConfig - Not Connected' {
             return $null
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:collectorOutput = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-FormsSecurityConfig.ps1"
     }
 

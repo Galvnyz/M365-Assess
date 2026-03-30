@@ -87,6 +87,7 @@ Describe 'Get-TeamsInventory' {
         }
 
         # Dot-source the collector and capture pipeline output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Inventory/Get-TeamsInventory.ps1"
     }
 
@@ -145,6 +146,7 @@ Describe 'Get-TeamsInventory' {
 
             $caughtError = $null
             try {
+                . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
                 . "$PSScriptRoot/../../src/M365-Assess/Inventory/Get-TeamsInventory.ps1"
             }
             catch {
@@ -164,6 +166,7 @@ Describe 'Get-TeamsInventory' {
                 return @{ value = @(); '@odata.nextLink' = $null }
             }
 
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
             $output = . "$PSScriptRoot/../../src/M365-Assess/Inventory/Get-TeamsInventory.ps1"
             $output | Should -BeNullOrEmpty
         }

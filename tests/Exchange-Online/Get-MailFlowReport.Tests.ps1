@@ -91,6 +91,7 @@ Describe 'Get-MailFlowReport' {
         }
 
         # Dot-source the collector and capture pipeline output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailFlowReport.ps1"
     }
 
@@ -139,6 +140,7 @@ Describe 'Get-MailFlowReport' {
 
             $caughtError = $null
             try {
+                . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
                 . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailFlowReport.ps1"
             }
             catch {
@@ -159,6 +161,7 @@ Describe 'Get-MailFlowReport' {
             Mock Get-OutboundConnector { return @() }
             Mock Get-TransportRule { return @() }
 
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
             $output = . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailFlowReport.ps1"
             $output.Count | Should -Be 1
             $output[0].ItemType | Should -Be 'Domain'

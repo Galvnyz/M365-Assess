@@ -66,6 +66,7 @@ Describe 'Get-MailboxSummary' {
         }
 
         # Dot-source the collector and capture pipeline output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailboxSummary.ps1"
     }
 
@@ -107,6 +108,7 @@ Describe 'Get-MailboxSummary' {
 
             $caughtError = $null
             try {
+                . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
                 . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailboxSummary.ps1"
             }
             catch {
@@ -129,6 +131,7 @@ Describe 'Get-MailboxSummary' {
             # empty results it still continues -- verify zero counts or error
             $output = $null
             try {
+                . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
                 $output = . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-MailboxSummary.ps1"
             }
             catch {

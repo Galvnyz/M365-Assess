@@ -137,6 +137,7 @@ Describe 'Get-DefenderSecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderSecurityConfig.ps1"
     }
 
@@ -284,6 +285,7 @@ Describe 'Get-DefenderSecurityConfig - No Defender License' {
             })
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DefenderSecurityConfig.ps1"
     }
 

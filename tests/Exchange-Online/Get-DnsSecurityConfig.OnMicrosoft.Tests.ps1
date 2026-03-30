@@ -45,6 +45,7 @@ Describe 'Get-DnsSecurityConfig .onmicrosoft.com DKIM handling' {
             })
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-DnsSecurityConfig.ps1"
     }
 

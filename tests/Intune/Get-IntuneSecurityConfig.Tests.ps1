@@ -33,6 +33,7 @@ Describe 'Get-IntuneSecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Intune/Get-IntuneSecurityConfig.ps1"
     }
 
@@ -129,6 +130,7 @@ Describe 'Get-IntuneSecurityConfig - Personal Devices Allowed' {
             }
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Intune/Get-IntuneSecurityConfig.ps1"
     }
 
