@@ -64,6 +64,7 @@ Describe 'Get-AdminRoleReport' {
         }
 
         # Run the collector
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-AdminRoleReport.ps1"
     }
 

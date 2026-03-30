@@ -47,6 +47,7 @@ Describe 'Get-DeviceSummary' {
         }
 
         # Dot-source the collector; results land in $results (script scope)
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Intune/Get-DeviceSummary.ps1"
     }
 

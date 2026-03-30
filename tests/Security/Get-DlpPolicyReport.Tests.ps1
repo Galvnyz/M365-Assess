@@ -97,6 +97,7 @@ Describe 'Get-DlpPolicyReport' {
         }
 
         # Run the script by dot-sourcing it; capture output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Security/Get-DlpPolicyReport.ps1"
     }
 

@@ -47,6 +47,7 @@ Describe 'Get-InactiveUsers' {
         }
 
         # Run the collector
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-InactiveUsers.ps1" -DaysInactive 90
     }
 

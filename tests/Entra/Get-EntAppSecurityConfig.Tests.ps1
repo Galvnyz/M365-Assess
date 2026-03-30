@@ -81,6 +81,7 @@ Describe 'Get-EntAppSecurityConfig' {
             }
         }
 
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntAppSecurityConfig.ps1"
     }
 

@@ -135,6 +135,7 @@ Describe 'Get-SOC2SecurityControls - Full Pass Scenario' {
         }
 
         # Run the collector
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/SOC2/Get-SOC2SecurityControls.ps1"
     }
 

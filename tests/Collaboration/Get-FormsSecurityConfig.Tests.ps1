@@ -39,6 +39,7 @@ Describe 'Get-FormsSecurityConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-FormsSecurityConfig.ps1"
     }
 

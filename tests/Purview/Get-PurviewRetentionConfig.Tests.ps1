@@ -38,6 +38,7 @@ Describe 'Get-PurviewRetentionConfig' {
         }
 
         # Run the collector by dot-sourcing it
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Purview/Get-PurviewRetentionConfig.ps1"
     }
 

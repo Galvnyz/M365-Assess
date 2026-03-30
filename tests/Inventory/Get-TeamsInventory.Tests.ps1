@@ -87,6 +87,7 @@ Describe 'Get-TeamsInventory' {
         }
 
         # Dot-source the collector and capture pipeline output
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Inventory/Get-TeamsInventory.ps1"
     }
 

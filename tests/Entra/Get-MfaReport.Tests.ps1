@@ -53,6 +53,7 @@ Describe 'Get-MfaReport' {
         }
 
         # Run the collector
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-MfaReport.ps1"
     }
 

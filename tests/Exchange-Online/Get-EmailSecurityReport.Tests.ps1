@@ -94,6 +94,7 @@ Describe 'Get-EmailSecurityReport' {
         }
 
         # Dot-source the collector and capture pipeline output (no DNS checks)
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $script:results = . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-EmailSecurityReport.ps1"
     }
 

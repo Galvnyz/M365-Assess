@@ -35,6 +35,7 @@ Describe 'Get-LicenseReport' {
         }
 
         # Run the collector (SKU summary mode, no -IncludeUserDetail)
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-LicenseReport.ps1"
     }
 
