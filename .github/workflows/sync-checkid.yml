@@ -29,15 +29,15 @@ jobs:
           TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           echo "Syncing from CheckID $TAG"
           BASE="https://raw.githubusercontent.com/Galvnyz/CheckID/$TAG/data"
-          curl -sL "$BASE/registry.json" -o controls/registry.json
+          curl -sL "$BASE/registry.json" -o src/M365-Assess/controls/registry.json
           for f in cis-controls-v8 cis-m365-v6 cisa-scuba cmmc essential-eight fedramp hipaa iso-27001 mitre-attack nist-800-53-r5 nist-csf pci-dss-v4 soc2-tsc stig; do
-            curl -sL "$BASE/frameworks/$f.json" -o "controls/frameworks/$f.json"
+            curl -sL "$BASE/frameworks/$f.json" -o "src/M365-Assess/controls/frameworks/$f.json"
           done
 
       - name: Check for changes
         id: diff
         run: |
-          git diff --quiet controls/ && echo "changed=false" >> "$GITHUB_OUTPUT" \
+          git diff --quiet src/M365-Assess/controls/ && echo "changed=false" >> "$GITHUB_OUTPUT" \
             || echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Create PR if changed
@@ -48,18 +48,14 @@ jobs:
           TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           BRANCH="chore/sync-checkid-$TAG"
           git checkout -b "$BRANCH"
-          git add controls/
+          git add src/M365-Assess/controls/
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: sync CheckID registry to $TAG"
           git push origin "$BRANCH"
           gh pr create \
             --title "chore: sync CheckID registry to $TAG" \
-            --body "Automated PR triggered by CheckID $TAG release.
-
-Updates \`controls/registry.json\` and framework definitions from upstream CheckID.
-
-Review the diff and merge when ready." \
+            --body "Automated PR triggered by CheckID $TAG release. Updates controls/registry.json and framework definitions from upstream CheckID. Review the diff and merge when ready." \
             --base main \
             --head "$BRANCH"
 
