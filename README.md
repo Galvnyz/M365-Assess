@@ -57,6 +57,8 @@ Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com'
 
 Results land in a timestamped folder with CSV data + HTML report + XLSX compliance matrix.
 
+> **New to M365 Assess?** See the [Quickstart guide](docs/QUICKSTART.md) for step-by-step setup on a fresh Windows machine.
+
 ## Prerequisites
 
 | Requirement | Details |
