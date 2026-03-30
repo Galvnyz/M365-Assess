@@ -373,7 +373,7 @@ function Get-SvgDonut {
     $center = $Size / 2
     $displayVal = if ($Label) { $Label } else { "$Percentage%" }
     return @"
-<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size'>
+<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size' role='img' aria-label='Chart showing $displayVal'>
 <circle class='donut-track' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'/>
 <circle class='donut-fill donut-$CssClass' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'
   stroke-dasharray='$circumference' stroke-dashoffset='$dashOffset' stroke-linecap='round' transform='rotate(-90 $center $center)'/>
@@ -392,7 +392,7 @@ function Get-SvgMultiDonut {
     $radius = ($Size / 2) - $StrokeWidth
     $circumference = 2 * [math]::PI * $radius
     $center = $Size / 2
-    $svg = "<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size'>"
+    $svg = "<svg class='donut-chart' width='$Size' height='$Size' viewBox='0 0 $Size $Size' role='img' aria-label='Chart showing $CenterLabel'>"
     $svg += "<circle class='donut-track' cx='$center' cy='$center' r='$radius' fill='none' stroke-width='$StrokeWidth'/>"
     # Filter to visible segments and track cumulative arc to eliminate rounding gaps
     $visibleSegs = @($Segments | Where-Object { $_.Pct -gt 0 })
@@ -1583,6 +1583,7 @@ foreach ($sectionName in $sections) {
 
         $null = $sectionHtml.AppendLine("<div class='table-wrapper'>")
         $null = $sectionHtml.AppendLine("<table class='data-table'>")
+        $null = $sectionHtml.AppendLine("<caption class='sr-only'>$($collector.Label) assessment results</caption>")
         $null = $sectionHtml.AppendLine("<thead><tr>")
         foreach ($col in $columns) {
             $displayCol = Format-ColumnHeader -Name $col
@@ -1658,7 +1659,7 @@ foreach ($sectionName in $sections) {
                 if ($col -eq 'Remediation' -and $row.Remediation -match '^(Set|Get|New|Remove|Update|Enable|Disable|Add|Connect|Grant|Revoke|Install|Uninstall|Import|Export)-') {
                     $rawRemediation = ConvertTo-HtmlSafe -Text "$($row.Remediation)"
                     if ($rawRemediation.Length -gt 200) { $rawRemediation = $rawRemediation.Substring(0, 197) + '...' }
-                    $null = $sectionHtml.AppendLine("<td class='remediation-cell'><span class='remediation-text'>$rawRemediation</span><button type='button' class='copy-btn' title='Copy command' onclick='copyRemediation(this)'>&#128203;</button></td>")
+                    $null = $sectionHtml.AppendLine("<td class='remediation-cell'><span class='remediation-text'>$rawRemediation</span><button type='button' class='copy-btn' title='Copy command' aria-label='Copy remediation command' onclick='copyRemediation(this)'>&#128203;</button></td>")
                     continue
                 }
                 $null = $sectionHtml.AppendLine("<td>$val</td>")
@@ -1818,6 +1819,7 @@ if ($issues.Count -gt 0) {
     $null = $issuesHtml.AppendLine("<details class='section' open>")
     $null = $issuesHtml.AppendLine("<summary><h2>Technical Issues</h2></summary>")
     $null = $issuesHtml.AppendLine("<table class='data-table'>")
+    $null = $issuesHtml.AppendLine("<caption class='sr-only'>Technical issues found during assessment</caption>")
     $null = $issuesHtml.AppendLine("<thead><tr><th scope='col'>Severity</th><th scope='col'>Section</th><th scope='col'>Collector</th><th scope='col'>Description</th><th scope='col'>Recommended Action</th></tr></thead>")
     $null = $issuesHtml.AppendLine("<tbody>")
 
@@ -1876,6 +1878,10 @@ $html = @"
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        .skip-nav { position: absolute; left: -9999px; top: auto; }
+        .skip-nav:focus { left: 10px; top: 10px; z-index: 9999; background: var(--m365a-card-bg); padding: 8px 16px; border: 2px solid var(--m365a-primary); border-radius: 4px; color: var(--m365a-text); text-decoration: none; }
+    </style>
+    <style>
         /* ----------------------------------------------------------
            M365 Assess Theme
            ---------------------------------------------------------- */
@@ -1904,6 +1910,36 @@ $html = @"
             --m365a-text: #1E293B;
             --m365a-card-bg: #ffffff;
             --m365a-hover-bg: #e8f4f8;
+
+            /* Badge text colors */
+            --m365a-success-text: #155724;
+            --m365a-danger-text: #721c24;
+            --m365a-warning-text: #856404;
+            --m365a-info-text: #0c5460;
+            --m365a-skipped-bg: #e2e3e5;
+            --m365a-skipped-text: #383d41;
+            --m365a-critical-bg: #991b1b;
+            --m365a-critical-text: #fef2f2;
+
+            /* Cloud badges */
+            --m365a-cloud-comm-bg: #e8f0fe;
+            --m365a-cloud-comm-text: #1a73e8;
+            --m365a-cloud-comm-border: #c5d9f7;
+            --m365a-cloud-gcc-bg: #e6f4ea;
+            --m365a-cloud-gcc-text: #137333;
+            --m365a-cloud-gcc-border: #b7e1c5;
+            --m365a-cloud-gcch-bg: #fef3e0;
+            --m365a-cloud-gcch-text: #c26401;
+            --m365a-cloud-gcch-border: #f5d9a8;
+            --m365a-cloud-dod-bg: #fce8e6;
+            --m365a-cloud-dod-text: #c5221f;
+            --m365a-cloud-dod-border: #f5b7b1;
+
+            /* DKIM badges */
+            --m365a-dkim-warn-bg: #fff3cd;
+            --m365a-dkim-warn-text: #856404;
+            --m365a-dkim-ok-bg: #d4edda;
+            --m365a-dkim-ok-text: #155724;
         }
 
         body.dark-theme {
@@ -1931,9 +1967,52 @@ $html = @"
             --m365a-review: #A78BFA;
             --m365a-neutral: #9ca3af;
             --m365a-neutral-bg: #374151;
+
+            /* Badge text colors */
+            --m365a-success-text: #6EE7B7;
+            --m365a-danger-text: #FCA5A5;
+            --m365a-warning-text: #FCD34D;
+            --m365a-info-text: #93C5FD;
+            --m365a-skipped-bg: #334155;
+            --m365a-skipped-text: #94A3B8;
+            --m365a-critical-bg: #7F1D1D;
+            --m365a-critical-text: #FCA5A5;
+
+            /* Cloud badges */
+            --m365a-cloud-comm-bg: #1E3A5F;
+            --m365a-cloud-comm-text: #93C5FD;
+            --m365a-cloud-comm-border: #334155;
+            --m365a-cloud-gcc-bg: #064E3B;
+            --m365a-cloud-gcc-text: #6EE7B7;
+            --m365a-cloud-gcc-border: #334155;
+            --m365a-cloud-gcch-bg: #78350F;
+            --m365a-cloud-gcch-text: #FCD34D;
+            --m365a-cloud-gcch-border: #334155;
+            --m365a-cloud-dod-bg: #7F1D1D;
+            --m365a-cloud-dod-text: #FCA5A5;
+            --m365a-cloud-dod-border: #334155;
+
+            /* DKIM badges */
+            --m365a-dkim-warn-bg: #78350F;
+            --m365a-dkim-warn-text: #FCD34D;
+            --m365a-dkim-ok-bg: #064E3B;
+            --m365a-dkim-ok-text: #6EE7B7;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Screen-reader-only utility (visually hidden but accessible) */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
 
         body {
             font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
@@ -2280,24 +2359,24 @@ $html = @"
             letter-spacing: 0.3px;
         }
         .cloud-commercial {
-            background: #e8f0fe;
-            color: #1a73e8;
-            border: 1px solid #c5d9f7;
+            background: var(--m365a-cloud-comm-bg);
+            color: var(--m365a-cloud-comm-text);
+            border: 1px solid var(--m365a-cloud-comm-border);
         }
         .cloud-gcc {
-            background: #e6f4ea;
-            color: #137333;
-            border: 1px solid #b7e1c5;
+            background: var(--m365a-cloud-gcc-bg);
+            color: var(--m365a-cloud-gcc-text);
+            border: 1px solid var(--m365a-cloud-gcc-border);
         }
         .cloud-gcchigh {
-            background: #fef3e0;
-            color: #c26401;
-            border: 1px solid #f5d9a8;
+            background: var(--m365a-cloud-gcch-bg);
+            color: var(--m365a-cloud-gcch-text);
+            border: 1px solid var(--m365a-cloud-gcch-border);
         }
         .cloud-dod {
-            background: #fce8e6;
-            color: #c5221f;
-            border: 1px solid #f5b7b1;
+            background: var(--m365a-cloud-dod-bg);
+            color: var(--m365a-cloud-dod-text);
+            border: 1px solid var(--m365a-cloud-dod-border);
         }
 
         .tenant-domains {
@@ -2714,16 +2793,16 @@ $html = @"
             margin-top: 2px;
         }
         .dkim-mismatch {
-            background: #fff3cd;
-            color: #856404;
+            background: var(--m365a-dkim-warn-bg);
+            color: var(--m365a-dkim-warn-text);
             font-weight: 600;
             padding: 0.15em 0.5em;
             border-radius: 3px;
             font-size: 0.85rem;
         }
         .dkim-exo-confirmed {
-            background: #d4edda;
-            color: #155724;
+            background: var(--m365a-dkim-ok-bg);
+            color: var(--m365a-dkim-ok-text);
             font-weight: 600;
             padding: 0.15em 0.5em;
             border-radius: 3px;
@@ -3041,14 +3120,14 @@ $html = @"
             letter-spacing: 0.5px;
         }
 
-        .badge-complete { background: var(--m365a-success-bg); color: #155724; }
-        .badge-success { background: var(--m365a-success-bg); color: #155724; }
-        .badge-skipped { background: #e2e3e5; color: #383d41; }
-        .badge-failed { background: var(--m365a-danger-bg); color: #721c24; }
-        .badge-warning { background: var(--m365a-warning-bg); color: #856404; }
-        .badge-info { background: var(--m365a-info-bg); color: #0c5460; }
+        .badge-complete { background: var(--m365a-success-bg); color: var(--m365a-success-text); }
+        .badge-success { background: var(--m365a-success-bg); color: var(--m365a-success-text); }
+        .badge-skipped { background: var(--m365a-skipped-bg); color: var(--m365a-skipped-text); }
+        .badge-failed { background: var(--m365a-danger-bg); color: var(--m365a-danger-text); }
+        .badge-warning { background: var(--m365a-warning-bg); color: var(--m365a-warning-text); }
+        .badge-info { background: var(--m365a-info-bg); color: var(--m365a-info-text); }
         .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
-        .badge-critical { background: #991b1b; color: #fef2f2; }
+        .badge-critical { background: var(--m365a-critical-bg); color: var(--m365a-critical-text); }
 
         /* ----------------------------------------------------------
            Section
@@ -3401,13 +3480,8 @@ $html = @"
         body.dark-theme th:last-child { border-right: none; }
         body.dark-theme .data-table th:hover { background: #254E78; }
 
-        body.dark-theme .badge-complete,
-        body.dark-theme .badge-success { background: #065F46; color: #6EE7B7; }
-        body.dark-theme .badge-failed { background: #7F1D1D; color: #FCA5A5; }
-        body.dark-theme .badge-warning { background: #78350F; color: #FCD34D; }
-        body.dark-theme .badge-info { background: #1E3A5F; color: #93C5FD; }
+        /* Badge colors now handled via CSS variables in :root / body.dark-theme */
         body.dark-theme .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
-        body.dark-theme .badge-skipped { background: #334155; color: #94A3B8; }
 
         body.dark-theme .fw-cis    { background: #1E3A5F; color: #93C5FD; }
         body.dark-theme .fw-cis-l2 { background: #1E3A5F; color: #60A5FA; }
@@ -3429,10 +3503,7 @@ $html = @"
         body.dark-theme .fw-default { background: #334155; color: #CBD5E1; }
         body.dark-theme .fw-profile-tag { background: rgba(255,255,255,0.1); }
 
-        body.dark-theme .cloud-commercial { background: #1E3A5F; color: #93C5FD; border-color: #334155; }
-        body.dark-theme .cloud-gcc { background: #064E3B; color: #6EE7B7; border-color: #334155; }
-        body.dark-theme .cloud-gcchigh { background: #78350F; color: #FCD34D; border-color: #334155; }
-        body.dark-theme .cloud-dod { background: #7F1D1D; color: #FCA5A5; border-color: #334155; }
+        /* Cloud badge colors now handled via CSS variables in :root / body.dark-theme */
 
         body.dark-theme .fw-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
         body.dark-theme .section-checkbox.active { background: #0d9488; color: #ffffff; border-color: #0d9488; }
@@ -3486,6 +3557,8 @@ $html = @"
            Print Styles
            ---------------------------------------------------------- */
         @media print {
+            .data-table { page-break-inside: avoid; }
+            .section { page-break-inside: avoid; }
             body { font-size: 9pt; }
             .theme-toggle { display: none; }
 
@@ -3632,6 +3705,7 @@ $accentCss
 </head>
 <body>
     <!-- Theme Toggle -->
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
     <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light/dark mode">
         <span class="theme-icon-light">&#9788;</span>
         <span class="theme-icon-dark">&#9790;</span>
@@ -3663,7 +3737,7 @@ $(if (-not $NoBranding) {
 })
 
     <!-- Content -->
-    <main class="content">
+    <main class="content" id="main-content" role="main">
 "@
 
 if (-not $SkipExecutiveSummary) {
@@ -3774,8 +3848,8 @@ else {
 $html += @"
 
         <div class="report-controls" id="reportControls">
-            <button type="button" id="expandAllGlobal" class="report-ctrl-btn" title="Expand all sections and tables">&#9660; Expand All</button>
-            <button type="button" id="collapseAllGlobal" class="report-ctrl-btn" title="Collapse all sections and tables">&#9650; Collapse All</button>
+            <button type="button" id="expandAllGlobal" class="report-ctrl-btn" title="Expand all sections and tables" aria-label="Expand all sections">&#9660; Expand All</button>
+            <button type="button" id="collapseAllGlobal" class="report-ctrl-btn" title="Collapse all sections and tables" aria-label="Collapse all sections">&#9650; Collapse All</button>
         </div>
 
         $($sectionHtml.ToString())
