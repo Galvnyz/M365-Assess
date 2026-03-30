@@ -226,15 +226,43 @@ function Test-ModuleCompatibility {
                 }
             }
 
-            # Optional modules -- skip section or log warning
+            # Optional modules -- offer to install or skip
             $optInstallActions = @($repairActions | Where-Object { $_.Tier -eq 'Install' -and $_.Severity -eq 'Optional' })
-            foreach ($action in $optInstallActions) {
-                if ($action.Module -eq 'MicrosoftPowerBIMgmt') {
-                    $Section = @($Section | Where-Object { $_ -ne 'PowerBI' })
-                    Write-AssessmentLog -Level WARN -Message "Optional module missing: $($action.Description). Section skipped."
+            if ($optInstallActions.Count -gt 0) {
+                $skippedNames = ($optInstallActions | ForEach-Object { $_.Module }) -join ', '
+                $response = Read-Host "  Install optional modules? ($skippedNames) [y/N]"
+                if ($response -match '^[Yy]$') {
+                    foreach ($action in $optInstallActions) {
+                        try {
+                            Write-Host "    Installing $($action.Module)..." -ForegroundColor Cyan
+                            $installParams = @{
+                                Name        = $action.Module
+                                Scope       = 'CurrentUser'
+                                Force       = $true
+                                ErrorAction = 'Stop'
+                            }
+                            if ($action.RequiredVersion) {
+                                $installParams['RequiredVersion'] = $action.RequiredVersion
+                            }
+                            Install-Module @installParams
+                            Write-Host "    Γ£ô $($action.Module) installed" -ForegroundColor Green
+                        }
+                        catch {
+                            Write-Host "    Γ£ù $($action.Module) install failed: $_" -ForegroundColor Red
+                        }
+                    }
                 }
-                elseif ($action.Module -eq 'ImportExcel') {
-                    Write-AssessmentLog -Level WARN -Message "Optional module missing: $($action.Description). XLSX export will be skipped."
+                else {
+                    # User declined -- skip affected sections/features
+                    foreach ($action in $optInstallActions) {
+                        if ($action.Module -eq 'MicrosoftPowerBIMgmt') {
+                            $Section = @($Section | Where-Object { $_ -ne 'PowerBI' })
+                            Write-AssessmentLog -Level WARN -Message "Optional module missing: $($action.Description). Section skipped."
+                        }
+                        elseif ($action.Module -eq 'ImportExcel') {
+                            Write-AssessmentLog -Level WARN -Message "Optional module missing: $($action.Description). XLSX export will be skipped."
+                        }
+                    }
                 }
             }
 
