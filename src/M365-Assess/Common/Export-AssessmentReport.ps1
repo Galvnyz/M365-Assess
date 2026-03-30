@@ -1904,6 +1904,36 @@ $html = @"
             --m365a-text: #1E293B;
             --m365a-card-bg: #ffffff;
             --m365a-hover-bg: #e8f4f8;
+
+            /* Badge text colors */
+            --m365a-success-text: #155724;
+            --m365a-danger-text: #721c24;
+            --m365a-warning-text: #856404;
+            --m365a-info-text: #0c5460;
+            --m365a-skipped-bg: #e2e3e5;
+            --m365a-skipped-text: #383d41;
+            --m365a-critical-bg: #991b1b;
+            --m365a-critical-text: #fef2f2;
+
+            /* Cloud badges */
+            --m365a-cloud-comm-bg: #e8f0fe;
+            --m365a-cloud-comm-text: #1a73e8;
+            --m365a-cloud-comm-border: #c5d9f7;
+            --m365a-cloud-gcc-bg: #e6f4ea;
+            --m365a-cloud-gcc-text: #137333;
+            --m365a-cloud-gcc-border: #b7e1c5;
+            --m365a-cloud-gcch-bg: #fef3e0;
+            --m365a-cloud-gcch-text: #c26401;
+            --m365a-cloud-gcch-border: #f5d9a8;
+            --m365a-cloud-dod-bg: #fce8e6;
+            --m365a-cloud-dod-text: #c5221f;
+            --m365a-cloud-dod-border: #f5b7b1;
+
+            /* DKIM badges */
+            --m365a-dkim-warn-bg: #fff3cd;
+            --m365a-dkim-warn-text: #856404;
+            --m365a-dkim-ok-bg: #d4edda;
+            --m365a-dkim-ok-text: #155724;
         }
 
         body.dark-theme {
@@ -1931,6 +1961,36 @@ $html = @"
             --m365a-review: #A78BFA;
             --m365a-neutral: #9ca3af;
             --m365a-neutral-bg: #374151;
+
+            /* Badge text colors */
+            --m365a-success-text: #6EE7B7;
+            --m365a-danger-text: #FCA5A5;
+            --m365a-warning-text: #FCD34D;
+            --m365a-info-text: #93C5FD;
+            --m365a-skipped-bg: #334155;
+            --m365a-skipped-text: #94A3B8;
+            --m365a-critical-bg: #7F1D1D;
+            --m365a-critical-text: #FCA5A5;
+
+            /* Cloud badges */
+            --m365a-cloud-comm-bg: #1E3A5F;
+            --m365a-cloud-comm-text: #93C5FD;
+            --m365a-cloud-comm-border: #334155;
+            --m365a-cloud-gcc-bg: #064E3B;
+            --m365a-cloud-gcc-text: #6EE7B7;
+            --m365a-cloud-gcc-border: #334155;
+            --m365a-cloud-gcch-bg: #78350F;
+            --m365a-cloud-gcch-text: #FCD34D;
+            --m365a-cloud-gcch-border: #334155;
+            --m365a-cloud-dod-bg: #7F1D1D;
+            --m365a-cloud-dod-text: #FCA5A5;
+            --m365a-cloud-dod-border: #334155;
+
+            /* DKIM badges */
+            --m365a-dkim-warn-bg: #78350F;
+            --m365a-dkim-warn-text: #FCD34D;
+            --m365a-dkim-ok-bg: #064E3B;
+            --m365a-dkim-ok-text: #6EE7B7;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2280,24 +2340,24 @@ $html = @"
             letter-spacing: 0.3px;
         }
         .cloud-commercial {
-            background: #e8f0fe;
-            color: #1a73e8;
-            border: 1px solid #c5d9f7;
+            background: var(--m365a-cloud-comm-bg);
+            color: var(--m365a-cloud-comm-text);
+            border: 1px solid var(--m365a-cloud-comm-border);
         }
         .cloud-gcc {
-            background: #e6f4ea;
-            color: #137333;
-            border: 1px solid #b7e1c5;
+            background: var(--m365a-cloud-gcc-bg);
+            color: var(--m365a-cloud-gcc-text);
+            border: 1px solid var(--m365a-cloud-gcc-border);
         }
         .cloud-gcchigh {
-            background: #fef3e0;
-            color: #c26401;
-            border: 1px solid #f5d9a8;
+            background: var(--m365a-cloud-gcch-bg);
+            color: var(--m365a-cloud-gcch-text);
+            border: 1px solid var(--m365a-cloud-gcch-border);
         }
         .cloud-dod {
-            background: #fce8e6;
-            color: #c5221f;
-            border: 1px solid #f5b7b1;
+            background: var(--m365a-cloud-dod-bg);
+            color: var(--m365a-cloud-dod-text);
+            border: 1px solid var(--m365a-cloud-dod-border);
         }
 
         .tenant-domains {
@@ -2714,16 +2774,16 @@ $html = @"
             margin-top: 2px;
         }
         .dkim-mismatch {
-            background: #fff3cd;
-            color: #856404;
+            background: var(--m365a-dkim-warn-bg);
+            color: var(--m365a-dkim-warn-text);
             font-weight: 600;
             padding: 0.15em 0.5em;
             border-radius: 3px;
             font-size: 0.85rem;
         }
         .dkim-exo-confirmed {
-            background: #d4edda;
-            color: #155724;
+            background: var(--m365a-dkim-ok-bg);
+            color: var(--m365a-dkim-ok-text);
             font-weight: 600;
             padding: 0.15em 0.5em;
             border-radius: 3px;
@@ -3041,14 +3101,14 @@ $html = @"
             letter-spacing: 0.5px;
         }
 
-        .badge-complete { background: var(--m365a-success-bg); color: #155724; }
-        .badge-success { background: var(--m365a-success-bg); color: #155724; }
-        .badge-skipped { background: #e2e3e5; color: #383d41; }
-        .badge-failed { background: var(--m365a-danger-bg); color: #721c24; }
-        .badge-warning { background: var(--m365a-warning-bg); color: #856404; }
-        .badge-info { background: var(--m365a-info-bg); color: #0c5460; }
+        .badge-complete { background: var(--m365a-success-bg); color: var(--m365a-success-text); }
+        .badge-success { background: var(--m365a-success-bg); color: var(--m365a-success-text); }
+        .badge-skipped { background: var(--m365a-skipped-bg); color: var(--m365a-skipped-text); }
+        .badge-failed { background: var(--m365a-danger-bg); color: var(--m365a-danger-text); }
+        .badge-warning { background: var(--m365a-warning-bg); color: var(--m365a-warning-text); }
+        .badge-info { background: var(--m365a-info-bg); color: var(--m365a-info-text); }
         .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
-        .badge-critical { background: #991b1b; color: #fef2f2; }
+        .badge-critical { background: var(--m365a-critical-bg); color: var(--m365a-critical-text); }
 
         /* ----------------------------------------------------------
            Section
@@ -3401,13 +3461,8 @@ $html = @"
         body.dark-theme th:last-child { border-right: none; }
         body.dark-theme .data-table th:hover { background: #254E78; }
 
-        body.dark-theme .badge-complete,
-        body.dark-theme .badge-success { background: #065F46; color: #6EE7B7; }
-        body.dark-theme .badge-failed { background: #7F1D1D; color: #FCA5A5; }
-        body.dark-theme .badge-warning { background: #78350F; color: #FCD34D; }
-        body.dark-theme .badge-info { background: #1E3A5F; color: #93C5FD; }
+        /* Badge colors now handled via CSS variables in :root / body.dark-theme */
         body.dark-theme .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
-        body.dark-theme .badge-skipped { background: #334155; color: #94A3B8; }
 
         body.dark-theme .fw-cis    { background: #1E3A5F; color: #93C5FD; }
         body.dark-theme .fw-cis-l2 { background: #1E3A5F; color: #60A5FA; }
@@ -3429,10 +3484,7 @@ $html = @"
         body.dark-theme .fw-default { background: #334155; color: #CBD5E1; }
         body.dark-theme .fw-profile-tag { background: rgba(255,255,255,0.1); }
 
-        body.dark-theme .cloud-commercial { background: #1E3A5F; color: #93C5FD; border-color: #334155; }
-        body.dark-theme .cloud-gcc { background: #064E3B; color: #6EE7B7; border-color: #334155; }
-        body.dark-theme .cloud-gcchigh { background: #78350F; color: #FCD34D; border-color: #334155; }
-        body.dark-theme .cloud-dod { background: #7F1D1D; color: #FCA5A5; border-color: #334155; }
+        /* Cloud badge colors now handled via CSS variables in :root / body.dark-theme */
 
         body.dark-theme .fw-checkbox.active { background: #3B82F6; color: #ffffff; border-color: #3B82F6; }
         body.dark-theme .section-checkbox.active { background: #0d9488; color: #ffffff; border-color: #0d9488; }
