@@ -4,6 +4,11 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-30
+
+### Fixed
+- **Defender preset security policies** -- tenants with Standard or Strict preset security policies enabled no longer show false failures for anti-phishing, anti-spam, anti-malware, Safe Links, and Safe Attachments checks. Preset-managed policies are detected via `Get-EOPProtectionPolicyRule` and `Get-ATPProtectionPolicyRule` and reported as "Managed by [Standard/Strict] preset security policy" with Pass status. (#245)
+
 ## [1.0.0] - 2026-03-30
 
 ### Added
