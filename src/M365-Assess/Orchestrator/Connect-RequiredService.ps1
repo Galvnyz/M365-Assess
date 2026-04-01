@@ -87,6 +87,14 @@ function Connect-RequiredService {
             $connectedServices.Add($svc) | Out-Null
             Write-AssessmentLog -Level INFO -Message "Connected to $svc successfully." -Section $SectionName
 
+            # Validate Graph scopes once after first connection
+            if ($svc -eq 'Graph' -and -not $script:graphPermissionsChecked) {
+                $script:graphPermissionsChecked = $true
+                if (Get-Command -Name Test-GraphPermissions -ErrorAction SilentlyContinue) {
+                    Test-GraphPermissions -RequiredScopes $graphScopes -SectionScopeMap $sectionScopeMap -ActiveSections $Section
+                }
+            }
+
             # After first Graph connection, capture connected tenant domain for
             # later use (e.g. report headers, logging).
             if ($svc -eq 'Graph' -and -not $script:resolvedTenantDomain) {
