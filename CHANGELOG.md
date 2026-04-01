@@ -4,6 +4,21 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-04-01
+
+### Added
+- **SecurityConfigHelper contract** -- shared `Initialize-SecurityConfig`, `Add-SecuritySetting`, and `Export-SecurityConfigReport` functions eliminate duplicated `Add-Setting` boilerplate across collectors. ValidateSet enforcement on Status field rejects invalid values at the source. (#236, #282)
+- **74 contract tests** -- unit tests for all 3 SecurityConfigHelper functions plus structural compliance tests verifying all 11 migrated collectors follow the contract pattern. Full suite: 811 passing. (#238, #285)
+- **13 public module cmdlets** -- individual security collectors exported as `Get-M365*SecurityConfig` functions. Users can now run `Get-M365ExoSecurityConfig`, `Get-M365EntraSecurityConfig`, etc. standalone after `Import-Module M365-Assess`. (#241, #287)
+- **Graph API scope validation** -- pre-flight permission check runs after first Graph connection, warning about missing scopes grouped by affected section. Detects app-only auth and skips gracefully. (#272, #281)
+- **Mailbox delegation audit** -- `Get-MailboxPermissionReport.ps1` wired into Email section orchestrator for FullAccess/SendAs/SendOnBehalf reporting. (#269, #280)
+- **Hidden mailbox detection** -- `EXO-HIDDEN-001` check flags user mailboxes hidden from GAL as potential compromise indicators, mapped to MITRE T1564. (#277, #280)
+
+### Changed
+- **Export-AssessmentReport.ps1 decomposed** -- 4,278-line monolith split into 4 focused files: `ReportHelpers.ps1` (225 lines), `Build-SectionHtml.ps1` (1,355 lines), `Get-ReportTemplate.ps1` (2,411 lines), and a 341-line orchestrator. Zero behavior change. (#235, #286)
+- **8 collectors migrated to SecurityConfigHelper** -- replaced ~240 lines of duplicated boilerplate across Forms, Intune, Compliance, PowerBI, Purview Retention, DNS, EntApp, and CA collectors. (#283, #284)
+- **Module install prompts improved** -- ImportExcel and MicrosoftPowerBIMgmt promoted from Optional to Recommended tier with `[Y/n]` default-yes prompts and NonInteractive auto-install. (#254, #280)
+
 ## [1.0.1] - 2026-03-30
 
 ### Fixed
