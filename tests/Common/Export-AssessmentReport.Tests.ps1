@@ -3,9 +3,15 @@ Describe 'Export-AssessmentReport HTML structure' {
         # Read the raw script source to verify embedded HTML/CSS/JS patterns.
         # Full execution requires a live assessment folder with CSV data, so we
         # verify the template strings are present in the script source instead.
-        $scriptPath = "$PSScriptRoot/../../src/M365-Assess/Common/Export-AssessmentReport.ps1"
-        $html = Get-Content -Path $scriptPath -Raw
-        $overviewPath = "$PSScriptRoot/../../src/M365-Assess/Common/Export-ComplianceOverview.ps1"
+        # After decomposition (#235), patterns are spread across 4 files.
+        $commonDir = "$PSScriptRoot/../../src/M365-Assess/Common"
+        $html = @(
+            (Get-Content -Path "$commonDir/Export-AssessmentReport.ps1" -Raw),
+            (Get-Content -Path "$commonDir/ReportHelpers.ps1" -Raw),
+            (Get-Content -Path "$commonDir/Build-SectionHtml.ps1" -Raw),
+            (Get-Content -Path "$commonDir/Get-ReportTemplate.ps1" -Raw)
+        ) -join "`n"
+        $overviewPath = "$commonDir/Export-ComplianceOverview.ps1"
         $overviewSrc = Get-Content -Path $overviewPath -Raw
     }
 
