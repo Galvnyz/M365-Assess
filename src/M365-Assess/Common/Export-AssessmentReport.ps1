@@ -63,6 +63,9 @@
 
     Author:  Daren9m
 #>
+# Variables set here are consumed by dot-sourced companion files
+# (Build-SectionHtml.ps1, Get-ReportTemplate.ps1) via shared scope.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]

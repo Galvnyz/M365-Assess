@@ -13,6 +13,9 @@
     Author: Daren9m
     Extracted from Export-AssessmentReport.ps1 for maintainability (#235).
 #>
+# Variables set here are consumed by Get-ReportTemplate.ps1 via shared scope.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
+param()
 
 $sectionHtml = [System.Text.StringBuilder]::new()
 
