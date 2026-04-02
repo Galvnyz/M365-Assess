@@ -18,6 +18,7 @@
 param()
 
 $sectionHtml = [System.Text.StringBuilder]::new()
+$tenantHtml = [System.Text.StringBuilder]::new()
 
 $sectionDescriptions = @{
     'Tenant'        = 'Organization profile, verified domains, and core tenant configuration. This baseline identifies the environment and confirms tenant-level settings.'
@@ -53,8 +54,8 @@ $sectionCallouts = @{
     'Email'         = @(
         @{
             Type  = 'info'
-            Title = 'DMARC, DKIM &amp; SPF'
-            Body  = 'These three DNS records work together to prevent email spoofing. SPF validates sending servers, DKIM ensures message integrity, and DMARC tells receivers what to do with failures.'
+            Title = 'Email Authentication Protocols'
+            Body  = '<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p><p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven''t been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p><p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a> for federal agencies.</p><p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p><p><strong>Resources:</strong> <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about" target="_blank">Microsoft Email Authentication</a> &middot; <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure" target="_blank">Configure DMARC</a> &middot; <a href="https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts" target="_blank">MTA-STS for Exchange Online</a> &middot; <a href="https://csrc.nist.gov/pubs/sp/800/177/r1/final" target="_blank">NIST SP 800-177</a> &middot; <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a></p>'
         }
         @{
             Type  = 'warning'
@@ -169,61 +170,59 @@ foreach ($sectionName in $sections) {
             $licensedUsers = if ($uProps -contains 'Licensed') { $u.Licensed } else { '' }
         }
 
-        $null = $sectionHtml.AppendLine("<div class='report-page' data-page='section-tenant'>")
-        $null = $sectionHtml.AppendLine("<div class='tenant-card' id='section-tenant'>")
-        $null = $sectionHtml.AppendLine("<h2 class='tenant-heading'>Organization Profile</h2>")
-        $null = $sectionHtml.AppendLine("<div class='tenant-org-name'>$(ConvertTo-HtmlSafe -Text $orgName)</div>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-card' id='section-tenant'>")
+        $null = $tenantHtml.AppendLine("<h2 class='tenant-heading'>Organization Profile</h2>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-org-name'>$(ConvertTo-HtmlSafe -Text $orgName)</div>")
 
         # Primary facts row
-        $null = $sectionHtml.AppendLine("<div class='tenant-facts'>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-facts'>")
         if ($defaultDomain) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Primary Domain</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $defaultDomain)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Primary Domain</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $defaultDomain)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Cloud</span><span class='cloud-badge cloud-$(ConvertTo-HtmlSafe -Text $cloudEnvironment)'>$(ConvertTo-HtmlSafe -Text $cloudDisplayName)</span></div>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Cloud</span><span class='cloud-badge cloud-$(ConvertTo-HtmlSafe -Text $cloudEnvironment)'>$(ConvertTo-HtmlSafe -Text $cloudDisplayName)</span></div>")
         if ($createdDisplay) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Established</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $createdDisplay)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Established</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $createdDisplay)</span></div>")
         }
         if ($secDefaults) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Security Defaults</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $secDefaults)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Security Defaults</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $secDefaults)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         # Secondary facts row — Tenant ID + User counts
-        $null = $sectionHtml.AppendLine("<div class='tenant-facts tenant-facts-secondary'>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-facts tenant-facts-secondary'>")
         if ($tenantId) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Tenant ID</span><span class='fact-value tenant-id-val'>$(ConvertTo-HtmlSafe -Text $tenantId)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Tenant ID</span><span class='fact-value tenant-id-val'>$(ConvertTo-HtmlSafe -Text $tenantId)</span></div>")
         }
         if ($totalUsers) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Total Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $totalUsers)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Total Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $totalUsers)</span></div>")
         }
         if ($licensedUsers) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Licensed Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $licensedUsers)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Licensed Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $licensedUsers)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         # Verified Domains — show all with custom domains prominent, system domains dimmed
         if ($allDomains.Count -gt 0) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-domains'>")
-            $null = $sectionHtml.AppendLine("<span class='fact-label'>Verified Domains ($($allDomains.Count))</span>")
-            $null = $sectionHtml.AppendLine("<div class='domain-list'>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-domains'>")
+            $null = $tenantHtml.AppendLine("<span class='fact-label'>Verified Domains ($($allDomains.Count))</span>")
+            $null = $tenantHtml.AppendLine("<div class='domain-list'>")
             foreach ($d in $customDomains) {
-                $null = $sectionHtml.AppendLine("<span class='domain-tag'>$(ConvertTo-HtmlSafe -Text $d)</span>")
+                $null = $tenantHtml.AppendLine("<span class='domain-tag'>$(ConvertTo-HtmlSafe -Text $d)</span>")
             }
             foreach ($d in $systemDomains) {
-                $null = $sectionHtml.AppendLine("<span class='domain-tag domain-system'>$(ConvertTo-HtmlSafe -Text $d)</span>")
+                $null = $tenantHtml.AppendLine("<span class='domain-tag domain-system'>$(ConvertTo-HtmlSafe -Text $d)</span>")
             }
-            $null = $sectionHtml.AppendLine("</div>")
-            $null = $sectionHtml.AppendLine("</div>")
+            $null = $tenantHtml.AppendLine("</div>")
+            $null = $tenantHtml.AppendLine("</div>")
         }
 
         # Assessment metadata bar
-        $null = $sectionHtml.AppendLine("<div class='tenant-meta'>")
-        $null = $sectionHtml.AppendLine("<span>Assessment Date: $assessmentDate</span>")
-        $null = $sectionHtml.AppendLine("<span>Scope: $($sections.Count) Sections &middot; $totalCollectors Configuration Areas</span>")
-        $null = $sectionHtml.AppendLine("<span>Generated by M365 Assess</span>")
-        $null = $sectionHtml.AppendLine("</div>")
-        $null = $sectionHtml.AppendLine("</div>")
-        $null = $sectionHtml.AppendLine("</div>") # close report-page wrapper
+        $null = $tenantHtml.AppendLine("<div class='tenant-meta'>")
+        $null = $tenantHtml.AppendLine("<span>Assessment Date: $assessmentDate</span>")
+        $null = $tenantHtml.AppendLine("<span>Scope: $($sections.Count) Sections &middot; $totalCollectors Configuration Areas</span>")
+        $null = $tenantHtml.AppendLine("<span>Generated by M365 Assess</span>")
+        $null = $tenantHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         continue
     }
@@ -233,29 +232,33 @@ foreach ($sectionName in $sections) {
     $null = $sectionHtml.AppendLine("<details class='section' id='section-$sectionId' open>")
     $null = $sectionHtml.AppendLine("<summary><h2>$([System.Web.HttpUtility]::HtmlEncode($sectionName))</h2></summary>")
 
+    # Consolidated explainer: section description + callouts in one "Read More" toggle
     $sectionDesc = $sectionDescriptions[$sectionName]
-    if ($sectionDesc) {
-        $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
-    }
-
-    # Inline explanation callouts — collapsible context boxes
     $callouts = $sectionCallouts[$sectionName]
-    if ($callouts) {
-        $null = $sectionHtml.AppendLine("<div class='callout-group'>")
-        foreach ($callout in $callouts) {
-            $calloutType = $callout.Type
-            $calloutTitle = $callout.Title
-            $calloutBody = $callout.Body
-            $icon = $calloutIcons[$calloutType]
-            if (-not $icon) { $icon = '&#9432;' }
-            $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
-            $null = $sectionHtml.AppendLine("<details>")
-            $null = $sectionHtml.AppendLine("<summary class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</summary>")
-            $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
-            $null = $sectionHtml.AppendLine("</details>")
+    if ($sectionDesc -or $callouts) {
+        $null = $sectionHtml.AppendLine("<details class='callout-readmore'>")
+        $null = $sectionHtml.AppendLine("<summary class='callout-readmore-toggle'>&#9432; Read More&hellip;</summary>")
+        $null = $sectionHtml.AppendLine("<div class='callout-readmore-body'>")
+        if ($sectionDesc) {
+            $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
+        }
+        if ($callouts) {
+            $null = $sectionHtml.AppendLine("<div class='callout-cards'>")
+            foreach ($callout in $callouts) {
+                $calloutType = $callout.Type
+                $calloutTitle = $callout.Title
+                $calloutBody = $callout.Body
+                $icon = $calloutIcons[$calloutType]
+                if (-not $icon) { $icon = '&#9432;' }
+                $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
+                $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
+                $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+            }
             $null = $sectionHtml.AppendLine("</div>")
         }
         $null = $sectionHtml.AppendLine("</div>")
+        $null = $sectionHtml.AppendLine("</details>")
     }
 
     # Collector status — compact chip grid
@@ -593,18 +596,6 @@ foreach ($sectionName in $sections) {
                     $null = $sectionHtml.AppendLine("<div class='dns-stat $publicClass'><div class='dns-stat-value'>$publicConfirmed / $totalDomains</div><div class='dns-stat-label'>Public DNS</div></div>")
                 }
                 $null = $sectionHtml.AppendLine("</div>")
-
-                # Collapsible protocol descriptions
-                $null = $sectionHtml.AppendLine("<details class='dns-protocols'>")
-                $null = $sectionHtml.AppendLine("<summary>About Email Authentication Protocols</summary>")
-                $null = $sectionHtml.AppendLine("<div class='dns-protocols-body'>")
-                $null = $sectionHtml.AppendLine("<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven't been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href='https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security' target='_blank'>CISA BOD 18-01</a> for federal agencies.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p>")
-                $null = $sectionHtml.AppendLine("<p class='advisory-links'><strong>Resources:</strong> <a href='https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about' target='_blank'>Microsoft Email Authentication</a> &middot; <a href='https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure' target='_blank'>Configure DMARC</a> &middot; <a href='https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts' target='_blank'>MTA-STS for Exchange Online</a> &middot; <a href='https://csrc.nist.gov/pubs/sp/800/177/r1/final' target='_blank'>NIST SP 800-177</a> &middot; <a href='https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security' target='_blank'>CISA BOD 18-01</a></p>")
-                $null = $sectionHtml.AppendLine("</div>")
-                $null = $sectionHtml.AppendLine("</details>")
 
                 $null = $sectionHtml.AppendLine("</div>") # end email-dash-col (DNS)
             }
@@ -1148,7 +1139,7 @@ foreach ($sectionName in $sections) {
             $dnsSubsectionRendered = $true
         }
 
-        $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
+        $null = $sectionHtml.AppendLine("<details class='collector-detail' open>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
         # Status filter bar for security config tables

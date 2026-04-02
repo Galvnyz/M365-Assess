@@ -243,7 +243,7 @@ if ($folderName -match 'Assessment_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})')
 # ------------------------------------------------------------------
 $assetsDir = Join-Path -Path $projectRoot -ChildPath 'assets'
 
-$logoAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*logo-white*', '*logo*')
+$logoAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*logo-cropped*white*', '*logo-cropped*', '*logo-white*', '*logo*')
 $logoBase64 = if ($logoAsset) { $logoAsset.Base64 } else { '' }
 $logoMime   = if ($logoAsset) { $logoAsset.Mime }   else { 'image/png' }
 
