@@ -45,6 +45,7 @@
         'Get-M365FormsSecurityConfig'
         'Get-M365PowerBISecurityConfig'
         'Get-M365PurviewRetentionConfig'
+        'Grant-M365AssessConsent'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
@@ -164,6 +165,8 @@
         'controls\frameworks\pci-dss-v4.json'
         'controls\frameworks\soc2-tsc.json'
         'controls\frameworks\stig.json'
+        'Setup\Grant-M365AssessConsent.ps1'
+        'Setup\PermissionDefinitions.ps1'
         'assets\m365-assess-bg.png'
         'assets\m365-assess-logo-white.png'
         'assets\m365-assess-logo.png'
