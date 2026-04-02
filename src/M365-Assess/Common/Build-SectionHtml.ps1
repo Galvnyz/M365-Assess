@@ -1459,12 +1459,60 @@ if ($issues.Count -gt 0) {
     $null = $issuesHtml.AppendLine("</details>")
 }
 
+# ------------------------------------------------------------------
+# Build Checks-Run Appendix
+# ------------------------------------------------------------------
+$checksRunHtml = [System.Text.StringBuilder]::new()
+if ($allCisFindings.Count -gt 0) {
+    $sortedChecks = @($allCisFindings | Sort-Object -Property CheckId)
+    $sectionNames = @($sortedChecks | Select-Object -ExpandProperty Section -Unique)
+    $null = $checksRunHtml.AppendLine("<div class='appendix-section' id='appendix-checks-run'>")
+    $null = $checksRunHtml.AppendLine("<h2>Appendix: Checks Run</h2>")
+    $null = $checksRunHtml.AppendLine("<p class='appendix-desc'>Complete list of all security configuration checks executed during this assessment.</p>")
+    $null = $checksRunHtml.AppendLine("<div class='table-wrapper'>")
+    $null = $checksRunHtml.AppendLine("<table class='data-table'>")
+    $null = $checksRunHtml.AppendLine("<caption class='sr-only'>Complete list of checks run during this assessment</caption>")
+    $null = $checksRunHtml.AppendLine("<thead><tr><th scope='col'>CheckId</th><th scope='col'>Setting</th><th scope='col'>Category</th><th scope='col'>Status</th><th scope='col'>Section</th></tr></thead>")
+    $null = $checksRunHtml.AppendLine("<tbody>")
+    foreach ($check in $sortedChecks) {
+        $statusBadgeClass = switch ($check.Status) {
+            'Pass'    { 'badge-complete' }
+            'Fail'    { 'badge-failed' }
+            'Warning' { 'badge-warning' }
+            'Review'  { 'badge-info' }
+            'Info'    { 'badge-neutral' }
+            'Unknown' { 'badge-skipped' }
+            default   { '' }
+        }
+        $statusCell = if ($statusBadgeClass) {
+            "<span class='badge $statusBadgeClass'>$(ConvertTo-HtmlSafe -Text $check.Status)</span>"
+        }
+        else {
+            ConvertTo-HtmlSafe -Text $check.Status
+        }
+        $null = $checksRunHtml.AppendLine("<tr>")
+        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.CheckId)</td>")
+        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Setting)</td>")
+        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Category)</td>")
+        $null = $checksRunHtml.AppendLine("<td>$statusCell</td>")
+        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Section)</td>")
+        $null = $checksRunHtml.AppendLine("</tr>")
+    }
+    $null = $checksRunHtml.AppendLine("</tbody></table>")
+    $null = $checksRunHtml.AppendLine("</div>")
+    $null = $checksRunHtml.AppendLine("<p class='appendix-count'>Total: $($sortedChecks.Count) checks across $($sectionNames.Count) sections</p>")
+    $null = $checksRunHtml.AppendLine("</div>")
+}
+
 # Append conditional entries to TOC now that compliance/issues counts are known
 if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $SkipComplianceOverview) {
     $null = $tocHtml.AppendLine("<li><a href='#compliance-overview'>Compliance Overview</a></li>")
 }
 if ($issues.Count -gt 0) {
     $null = $tocHtml.AppendLine("<li><a href='#issues'>Technical Issues</a></li>")
+}
+if ($allCisFindings.Count -gt 0) {
+    $null = $tocHtml.AppendLine("<li><a href='#appendix-checks-run'>Appendix: Checks Run</a></li>")
 }
 $null = $tocHtml.AppendLine("</ol>")
 $null = $tocHtml.AppendLine("</nav>")

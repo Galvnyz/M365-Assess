@@ -51,6 +51,9 @@
     The framework ID for the active CIS benchmark version used for the CisControl
     property and reverse lookup. Defaults to 'cis-m365-v6'. Set to 'cis-m365-v7'
     when CIS v7.0 framework data is available.
+.PARAMETER OpenReport
+    Automatically open the generated HTML report in the default browser after
+    generation. Works on Windows, macOS, and Linux.
 .EXAMPLE
     PS> .\Common\Export-AssessmentReport.ps1 -AssessmentFolder '.\M365-Assessment\Assessment_20260306_195618'
 
@@ -105,7 +108,10 @@ param(
     [string[]]$FrameworkExport,
 
     [Parameter()]
-    [string]$CisFrameworkId = 'cis-m365-v6'
+    [string]$CisFrameworkId = 'cis-m365-v6',
+
+    [Parameter()]
+    [switch]$OpenReport
 )
 
 $ErrorActionPreference = 'Stop'
@@ -319,6 +325,10 @@ $warningCount = @($issues | Where-Object { $_.Severity -eq 'WARNING' }).Count
 # ------------------------------------------------------------------
 Set-Content -Path $OutputPath -Value $html -Encoding UTF8
 Write-Output "HTML report generated: $OutputPath"
+
+if ($OpenReport) {
+    Start-Process -FilePath $OutputPath
+}
 
 # ------------------------------------------------------------------
 # Generate PDF if wkhtmltopdf is available

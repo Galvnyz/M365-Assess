@@ -1772,6 +1772,14 @@ $html = @"
         }
 
         /* ----------------------------------------------------------
+           Appendix
+           ---------------------------------------------------------- */
+        .appendix-section { page-break-before: always; margin-top: 40px; }
+        .appendix-section h2 { color: var(--m365a-dark); border-bottom: 2px solid var(--m365a-border); padding-bottom: 8px; }
+        .appendix-desc { color: var(--m365a-medium-gray); font-size: 9pt; margin-bottom: 16px; }
+        .appendix-count { color: var(--m365a-medium-gray); font-size: 9pt; margin-top: 12px; font-style: italic; }
+
+        /* ----------------------------------------------------------
            Focus Styles
            ---------------------------------------------------------- */
         a:focus-visible, .theme-toggle:focus-visible, .data-table th:focus-visible {
@@ -2141,6 +2149,14 @@ if ($issues.Count -gt 0) {
         <a id="issues"></a>
         <h1>Technical Issues</h1>
         $($issuesHtml.ToString())
+"@
+}
+
+if ($checksRunHtml.Length -gt 0) {
+    $html += @"
+
+        <a id="appendix-checks-run"></a>
+        $($checksRunHtml.ToString())
 "@
 }
 

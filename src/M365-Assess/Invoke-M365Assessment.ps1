@@ -170,6 +170,9 @@ param(
     [switch]$SkipPdf,
 
     [Parameter()]
+    [switch]$OpenReport,
+
+    [Parameter()]
     [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8')]
     [string[]]$FrameworkFilter,
 
@@ -939,6 +942,7 @@ if (Test-Path -Path $reportScriptPath) {
         if ($SkipCoverPage) { $reportParams['SkipCoverPage'] = $true }
         if ($SkipExecutiveSummary) { $reportParams['SkipExecutiveSummary'] = $true }
         if ($SkipPdf) { $reportParams['SkipPdf'] = $true }
+        if ($OpenReport) { $reportParams['OpenReport'] = $true }
         if ($FrameworkFilter) { $reportParams['FrameworkFilter'] = $FrameworkFilter }
         if ($CustomBranding) { $reportParams['CustomBranding'] = $CustomBranding }
         if ($FrameworkExport) { $reportParams['FrameworkExport'] = $FrameworkExport }

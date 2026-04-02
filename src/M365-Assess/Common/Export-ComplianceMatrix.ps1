@@ -55,6 +55,15 @@ $projectRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $controlsPath = Join-Path -Path $projectRoot -ChildPath 'controls'
 $controlRegistry = Import-ControlRegistry -ControlsPath $controlsPath
 
+$riskSeverityPath = Join-Path -Path $controlsPath -ChildPath 'risk-severity.json'
+$riskSeverity = @{}
+if (Test-Path -Path $riskSeverityPath) {
+    $riskJson = Get-Content -Path $riskSeverityPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($riskJson.ContainsKey('checks')) {
+        $riskSeverity = $riskJson['checks']
+    }
+}
+
 if ($controlRegistry.Count -eq 0) {
     Write-Warning "Control registry is empty — cannot generate compliance matrix."
     return
@@ -109,12 +118,13 @@ foreach ($c in $summary) {
 
         # Fixed columns
         $finding = [ordered]@{
-            CheckId     = $row.CheckId
-            Setting     = $row.Setting
-            Category    = $row.Category
-            Status      = $row.Status
-            Source      = $c.Collector
-            Remediation = $row.Remediation
+            CheckId      = $row.CheckId
+            Setting      = $row.Setting
+            Category     = $row.Category
+            Status       = $row.Status
+            RiskSeverity = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { '' }
+            Source       = $c.Collector
+            Remediation  = $row.Remediation
         }
 
         # Dynamic framework columns (one per framework, sorted by displayOrder)
@@ -281,9 +291,10 @@ if ($cisFw -and $findings.Count -gt 0) {
 # ------------------------------------------------------------------
 $pkg = Open-ExcelPackage -Path $outputFile
 
-# Matrix sheet - color-code Status column
+# Matrix sheet - color-code Status and RiskSeverity columns
 $matrixSheet = $pkg.Workbook.Worksheets['Compliance Matrix']
-$statusCol = 4  # Column D = Status
+$statusCol = 4       # Column D = Status
+$riskSevCol = 5      # Column E = RiskSeverity
 $lastRow = $matrixSheet.Dimension.End.Row
 
 for ($r = 2; $r -le $lastRow; $r++) {
@@ -294,6 +305,15 @@ for ($r = 2; $r -le $lastRow; $r++) {
         'Warning' { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
         'Review'  { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(30, 64, 175));  $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(219, 234, 254)) }
         'Info'    { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(107, 114, 128)); $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(243, 244, 246)) }
+    }
+
+    $sevVal = $matrixSheet.Cells[$r, $riskSevCol].Value
+    switch ($sevVal) {
+        'Critical' { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(185, 28, 28));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 226, 226)) }
+        'High'     { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(154, 52, 18));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(255, 237, 213)) }
+        'Medium'   { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
+        'Low'      { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(21, 128, 61));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(220, 252, 231)) }
+        'Info'     { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(107, 114, 128)); $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(243, 244, 246)) }
     }
 }
 
