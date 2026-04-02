@@ -79,7 +79,6 @@ $collectorMap = [ordered]@{
         @{ Name = '10-Mail-Flow';        Script = 'Exchange-Online\Get-MailFlowReport.ps1';       Label = 'Mail Flow' }
         @{ Name = '11-EXO-Email-Policies';   Script = 'Exchange-Online\Get-EmailSecurityReport.ps1';  Label = 'EXO Email Policies' }
         @{ Name = '11b-EXO-Security-Config'; Script = 'Exchange-Online\Get-ExoSecurityConfig.ps1'; Label = 'EXO Security Config' }
-        @{ Name = '11c-Mailbox-Permissions'; Script = 'Exchange-Online\Get-MailboxPermissionReport.ps1'; Label = 'Mailbox Permissions' }
         # DNS Security Config is deferred — runs after all sections using prefetched DNS cache
     )
     'Intune' = @(
@@ -111,6 +110,7 @@ $collectorMap = [ordered]@{
         @{ Name = '23-Hybrid-Sync'; Script = 'ActiveDirectory\Get-HybridSyncReport.ps1'; Label = 'Hybrid Sync' }
     )
     'Inventory' = @(
+        @{ Name = '11c-Mailbox-Permissions'; Script = 'Exchange-Online\Get-MailboxPermissionReport.ps1'; Label = 'Mailbox Permissions'; RequiredServices = @('ExchangeOnline') }
         @{ Name = '28-Mailbox-Inventory';    Script = 'Inventory\Get-MailboxInventory.ps1';    Label = 'Mailbox Inventory';    RequiredServices = @('ExchangeOnline') }
         @{ Name = '29-Group-Inventory';      Script = 'Inventory\Get-GroupInventory.ps1';      Label = 'Group Inventory';      RequiredServices = @('ExchangeOnline') }
         @{ Name = '30-Teams-Inventory';      Script = 'Inventory\Get-TeamsInventory.ps1';      Label = 'Teams Inventory';      RequiredServices = @('Graph') }

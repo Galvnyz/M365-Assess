@@ -135,10 +135,9 @@ foreach ($sectionName in $sections) {
             '09-Mailbox-Summary.csv'           = 0
             '11b-EXO-Security-Config.csv'      = 1
             '11-EXO-Email-Policies.csv'        = 2
-            '11c-Mailbox-Permissions.csv'       = 3
-            '10-Mail-Flow.csv'                 = 4
-            '12-DNS-Email-Authentication.csv'  = 5
-            '12b-DNS-Security-Config.csv'      = 6
+            '10-Mail-Flow.csv'                 = 3
+            '12-DNS-Email-Authentication.csv'  = 4
+            '12b-DNS-Security-Config.csv'      = 5
         }
         $sectionCollectors = @($sectionCollectors | Sort-Object -Property @{
             Expression = { if ($emailOrder.ContainsKey($_.FileName)) { $emailOrder[$_.FileName] } else { 99 } }
@@ -354,41 +353,42 @@ foreach ($sectionName in $sections) {
             $cloudOnly     = if ($uProps -contains 'CloudOnly')        { [int]$users.CloudOnly }        else { 0 }
             $withMfa       = if ($uProps -contains 'WithMFA')          { [int]$users.WithMFA }          else { 0 }
 
-            # MFA / SSPR adoption from per-user report
-            $mfaCapable = 0; $mfaRegistered = 0; $ssprCapable = 0; $ssprRegistered = 0
+            # MFA / SSPR breakdown from per-user report
+            $mfaTotal = $mfaRawData.Count
+            $mfaRegistered = 0; $mfaNotRegistered = 0
+            $ssprRegistered = 0; $ssprNotRegistered = 0
+            $adminCount = 0; $adminNoMfa = 0
+            $guestMfa = [Math]::Max(0, $withMfa - 0)  # will be refined below
             if ($mfaRawData.Count -gt 0) {
-                $mfaCapable     = @($mfaRawData | Where-Object { $_.IsMfaCapable -eq 'True' }).Count
-                $mfaRegistered  = @($mfaRawData | Where-Object { $_.IsMfaCapable -eq 'True' -and $_.IsMfaRegistered -eq 'True' }).Count
-                $ssprCapable    = @($mfaRawData | Where-Object { $_.IsSsprCapable -eq 'True' }).Count
-                $ssprRegistered = @($mfaRawData | Where-Object { $_.IsSsprCapable -eq 'True' -and $_.IsSsprRegistered -eq 'True' }).Count
+                $mfaRegistered    = @($mfaRawData | Where-Object { $_.IsMfaRegistered -eq 'True' }).Count
+                $mfaNotRegistered = $mfaTotal - $mfaRegistered
+                $ssprRegistered   = @($mfaRawData | Where-Object { $_.IsSsprRegistered -eq 'True' }).Count
+                $ssprNotRegistered = $mfaTotal - $ssprRegistered
+                $adminCount       = @($mfaRawData | Where-Object { $_.IsAdmin -eq 'True' }).Count
+                $adminNoMfa       = @($mfaRawData | Where-Object { $_.IsAdmin -eq 'True' -and $_.IsMfaRegistered -ne 'True' }).Count
+                $guestMfa         = [Math]::Max(0, $withMfa - $mfaRegistered)
             }
-            $mfaPct = if ($mfaCapable -gt 0) { [math]::Round(($mfaRegistered / $mfaCapable) * 100, 1) } else { 0 }
-            $mfaClass = if ($mfaPct -ge 90) { 'success' } elseif ($mfaPct -ge 70) { 'warning' } else { 'danger' }
-            $ssprPct = if ($ssprCapable -gt 0) { [math]::Round(($ssprRegistered / $ssprCapable) * 100, 1) } else { 0 }
-            $ssprClass = if ($ssprPct -ge 90) { 'success' } elseif ($ssprPct -ge 70) { 'warning' } else { 'danger' }
             $disabledClass = if ($disabledUsers -gt 0) { 'danger' } else { 'success' }
-            $mfaSignInPct = if ($totalUsers -gt 0) { [math]::Round(($withMfa / $totalUsers) * 100, 1) } else { 0 }
-            $mfaSignInClass = if ($mfaSignInPct -ge 90) { 'success' } elseif ($mfaSignInPct -ge 70) { 'warning' } else { 'danger' }
+            $adminNoMfaClass = if ($adminNoMfa -gt 0) { 'danger' } else { 'success' }
+            $ssprNotRegClass = if ($ssprNotRegistered -gt 0) { 'warning' } else { 'success' }
 
             $null = $sectionHtml.AppendLine("<div class='email-dashboard'>")
 
             # --- Top row: 3-column layout ---
             $null = $sectionHtml.AppendLine("<div class='email-dash-top'>")
 
-            # Left column: User metrics with icons
+            # Left column: User Summary
             $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
             $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>User Summary</div>")
             $null = $sectionHtml.AppendLine("<div class='email-metrics-grid'>")
-
-            # Build user metric cards with icons and color coding
             $userMetrics = @(
                 @{ Icon = '&#128101;'; Value = $totalUsers;    Label = 'Total Users';    Css = '' }
                 @{ Icon = '&#127915;'; Value = $licensedUsers; Label = 'Licensed';       Css = '' }
-                @{ Icon = '&#128587;'; Value = $guestUsers;    Label = 'Guest Users';    Css = '' }
+                @{ Icon = '&#128587;'; Value = $guestUsers;    Label = 'Guests';         Css = '' }
+                @{ Icon = '&#128119;'; Value = $adminCount;    Label = 'Admins';         Css = '' }
                 @{ Icon = '&#128683;'; Value = $disabledUsers; Label = 'Disabled';       Css = $disabledClass }
                 @{ Icon = '&#128260;'; Value = $syncedUsers;   Label = 'Synced On-Prem'; Css = '' }
                 @{ Icon = '&#9729;';   Value = $cloudOnly;     Label = 'Cloud Only';     Css = '' }
-                @{ Icon = '&#128272;'; Value = $withMfa;       Label = 'With MFA';       Css = $mfaSignInClass }
             )
             foreach ($m in $userMetrics) {
                 $cssExtra = if ($m.Css) { " id-metric-$($m.Css)" } else { '' }
@@ -397,21 +397,31 @@ foreach ($sectionName in $sections) {
             $null = $sectionHtml.AppendLine("</div>")
             $null = $sectionHtml.AppendLine("</div>")
 
-            # Middle column: MFA & SSPR donuts
-            $mfaDonut  = Get-SvgDonut -Percentage $mfaPct  -CssClass $mfaClass  -Size 110 -StrokeWidth 10
-            $ssprDonut = Get-SvgDonut -Percentage $ssprPct -CssClass $ssprClass -Size 110 -StrokeWidth 10
-
+            # Middle column: MFA & SSPR Breakdown (metric cards, no donuts)
             $null = $sectionHtml.AppendLine("<div class='email-dash-col'>")
             $null = $sectionHtml.AppendLine("<div class='email-dash-heading'>Authentication</div>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-stack'>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-item'>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-chart'>$mfaDonut</div>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-info'><div class='id-donut-title'>MFA Adoption</div><div class='id-donut-detail'>$mfaRegistered / $mfaCapable enrolled</div></div>")
-            $null = $sectionHtml.AppendLine("</div>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-item'>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-chart'>$ssprDonut</div>")
-            $null = $sectionHtml.AppendLine("<div class='id-donut-info'><div class='id-donut-title'>SSPR Enrollment</div><div class='id-donut-detail'>$ssprRegistered / $ssprCapable enrolled</div></div>")
-            $null = $sectionHtml.AppendLine("</div>")
+            $null = $sectionHtml.AppendLine("<div class='email-metrics-grid'>")
+            $mfaCapable = @($mfaRawData | Where-Object { $_.IsMfaCapable -eq 'True' }).Count
+            $mfaNotCapable = $mfaTotal - $mfaCapable
+            $mfaNotCapableClass = if ($mfaNotCapable -gt 0) { 'warning' } else { '' }
+            $mfaCapableNotEnrolled = $mfaNotRegistered - $mfaNotCapable
+            $mfaNotRegClass = if ($mfaCapableNotEnrolled -le 0) { 'success' } elseif ($mfaCapableNotEnrolled -le 5) { 'warning' } else { 'danger' }
+            $ssprCapable = @($mfaRawData | Where-Object { $_.IsSsprCapable -eq 'True' }).Count
+            $ssprNotCapable = $mfaTotal - $ssprCapable
+            $guestNoMfa = [Math]::Max(0, $guestUsers - $guestMfa)
+            $guestNoMfaClass = if ($guestNoMfa -gt 0) { 'warning' } else { 'success' }
+            $authMetrics = @(
+                @{ Icon = '&#128272;'; Value = "$mfaRegistered / $mfaCapable";   Label = 'MFA Enrolled';    Css = 'success' }
+                @{ Icon = '&#128275;'; Value = "$mfaNotRegistered / $mfaNotCapable"; Label = 'Not Enrolled / Not Capable'; Css = $mfaNotRegClass }
+                @{ Icon = '&#128274;'; Value = "$guestMfa / $guestUsers";        Label = 'Guests w/ MFA';   Css = '' }
+                @{ Icon = '&#128119;'; Value = "$($adminCount - $adminNoMfa) / $adminCount"; Label = 'Admins w/ MFA'; Css = $adminNoMfaClass }
+                @{ Icon = '&#128273;'; Value = "$ssprRegistered / $ssprCapable"; Label = 'SSPR Enrolled';   Css = 'success' }
+            )
+            foreach ($m in $authMetrics) {
+                $cssExtra = if ($m.Css) { " id-metric-$($m.Css)" } else { '' }
+                $sublabelHtml = if ($m.Sublabel) { "<div class='email-metric-sublabel'>$($m.Sublabel)</div>" } else { '' }
+                $null = $sectionHtml.AppendLine("<div class='email-metric-card$cssExtra'><div class='email-metric-icon'>$($m.Icon)</div><div class='email-metric-body'><div class='email-metric-value'>$($m.Value)</div><div class='email-metric-label'>$(ConvertTo-HtmlSafe -Text $m.Label)</div>$sublabelHtml</div></div>")
+            }
             $null = $sectionHtml.AppendLine("</div>")
             $null = $sectionHtml.AppendLine("</div>")
 
