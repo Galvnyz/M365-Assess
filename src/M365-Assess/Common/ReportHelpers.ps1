@@ -209,6 +209,12 @@ function Get-SvgStackedBar {
         $y = $barStartY + ($rowIndex * ($BarHeight + $Gap))
         $textY = $y + [math]::Round($BarHeight / 2, 0) + 4
 
+        # Derive navigation target from label: lowercase, replace non-alphanumeric with dash
+        $navTarget = 'section-' + ($row.Label -replace '[^a-zA-Z0-9]', '-').ToLower()
+
+        # Wrap entire row in a clickable group with data-nav
+        $svg += "<g class='chart-nav-link' data-nav='$navTarget' role='link' tabindex='0' aria-label='Navigate to $($row.Label) section'>"
+
         # Row label
         $svg += "<text x='$($LabelWidth - 8)' y='$textY' font-family='Inter, sans-serif' font-size='10' fill='var(--m365a-text)' text-anchor='end'>$($row.Label)</text>"
 
@@ -216,6 +222,7 @@ function Get-SvgStackedBar {
         if ($total -eq 0) {
             # Empty bar track
             $svg += "<rect x='$LabelWidth' y='$y' width='$barWidth' height='$BarHeight' rx='4' fill='var(--m365a-border)' opacity='0.3'/>"
+            $svg += "</g>"
             continue
         }
 
@@ -264,6 +271,9 @@ function Get-SvgStackedBar {
         # Total count label on right
         $countX = $LabelWidth + $barWidth + 6
         $svg += "<text x='$countX' y='$textY' font-family='Inter, sans-serif' font-size='10' fill='var(--m365a-medium-gray)'>$total</text>"
+
+        # Close clickable row group
+        $svg += "</g>"
     }
 
     $svg += "</svg>"

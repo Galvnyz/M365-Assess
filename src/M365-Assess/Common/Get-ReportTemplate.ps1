@@ -568,6 +568,8 @@ $html = @"
             border: none;
             padding: 0;
         }
+        .chart-nav-link { cursor: pointer; }
+        .chart-nav-link:hover text:first-child { text-decoration: underline; fill: var(--m365a-accent); }
 
         /* ----------------------------------------------------------
            Tenant Organization Card
@@ -2618,6 +2620,21 @@ $html += @"
                 e.preventDefault();
                 if (idx > 0) navigateTo(pageIds[idx - 1]);
             }
+        });
+
+        // Chart bar navigation -- click a service-area row to navigate to its section
+        document.querySelectorAll('[data-nav]').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var target = el.getAttribute('data-nav');
+                if (target) navigateTo(target);
+            });
+            el.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    var target = el.getAttribute('data-nav');
+                    if (target) navigateTo(target);
+                }
+            });
         });
 
         // Initialize: show the correct page on load
