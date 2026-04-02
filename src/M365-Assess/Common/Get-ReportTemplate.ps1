@@ -423,6 +423,65 @@ $html = @"
             line-height: 1.6;
         }
 
+        /* Accordion callout (Email protocols) */
+        .callout-accordion {
+            flex: 1 1 100%;
+            border-radius: 6px;
+            border: 1px solid var(--m365a-border);
+            background: var(--m365a-card-bg);
+            overflow: hidden;
+        }
+        .callout-accordion-title {
+            padding: 10px 14px;
+            font-weight: 600;
+            font-size: 9.5pt;
+            color: var(--m365a-dark);
+            border-bottom: 1px solid var(--m365a-border);
+        }
+        .accordion-item {
+            border-bottom: 1px solid var(--m365a-border);
+        }
+        .accordion-item:last-of-type { border-bottom: none; }
+        .accordion-item summary {
+            padding: 8px 14px;
+            font-weight: 600;
+            font-size: 9pt;
+            color: var(--m365a-accent);
+            cursor: pointer;
+            list-style: none;
+        }
+        .accordion-item summary::-webkit-details-marker { display: none; }
+        .accordion-item summary::before {
+            content: '\25B6  ';
+            font-size: 7pt;
+            transition: transform 0.2s;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .accordion-item[open] > summary::before { transform: rotate(90deg); }
+        .accordion-item-body {
+            padding: 0 14px 10px 28px;
+            font-size: 9pt;
+            color: var(--m365a-medium-gray);
+            line-height: 1.6;
+        }
+        .accordion-item-body code {
+            background: var(--m365a-border);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 8.5pt;
+        }
+        .accordion-item-body a { color: var(--m365a-accent); text-decoration: none; }
+        .accordion-item-body a:hover { text-decoration: underline; }
+        .accordion-resources {
+            padding: 8px 14px;
+            font-size: 8.5pt;
+            color: var(--m365a-medium-gray);
+            border-top: 1px solid var(--m365a-border);
+        }
+        .accordion-resources a { color: var(--m365a-accent); text-decoration: none; }
+        .accordion-resources a:hover { text-decoration: underline; }
+
         /* ----------------------------------------------------------
            Executive Summary Hero
            ---------------------------------------------------------- */

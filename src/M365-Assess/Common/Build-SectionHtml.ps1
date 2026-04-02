@@ -53,9 +53,33 @@ $sectionCallouts = @{
     )
     'Email'         = @(
         @{
-            Type  = 'info'
+            Type  = 'accordion'
             Title = 'Email Authentication Protocols'
-            Body  = '<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p><p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven''t been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p><p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a> for federal agencies.</p><p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p><p><strong>Resources:</strong> <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about" target="_blank">Microsoft Email Authentication</a> &middot; <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure" target="_blank">Configure DMARC</a> &middot; <a href="https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts" target="_blank">MTA-STS for Exchange Online</a> &middot; <a href="https://csrc.nist.gov/pubs/sp/800/177/r1/final" target="_blank">NIST SP 800-177</a> &middot; <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a></p>'
+            Items = @(
+                @{
+                    Title = 'SPF (Sender Policy Framework)'
+                    Body  = 'Specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.'
+                }
+                @{
+                    Title = 'DKIM (DomainKeys Identified Mail)'
+                    Body  = 'Adds a cryptographic signature to outgoing messages, proving they have not been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.'
+                }
+                @{
+                    Title = 'DMARC (Domain-based Message Authentication)'
+                    Body  = 'Ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication -- monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a> for federal agencies.'
+                }
+                @{
+                    Title = 'MTA-STS &amp; TLS-RPT'
+                    Body  = '<strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.'
+                }
+            )
+            Resources = @(
+                @{ Label = 'Microsoft Email Authentication'; Url = 'https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about' }
+                @{ Label = 'Configure DMARC'; Url = 'https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure' }
+                @{ Label = 'MTA-STS for Exchange Online'; Url = 'https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts' }
+                @{ Label = 'NIST SP 800-177'; Url = 'https://csrc.nist.gov/pubs/sp/800/177/r1/final' }
+                @{ Label = 'CISA BOD 18-01'; Url = 'https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security' }
+            )
         }
         @{
             Type  = 'warning'
@@ -245,15 +269,32 @@ foreach ($sectionName in $sections) {
         if ($callouts) {
             $null = $sectionHtml.AppendLine("<div class='callout-cards'>")
             foreach ($callout in $callouts) {
-                $calloutType = $callout.Type
-                $calloutTitle = $callout.Title
-                $calloutBody = $callout.Body
-                $icon = $calloutIcons[$calloutType]
-                if (-not $icon) { $icon = '&#9432;' }
-                $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
-                $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
-                $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
-                $null = $sectionHtml.AppendLine("</div>")
+                if ($callout.Type -eq 'accordion') {
+                    $null = $sectionHtml.AppendLine("<div class='callout-accordion'>")
+                    $null = $sectionHtml.AppendLine("<div class='callout-accordion-title'>$($callout.Title)</div>")
+                    foreach ($item in $callout.Items) {
+                        $null = $sectionHtml.AppendLine("<details class='accordion-item'>")
+                        $null = $sectionHtml.AppendLine("<summary class='accordion-item-title'>$($item.Title)</summary>")
+                        $null = $sectionHtml.AppendLine("<div class='accordion-item-body'>$($item.Body)</div>")
+                        $null = $sectionHtml.AppendLine("</details>")
+                    }
+                    if ($callout.Resources) {
+                        $links = ($callout.Resources | ForEach-Object { "<a href='$($_.Url)' target='_blank'>$($_.Label)</a>" }) -join ' &middot; '
+                        $null = $sectionHtml.AppendLine("<div class='accordion-resources'><strong>Resources:</strong> $links</div>")
+                    }
+                    $null = $sectionHtml.AppendLine("</div>")
+                }
+                else {
+                    $calloutType = $callout.Type
+                    $calloutTitle = $callout.Title
+                    $calloutBody = $callout.Body
+                    $icon = $calloutIcons[$calloutType]
+                    if (-not $icon) { $icon = '&#9432;' }
+                    $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
+                    $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
+                    $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
+                    $null = $sectionHtml.AppendLine("</div>")
+                }
             }
             $null = $sectionHtml.AppendLine("</div>")
         }
