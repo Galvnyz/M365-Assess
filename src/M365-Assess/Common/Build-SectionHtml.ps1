@@ -18,6 +18,7 @@
 param()
 
 $sectionHtml = [System.Text.StringBuilder]::new()
+$tenantHtml = [System.Text.StringBuilder]::new()
 
 $sectionDescriptions = @{
     'Tenant'        = 'Organization profile, verified domains, and core tenant configuration. This baseline identifies the environment and confirms tenant-level settings.'
@@ -169,61 +170,59 @@ foreach ($sectionName in $sections) {
             $licensedUsers = if ($uProps -contains 'Licensed') { $u.Licensed } else { '' }
         }
 
-        $null = $sectionHtml.AppendLine("<div class='report-page' data-page='section-tenant'>")
-        $null = $sectionHtml.AppendLine("<div class='tenant-card' id='section-tenant'>")
-        $null = $sectionHtml.AppendLine("<h2 class='tenant-heading'>Organization Profile</h2>")
-        $null = $sectionHtml.AppendLine("<div class='tenant-org-name'>$(ConvertTo-HtmlSafe -Text $orgName)</div>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-card' id='section-tenant'>")
+        $null = $tenantHtml.AppendLine("<h2 class='tenant-heading'>Organization Profile</h2>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-org-name'>$(ConvertTo-HtmlSafe -Text $orgName)</div>")
 
         # Primary facts row
-        $null = $sectionHtml.AppendLine("<div class='tenant-facts'>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-facts'>")
         if ($defaultDomain) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Primary Domain</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $defaultDomain)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Primary Domain</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $defaultDomain)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Cloud</span><span class='cloud-badge cloud-$(ConvertTo-HtmlSafe -Text $cloudEnvironment)'>$(ConvertTo-HtmlSafe -Text $cloudDisplayName)</span></div>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Cloud</span><span class='cloud-badge cloud-$(ConvertTo-HtmlSafe -Text $cloudEnvironment)'>$(ConvertTo-HtmlSafe -Text $cloudDisplayName)</span></div>")
         if ($createdDisplay) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Established</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $createdDisplay)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Established</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $createdDisplay)</span></div>")
         }
         if ($secDefaults) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Security Defaults</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $secDefaults)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Security Defaults</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $secDefaults)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         # Secondary facts row — Tenant ID + User counts
-        $null = $sectionHtml.AppendLine("<div class='tenant-facts tenant-facts-secondary'>")
+        $null = $tenantHtml.AppendLine("<div class='tenant-facts tenant-facts-secondary'>")
         if ($tenantId) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Tenant ID</span><span class='fact-value tenant-id-val'>$(ConvertTo-HtmlSafe -Text $tenantId)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Tenant ID</span><span class='fact-value tenant-id-val'>$(ConvertTo-HtmlSafe -Text $tenantId)</span></div>")
         }
         if ($totalUsers) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Total Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $totalUsers)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Total Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $totalUsers)</span></div>")
         }
         if ($licensedUsers) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Licensed Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $licensedUsers)</span></div>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-fact'><span class='fact-label'>Licensed Users</span><span class='fact-value'>$(ConvertTo-HtmlSafe -Text $licensedUsers)</span></div>")
         }
-        $null = $sectionHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         # Verified Domains — show all with custom domains prominent, system domains dimmed
         if ($allDomains.Count -gt 0) {
-            $null = $sectionHtml.AppendLine("<div class='tenant-domains'>")
-            $null = $sectionHtml.AppendLine("<span class='fact-label'>Verified Domains ($($allDomains.Count))</span>")
-            $null = $sectionHtml.AppendLine("<div class='domain-list'>")
+            $null = $tenantHtml.AppendLine("<div class='tenant-domains'>")
+            $null = $tenantHtml.AppendLine("<span class='fact-label'>Verified Domains ($($allDomains.Count))</span>")
+            $null = $tenantHtml.AppendLine("<div class='domain-list'>")
             foreach ($d in $customDomains) {
-                $null = $sectionHtml.AppendLine("<span class='domain-tag'>$(ConvertTo-HtmlSafe -Text $d)</span>")
+                $null = $tenantHtml.AppendLine("<span class='domain-tag'>$(ConvertTo-HtmlSafe -Text $d)</span>")
             }
             foreach ($d in $systemDomains) {
-                $null = $sectionHtml.AppendLine("<span class='domain-tag domain-system'>$(ConvertTo-HtmlSafe -Text $d)</span>")
+                $null = $tenantHtml.AppendLine("<span class='domain-tag domain-system'>$(ConvertTo-HtmlSafe -Text $d)</span>")
             }
-            $null = $sectionHtml.AppendLine("</div>")
-            $null = $sectionHtml.AppendLine("</div>")
+            $null = $tenantHtml.AppendLine("</div>")
+            $null = $tenantHtml.AppendLine("</div>")
         }
 
         # Assessment metadata bar
-        $null = $sectionHtml.AppendLine("<div class='tenant-meta'>")
-        $null = $sectionHtml.AppendLine("<span>Assessment Date: $assessmentDate</span>")
-        $null = $sectionHtml.AppendLine("<span>Scope: $($sections.Count) Sections &middot; $totalCollectors Configuration Areas</span>")
-        $null = $sectionHtml.AppendLine("<span>Generated by M365 Assess</span>")
-        $null = $sectionHtml.AppendLine("</div>")
-        $null = $sectionHtml.AppendLine("</div>")
-        $null = $sectionHtml.AppendLine("</div>") # close report-page wrapper
+        $null = $tenantHtml.AppendLine("<div class='tenant-meta'>")
+        $null = $tenantHtml.AppendLine("<span>Assessment Date: $assessmentDate</span>")
+        $null = $tenantHtml.AppendLine("<span>Scope: $($sections.Count) Sections &middot; $totalCollectors Configuration Areas</span>")
+        $null = $tenantHtml.AppendLine("<span>Generated by M365 Assess</span>")
+        $null = $tenantHtml.AppendLine("</div>")
+        $null = $tenantHtml.AppendLine("</div>")
 
         continue
     }
@@ -238,10 +237,12 @@ foreach ($sectionName in $sections) {
         $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
     }
 
-    # Inline explanation callouts — collapsible context boxes
+    # Inline explanation callouts — consolidated "Read More" at section top
     $callouts = $sectionCallouts[$sectionName]
     if ($callouts) {
-        $null = $sectionHtml.AppendLine("<div class='callout-group'>")
+        $null = $sectionHtml.AppendLine("<details class='callout-readmore'>")
+        $null = $sectionHtml.AppendLine("<summary class='callout-readmore-toggle'>&#9432; Read More&hellip;</summary>")
+        $null = $sectionHtml.AppendLine("<div class='callout-readmore-body'>")
         foreach ($callout in $callouts) {
             $calloutType = $callout.Type
             $calloutTitle = $callout.Title
@@ -249,13 +250,12 @@ foreach ($sectionName in $sections) {
             $icon = $calloutIcons[$calloutType]
             if (-not $icon) { $icon = '&#9432;' }
             $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
-            $null = $sectionHtml.AppendLine("<details>")
-            $null = $sectionHtml.AppendLine("<summary class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</summary>")
+            $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
             $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
-            $null = $sectionHtml.AppendLine("</details>")
             $null = $sectionHtml.AppendLine("</div>")
         }
         $null = $sectionHtml.AppendLine("</div>")
+        $null = $sectionHtml.AppendLine("</details>")
     }
 
     # Collector status — compact chip grid
@@ -1148,7 +1148,7 @@ foreach ($sectionName in $sections) {
             $dnsSubsectionRendered = $true
         }
 
-        $null = $sectionHtml.AppendLine("<details class='collector-detail'>")
+        $null = $sectionHtml.AppendLine("<details class='collector-detail' open>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
         # Status filter bar for security config tables

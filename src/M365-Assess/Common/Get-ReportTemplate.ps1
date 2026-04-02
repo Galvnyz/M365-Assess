@@ -285,6 +285,44 @@ $html = @"
         }
         .cover-branding-icon { flex-shrink: 0; opacity: 0.7; }
 
+        /* Full cover page hidden on screen, shown in print */
+        .cover-print-only { display: none; }
+
+        /* Compact hero banner (screen only) */
+        .hero-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 32px;
+            background: #0f172a;
+            color: var(--m365a-white);
+            margin: -40px -80px 24px -80px;
+            width: calc(100% + 160px);
+        }
+        .hero-banner-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .hero-banner-logo {
+            height: 64px;
+            width: auto;
+        }
+        .hero-banner-title {
+            font-size: 16pt;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .hero-banner-meta {
+            font-size: 10pt;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
+        body.dark-theme .hero-banner {
+            background: #020617;
+            border-bottom: 1px solid var(--m365a-border);
+        }
+
         /* ----------------------------------------------------------
            Content Pages
            ---------------------------------------------------------- */
@@ -330,11 +368,25 @@ $html = @"
         /* ----------------------------------------------------------
            Inline Explanation Callouts
            ---------------------------------------------------------- */
-        .callout-group {
+        /* Consolidated Read More callout toggle */
+        .callout-readmore {
+            margin: 0 0 16px 0;
+        }
+        .callout-readmore-toggle {
+            font-size: 9.5pt;
+            font-weight: 600;
+            color: var(--m365a-accent);
+            cursor: pointer;
+            padding: 6px 0;
+            list-style: none;
+        }
+        .callout-readmore-toggle::-webkit-details-marker { display: none; }
+        .callout-readmore-toggle:hover { text-decoration: underline; }
+        .callout-readmore-body {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin: 0 0 16px 0;
+            margin-top: 12px;
         }
         .callout {
             flex: 1 1 280px;
@@ -351,18 +403,8 @@ $html = @"
             padding: 10px 14px;
             font-weight: 600;
             font-size: 9.5pt;
-            cursor: pointer;
             color: var(--m365a-dark);
-            list-style: none;
         }
-        .callout-title::-webkit-details-marker { display: none; }
-        .callout-title::before {
-            content: '\25B6  ';
-            font-size: 8pt;
-            transition: transform 0.2s;
-            display: inline-block;
-        }
-        details[open] > .callout-title::before { transform: rotate(90deg); }
         .callout-icon { margin-right: 6px; }
         .callout-body {
             padding: 0 14px 12px;
@@ -1769,6 +1811,10 @@ $html = @"
         .report-footer .m365a-name {
             color: var(--m365a-primary);
             font-weight: 600;
+            text-decoration: none;
+        }
+        .report-footer .m365a-name:hover {
+            text-decoration: underline;
         }
 
         /* ----------------------------------------------------------
@@ -1990,6 +2036,8 @@ $html = @"
                 --m365a-info-bg: #d1ecf1;
             }
 
+            .hero-banner { display: none; }
+            .cover-print-only { display: flex !important; }
             .cover-page {
                 min-height: auto;
                 height: 100vh;
@@ -2086,11 +2134,10 @@ $html = @"
             .fw-col { display: table-cell !important; }
 
             /* --- Callouts: expand and simplify for print --- */
+            .callout-readmore { open: true; }
+            .callout-readmore-toggle { pointer-events: none; }
+            .callout-readmore-body { display: flex !important; }
             .callout { border-left-width: 3px; page-break-inside: avoid; }
-            .callout details[open] > .callout-title,
-            .callout .callout-title { pointer-events: none; }
-            .callout .callout-title::before { content: ''; }
-            .callout .callout-body { display: block !important; }
 
             /* --- Fix 8: Hide hover effects in print --- */
             .email-metric-card:hover,
@@ -2117,31 +2164,6 @@ $accentCss
 <body>
     <a href="#main-content" class="skip-nav">Skip to main content</a>
 
-$(if (-not $SkipCoverPage) {
-@"
-    <!-- Cover Page -->
-    <header class="cover-page">
-        $logoImgTag
-        <div class="cover-title">M365 Environment</div>
-        <div class="cover-title" style="margin-top: 0;">Assessment Report</div>
-        <div class="cover-divider"></div>
-        <div class="cover-tenant">$(ConvertTo-HtmlSafe -Text $TenantName)</div>
-        <div class="cover-subtitle">$assessmentDate</div>
-        <div class="cover-date">v$assessmentVersion</div>
-$(if (-not $NoBranding) {
-@'
-        <div class="cover-branding">
-            <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noopener" class="cover-branding-link">
-                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" class="cover-branding-icon"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                <span>Open-source &mdash; M365-Assess on GitHub</span>
-            </a>
-        </div>
-'@
-})
-    </header>
-"@
-})
-
     <!-- Mobile nav overlay -->
     <div class="nav-overlay" id="navOverlay"></div>
     <!-- Mobile hamburger toggle (positioned fixed on small screens) -->
@@ -2161,19 +2183,14 @@ $(if (-not $NoBranding) {
             <ul class="nav-list" id="navList">
 "@
 
-# Build sidebar nav items
-if (-not $SkipExecutiveSummary) {
-    $html += "                <li class='nav-item active' data-page='exec-summary'><a href='#exec-summary'>Executive Summary</a></li>`n"
-}
+# Build sidebar nav items -- Overview combines cover + exec summary + org profile
+$html += "                <li class='nav-item active' data-page='overview'><a href='#overview'>Overview</a></li>`n"
 foreach ($navSection in $sections) {
-    if ($navSection -eq 'Tenant') {
-        $navPageId = 'section-tenant'
-        $navLabel = 'Organization Profile'
-    }
-    else {
-        $navPageId = "section-$(($navSection -replace '[^a-zA-Z0-9]', '-').ToLower())"
-        $navLabel = [System.Web.HttpUtility]::HtmlEncode($navSection)
-    }
+    # Tenant is merged into Overview page -- skip separate nav entry
+    if ($navSection -eq 'Tenant') { continue }
+
+    $navPageId = "section-$(($navSection -replace '[^a-zA-Z0-9]', '-').ToLower())"
+    $navLabel = [System.Web.HttpUtility]::HtmlEncode($navSection)
     $navBadge = ''
     if ($sectionStatusCounts.ContainsKey($navSection)) {
         $navCounts = $sectionStatusCounts[$navSection]
@@ -2214,30 +2231,56 @@ $html += @"
         <main class="content" id="main-content" role="main">
 "@
 
+# Overview page: cover + exec summary + org profile combined
+$html += @"
+
+        <div class="report-page page-active" data-page="overview" id="overview">
+"@
+
+if (-not $SkipCoverPage) {
+    # Compact hero banner for screen; full cover page rendered in print CSS only
+    $html += @"
+
+        <!-- Compact branded banner (screen) -->
+        <div class="hero-banner">
+            <div class="hero-banner-left">
+                $(if ($logoBase64) { "<img src='data:$logoMime;base64,$logoBase64' alt='Logo' class='hero-banner-logo'/>" } else { '' })
+                <div class="hero-banner-text">
+                    <div class="hero-banner-title">M365 Assessment Report</div>
+                    <div class="hero-banner-meta">$(ConvertTo-HtmlSafe -Text $TenantName) &middot; $assessmentDate &middot; v$assessmentVersion</div>
+                </div>
+            </div>
+        </div>
+        <!-- Full cover page (print only, hidden on screen) -->
+        <header class="cover-page cover-print-only">
+            $logoImgTag
+            <div class="cover-title">M365 Environment</div>
+            <div class="cover-title" style="margin-top: 0;">Assessment Report</div>
+            <div class="cover-divider"></div>
+            <div class="cover-tenant">$(ConvertTo-HtmlSafe -Text $TenantName)</div>
+            <div class="cover-subtitle">$assessmentDate</div>
+            <div class="cover-date">v$assessmentVersion</div>
+$(if (-not $NoBranding) {
+@'
+            <div class="cover-branding">
+                <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noopener" class="cover-branding-link">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" class="cover-branding-icon"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>Open-source &mdash; M365-Assess on GitHub</span>
+                </a>
+            </div>
+'@
+})
+        </header>
+"@
+}
+
 if (-not $SkipExecutiveSummary) {
     $completePct = if ($totalCollectors -gt 0) { [math]::Round(($completeCount / $totalCollectors) * 100, 0) } else { 0 }
     $donutClass = if ($completePct -ge 90) { 'success' } elseif ($completePct -ge 70) { 'warning' } else { 'danger' }
     $donutSvg = Get-SvgDonut -Percentage $completePct -CssClass $donutClass -Label "$completeCount/$totalCollectors" -Size 120 -StrokeWidth 10
-    $tocItems = foreach ($tocSection in $sections) {
-        if ($tocSection -eq 'Tenant') {
-            "<li><a href='#section-tenant'>Organization Profile</a></li>"
-        } else {
-            $tocId = ($tocSection -replace '[^a-zA-Z0-9]', '-').ToLower()
-            $tocLabel = [System.Web.HttpUtility]::HtmlEncode($tocSection)
-            "<li><a href='#section-$tocId'>$tocLabel</a></li>"
-        }
-    }
-    if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $SkipComplianceOverview) {
-        $tocItems += "<li><a href='#compliance-overview'>Compliance Overview</a></li>"
-    }
-    if ($issues.Count -gt 0) {
-        $tocItems += "<li><a href='#issues'>Technical Issues</a></li>"
-    }
-    $tocHtmlBlock = $tocItems -join "`n                    "
 
     $html += @"
 
-        <div class="report-page" data-page="exec-summary" id="exec-summary">
         <!-- Executive Summary — Hero Panel -->
         <div class="exec-hero">
             <div class="exec-hero-left">
@@ -2273,12 +2316,6 @@ if (-not $SkipExecutiveSummary) {
                         <div class="exec-hero-metric-label">Frameworks</div>
                     </div>
                 </div>
-            </div>
-            <div class="exec-hero-right">
-                <div class="exec-hero-toc-label">Sections</div>
-                <ol class="exec-hero-toc">
-                    $tocHtmlBlock
-                </ol>
             </div>
         </div>
 "@
@@ -2329,25 +2366,14 @@ if (-not $SkipExecutiveSummary) {
 "@
         }
     }
-    $html += "`n        </div>" # close exec-summary report-page
 }
-else {
-    # Compact scan header when executive summary is skipped
-    $scanSections = ($sections | ForEach-Object { [System.Web.HttpUtility]::HtmlEncode($_) }) -join ', '
-    $html += @"
 
-        <div class="scan-header">
-            <div class="scan-header-title">$(ConvertTo-HtmlSafe -Text $TenantName)</div>
-            <div class="scan-header-meta">
-                <span>$assessmentDate</span>
-                <span>v$assessmentVersion</span>
-                <span>$cloudDisplayName</span>
-                <span>$completeCount / $totalCollectors collectors</span>
-            </div>
-            <div class="scan-header-sections">$scanSections</div>
-        </div>
-"@
+# Inject org profile (tenant card) into the overview page
+if ($tenantHtml.Length -gt 0) {
+    $html += "`n        $($tenantHtml.ToString())"
 }
+
+$html += "`n        </div>" # close overview report-page
 
 $html += @"
 
@@ -2406,8 +2432,8 @@ $html += @"
 
         <!-- Footer -->
         <footer class="report-footer">
-            <p>Generated by <span class="m365a-name">M365 Assess</span>
-            M365 Assessment Tool v$assessmentVersion</p>
+            <p>Generated by <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noopener" class="m365a-name">M365 Assess</a>
+            v$assessmentVersion</p>
             <p>$(Get-Date -Format 'MMMM d, yyyy h:mm tt')</p>
         </footer>
     </main>
