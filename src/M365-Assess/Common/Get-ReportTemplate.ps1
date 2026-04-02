@@ -487,19 +487,21 @@ $html = @"
            ---------------------------------------------------------- */
         .exec-hero {
             display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 30px;
-            padding: 28px 32px;
-            margin: 0 0 24px 0;
+            grid-template-columns: 1fr 1.5fr;
+            grid-template-rows: auto auto;
+            gap: 16px 24px;
+            padding: 24px 28px;
+            margin: 0 0 16px 0;
             background: var(--m365a-light-gray);
             border: 1px solid var(--m365a-border);
             border-radius: 10px;
         }
         .exec-hero-title {
-            font-size: 20pt;
+            font-size: 17pt;
             font-weight: 700;
             color: var(--m365a-dark);
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
+            white-space: nowrap;
             border: none;
             padding: 0;
         }
@@ -525,25 +527,20 @@ $html = @"
             gap: 8px;
             font-size: 9.5pt;
         }
-        .exec-hero-center {
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            border-left: 1px solid var(--m365a-border);
-            border-right: 1px solid var(--m365a-border);
-        }
         .exec-hero-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--m365a-border);
         }
         .exec-hero-metric {
+            flex: 1;
             text-align: center;
-            padding: 12px 16px;
+            padding: 10px 12px;
             background: var(--m365a-card-bg);
-            border-radius: 8px;
+            border-radius: 6px;
             border: 1px solid var(--m365a-border);
-            min-width: 100px;
         }
         .exec-hero-metric-value {
             font-size: 22pt;
@@ -612,6 +609,19 @@ $html = @"
         /* ----------------------------------------------------------
            Service Area Breakdown Chart
            ---------------------------------------------------------- */
+        .exec-hero-right {
+            display: flex;
+            align-items: center;
+        }
+        .service-area-chart-inline {
+            width: 100%;
+        }
+        .service-area-chart-title {
+            font-size: 10pt;
+            font-weight: 600;
+            color: var(--m365a-dark);
+            margin-bottom: 8px;
+        }
         .service-area-chart {
             margin: 20px 0;
             padding: 20px;
@@ -636,65 +646,70 @@ $html = @"
         .tenant-card {
             background: var(--m365a-light-gray);
             border-left: 4px solid var(--m365a-primary);
-            border-radius: 0 8px 8px 0;
-            padding: 25px 30px;
-            margin-bottom: 30px;
+            border-radius: 0 6px 6px 0;
+            padding: 14px 20px;
+            margin-bottom: 16px;
         }
 
         .tenant-heading {
-            font-size: 14pt;
+            font-size: 11pt;
             color: var(--m365a-dark);
-            margin: 0 0 15px 0;
-            padding-bottom: 8px;
+            margin: 0 0 8px 0;
+            padding-bottom: 6px;
             border-bottom: 1px solid var(--m365a-border);
             border-left: none;
             padding-left: 0;
         }
 
         .tenant-org-name {
-            font-size: 22pt;
+            font-size: 15pt;
             font-weight: 700;
             color: var(--m365a-dark);
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
 
         .tenant-facts {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 0;
+        }
+        .tenant-fact {
+            flex: 1 1 0;
+            min-width: 140px;
         }
 
         .tenant-facts-secondary {
-            margin-top: 12px;
+            margin-top: 8px;
         }
 
         .tenant-fact .fact-label {
             display: block;
-            font-size: 8pt;
+            font-size: 7.5pt;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             color: var(--m365a-medium-gray);
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .tenant-fact .fact-value {
             display: block;
-            font-size: 11pt;
+            font-size: 10pt;
             font-weight: 600;
             color: var(--m365a-dark);
         }
 
         .tenant-id-val {
             font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 9.5pt !important;
-            letter-spacing: 0.5px;
+            font-size: 8.5pt !important;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
         .cloud-badge {
             display: inline-block;
-            padding: 3px 12px;
-            border-radius: 4px;
-            font-size: 10pt;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 9pt;
             font-weight: 600;
             letter-spacing: 0.3px;
         }
@@ -720,18 +735,18 @@ $html = @"
         }
 
         .tenant-domains {
-            margin-top: 15px;
-            padding-top: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid var(--m365a-border);
         }
 
         .tenant-domains .fact-label {
             display: block;
-            font-size: 8pt;
+            font-size: 7.5pt;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             color: var(--m365a-medium-gray);
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .domain-list {
@@ -742,11 +757,11 @@ $html = @"
 
         .domain-tag {
             display: inline-block;
-            padding: 3px 10px;
+            padding: 2px 8px;
             background: var(--m365a-white);
             border: 1px solid var(--m365a-border);
-            border-radius: 4px;
-            font-size: 9.5pt;
+            border-radius: 3px;
+            font-size: 8.5pt;
             font-weight: 500;
             color: var(--m365a-dark);
         }
@@ -754,17 +769,17 @@ $html = @"
         .domain-tag.domain-system {
             color: var(--m365a-medium-gray);
             border-style: dashed;
-            font-size: 8.5pt;
+            font-size: 8pt;
         }
 
         .tenant-meta {
-            margin-top: 15px;
-            padding-top: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid var(--m365a-border);
             display: flex;
             flex-wrap: wrap;
-            gap: 8px 24px;
-            font-size: 9.5pt;
+            gap: 4px 16px;
+            font-size: 8.5pt;
             color: var(--m365a-medium-gray);
         }
 
@@ -1209,6 +1224,12 @@ $html = @"
             color: var(--m365a-medium-gray);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-top: 1px;
+        }
+        .email-metric-sublabel {
+            font-size: 7.5pt;
+            color: var(--m365a-medium-gray);
+            font-style: italic;
             margin-top: 1px;
         }
 
@@ -2178,8 +2199,7 @@ $html = @"
 
             /* --- Fix 3: Allow dashboards to break across pages --- */
             .id-donut-stack { page-break-inside: auto; }
-            .exec-hero { page-break-inside: avoid; page-break-after: always; grid-template-columns: 1fr auto 1fr; }
-            .exec-hero-center { border-left: none; border-right: none; padding: 0 10px; }
+            .exec-hero { page-break-inside: avoid; page-break-after: always; grid-template-columns: 1fr 1fr; }
             .service-area-chart { page-break-inside: avoid; border-color: #ccc; }
             .tenant-card { page-break-inside: avoid; }
             .tenant-facts { grid-template-columns: repeat(3, 1fr); }
@@ -2380,10 +2400,49 @@ $(if (-not $NoBranding) {
 "@
 }
 
+# Inject org profile (tenant card) before exec summary
+if ($tenantHtml.Length -gt 0) {
+    $html += "`n        $($tenantHtml.ToString())"
+}
+
+# Findings alert — between org profile and exec summary
+if ($allCisFindings.Count -gt 0 -and -not $SkipComplianceOverview) {
+    $nonPassingCount = @($allCisFindings | Where-Object { $_.Status -ne 'Pass' }).Count
+    if ($nonPassingCount -gt 0) {
+        $html += @"
+
+        <div class="exec-alert exec-alert-info">&#128270; <strong>$nonPassingCount finding(s)</strong> across
+        $($allCisFindings.Count) controls require attention. See <a href="#compliance-overview">Compliance Overview</a>.</div>
+"@
+    }
+}
+
 if (-not $SkipExecutiveSummary) {
     $completePct = if ($totalCollectors -gt 0) { [math]::Round(($completeCount / $totalCollectors) * 100, 0) } else { 0 }
     $donutClass = if ($completePct -ge 90) { 'success' } elseif ($completePct -ge 70) { 'warning' } else { 'danger' }
     $donutSvg = Get-SvgDonut -Percentage $completePct -CssClass $donutClass -Label "$completeCount/$totalCollectors" -Size 120 -StrokeWidth 10
+
+    # Pre-compute chart SVG for inline rendering
+    $serviceAreaChartSvg = ''
+    if ($sectionStatusCounts -and $sectionStatusCounts.Count -gt 0) {
+        $chartRows = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($s in $sections) {
+            if ($sectionStatusCounts.ContainsKey($s)) {
+                $counts = $sectionStatusCounts[$s]
+                $chartRows.Add(@{
+                    Label   = $s
+                    Pass    = $counts.Pass
+                    Fail    = $counts.Fail
+                    Warning = $counts.Warning
+                    Review  = $counts.Review
+                    Total   = $counts.Total
+                })
+            }
+        }
+        if ($chartRows.Count -gt 0) {
+            $serviceAreaChartSvg = Get-SvgStackedBar -Rows @($chartRows)
+        }
+    }
 
     $html += @"
 
@@ -2403,56 +2462,32 @@ if (-not $SkipExecutiveSummary) {
                     </div>
                 </div>
             </div>
-            <div class="exec-hero-center">
-                <div class="exec-hero-metrics">
-                    <div class="exec-hero-metric">
-                        <div class="exec-hero-metric-value">$totalCollectors</div>
-                        <div class="exec-hero-metric-label">Config Areas</div>
-                    </div>
-                    <div class="exec-hero-metric">
-                        <div class="exec-hero-metric-value">$($sections.Count)</div>
-                        <div class="exec-hero-metric-label">Sections</div>
-                    </div>
-                    <div class="exec-hero-metric">
-                        <div class="exec-hero-metric-value">$($allCisFindings.Count)</div>
-                        <div class="exec-hero-metric-label">CIS Controls</div>
-                    </div>
-                    <div class="exec-hero-metric">
-                        <div class="exec-hero-metric-value">$($allFrameworkKeys.Count)</div>
-                        <div class="exec-hero-metric-label">Frameworks</div>
-                    </div>
+            <div class="exec-hero-right">
+                <div class="service-area-chart-inline" id="service-area-chart">
+                    <div class="service-area-chart-title">Service Area Breakdown</div>
+                    $serviceAreaChartSvg
+                </div>
+            </div>
+            <div class="exec-hero-metrics">
+                <div class="exec-hero-metric">
+                    <div class="exec-hero-metric-value">$totalCollectors</div>
+                    <div class="exec-hero-metric-label">Config Areas</div>
+                </div>
+                <div class="exec-hero-metric">
+                    <div class="exec-hero-metric-value">$($sections.Count)</div>
+                    <div class="exec-hero-metric-label">Sections</div>
+                </div>
+                <div class="exec-hero-metric">
+                    <div class="exec-hero-metric-value">$($allCisFindings.Count)</div>
+                    <div class="exec-hero-metric-label">CIS Controls</div>
+                </div>
+                <div class="exec-hero-metric">
+                    <div class="exec-hero-metric-value">$($allFrameworks.Count)</div>
+                    <div class="exec-hero-metric-label">Frameworks</div>
                 </div>
             </div>
         </div>
 "@
-
-    # Service-area breakdown chart (only if we have per-section status data)
-    if ($sectionStatusCounts -and $sectionStatusCounts.Count -gt 0) {
-        $chartRows = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($s in $sections) {
-            if ($sectionStatusCounts.ContainsKey($s)) {
-                $counts = $sectionStatusCounts[$s]
-                $chartRows.Add(@{
-                    Label   = $s
-                    Pass    = $counts.Pass
-                    Fail    = $counts.Fail
-                    Warning = $counts.Warning
-                    Review  = $counts.Review
-                    Total   = $counts.Total
-                })
-            }
-        }
-        if ($chartRows.Count -gt 0) {
-            $serviceAreaChartSvg = Get-SvgStackedBar -Rows @($chartRows)
-            $html += @"
-
-        <div class="service-area-chart" id="service-area-chart">
-            <h3>Service Area Breakdown</h3>
-            $serviceAreaChartSvg
-        </div>
-"@
-        }
-    }
 
     if ($issues.Count -gt 0) {
         $html += @"
@@ -2462,21 +2497,6 @@ if (-not $SkipExecutiveSummary) {
 "@
     }
 
-    if ($allCisFindings.Count -gt 0 -and -not $SkipComplianceOverview) {
-        $nonPassingCount = @($allCisFindings | Where-Object { $_.Status -ne 'Pass' }).Count
-        if ($nonPassingCount -gt 0) {
-            $html += @"
-
-        <div class="exec-alert exec-alert-info">&#128270; <strong>$nonPassingCount finding(s)</strong> across
-        $($allCisFindings.Count) controls require attention. See <a href="#compliance-overview">Compliance Overview</a>.</div>
-"@
-        }
-    }
-}
-
-# Inject org profile (tenant card) into the overview page
-if ($tenantHtml.Length -gt 0) {
-    $html += "`n        $($tenantHtml.ToString())"
 }
 
 $html += "`n        </div>" # close overview report-page
@@ -2604,6 +2624,9 @@ $html += @"
                 pageId = pages[0].getAttribute('data-page');
             }
             setActiveNav(pageId);
+            // Hide expand/collapse controls on overview page (no collapsible sections)
+            var controls = document.getElementById('reportControls');
+            if (controls) controls.style.display = (pageId === 'overview') ? 'none' : '';
             // Scroll main content to top
             var main = document.getElementById('main-content');
             if (main) main.scrollTop = 0;
