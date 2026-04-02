@@ -10,6 +10,9 @@ Get-ChildItem -Path "$PSScriptRoot\Orchestrator\*.ps1" | ForEach-Object { . $_.F
 # Dot-source the main orchestrator to import Invoke-M365Assessment function
 . $PSScriptRoot\Invoke-M365Assessment.ps1
 
+# Dot-source the consent/setup function
+. "$PSScriptRoot\Setup\Grant-M365AssessConsent.ps1"
+
 # ------------------------------------------------------------------
 # Public cmdlet wrappers for security-config collectors
 #
@@ -204,4 +207,5 @@ Export-ModuleMember -Function @(
     'Get-M365FormsSecurityConfig'
     'Get-M365PowerBISecurityConfig'
     'Get-M365PurviewRetentionConfig'
+    'Grant-M365AssessConsent'
 )
