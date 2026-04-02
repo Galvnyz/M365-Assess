@@ -2676,6 +2676,32 @@ $html += @"
             }
         });
 
+        // Intercept all in-page hash links (TOC, alerts, etc.) and route through navigateTo
+        document.querySelectorAll('a[href^="#"]').forEach(function(link) {
+            // Skip sidebar nav links (already handled above)
+            if (link.closest('.nav-list')) return;
+            link.addEventListener('click', function(e) {
+                var hash = link.getAttribute('href').replace('#', '');
+                if (!hash) return;
+                // Check if hash matches a data-page directly
+                var match = layout.querySelector('.report-page[data-page="' + hash + '"]');
+                if (match) {
+                    e.preventDefault();
+                    navigateTo(hash);
+                    return;
+                }
+                // Check if hash matches an element inside a report-page
+                var el = document.getElementById(hash);
+                if (el) {
+                    var parentPage = el.closest('.report-page');
+                    if (parentPage) {
+                        e.preventDefault();
+                        navigateTo(parentPage.getAttribute('data-page'));
+                    }
+                }
+            });
+        });
+
         // Show All toggle
         if (showAllBtn) {
             showAllBtn.addEventListener('click', function() {
