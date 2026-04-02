@@ -2696,7 +2696,13 @@ $html += @"
                     var parentPage = el.closest('.report-page');
                     if (parentPage) {
                         e.preventDefault();
-                        navigateTo(parentPage.getAttribute('data-page'));
+                        var pageId = parentPage.getAttribute('data-page');
+                        if (showAllMode) {
+                            setActiveNav(pageId);
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            navigateTo(pageId);
+                        }
                     }
                 }
             });
