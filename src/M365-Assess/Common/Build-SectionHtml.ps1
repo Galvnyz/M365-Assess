@@ -54,8 +54,8 @@ $sectionCallouts = @{
     'Email'         = @(
         @{
             Type  = 'info'
-            Title = 'DMARC, DKIM &amp; SPF'
-            Body  = 'These three DNS records work together to prevent email spoofing. SPF validates sending servers, DKIM ensures message integrity, and DMARC tells receivers what to do with failures.'
+            Title = 'Email Authentication Protocols'
+            Body  = '<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p><p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven''t been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p><p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a> for federal agencies.</p><p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p><p><strong>Resources:</strong> <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about" target="_blank">Microsoft Email Authentication</a> &middot; <a href="https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure" target="_blank">Configure DMARC</a> &middot; <a href="https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts" target="_blank">MTA-STS for Exchange Online</a> &middot; <a href="https://csrc.nist.gov/pubs/sp/800/177/r1/final" target="_blank">NIST SP 800-177</a> &middot; <a href="https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security" target="_blank">CISA BOD 18-01</a></p>'
         }
         @{
             Type  = 'warning'
@@ -232,26 +232,29 @@ foreach ($sectionName in $sections) {
     $null = $sectionHtml.AppendLine("<details class='section' id='section-$sectionId' open>")
     $null = $sectionHtml.AppendLine("<summary><h2>$([System.Web.HttpUtility]::HtmlEncode($sectionName))</h2></summary>")
 
+    # Consolidated explainer: section description + callouts in one "Read More" toggle
     $sectionDesc = $sectionDescriptions[$sectionName]
-    if ($sectionDesc) {
-        $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
-    }
-
-    # Inline explanation callouts — consolidated "Read More" at section top
     $callouts = $sectionCallouts[$sectionName]
-    if ($callouts) {
+    if ($sectionDesc -or $callouts) {
         $null = $sectionHtml.AppendLine("<details class='callout-readmore'>")
         $null = $sectionHtml.AppendLine("<summary class='callout-readmore-toggle'>&#9432; Read More&hellip;</summary>")
         $null = $sectionHtml.AppendLine("<div class='callout-readmore-body'>")
-        foreach ($callout in $callouts) {
-            $calloutType = $callout.Type
-            $calloutTitle = $callout.Title
-            $calloutBody = $callout.Body
-            $icon = $calloutIcons[$calloutType]
-            if (-not $icon) { $icon = '&#9432;' }
-            $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
-            $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
-            $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
+        if ($sectionDesc) {
+            $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
+        }
+        if ($callouts) {
+            $null = $sectionHtml.AppendLine("<div class='callout-cards'>")
+            foreach ($callout in $callouts) {
+                $calloutType = $callout.Type
+                $calloutTitle = $callout.Title
+                $calloutBody = $callout.Body
+                $icon = $calloutIcons[$calloutType]
+                if (-not $icon) { $icon = '&#9432;' }
+                $null = $sectionHtml.AppendLine("<div class='callout callout-$calloutType'>")
+                $null = $sectionHtml.AppendLine("<div class='callout-title'><span class='callout-icon'>$icon</span> $calloutTitle</div>")
+                $null = $sectionHtml.AppendLine("<div class='callout-body'>$calloutBody</div>")
+                $null = $sectionHtml.AppendLine("</div>")
+            }
             $null = $sectionHtml.AppendLine("</div>")
         }
         $null = $sectionHtml.AppendLine("</div>")
@@ -593,18 +596,6 @@ foreach ($sectionName in $sections) {
                     $null = $sectionHtml.AppendLine("<div class='dns-stat $publicClass'><div class='dns-stat-value'>$publicConfirmed / $totalDomains</div><div class='dns-stat-label'>Public DNS</div></div>")
                 }
                 $null = $sectionHtml.AppendLine("</div>")
-
-                # Collapsible protocol descriptions
-                $null = $sectionHtml.AppendLine("<details class='dns-protocols'>")
-                $null = $sectionHtml.AppendLine("<summary>About Email Authentication Protocols</summary>")
-                $null = $sectionHtml.AppendLine("<div class='dns-protocols-body'>")
-                $null = $sectionHtml.AppendLine("<p><strong>SPF</strong> (Sender Policy Framework) specifies which mail servers are authorized to send email on behalf of your domain. Without SPF, attackers can send emails that appear to come from your domain with no way for recipients to detect the forgery.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>DKIM</strong> (DomainKeys Identified Mail) adds a cryptographic signature to outgoing messages, proving they haven't been tampered with in transit. DKIM protects message integrity and is essential for DMARC alignment.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>DMARC</strong> (Domain-based Message Authentication, Reporting &amp; Conformance) ties SPF and DKIM together with a policy that tells receiving servers what to do with messages that fail authentication &mdash; monitor (<code>p=none</code>), quarantine, or reject. DMARC at <code>p=reject</code> is the gold standard and is required by <a href='https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security' target='_blank'>CISA BOD 18-01</a> for federal agencies.</p>")
-                $null = $sectionHtml.AppendLine("<p><strong>MTA-STS</strong> (RFC 8461) enforces TLS encryption for inbound email transport, preventing man-in-the-middle downgrade attacks. <strong>TLS-RPT</strong> (RFC 8460) provides daily reports on TLS delivery failures so you know when encrypted delivery is failing.</p>")
-                $null = $sectionHtml.AppendLine("<p class='advisory-links'><strong>Resources:</strong> <a href='https://learn.microsoft.com/en-us/defender-office-365/email-authentication-about' target='_blank'>Microsoft Email Authentication</a> &middot; <a href='https://learn.microsoft.com/en-us/defender-office-365/email-authentication-dmarc-configure' target='_blank'>Configure DMARC</a> &middot; <a href='https://learn.microsoft.com/en-us/purview/enhancing-mail-flow-with-mta-sts' target='_blank'>MTA-STS for Exchange Online</a> &middot; <a href='https://csrc.nist.gov/pubs/sp/800/177/r1/final' target='_blank'>NIST SP 800-177</a> &middot; <a href='https://www.cisa.gov/news-events/directives/bod-18-01-enhance-email-and-web-security' target='_blank'>CISA BOD 18-01</a></p>")
-                $null = $sectionHtml.AppendLine("</div>")
-                $null = $sectionHtml.AppendLine("</details>")
 
                 $null = $sectionHtml.AppendLine("</div>") # end email-dash-col (DNS)
             }

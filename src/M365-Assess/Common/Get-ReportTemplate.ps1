@@ -384,10 +384,19 @@ $html = @"
         .callout-readmore-toggle::-webkit-details-marker { display: none; }
         .callout-readmore-toggle:hover { text-decoration: underline; }
         .callout-readmore-body {
+            margin-top: 12px;
+        }
+        .callout-readmore-body .section-description {
+            font-size: 9.5pt;
+            color: var(--m365a-medium-gray);
+            line-height: 1.6;
+            margin: 0 0 12px 0;
+        }
+        .callout-readmore-body .section-description a { color: var(--m365a-accent); }
+        .callout-cards {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-top: 12px;
         }
         .callout {
             flex: 1 1 280px;
