@@ -23,6 +23,16 @@
 
 ---
 
+## Who Is This For?
+
+- **Security Administrator** -- Run CIS benchmark checks against production M365 tenants and get actionable findings with remediation guidance
+- **Compliance Officer** -- Map findings to NIST, SOC 2, HIPAA, ISO 27001, and 10+ frameworks simultaneously from a single scan
+- **IT Consultant / vCISO** -- Generate branded, white-label assessment reports for client engagements with custom logos and colors
+- **Auditor** -- Export an XLSX compliance matrix with per-control framework alignment evidence across 14 standards
+- **DevOps / CI Pipeline** -- Automated posture monitoring with non-interactive mode, certificate auth, and managed identity support
+
+---
+
 Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **169 automated security checks** mapped across **14 compliance frameworks**.
 
 ## Installation

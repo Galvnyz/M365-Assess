@@ -96,10 +96,29 @@ jobs:
 
   test:
     if: github.event_name != 'schedule'
-    name: Pester Tests (Full)
+    name: Pester Tests (PS ${{ matrix.ps-version }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ps-version: ['7.2', '7.4', '7.5']
+    env:
+      COVERAGE_THRESHOLD: 50
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install PowerShell ${{ matrix.ps-version }}
+        shell: pwsh
+        run: |
+          $target = '${{ matrix.ps-version }}'
+          $current = $PSVersionTable.PSVersion
+          Write-Host "Current PowerShell: $current"
+          if ("$current" -like "$target*") {
+            Write-Host "Already running PowerShell $target -- skipping install"
+          } else {
+            Write-Host "Installing PowerShell $target..."
+            dotnet tool install --global PowerShell --version "$target.*"
+          }
 
       - name: Install Pester
         shell: pwsh
@@ -117,7 +136,7 @@ jobs:
           $config.TestResult.OutputPath = './test-results.xml'
           $config.TestResult.OutputFormat = 'NUnitXml'
           $config.CodeCoverage.Enabled = $true
-          $config.CodeCoverage.Path = @('./src/M365-Assess/Invoke-M365Assessment.ps1', './src/M365-Assess/Common/', './src/M365-Assess/Entra/', './src/M365-Assess/Exchange-Online/', './src/M365-Assess/Security/', './src/M365-Assess/Intune/', './src/M365-Assess/Collaboration/', './src/M365-Assess/PowerBI/', './src/M365-Assess/Purview/', './src/M365-Assess/SOC2/')
+          $config.CodeCoverage.Path = @('./src/M365-Assess/Invoke-M365Assessment.ps1', './src/M365-Assess/Common/', './src/M365-Assess/Entra/', './src/M365-Assess/Exchange-Online/', './src/M365-Assess/Security/', './src/M365-Assess/Intune/', './src/M365-Assess/Collaboration/', './src/M365-Assess/PowerBI/', './src/M365-Assess/Purview/', './src/M365-Assess/SOC2/', './src/M365-Assess/ActiveDirectory/', './src/M365-Assess/Orchestrator/', './src/M365-Assess/Inventory/')
           $config.CodeCoverage.OutputPath = './coverage.xml'
           $config.CodeCoverage.OutputFormat = 'JaCoCo'
           $config.Output.Verbosity = 'Detailed'
@@ -127,18 +146,18 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-ps${{ matrix.ps-version }}
           path: test-results.xml
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-ps${{ matrix.ps-version }}
           path: coverage.xml
 
-      - name: Coverage summary
-        if: always()
+      - name: Coverage gate
+        if: always() && matrix.ps-version == '7.5'
         shell: pwsh
         run: |
           if (-not (Test-Path './coverage.xml')) {
@@ -146,15 +165,47 @@ jobs:
             exit 0
           }
           [xml]$report = Get-Content './coverage.xml'
-          $counter = $report.report.counter | Where-Object { $_.type -eq 'LINE' }
-          if ($counter) {
-            $missed = [int]$counter.missed
-            $covered = [int]$counter.covered
-            $total = $missed + $covered
-            $pct = if ($total -gt 0) { [math]::Round(($covered / $total) * 100, 1) } else { 0 }
-            Write-Host "Line coverage: $covered / $total ($pct%)"
-            "### Code Coverage: $pct% ($covered / $total lines)" >> $env:GITHUB_STEP_SUMMARY
+
+          # Line coverage
+          $lineCounter = $report.report.counter | Where-Object { $_.type -eq 'LINE' }
+          $lineMissed = [int]$lineCounter.missed
+          $lineCovered = [int]$lineCounter.covered
+          $lineTotal = $lineMissed + $lineCovered
+          $linePct = if ($lineTotal -gt 0) { [math]::Round(($lineCovered / $lineTotal) * 100, 1) } else { 0 }
+
+          # Branch coverage
+          $branchCounter = $report.report.counter | Where-Object { $_.type -eq 'BRANCH' }
+          $branchPct = 0
+          $branchCovered = 0
+          $branchTotal = 0
+          if ($branchCounter) {
+            $branchMissed = [int]$branchCounter.missed
+            $branchCovered = [int]$branchCounter.covered
+            $branchTotal = $branchMissed + $branchCovered
+            $branchPct = if ($branchTotal -gt 0) { [math]::Round(($branchCovered / $branchTotal) * 100, 1) } else { 0 }
           }
+
+          # Step summary
+          $summary = @"
+          ### Code Coverage
+          | Metric | Covered | Total | Percentage |
+          |--------|---------|-------|------------|
+          | Lines | $lineCovered | $lineTotal | **$linePct%** |
+          | Branches | $branchCovered | $branchTotal | **$branchPct%** |
+
+          Threshold: ${{ env.COVERAGE_THRESHOLD }}%
+          "@
+          $summary >> $env:GITHUB_STEP_SUMMARY
+
+          Write-Host "Line coverage: $lineCovered / $lineTotal ($linePct%)"
+          Write-Host "Branch coverage: $branchCovered / $branchTotal ($branchPct%)"
+          Write-Host "Threshold: ${{ env.COVERAGE_THRESHOLD }}%"
+
+          if ($linePct -lt ${{ env.COVERAGE_THRESHOLD }}) {
+            Write-Error "Line coverage $linePct% is below threshold ${{ env.COVERAGE_THRESHOLD }}%"
+            exit 1
+          }
+          Write-Host "Coverage gate passed" -ForegroundColor Green
 
 
   sync-checkid:
