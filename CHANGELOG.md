@@ -4,6 +4,25 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-04-03
+
+### Added
+- **License-aware check gating** -- automatically skips checks requiring service plans the tenant does not have (e.g., PIM checks skipped on E3-only tenants). Uses `Get-MgSubscribedSku` service plan detection instead of tier-based mapping to handle bundles, add-ons, and standalone licenses correctly. 25 checks mapped to specific plans (AAD_PREMIUM_P2, ATP_ENTERPRISE, LOCKBOX_ENTERPRISE, INTUNE_A, INFORMATION_PROTECTION_COMPLIANCE). Compliance overview shows info callout with skip count. (#268, #333)
+- **`-QuickScan` switch** -- runs only Critical and High severity checks for faster CI/CD pipelines and daily monitoring. Collectors with no qualifying checks are skipped entirely. Report shows amber "Quick Scan Mode" banner. Available in wizard as option 6. Composes with license gating for smallest possible check set. (#273, #335)
+- **Security Defaults gap analysis** -- new check ENTRA-SECDEFAULT-002 evaluates CA policy coverage across 4 areas (MFA-all, legacy auth block, admin MFA, Azure Management MFA) when Security Defaults is OFF. Pass/Review/Fail based on coverage. Self-contained Graph call, no cross-collector dependency. (#270, #332)
+- **App security cluster** -- 21 new enterprise application security checks (ENTRA-ENTAPP-001 through 021) covering Tier 0 permission classification, credential hygiene, attack path analysis, reply URI/consent validation, and verified publisher enforcement. Expanded dangerous permissions from 10 to 49 (41 Tier 0 + 8 Tier 1). (#324, #325, #326, #328)
+- **Entra ID STIG V1R1** -- 15th compliance framework with 10 Entra-specific DISA STIG controls and severity-coverage scoring. (#327, #328)
+- **Microsoft Fluent UI sidebar icons** -- replaced 16 custom SVGs with official Fluent UI System Icons (Regular 20px, MIT licensed) for consistent Microsoft product aesthetic. (#305, #330)
+- **Email tabbed protocol cards** -- replaced accordion with tabbed interface for SPF/DKIM/DMARC/MTA-STS explainers. ARIA accessible, responsive, print-friendly. (#307, #331)
+
+### Changed
+- **Registry licensing schema** -- migrated from tier-based `licensing.minimum` (E3/E5) to service plan detection `licensing.requiredServicePlans` (array of ServicePlanName values). OR logic: check runs if tenant has any listed plan. 294 entries migrated. (#268, #333)
+- **Initialize-CheckProgress** -- now accepts composable `TenantLicenses` and `SeverityFilter` parameters for license gating and QuickScan respectively. (#268, #273)
+- **Registry expanded** -- 295 entries (211 automated), up from 294.
+
+### Fixed
+- **Entra STIG scoring** -- corrected scoring method from invalid `pass-rate` to `severity-coverage`. (#329)
+
 ## [1.2.0] - 2026-04-02
 
 ### Added
