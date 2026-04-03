@@ -53,7 +53,7 @@ $sectionCallouts = @{
     )
     'Email'         = @(
         @{
-            Type  = 'accordion'
+            Type  = 'tabs'
             Title = 'Email Authentication Protocols'
             Items = @(
                 @{
@@ -268,7 +268,34 @@ foreach ($sectionName in $sections) {
     $callouts = $sectionCallouts[$sectionName]
     if ($callouts) {
         foreach ($callout in $callouts) {
-            if ($callout.Type -eq 'accordion') {
+            if ($callout.Type -eq 'tabs') {
+                $tabGroupId = "tabs-$(($callout.Title -replace '[^a-zA-Z0-9]', '-').ToLower())"
+                $null = $sectionHtml.AppendLine("<div class='callout-tabs' id='$tabGroupId'>")
+                $null = $sectionHtml.AppendLine("<div class='callout-tabs-title'>$($callout.Title)</div>")
+                $null = $sectionHtml.AppendLine("<div class='tab-header' role='tablist'>")
+                for ($i = 0; $i -lt $callout.Items.Count; $i++) {
+                    $tabItem = $callout.Items[$i]
+                    $tabId = "$tabGroupId-tab-$i"
+                    $panelId = "$tabGroupId-panel-$i"
+                    $activeClass = if ($i -eq 0) { ' active' } else { '' }
+                    $ariaSelected = if ($i -eq 0) { 'true' } else { 'false' }
+                    $null = $sectionHtml.AppendLine("<button class='tab-btn$activeClass' role='tab' id='$tabId' aria-selected='$ariaSelected' aria-controls='$panelId'>$($tabItem.Title)</button>")
+                }
+                $null = $sectionHtml.AppendLine("</div>")
+                for ($i = 0; $i -lt $callout.Items.Count; $i++) {
+                    $tabItem = $callout.Items[$i]
+                    $tabId = "$tabGroupId-tab-$i"
+                    $panelId = "$tabGroupId-panel-$i"
+                    $activeClass = if ($i -eq 0) { ' active' } else { '' }
+                    $null = $sectionHtml.AppendLine("<div class='tab-panel$activeClass' id='$panelId' role='tabpanel' aria-labelledby='$tabId'>$($tabItem.Body)</div>")
+                }
+                if ($callout.Resources) {
+                    $links = ($callout.Resources | ForEach-Object { "<a href='$($_.Url)' target='_blank'>$($_.Label)</a>" }) -join ' &middot; '
+                    $null = $sectionHtml.AppendLine("<div class='tab-resources'><strong>Resources:</strong> $links</div>")
+                }
+                $null = $sectionHtml.AppendLine("</div>")
+            }
+            elseif ($callout.Type -eq 'accordion') {
                 $null = $sectionHtml.AppendLine("<details class='callout-accordion'>")
                 $null = $sectionHtml.AppendLine("<summary class='callout-accordion-title'>$($callout.Title)</summary>")
                 foreach ($item in $callout.Items) {

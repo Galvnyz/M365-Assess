@@ -486,6 +486,76 @@ $html = @"
         .accordion-resources a { color: var(--m365a-accent); text-decoration: none; }
         .accordion-resources a:hover { text-decoration: underline; }
 
+        /* Tabbed callout (protocol explainers) */
+        .callout-tabs {
+            flex: 1 1 100%;
+            border-radius: 6px;
+            border: 1px solid var(--m365a-border);
+            background: var(--m365a-card-bg);
+            overflow: hidden;
+        }
+        .callout-tabs-title {
+            padding: 10px 14px 0;
+            font-weight: 600;
+            font-size: 9.5pt;
+            color: var(--m365a-accent);
+        }
+        .tab-header {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--m365a-border);
+            padding: 0 14px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 8px 14px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: var(--m365a-medium-gray);
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .tab-btn:hover {
+            color: var(--m365a-accent);
+        }
+        .tab-btn.active {
+            color: var(--m365a-accent);
+            border-bottom-color: var(--m365a-accent);
+        }
+        .tab-panel {
+            display: none;
+            padding: 10px 14px 10px 28px;
+            font-size: 9pt;
+            color: var(--m365a-medium-gray);
+            line-height: 1.6;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        .tab-panel code {
+            background: var(--m365a-border);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 8.5pt;
+        }
+        .tab-panel a { color: var(--m365a-accent); text-decoration: none; }
+        .tab-panel a:hover { text-decoration: underline; }
+        .tab-resources {
+            padding: 8px 14px;
+            font-size: 8.5pt;
+            color: var(--m365a-medium-gray);
+            border-top: 1px solid var(--m365a-border);
+        }
+        .tab-resources a { color: var(--m365a-accent); text-decoration: none; }
+        .tab-resources a:hover { text-decoration: underline; }
+        @media (max-width: 600px) {
+            .tab-header { flex-direction: column; }
+            .tab-btn { text-align: left; border-bottom: none; border-left: 2px solid transparent; }
+            .tab-btn.active { border-left-color: var(--m365a-accent); border-bottom-color: transparent; }
+        }
+
         /* ----------------------------------------------------------
            Executive Summary Hero
            ---------------------------------------------------------- */
@@ -2242,6 +2312,10 @@ $html = @"
             .callout-accordion { border: none; }
             .callout-accordion-title { pointer-events: none; }
             .callout-accordion-title::before { content: ''; }
+            .callout-tabs { border: none; }
+            .tab-header { display: none; }
+            .tab-panel { display: block !important; padding: 4px 14px; }
+            .tab-panel::before { content: attr(aria-labelledby); font-weight: 600; display: block; margin-bottom: 4px; }
             .callout { border-left-width: 3px; page-break-inside: avoid; }
 
             /* --- Fix 8: Hide hover effects in print --- */
@@ -3137,6 +3211,24 @@ $html += @"
             }, 1500);
         });
     }
+
+    // --- Tab switching for callout-tabs ---
+    document.querySelectorAll('.tab-header .tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tabGroup = this.closest('.callout-tabs');
+            tabGroup.querySelectorAll('.tab-btn').forEach(function(b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            tabGroup.querySelectorAll('.tab-panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            this.classList.add('active');
+            this.setAttribute('aria-selected', 'true');
+            var panel = tabGroup.querySelector('#' + this.getAttribute('aria-controls'));
+            if (panel) panel.classList.add('active');
+        });
+    });
     </script>
 </body>
 </html>
