@@ -56,6 +56,12 @@ function Initialize-CheckProgress {
         Hashtable returned by Import-ControlRegistry.
     .PARAMETER ActiveSections
         Array of section names the user selected (e.g., 'Identity', 'Email').
+    .PARAMETER TenantLicenses
+        Hashtable from Resolve-TenantLicenses with ActiveServicePlans HashSet.
+        Checks requiring service plans not in this set are skipped.
+    .PARAMETER SeverityFilter
+        Array of severity levels to include (e.g., @('Critical','High') for QuickScan).
+        If empty or null, all severities are included.
     #>
     [CmdletBinding()]
     param(
@@ -63,11 +69,18 @@ function Initialize-CheckProgress {
         [hashtable]$ControlRegistry,
 
         [Parameter(Mandatory)]
-        [string[]]$ActiveSections
+        [string[]]$ActiveSections,
+
+        [Parameter()]
+        [hashtable]$TenantLicenses,
+
+        [Parameter()]
+        [string[]]$SeverityFilter
     )
 
     # Build ordered list of automated checks for active sections
     $checksByCollector = [ordered]@{}
+    $licenseSkipped = @{}
 
     foreach ($collectorName in $script:CollectorOrder) {
         $section = $script:CollectorSectionMap[$collectorName]
@@ -81,6 +94,34 @@ function Initialize-CheckProgress {
             } |
             ForEach-Object { $_.Value } |
             Sort-Object -Property checkId
+
+        # Apply license gating filter
+        if ($TenantLicenses -and $TenantLicenses.ActiveServicePlans.Count -gt 0) {
+            $checks = @($checks | Where-Object {
+                $requiredPlans = $_.licensing.requiredServicePlans
+                if ($requiredPlans -and @($requiredPlans).Count -gt 0) {
+                    $hasAny = $false
+                    foreach ($plan in $requiredPlans) {
+                        if ($TenantLicenses.ActiveServicePlans.Contains($plan)) {
+                            $hasAny = $true
+                            break
+                        }
+                    }
+                    if (-not $hasAny) {
+                        $licenseSkipped[$_.checkId] = @($requiredPlans)
+                        return $false
+                    }
+                }
+                return $true
+            })
+        }
+
+        # Apply severity filter (for QuickScan)
+        if ($SeverityFilter -and $SeverityFilter.Count -gt 0) {
+            $checks = @($checks | Where-Object {
+                $_.riskSeverity -in $SeverityFilter
+            })
+        }
 
         if (@($checks).Count -gt 0) {
             $checksByCollector[$collectorName] = @($checks)
@@ -101,6 +142,7 @@ function Initialize-CheckProgress {
         CollectorDone     = @{}      # collector -> completed count
         PrintedHeaders    = @{}      # collector -> $true (header printed)
         LabelMap          = $script:CollectorLabelMap  # accessible from any scope via global state
+        LicenseSkipped    = $licenseSkipped  # checkId -> required plans (for compliance overview)
     }
 
     # Populate check IDs and collector counts
@@ -138,6 +180,9 @@ function Initialize-CheckProgress {
         $label = $script:CollectorLabelMap[$collectorName]
         $count = $checksByCollector[$collectorName].Count
         Write-Host "    $([char]0x25B8) $label — $count checks" -ForegroundColor DarkGray
+    }
+    if ($licenseSkipped.Count -gt 0) {
+        Write-Host "  $($licenseSkipped.Count) checks skipped (tenant licensing)" -ForegroundColor DarkYellow
     }
     Write-Host ''
 

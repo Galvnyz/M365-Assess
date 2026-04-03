@@ -65,6 +65,12 @@ function Export-ComplianceOverview {
     $null = $html.AppendLine("<p>This compliance assessment is provided for <strong>informational purposes only</strong> and does not constitute a comprehensive security assessment, audit, or certification. Results reflect automated checks at a point in time and should not be considered conclusive. For a thorough security evaluation, consider engaging a qualified security professional.</p>")
     $null = $html.AppendLine("</div>")
 
+    # License-skipped notice
+    if ($global:CheckProgressState -and $global:CheckProgressState.LicenseSkipped.Count -gt 0) {
+        $skipCount = $global:CheckProgressState.LicenseSkipped.Count
+        $null = $html.AppendLine("<div class='callout callout-info'><div class='callout-title'><span class='callout-icon'>&#9432;</span> License-Aware Check Gating</div><div class='callout-body'>$skipCount checks were skipped because the tenant does not have the required license service plans. Upgrade your license to enable these checks.</div></div>")
+    }
+
     # Framework multi-selector (one checkbox per framework)
     $null = $html.AppendLine("<div class='fw-selector' id='fwSelector'>")
     $null = $html.AppendLine("<span class='fw-selector-label'>Frameworks:</span>")

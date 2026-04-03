@@ -497,7 +497,19 @@ if (Test-Path -Path $progressHelper) {
         $controlsDir = Join-Path -Path $projectRoot -ChildPath 'controls'
         $progressRegistry = Import-ControlRegistry -ControlsPath $controlsDir
         if ($progressRegistry.Count -gt 1) {
-            Initialize-CheckProgress -ControlRegistry $progressRegistry -ActiveSections $Section
+            # Resolve tenant licenses for check gating
+            $licenseHelper = Join-Path -Path $projectRoot -ChildPath 'Common\Resolve-TenantLicenses.ps1'
+            $tenantLicenses = $null
+            if (Test-Path -Path $licenseHelper) {
+                . $licenseHelper
+                $tenantLicenses = Resolve-TenantLicenses
+            }
+            $progressParams = @{
+                ControlRegistry = $progressRegistry
+                ActiveSections  = $Section
+            }
+            if ($tenantLicenses) { $progressParams['TenantLicenses'] = $tenantLicenses }
+            Initialize-CheckProgress @progressParams
         }
     } else {
         Write-Warning "Import-ControlRegistry.ps1 not found - progress tracking disabled."
