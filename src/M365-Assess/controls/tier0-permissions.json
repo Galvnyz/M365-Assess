@@ -1,0 +1,222 @@
+{
+  "$schema": "tier0-permissions-schema",
+  "description": "Microsoft Graph application permissions classified as Tier 0 -- each has a documented attack path to Global Administrator. Source: github.com/emiliensocchi/azure-tiering (MIT license).",
+  "version": "2025-05",
+  "permissions": [
+    {
+      "permission": "AdministrativeUnit.ReadWrite.All",
+      "category": "role-assignment",
+      "attackPath": "When combined with password reset access, can remove a Global Admin from a Restricted Management Administrative Unit (RMAU) and take it over."
+    },
+    {
+      "permission": "Application.ReadUpdate.All",
+      "category": "credential-injection",
+      "attackPath": "Can impersonate any SP with more privileged application permissions granted for MS Graph, and escalate to Global Admin."
+    },
+    {
+      "permission": "Application.ReadWrite.All",
+      "category": "credential-injection",
+      "attackPath": "Can impersonate any SP with more privileged application permissions granted for MS Graph, and escalate to Global Admin."
+    },
+    {
+      "permission": "Application.ReadWrite.OwnedBy",
+      "category": "credential-injection",
+      "attackPath": "Can impersonate owned SPs with more privileged permissions to escalate to Global Admin."
+    },
+    {
+      "permission": "AppRoleAssignment.ReadWrite.All",
+      "category": "self-escalation",
+      "attackPath": "Can assign RoleManagement.ReadWrite.Directory to itself without admin consent, then assign Global Admin."
+    },
+    {
+      "permission": "DelegatedAdminRelationship.ReadWrite.All",
+      "category": "cross-tenant",
+      "attackPath": "In CSP/MSP tenants, can add users to groups approved in GDAP relationships and assume Global Admin in customer tenants."
+    },
+    {
+      "permission": "DeviceManagementConfiguration.ReadWrite.All",
+      "category": "intune-exploitation",
+      "attackPath": "Can run arbitrary commands on an Intune-managed endpoint of a Global Administrator and steal their tokens."
+    },
+    {
+      "permission": "DeviceManagementRBAC.ReadWrite.All",
+      "category": "intune-exploitation",
+      "attackPath": "Can assign Intune roles enabling arbitrary command execution on Global Admin devices."
+    },
+    {
+      "permission": "DeviceManagementScripts.ReadWrite.All",
+      "category": "intune-exploitation",
+      "attackPath": "Can deploy scripts to Intune-managed devices of Global Administrators and steal tokens."
+    },
+    {
+      "permission": "Directory.ReadWrite.All",
+      "category": "group-manipulation",
+      "attackPath": "Can join non-role-assignable groups with privileged Azure permissions, and escalate via Azure resources."
+    },
+    {
+      "permission": "Domain.ReadWrite.All",
+      "category": "federation-abuse",
+      "attackPath": "Can add a federated domain and authenticate as any Global Admin without password or MFA."
+    },
+    {
+      "permission": "EntitlementManagement.ReadWrite.All",
+      "category": "policy-manipulation",
+      "attackPath": "Can modify access package policies to grant Global Admin without approval."
+    },
+    {
+      "permission": "Group-OnPremisesSyncBehavior.ReadWrite.All",
+      "category": "hybrid-abuse",
+      "attackPath": "Combined with on-premises DA, can convert a cloud group providing GA access to a synced group and add controlled accounts."
+    },
+    {
+      "permission": "Group.ReadWrite.All",
+      "category": "group-manipulation",
+      "attackPath": "Can join non-role-assignable groups with privileged Azure permissions, and escalate via Azure resources."
+    },
+    {
+      "permission": "GroupMember.ReadWrite.All",
+      "category": "group-manipulation",
+      "attackPath": "Can join non-role-assignable groups with privileged Azure permissions, and escalate via Azure resources."
+    },
+    {
+      "permission": "Organization.ReadWrite.All",
+      "category": "certificate-abuse",
+      "attackPath": "If Certificate Based Authentication (CBA) is enabled, can upload a trusted root certificate and impersonate a Global Admin."
+    },
+    {
+      "permission": "Policy.ReadWrite.AuthenticationMethod",
+      "category": "auth-method-takeover",
+      "attackPath": "Combined with UserAuthenticationMethod.ReadWrite.All, can enable TAP authentication method and take over any account."
+    },
+    {
+      "permission": "Policy.ReadWrite.ConditionalAccess",
+      "category": "tenant-availability",
+      "attackPath": "Can create a CA policy blocking all users for all apps, rendering the tenant unavailable (ransom vector)."
+    },
+    {
+      "permission": "Policy.ReadWrite.PermissionGrant",
+      "category": "self-escalation",
+      "attackPath": "Can create a permission grant policy for RoleManagement.ReadWrite.Directory and self-escalate to Global Admin."
+    },
+    {
+      "permission": "PrivilegedAccess.ReadWrite.AzureAD",
+      "category": "legacy",
+      "attackPath": "Legacy PIM permission -- kept for safety until completely removed by Microsoft."
+    },
+    {
+      "permission": "PrivilegedAccess.ReadWrite.AzureADGroup",
+      "category": "role-assignment",
+      "attackPath": "Can add users as owner or member of a group with an active Global Admin assignment."
+    },
+    {
+      "permission": "PrivilegedAccess.ReadWrite.AzureResources",
+      "category": "legacy",
+      "attackPath": "Legacy PIM permission -- kept for safety until completely removed by Microsoft."
+    },
+    {
+      "permission": "PrivilegedAssignmentSchedule.ReadWrite.AzureADGroup",
+      "category": "role-assignment",
+      "attackPath": "Can add users as owner or member of a group with an active Global Admin assignment."
+    },
+    {
+      "permission": "PrivilegedEligibilitySchedule.ReadWrite.AzureADGroup",
+      "category": "role-assignment",
+      "attackPath": "Can make a user eligible for a group with active GA assignment, then activate to escalate."
+    },
+    {
+      "permission": "RoleAssignmentSchedule.ReadWrite.Directory",
+      "category": "role-assignment",
+      "attackPath": "Can assign Global Admin to any user by creating an active PIM role assignment."
+    },
+    {
+      "permission": "RoleEligibilitySchedule.ReadWrite.Directory",
+      "category": "role-assignment",
+      "attackPath": "Can make any user eligible for Global Admin and activate it to escalate."
+    },
+    {
+      "permission": "RoleManagement.ReadWrite.Directory",
+      "category": "role-assignment",
+      "attackPath": "Can directly assign the Global Admin role to any principal."
+    },
+    {
+      "permission": "RoleManagementPolicy.ReadWrite.AzureADGroup",
+      "category": "policy-manipulation",
+      "attackPath": "Can remove MFA/approval constraints from PIM group assignments, enabling silent escalation."
+    },
+    {
+      "permission": "RoleManagementPolicy.ReadWrite.Directory",
+      "category": "policy-manipulation",
+      "attackPath": "Can remove MFA/approval constraints from Entra role assignments, enabling silent escalation."
+    },
+    {
+      "permission": "SecurityIdentitiesActions.ReadWrite.All",
+      "category": "tenant-availability",
+      "attackPath": "Can mark all accounts as compromised, disabling sign-in via CA policies (ransom vector)."
+    },
+    {
+      "permission": "SignInIdentifier.ReadWrite.All",
+      "category": "group-manipulation",
+      "attackPath": "Can edit UPN to join dynamic groups with privileged Azure permissions and escalate."
+    },
+    {
+      "permission": "Synchronization.ReadWrite.All",
+      "category": "hybrid-abuse",
+      "attackPath": "Untested -- potential to modify hybrid sync configuration. Kept for safety."
+    },
+    {
+      "permission": "User.DeleteRestore.All",
+      "category": "tenant-availability",
+      "attackPath": "Can delete all users in the tenant, rendering it unavailable (ransom vector)."
+    },
+    {
+      "permission": "User.EnableDisableAccount.All",
+      "category": "tenant-availability",
+      "attackPath": "Can disable all user accounts in the tenant, rendering it unavailable (ransom vector)."
+    },
+    {
+      "permission": "User.ReadWrite.All",
+      "category": "group-manipulation",
+      "attackPath": "Can edit user properties to join dynamic groups with privileged Azure permissions and escalate."
+    },
+    {
+      "permission": "User-PasswordProfile.ReadWrite.All",
+      "category": "credential-injection",
+      "attackPath": "Can reset passwords of non-admin users and escalate via group memberships or Azure resources."
+    },
+    {
+      "permission": "UserAuthenticationMethod.ReadWrite.All",
+      "category": "auth-method-takeover",
+      "attackPath": "Can generate a TAP for any user, including break-glass accounts, and authenticate as them."
+    },
+    {
+      "permission": "UserAuthMethod-HardwareOATH.ReadWrite.All",
+      "category": "auth-method-takeover",
+      "attackPath": "Can add a hardware OATH token to any user and authenticate with the TOTP."
+    },
+    {
+      "permission": "UserAuthMethod-Phone.ReadWrite.All",
+      "category": "auth-method-takeover",
+      "attackPath": "Can update any user's phone, enable SMS sign-in, and authenticate via SMS OTP."
+    },
+    {
+      "permission": "UserAuthMethod-QR.ReadWrite.All",
+      "category": "auth-method-takeover",
+      "attackPath": "Can generate a QR code + PIN for any user and authenticate as them."
+    },
+    {
+      "permission": "UserAuthMethod-TAP.ReadWrite.All",
+      "category": "auth-method-takeover",
+      "attackPath": "Can generate a Temporary Access Pass for any user and authenticate as them."
+    }
+  ],
+  "tier1DataAccess": [
+    "Mail.ReadWrite",
+    "Mail.Send",
+    "Files.ReadWrite.All",
+    "Sites.FullControl.All",
+    "Sites.ReadWrite.All",
+    "MailboxSettings.ReadWrite",
+    "Calendars.ReadWrite",
+    "Contacts.ReadWrite"
+  ]
+}

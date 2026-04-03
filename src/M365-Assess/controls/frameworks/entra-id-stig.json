@@ -1,0 +1,79 @@
+{
+  "frameworkId": "entra-id-stig",
+  "label": "DISA STIG Microsoft Entra ID V1R1",
+  "shortName": "Entra STIG",
+  "filterFamily": "STIG",
+  "version": "V1R1",
+  "source": "DISA",
+  "css": "fw-entra-stig",
+  "totalControls": 10,
+  "registryKey": "entra-id-stig",
+  "csvColumn": "EntraIdStig",
+  "displayOrder": 15,
+  "scoring": {
+    "method": "pass-rate"
+  },
+  "colors": {
+    "light": {
+      "background": "#f3e8ff",
+      "color": "#6b21a8"
+    },
+    "dark": {
+      "background": "#3B0764",
+      "color": "#C4B5FD"
+    }
+  },
+  "controlIdFormat": "V-{number}",
+  "controls": [
+    {
+      "controlId": "V-270200",
+      "title": "Microsoft Entra ID must initiate a session lock after a 15-minute period of inactivity.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270204",
+      "title": "Microsoft Entra ID must automatically disable accounts after a 35-day period of account inactivity.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270208",
+      "title": "Microsoft Entra ID must enforce the limit of three consecutive invalid logon attempts by a user during a 15-minute time period.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270209",
+      "title": "Microsoft Entra ID must display the Standard Mandatory DOD Notice and Consent Banner before granting access to the application.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270227",
+      "title": "Microsoft Entra ID must be configured to transfer logs to another server for storage, analysis, and reporting.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270233",
+      "title": "Microsoft Entra ID must be configured to use multifactor authentication (MFA).",
+      "severity": "high"
+    },
+    {
+      "controlId": "V-270239",
+      "title": "Microsoft Entra ID must enforce a 60-day maximum password lifetime restriction.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270255",
+      "title": "Microsoft Entra ID must notify system administrators (SAs) and the information system security officer (ISSO) when privileges are being requested.",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270335",
+      "title": "Microsoft Entra ID must use Privileged Identity Management (PIM).",
+      "severity": "medium"
+    },
+    {
+      "controlId": "V-270475",
+      "title": "Microsoft Entra ID must, for password-based authentication, verify when users create or update passwords that the passwords are not found on the list of commonly used, expected, or compromised passwords.",
+      "severity": "medium"
+    }
+  ]
+}

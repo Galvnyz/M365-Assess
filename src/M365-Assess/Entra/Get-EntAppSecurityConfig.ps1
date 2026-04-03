@@ -68,26 +68,40 @@ function Add-Setting {
 }
 
 # ------------------------------------------------------------------
-# Dangerous permissions constants
+# Dangerous permissions -- loaded from tiered classification file
 # ------------------------------------------------------------------
-$dangerousAppPermissions = @(
-    'RoleManagement.ReadWrite.Directory'
-    'AppRoleAssignment.ReadWrite.All'
-    'Application.ReadWrite.All'
-    'Directory.ReadWrite.All'
-    'Mail.ReadWrite'
-    'Mail.Send'
-    'Files.ReadWrite.All'
-    'Sites.FullControl.All'
-    'User.ReadWrite.All'
-    'Group.ReadWrite.All'
-)
+$_controlsPath = Join-Path -Path (Split-Path -Parent $_scriptDir) -ChildPath 'controls'
+$_tier0Path = Join-Path -Path $_controlsPath -ChildPath 'tier0-permissions.json'
+$_tierData = $null
+if (Test-Path -Path $_tier0Path) {
+    $_tierData = Get-Content -Path $_tier0Path -Raw | ConvertFrom-Json
+}
+
+# Tier 0: Global Admin escalation paths (41 permissions)
+$tier0AppPermissions = if ($_tierData) {
+    @($_tierData.permissions | ForEach-Object { $_.permission })
+} else {
+    @('RoleManagement.ReadWrite.Directory', 'AppRoleAssignment.ReadWrite.All', 'Application.ReadWrite.All',
+      'Directory.ReadWrite.All', 'User.ReadWrite.All', 'Group.ReadWrite.All')
+}
+
+# Tier 1: High-impact data access (no escalation path)
+$tier1AppPermissions = if ($_tierData) {
+    @($_tierData.tier1DataAccess)
+} else {
+    @('Mail.ReadWrite', 'Mail.Send', 'Files.ReadWrite.All', 'Sites.FullControl.All')
+}
+
+# Combined list for backward-compatible checks
+$dangerousAppPermissions = $tier0AppPermissions + $tier1AppPermissions
 
 $dangerousDelegatedPermissions = @(
     'Directory.ReadWrite.All'
     'RoleManagement.ReadWrite.Directory'
     'Mail.ReadWrite'
     'Files.ReadWrite.All'
+    'User.ReadWrite.All'
+    'AppRoleAssignment.ReadWrite.All'
 )
 
 # ------------------------------------------------------------------
@@ -347,11 +361,13 @@ if ($tenantId) {
 }
 
 # ------------------------------------------------------------------
-# 3. ENTRA-ENTAPP-003: Foreign apps with dangerous application permissions
+# 3. ENTRA-ENTAPP-003: Foreign apps with Tier 0 application permissions
+#    (Global Admin escalation paths)
 # ------------------------------------------------------------------
 try {
-    Write-Verbose "Checking foreign apps with dangerous application permissions..."
-    $foreignDangerousApp = @()
+    Write-Verbose "Checking foreign apps with Tier 0 application permissions..."
+    $foreignTier0 = @()
+    $foreignTier1 = @()
 
     foreach ($sp in $foreignApps) {
         $appRoles = Get-SpAppRoleAssignments -SpId $sp['id']
@@ -359,21 +375,37 @@ try {
             $permId = $role['appRoleId']
             if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
                 $permName = $graphPermissionMap[$permId].Name
-                if ($permName -in $dangerousAppPermissions) {
-                    $foreignDangerousApp += "$($sp['displayName']): $permName"
+                if ($permName -in $tier0AppPermissions) {
+                    $foreignTier0 += "$($sp['displayName']): $permName"
+                }
+                elseif ($permName -in $tier1AppPermissions) {
+                    $foreignTier1 += "$($sp['displayName']): $permName"
                 }
             }
         }
     }
 
+    # Tier 0 findings (Critical -- escalation paths)
     $settingParams = @{
         Category         = 'Enterprise Applications'
-        Setting          = 'Foreign Apps with Dangerous App Permissions'
-        CurrentValue     = $(if ($foreignDangerousApp.Count -eq 0) { 'No foreign apps with dangerous application permissions' } else { "$($foreignDangerousApp.Count) finding(s): $($foreignDangerousApp -join '; ')" })
-        RecommendedValue = 'No foreign apps should hold dangerous application permissions'
-        Status           = $(if ($foreignDangerousApp.Count -eq 0) { 'Pass' } else { 'Fail' })
+        Setting          = 'Foreign Apps with Tier 0 Permissions (GA Escalation)'
+        CurrentValue     = $(if ($foreignTier0.Count -eq 0) { 'No foreign apps with Tier 0 permissions' } else { "$($foreignTier0.Count) finding(s): $($foreignTier0 -join '; ')" })
+        RecommendedValue = 'No foreign apps should hold Tier 0 (Global Admin escalation) permissions'
+        Status           = $(if ($foreignTier0.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-003'
-        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with high-privilege application permissions. Remove permissions or replace with first-party alternatives.'
+        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with Tier 0 permissions. These permissions have documented attack paths to Global Administrator. Remove or replace with least-privilege alternatives.'
+    }
+    Add-Setting @settingParams
+
+    # Tier 1 findings (High -- data access risk)
+    $settingParams = @{
+        Category         = 'Enterprise Applications'
+        Setting          = 'Foreign Apps with Tier 1 Permissions (Data Access)'
+        CurrentValue     = $(if ($foreignTier1.Count -eq 0) { 'No foreign apps with Tier 1 data access permissions' } else { "$($foreignTier1.Count) finding(s): $($foreignTier1 -join '; ')" })
+        RecommendedValue = 'Minimize foreign apps with broad data access permissions'
+        Status           = $(if ($foreignTier1.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-011'
+        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with broad data access (Mail.ReadWrite, Files.ReadWrite.All, etc.). Scope to least-privilege or remove.'
     }
     Add-Setting @settingParams
 }
@@ -567,6 +599,46 @@ try {
 }
 catch {
     Write-Warning "Could not check managed identity directory roles: $_"
+}
+
+# ------------------------------------------------------------------
+# 10. ENTRA-ENTAPP-010: Internal (first-party) apps with Tier 0 permissions
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking internal apps with Tier 0 application permissions..."
+    $internalTier0 = @()
+
+    $internalApps = @($allServicePrincipals | Where-Object {
+        $_['appOwnerOrganizationId'] -eq $tenantId -and
+        $_['servicePrincipalType'] -ne 'ManagedIdentity'
+    })
+
+    foreach ($sp in $internalApps) {
+        $appRoles = Get-SpAppRoleAssignments -SpId $sp['id']
+        foreach ($role in $appRoles) {
+            $permId = $role['appRoleId']
+            if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
+                $permName = $graphPermissionMap[$permId].Name
+                if ($permName -in $tier0AppPermissions) {
+                    $internalTier0 += "$($sp['displayName']): $permName"
+                }
+            }
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Enterprise Applications'
+        Setting          = 'Internal Apps with Tier 0 Permissions (GA Escalation)'
+        CurrentValue     = $(if ($internalTier0.Count -eq 0) { 'No internal apps with Tier 0 permissions' } else { "$($internalTier0.Count) finding(s): $($internalTier0 -join '; ')" })
+        RecommendedValue = 'Minimize internal apps with Tier 0 permissions; use least-privilege'
+        Status           = $(if ($internalTier0.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-010'
+        Remediation      = 'Entra admin center > App registrations > review internal apps with Tier 0 permissions. Each has a documented path to Global Administrator. Replace with narrower permissions or use managed identities where possible.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check internal app Tier 0 permissions: $_"
 }
 
 # ------------------------------------------------------------------

@@ -8711,6 +8711,10 @@
         "stig": {
           "controlId": "V-260336"
         },
+        "entra-id-stig": {
+          "controlId": "V-270335",
+          "title": "Microsoft Entra ID must use Privileged Identity Management (PIM)"
+        },
         "pci-dss": {
           "controlId": "7.2.x;8.2.x"
         },
@@ -15518,6 +15522,73 @@
           "controlId": "CC6.1;CC6.2;CC6.3",
           "evidenceType": "config-export",
           "title": "Logical Access Security; Credentials Management; Enrollment and Authorization"
+        }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-010",
+      "name": "Internal apps with Tier 0 application permissions (Global Admin escalation paths)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "nist-csf": {
+          "controlId": "PR.AA-05",
+          "title": "Access permissions and authorizations are managed incorporating least privilege and separation of duties"
+        },
+        "nist-800-53": {
+          "controlId": "AC-6(5);AC-6(10)",
+          "title": "Privileged Accounts; Prohibit Non-Privileged Users from Executing Privileged Functions",
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.8.2;A.8.3",
+          "title": "Privileged access rights; Information access restriction"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.3",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Enrollment and Authorization Based on Credentials"
+        },
+        "mitre-attack": {
+          "controlId": "T1078.004;T1098.003",
+          "title": "Valid Accounts: Cloud Accounts; Additional Cloud Roles"
+        }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-011",
+      "name": "Foreign apps with Tier 1 data access permissions (Mail, Files, Sites)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-6;AC-3",
+          "title": "Least Privilege; Access Enforcement",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "soc2": {
+          "controlId": "CC6.1;C1.1",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Confidentiality Commitments"
+        },
+        "mitre-attack": {
+          "controlId": "T1114;T1530",
+          "title": "Email Collection; Data from Cloud Storage"
         }
       }
     },
