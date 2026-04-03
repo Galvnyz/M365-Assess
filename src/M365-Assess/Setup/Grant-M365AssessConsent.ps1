@@ -309,7 +309,7 @@ function Grant-M365AssessConsent {
         $keyCredential = @{
             Type          = 'AsymmetricX509Cert'
             Usage         = 'Verify'
-            Key           = [System.Convert]::ToBase64String($cert.RawData)
+            Key           = $cert.RawData
             DisplayName   = $certSubject
             StartDateTime = $cert.NotBefore.ToUniversalTime().ToString('o')
             EndDateTime   = $cert.NotAfter.ToUniversalTime().ToString('o')
@@ -487,6 +487,39 @@ function Grant-M365AssessConsent {
         }
 
         Write-Info 'Admin consent granted automatically via role assignment (application-type permissions).'
+
+        # --- Exchange.ManageAsApp (Office 365 Exchange Online API) ---
+        # Required for app-only certificate auth to Exchange Online.
+        # This is NOT a Graph permission -- it belongs to the EXO resource SP.
+        Write-Step 'Adding Exchange.ManageAsApp permission for app-only EXO auth...'
+        try {
+            $exoResourceAppId = '00000002-0000-0ff1-ce00-000000000000'
+            $exoSp = Get-MgServicePrincipal -Filter "appId eq '$exoResourceAppId'" -ErrorAction Stop
+            $manageAsAppRole = $exoSp.AppRoles | Where-Object { $_.Value -eq 'Exchange.ManageAsApp' }
+            if ($manageAsAppRole) {
+                $sp = Get-MgServicePrincipal -Filter "appId eq '$ClientId'" -ErrorAction Stop
+                $existingExoRoles = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -ErrorAction SilentlyContinue
+                $alreadyAssigned = $existingExoRoles | Where-Object { $_.AppRoleId -eq $manageAsAppRole.Id -and $_.ResourceId -eq $exoSp.Id }
+                if ($alreadyAssigned) {
+                    Write-OK 'Exchange.ManageAsApp  [Email, Security]  (already assigned)'
+                }
+                elseif ($PSCmdlet.ShouldProcess('Exchange.ManageAsApp', 'Grant app role')) {
+                    $roleBody = @{
+                        PrincipalId = $sp.Id
+                        ResourceId  = $exoSp.Id
+                        AppRoleId   = $manageAsAppRole.Id
+                    }
+                    New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -BodyParameter $roleBody | Out-Null
+                    Write-OK 'Exchange.ManageAsApp  [Email, Security]'
+                }
+            }
+            else {
+                Write-Warn 'Exchange.ManageAsApp role not found on EXO service principal'
+            }
+        }
+        catch {
+            Write-Warn "Could not assign Exchange.ManageAsApp: $_"
+        }
     }
 
     # ==================================================================
