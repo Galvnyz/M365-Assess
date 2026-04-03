@@ -1,16 +1,25 @@
+<#
+.SYNOPSIS
+    Checks prerequisites for non-adopted features.
+.DESCRIPTION
+    For each feature in sku-feature-map.json, determines readiness state
+    (Ready/Blocked/NotLicensed) by checking license status and prerequisite
+    adoption. Reads sibling CSVs from the assessment folder. Zero API calls.
+.PARAMETER ProjectRoot
+    Path to the module root (contains controls/).
+.PARAMETER AssessmentFolder
+    Path to the assessment output folder (contains sibling CSVs).
+#>
+[CmdletBinding()]
+param(
+    [Parameter()]
+    [string]$ProjectRoot,
+
+    [Parameter()]
+    [string]$AssessmentFolder
+)
+
 function Get-FeatureReadiness {
-    <#
-    .SYNOPSIS
-        Checks prerequisites for non-adopted features.
-    .PARAMETER LicenseUtilization
-        Array from Get-LicenseUtilization.
-    .PARAMETER FeatureAdoption
-        Array from Get-FeatureAdoption.
-    .PARAMETER FeatureMap
-        Parsed sku-feature-map.json object.
-    .PARAMETER OutputPath
-        Optional CSV output path.
-    #>
     [CmdletBinding()]
     [OutputType([PSCustomObject[]])]
     param(
@@ -57,7 +66,6 @@ function Get-FeatureReadiness {
             continue
         }
 
-        # Check prerequisites
         foreach ($prereqId in $feature.prerequisites) {
             $prereqAdoption = $adoptionLookup[$prereqId]
             if (-not $prereqAdoption -or $prereqAdoption.AdoptionState -notin @('Adopted', 'Partial')) {
@@ -87,4 +95,34 @@ function Get-FeatureReadiness {
     else {
         Write-Output $results
     }
+}
+
+# --- Script entry point (called by orchestrator with -ProjectRoot) ---
+if ($ProjectRoot -and $AssessmentFolder) {
+    $featureMapPath = Join-Path -Path $ProjectRoot -ChildPath 'controls\sku-feature-map.json'
+    if (-not (Test-Path -Path $featureMapPath)) {
+        Write-Warning "sku-feature-map.json not found at $featureMapPath"
+        return
+    }
+    $featureMap = Get-Content -Path $featureMapPath -Raw | ConvertFrom-Json
+
+    # Read sibling CSVs
+    $licCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '40-License-Utilization.csv'
+    $licenseData = @()
+    if (Test-Path -Path $licCsvPath) {
+        $licenseData = @(Import-Csv -Path $licCsvPath -Encoding UTF8 | ForEach-Object {
+            [PSCustomObject]@{
+                FeatureId  = $_.FeatureId
+                IsLicensed = ($_.IsLicensed -eq 'True')
+            }
+        })
+    }
+
+    $adpCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '41-Feature-Adoption.csv'
+    $adoptionData = @()
+    if (Test-Path -Path $adpCsvPath) {
+        $adoptionData = @(Import-Csv -Path $adpCsvPath -Encoding UTF8)
+    }
+
+    Get-FeatureReadiness -LicenseUtilization $licenseData -FeatureAdoption $adoptionData -FeatureMap $featureMap
 }

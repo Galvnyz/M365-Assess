@@ -133,9 +133,9 @@ $collectorMap = [ordered]@{
         @{ Name = '36-SOC2-Readiness-Checklist';     Script = 'SOC2\Get-SOC2ReadinessChecklist.ps1';     Label = 'SOC 2 Readiness Checklist' }
     )
     'ValueOpportunity' = @(
-        @{ Name = '40-License-Utilization'; Script = 'ValueOpportunity\Get-LicenseUtilization.ps1'; Label = 'License Utilization'; RequiredServices = @('Graph') }
-        @{ Name = '41-Feature-Adoption';    Script = 'ValueOpportunity\Get-FeatureAdoption.ps1';    Label = 'Feature Adoption' }
-        @{ Name = '42-Feature-Readiness';   Script = 'ValueOpportunity\Get-FeatureReadiness.ps1';   Label = 'Feature Readiness' }
+        @{ Name = '40-License-Utilization'; Script = 'ValueOpportunity\Get-LicenseUtilization.ps1'; Label = 'License Utilization'; RequiredServices = @('Graph'); PassProjectContext = $true }
+        @{ Name = '41-Feature-Adoption';    Script = 'ValueOpportunity\Get-FeatureAdoption.ps1';    Label = 'Feature Adoption'; PassProjectContext = $true }
+        @{ Name = '42-Feature-Readiness';   Script = 'ValueOpportunity\Get-FeatureReadiness.ps1';   Label = 'Feature Readiness'; PassProjectContext = $true }
     )
 }
 

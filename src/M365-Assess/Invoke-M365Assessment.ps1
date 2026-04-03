@@ -664,6 +664,12 @@ foreach ($sectionName in $Section) {
                 $collectorParams = $collector.Params.Clone()
             }
 
+            # Value Opportunity collectors need project root + assessment folder paths
+            if ($collector.ContainsKey('PassProjectContext') -and $collector.PassProjectContext) {
+                $collectorParams['ProjectRoot'] = $projectRoot
+                $collectorParams['AssessmentFolder'] = $assessmentFolder
+            }
+
             # Special handling for Secure Score (two outputs)
             if ($collector.ContainsKey('HasSecondary') -and $collector.HasSecondary) {
                 $secondaryCsvPath = Join-Path -Path $assessmentFolder -ChildPath "$($collector.SecondaryName).csv"
