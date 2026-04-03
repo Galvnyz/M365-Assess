@@ -11,7 +11,7 @@
   "csvColumn": "EntraIdStig",
   "displayOrder": 15,
   "scoring": {
-    "method": "pass-rate"
+    "method": "severity-coverage"
   },
   "colors": {
     "light": {
