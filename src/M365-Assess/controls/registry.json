@@ -15694,6 +15694,96 @@
       }
     },
     {
+      "checkId": "ENTRA-ENTAPP-020",
+      "name": "Foreign apps impersonating Microsoft product display names",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "SI-3;SI-4", "title": "Malicious Code Protection; System Monitoring", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC7.1", "evidenceType": "config-export", "title": "Logical Access Security; Detection of Changes" },
+        "mitre-attack": { "controlId": "T1036;T1566.002", "title": "Masquerading; Spearphishing Link" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-021",
+      "name": "Multi-tenant app registrations (AzureADMultipleOrgs)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-3;AC-22", "title": "Access Enforcement; Publicly Accessible Content", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1", "evidenceType": "config-export", "title": "Logical Access Security" }
+      }
+    },
+    {
+      "checkId": "ENTRA-APPREG-002",
+      "name": "Apps with localhost redirect URIs in production",
+      "category": "APPREG",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "IA-9", "title": "Service Identification and Authentication", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.6", "evidenceType": "config-export", "title": "Logical Access Security; Security Measures Against Threats" },
+        "mitre-attack": { "controlId": "T1528", "title": "Steal Application Access Token" }
+      }
+    },
+    {
+      "checkId": "ENTRA-APPREG-003",
+      "name": "Apps with HTTP (non-HTTPS) redirect URIs",
+      "category": "APPREG",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "SC-8;SC-8(1)", "title": "Transmission Confidentiality and Integrity", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.7", "evidenceType": "config-export", "title": "Logical Access Security; Restrictions on Data Transmission" },
+        "mitre-attack": { "controlId": "T1557;T1528", "title": "Adversary-in-the-Middle; Steal Application Access Token" }
+      }
+    },
+    {
+      "checkId": "ENTRA-APPREG-004",
+      "name": "Apps with wildcard redirect URIs (open redirect risk)",
+      "category": "APPREG",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "SC-8;SI-10", "title": "Transmission Confidentiality; Information Input Validation", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.6", "evidenceType": "config-export", "title": "Logical Access Security; Security Measures Against Threats" },
+        "mitre-attack": { "controlId": "T1528", "title": "Steal Application Access Token" }
+      }
+    },
+    {
+      "checkId": "ENTRA-CONSENT-003",
+      "name": "User consent restricted to verified publishers only",
+      "category": "CONSENT",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "cisa-scuba": { "controlId": "MS.AAD.5.2v1", "title": "User consent restricted to verified publishers" },
+        "nist-800-53": { "controlId": "AC-3;AC-6", "title": "Access Enforcement; Least Privilege", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" }
+      }
+    },
+    {
+      "checkId": "ENTRA-CONSENT-004",
+      "name": "Tenant-wide admin consent grants to third-party apps",
+      "category": "CONSENT",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-6;AC-2", "title": "Least Privilege; Account Management", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" },
+        "mitre-attack": { "controlId": "T1550.001", "title": "Use Alternate Authentication Material: Application Access Token" }
+      }
+    },
+    {
       "checkId": "ENTRA-STALEADMIN-001",
       "name": "Admin accounts inactive for more than 90 days",
       "category": "STALEADMIN",

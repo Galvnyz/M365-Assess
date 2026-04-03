@@ -269,6 +269,30 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# Fetch app registrations (for redirect URIs, signInAudience)
+# ------------------------------------------------------------------
+$allAppRegistrations = @()
+try {
+    Write-Verbose "Fetching app registrations..."
+    $appUri = "/v1.0/applications?`$select=id,appId,displayName,signInAudience,web,spa,publicClient&`$top=999"
+    $appResponse = Invoke-MgGraphRequest -Method GET -Uri $appUri -ErrorAction Stop
+    $allAppRegistrations = if ($appResponse -and $appResponse['value']) { @($appResponse['value']) } else { @() }
+
+    $nextLink = $appResponse['@odata.nextLink']
+    while ($nextLink) {
+        $appResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
+        if ($appResponse -and $appResponse['value']) {
+            $allAppRegistrations += @($appResponse['value'])
+        }
+        $nextLink = $appResponse['@odata.nextLink']
+    }
+    Write-Verbose "Fetched $($allAppRegistrations.Count) app registrations"
+}
+catch {
+    Write-Warning "Could not fetch app registrations: $_"
+}
+
+# ------------------------------------------------------------------
 # Helpers: look up cached permission data (zero API calls per check)
 # ------------------------------------------------------------------
 function Get-SpAppRoleAssignments {
@@ -931,6 +955,163 @@ try {
 }
 catch {
     Write-Warning "Could not check unused privileged permissions: $_"
+}
+
+# ------------------------------------------------------------------
+# 20. ENTRA-APPREG-002: Apps with localhost redirect URIs
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps with localhost redirect URIs..."
+    $localhostApps = @()
+
+    foreach ($app in $allAppRegistrations) {
+        $allUris = @()
+        if ($app['web'] -and $app['web']['redirectUris']) { $allUris += @($app['web']['redirectUris']) }
+        if ($app['spa'] -and $app['spa']['redirectUris']) { $allUris += @($app['spa']['redirectUris']) }
+        if ($app['publicClient'] -and $app['publicClient']['redirectUris']) { $allUris += @($app['publicClient']['redirectUris']) }
+
+        $hasLocalhost = $allUris | Where-Object { $_ -match 'localhost|127\.0\.0\.1|\[::1\]' }
+        if ($hasLocalhost) {
+            $localhostApps += $app['displayName']
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'App Registration Security'
+        Setting          = 'Apps with Localhost Redirect URIs'
+        CurrentValue     = $(if ($localhostApps.Count -eq 0) { 'No apps have localhost redirect URIs' } else { "$($localhostApps.Count) app(s): $($localhostApps[0..4] -join '; ')$(if ($localhostApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Remove localhost redirect URIs from production apps'
+        Status           = $(if ($localhostApps.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-APPREG-002'
+        Remediation      = 'Remove localhost redirect URIs from production app registrations. In shared environments, tokens redirected to localhost can be intercepted. Entra admin center > App registrations > Authentication.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check localhost redirect URIs: $_"
+}
+
+# ------------------------------------------------------------------
+# 21. ENTRA-APPREG-003: Apps with HTTP (non-HTTPS) redirect URIs
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps with HTTP redirect URIs..."
+    $httpApps = @()
+
+    foreach ($app in $allAppRegistrations) {
+        $allUris = @()
+        if ($app['web'] -and $app['web']['redirectUris']) { $allUris += @($app['web']['redirectUris']) }
+        if ($app['spa'] -and $app['spa']['redirectUris']) { $allUris += @($app['spa']['redirectUris']) }
+
+        $hasHttp = $allUris | Where-Object { $_ -match '^http://' -and $_ -notmatch 'localhost|127\.0\.0\.1' }
+        if ($hasHttp) {
+            $httpApps += $app['displayName']
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'App Registration Security'
+        Setting          = 'Apps with HTTP (Non-HTTPS) Redirect URIs'
+        CurrentValue     = $(if ($httpApps.Count -eq 0) { 'No apps have insecure HTTP redirect URIs' } else { "$($httpApps.Count) app(s): $($httpApps[0..4] -join '; ')$(if ($httpApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'All redirect URIs should use HTTPS'
+        Status           = $(if ($httpApps.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CheckId          = 'ENTRA-APPREG-003'
+        Remediation      = 'Update HTTP redirect URIs to HTTPS. Non-HTTPS URIs allow token interception via MITM attacks. Entra admin center > App registrations > Authentication.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check HTTP redirect URIs: $_"
+}
+
+# ------------------------------------------------------------------
+# 22. ENTRA-APPREG-004: Apps with wildcard redirect URIs
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps with wildcard redirect URIs..."
+    $wildcardApps = @()
+
+    foreach ($app in $allAppRegistrations) {
+        $allUris = @()
+        if ($app['web'] -and $app['web']['redirectUris']) { $allUris += @($app['web']['redirectUris']) }
+        if ($app['spa'] -and $app['spa']['redirectUris']) { $allUris += @($app['spa']['redirectUris']) }
+
+        $hasWildcard = $allUris | Where-Object { $_ -match '\*' }
+        if ($hasWildcard) {
+            $wildcardApps += $app['displayName']
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'App Registration Security'
+        Setting          = 'Apps with Wildcard Redirect URIs'
+        CurrentValue     = $(if ($wildcardApps.Count -eq 0) { 'No apps have wildcard redirect URIs' } else { "$($wildcardApps.Count) app(s): $($wildcardApps[0..4] -join '; ')$(if ($wildcardApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Avoid wildcard redirect URIs'
+        Status           = $(if ($wildcardApps.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CheckId          = 'ENTRA-APPREG-004'
+        Remediation      = 'Replace wildcard redirect URIs with explicit URIs. Wildcards enable open redirect attacks for token theft. Entra admin center > App registrations > Authentication.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check wildcard redirect URIs: $_"
+}
+
+# ------------------------------------------------------------------
+# 23. ENTRA-ENTAPP-020: Foreign apps impersonating Microsoft display names
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking for apps impersonating Microsoft names..."
+    $msNames = @('Microsoft Teams', 'Microsoft Graph', 'Microsoft Office', 'Microsoft Azure', 'Microsoft Intune', 'Microsoft Exchange', 'Microsoft SharePoint', 'Microsoft Outlook', 'Microsoft OneDrive', 'Microsoft Defender')
+    $impersonators = @()
+
+    foreach ($sp in $foreignApps) {
+        $name = $sp['displayName']
+        foreach ($msName in $msNames) {
+            if ($name -eq $msName -or $name -like "$msName *") {
+                $impersonators += "$name (AppId: $($sp['appId']))"
+                break
+            }
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'App Registration Security'
+        Setting          = 'Foreign Apps Impersonating Microsoft Names'
+        CurrentValue     = $(if ($impersonators.Count -eq 0) { 'No foreign apps impersonate Microsoft display names' } else { "$($impersonators.Count) app(s): $($impersonators[0..2] -join '; ')$(if ($impersonators.Count -gt 3) { '...' })" })
+        RecommendedValue = 'No foreign apps should use Microsoft product names'
+        Status           = $(if ($impersonators.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CheckId          = 'ENTRA-ENTAPP-020'
+        Remediation      = 'Investigate foreign apps using Microsoft product names -- they may be social engineering attempts. Verify the publisher and appId against known Microsoft first-party apps. Remove if suspicious.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check impersonating apps: $_"
+}
+
+# ------------------------------------------------------------------
+# 24. ENTRA-ENTAPP-021: Multi-tenant apps that should be single-tenant
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking multi-tenant app registrations..."
+    $multiTenantApps = @($allAppRegistrations | Where-Object {
+        $_['signInAudience'] -in @('AzureADMultipleOrgs', 'AzureADandPersonalMicrosoftAccount')
+    } | ForEach-Object { "$($_['displayName']) ($($_['signInAudience']))" })
+
+    $settingParams = @{
+        Category         = 'App Registration Security'
+        Setting          = 'Multi-Tenant App Registrations'
+        CurrentValue     = $(if ($multiTenantApps.Count -eq 0) { 'No multi-tenant app registrations' } else { "$($multiTenantApps.Count) app(s): $($multiTenantApps[0..4] -join '; ')$(if ($multiTenantApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Use single-tenant (AzureADMyOrg) unless external access is required'
+        Status           = $(if ($multiTenantApps.Count -eq 0) { 'Pass' } else { 'Info' })
+        CheckId          = 'ENTRA-ENTAPP-021'
+        Remediation      = 'Review multi-tenant apps and restrict to AzureADMyOrg if they do not need cross-tenant access. Multi-tenant apps can be accessed by users from any Entra ID tenant. Entra admin center > App registrations > Authentication > Supported account types.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check multi-tenant apps: $_"
 }
 
 # ------------------------------------------------------------------
