@@ -1,32 +1,26 @@
-function Get-FeatureAdoption {
-    <#
-    .SYNOPSIS
-        Scores feature adoption from assessment signals and license data.
-    .DESCRIPTION
-        For each feature in the sku-feature-map, determines adoption state by
-        cross-referencing assessment signals (collected by Add-SecuritySetting)
-        against the feature's checkIds. License utilization data gates whether
-        a feature is even available to the tenant.
+<#
+.SYNOPSIS
+    Scores feature adoption from assessment signals and license data.
+.DESCRIPTION
+    For each feature in sku-feature-map.json, determines adoption state by
+    cross-referencing signals accumulated by Add-SecuritySetting against
+    the feature's checkIds. Reads sibling License Utilization CSV for
+    license gating. Zero new API calls.
+.PARAMETER ProjectRoot
+    Path to the module root (contains controls/).
+.PARAMETER AssessmentFolder
+    Path to the assessment output folder (contains sibling CSVs).
+#>
+[CmdletBinding()]
+param(
+    [Parameter()]
+    [string]$ProjectRoot,
 
-        Adoption states: Adopted (100), Partial (1-99), NotAdopted (0),
-        NotLicensed (unlicensed), Unknown (licensed but no signals).
-    .PARAMETER AdoptionSignals
-        Hashtable keyed by sub-check IDs (e.g. ENTRA-PIM-001.1) with Status,
-        Setting, CurrentValue, and Category properties. Populated by the
-        AdoptionAccumulator during assessment collection.
-    .PARAMETER LicenseUtilization
-        Array of PSCustomObject from Get-LicenseUtilization with FeatureId
-        and IsLicensed properties.
-    .PARAMETER FeatureMap
-        Parsed sku-feature-map.json object containing features and categories.
-    .PARAMETER AssessmentFolder
-        Path to the assessment output folder for optional CSV signal parsing.
-    .PARAMETER OutputPath
-        Optional CSV output path for the adoption results.
-    .EXAMPLE
-        Get-FeatureAdoption -AdoptionSignals $signals -LicenseUtilization $license -FeatureMap $map -AssessmentFolder 'C:\output'
-        Returns per-feature adoption scores based on assessment signals.
-    #>
+    [Parameter()]
+    [string]$AssessmentFolder
+)
+
+function Get-FeatureAdoption {
     [CmdletBinding()]
     [OutputType([PSCustomObject[]])]
     param(
@@ -46,13 +40,11 @@ function Get-FeatureAdoption {
         [string]$OutputPath
     )
 
-    # Build category lookup
     $categories = @{}
     foreach ($cat in $FeatureMap.categories) {
         $categories[$cat.id] = $cat.name
     }
 
-    # Build license lookup
     $licenseLookup = @{}
     foreach ($lic in $LicenseUtilization) {
         $licenseLookup[$lic.FeatureId] = $lic.IsLicensed
@@ -65,22 +57,20 @@ function Get-FeatureAdoption {
             $isLicensed = $licenseLookup[$featureId]
         }
 
-        # Not licensed -- skip signal matching
         if (-not $isLicensed) {
             [PSCustomObject]@{
-                FeatureId    = $featureId
-                FeatureName  = $feature.name
-                Category     = $categories[$feature.category]
+                FeatureId     = $featureId
+                FeatureName   = $feature.name
+                Category      = $categories[$feature.category]
                 AdoptionState = 'NotLicensed'
                 AdoptionScore = 0
-                PassedChecks = 0
-                TotalChecks  = 0
-                DepthMetric  = ''
+                PassedChecks  = 0
+                TotalChecks   = 0
+                DepthMetric   = ''
             }
             continue
         }
 
-        # Match signals by base CheckId prefix
         $passedCount = 0
         $totalCount = 0
 
@@ -96,7 +86,6 @@ function Get-FeatureAdoption {
             }
         }
 
-        # Determine adoption state
         if ($totalCount -eq 0) {
             $adoptionState = 'Unknown'
             $adoptionScore = 0
@@ -114,17 +103,14 @@ function Get-FeatureAdoption {
             $adoptionScore = [math]::Round(($passedCount / $totalCount) * 100)
         }
 
-        # Optional CSV depth metrics
         $depthMetric = ''
         $csvSignals = $feature.csvSignals
-        if ($null -ne $csvSignals -and $csvSignals.Count -gt 0) {
+        if ($null -ne $csvSignals -and @($csvSignals).Count -gt 0) {
             $depthParts = @()
             foreach ($csvDef in $csvSignals) {
                 try {
                     $csvFile = Join-Path -Path $AssessmentFolder -ChildPath $csvDef.file
-                    if (-not (Test-Path -Path $csvFile)) {
-                        continue
-                    }
+                    if (-not (Test-Path -Path $csvFile)) { continue }
                     $csvData = Import-Csv -Path $csvFile -Encoding UTF8
 
                     if ($csvDef.metric -eq 'passRate') {
@@ -142,12 +128,11 @@ function Get-FeatureAdoption {
                         $column = $csvDef.column
                         $pattern = $csvDef.pattern
                         $matching = $csvData | Where-Object { $_.$column -match $pattern }
-                        $matchCount = @($matching).Count
-                        $depthParts += "$($csvDef.label): $matchCount"
+                        $depthParts += "$($csvDef.label): $(@($matching).Count)"
                     }
                 }
                 catch {
-                    Write-Verbose "Get-FeatureAdoption: CSV signal parsing failed for $($csvDef.file): $_"
+                    Write-Verbose "CSV signal parsing failed for $($csvDef.file): $_"
                 }
             }
             $depthMetric = $depthParts -join '; '
@@ -172,4 +157,33 @@ function Get-FeatureAdoption {
     else {
         Write-Output $results
     }
+}
+
+# --- Script entry point (called by orchestrator with -ProjectRoot) ---
+if ($ProjectRoot -and $AssessmentFolder) {
+    $featureMapPath = Join-Path -Path $ProjectRoot -ChildPath 'controls\sku-feature-map.json'
+    if (-not (Test-Path -Path $featureMapPath)) {
+        Write-Warning "sku-feature-map.json not found at $featureMapPath"
+        return
+    }
+    $featureMap = Get-Content -Path $featureMapPath -Raw | ConvertFrom-Json
+
+    $signals = @{}
+    if (Get-Command -Name Get-AdoptionSignals -ErrorAction SilentlyContinue) {
+        $signals = Get-AdoptionSignals
+    }
+
+    # Read sibling License Utilization CSV
+    $licCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '40-License-Utilization.csv'
+    $licenseData = @()
+    if (Test-Path -Path $licCsvPath) {
+        $licenseData = @(Import-Csv -Path $licCsvPath -Encoding UTF8 | ForEach-Object {
+            [PSCustomObject]@{
+                FeatureId  = $_.FeatureId
+                IsLicensed = ($_.IsLicensed -eq 'True')
+            }
+        })
+    }
+
+    Get-FeatureAdoption -AdoptionSignals $signals -LicenseUtilization $licenseData -FeatureMap $featureMap -AssessmentFolder $AssessmentFolder
 }

@@ -1,20 +1,27 @@
+<#
+.SYNOPSIS
+    Cross-references tenant licenses against the feature map.
+.DESCRIPTION
+    For each feature in sku-feature-map.json, checks if the tenant has any
+    of the required service plans. Outputs per-feature license status.
+    Called by the orchestrator as a data collector (with -ProjectRoot param)
+    or dot-sourced by tests to access the Get-LicenseUtilization function.
+.PARAMETER ProjectRoot
+    Path to the module root (contains controls/). When provided, runs as
+    a self-contained script.
+.PARAMETER AssessmentFolder
+    Path to the assessment output folder.
+#>
+[CmdletBinding()]
+param(
+    [Parameter()]
+    [string]$ProjectRoot,
+
+    [Parameter()]
+    [string]$AssessmentFolder
+)
+
 function Get-LicenseUtilization {
-    <#
-    .SYNOPSIS
-        Cross-references tenant licenses against the feature map.
-    .DESCRIPTION
-        For each feature in sku-feature-map.json, checks if the tenant has any
-        of the required service plans. Returns per-feature license status.
-    .PARAMETER TenantLicenses
-        Hashtable from Resolve-TenantLicenses with ActiveServicePlans HashSet.
-    .PARAMETER FeatureMap
-        Parsed sku-feature-map.json object.
-    .PARAMETER OutputPath
-        Optional CSV output path.
-    .EXAMPLE
-        Get-LicenseUtilization -TenantLicenses $licenses -FeatureMap $featureMap
-        Returns one PSCustomObject per feature with IsLicensed status.
-    #>
     [CmdletBinding()]
     [OutputType([PSCustomObject[]])]
     param(
@@ -38,7 +45,6 @@ function Get-LicenseUtilization {
         $sourceSkus = @()
 
         foreach ($plan in $feature.requiredServicePlans) {
-            # "STANDARD" is a sentinel meaning "available in any M365 tenant"
             if ($plan -eq 'STANDARD') {
                 $isLicensed = $true
                 $sourceSkus += 'E3 Baseline'
@@ -68,4 +74,24 @@ function Get-LicenseUtilization {
     else {
         Write-Output $results
     }
+}
+
+# --- Script entry point (called by orchestrator with -ProjectRoot) ---
+if ($ProjectRoot) {
+    $featureMapPath = Join-Path -Path $ProjectRoot -ChildPath 'controls\sku-feature-map.json'
+    if (-not (Test-Path -Path $featureMapPath)) {
+        Write-Warning "sku-feature-map.json not found at $featureMapPath"
+        return
+    }
+    $featureMap = Get-Content -Path $featureMapPath -Raw | ConvertFrom-Json
+
+    $resolverPath = Join-Path -Path $ProjectRoot -ChildPath 'Common\Resolve-TenantLicenses.ps1'
+    if (-not (Test-Path -Path $resolverPath)) {
+        Write-Warning "Resolve-TenantLicenses.ps1 not found"
+        return
+    }
+    . $resolverPath
+    $tenantLicenses = Resolve-TenantLicenses
+
+    Get-LicenseUtilization -TenantLicenses $tenantLicenses -FeatureMap $featureMap
 }
