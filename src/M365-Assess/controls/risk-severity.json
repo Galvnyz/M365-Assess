@@ -116,6 +116,7 @@
     "ENTRA-PIM-004": "Medium",
     "ENTRA-PIM-005": "Medium",
     "ENTRA-SECDEFAULT-001": "Medium",
+    "ENTRA-SECDEFAULT-002": "Medium",
     "ENTRA-SSPR-001": "High",
     "ENTRA-TENANT-001": "High",
     "EXO-ADDINS-001": "Medium",

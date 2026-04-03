@@ -14250,6 +14250,45 @@
       }
     },
     {
+      "checkId": "ENTRA-SECDEFAULT-002",
+      "name": "Security Defaults Gap Analysis (CA Coverage)",
+      "category": "SECDEFAULT",
+      "collector": "Entra",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "cis-m365-v6": {
+          "controlId": "5.1.2.1",
+          "title": "Ensure Security Defaults is disabled on Azure Active Directory",
+          "profiles": [
+            "E3-L1",
+            "E5-L1"
+          ]
+        },
+        "nist-csf": {
+          "controlId": "PR.AC-1"
+        },
+        "nist-800-53": {
+          "controlId": "AC-2;IA-2(1)",
+          "title": "Account Management; Identification and Authentication (Multifactor Authentication)",
+          "profiles": [
+            "Moderate",
+            "High"
+          ]
+        },
+        "cisa-scuba": {
+          "controlId": "MS.AAD.1.1v1"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.2",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access"
+        }
+      }
+    },
+    {
       "checkId": "ENTRA-CA-003",
       "name": "Enabled Conditional Access Policies",
       "category": "CA",

@@ -41,6 +41,125 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# 1b. Security Defaults Gap Analysis (CA Coverage)
+# ------------------------------------------------------------------
+if ($isEnabled -eq $false) {
+    try {
+        Write-Verbose "Security Defaults OFF -- evaluating CA policy coverage..."
+        $caResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+        $caPolicies = if ($caResponse -and $caResponse['value']) { @($caResponse['value']) } else { @() }
+        $caEnabled = @($caPolicies | Where-Object { $_['state'] -eq 'enabled' })
+
+        $coverageAreas = [ordered]@{
+            'MFA for all users' = $false
+            'Legacy auth blocked' = $false
+            'Admin MFA' = $false
+            'Azure Management MFA' = $false
+        }
+
+        # Well-known admin role template IDs (subset of CIS-recommended roles)
+        $sdAdminRoles = @(
+            '62e90394-69f5-4237-9190-012177145e10'  # Global Administrator
+            'e8611ab8-c189-46e8-94e1-60213ab1f814'  # Privileged Role Administrator
+            'fe930be7-5e62-47db-91af-98c3a49a38b1'  # User Administrator
+            'f28a1f50-f6e7-4571-818b-6a12f2af6b6c'  # SharePoint Administrator
+            '29232cdf-9323-42fd-ade2-1d097af3e4de'  # Exchange Administrator
+        )
+
+        # Azure Management well-known app ID
+        $azureMgmtAppId = '797f4846-ba00-4fd7-ba43-dac1f8f63013'
+
+        foreach ($policy in $caEnabled) {
+            $grants = $policy['grantControls']['builtInControls']
+            $users = $policy['conditions']['users']
+            $clientApps = $policy['conditions']['clientAppTypes']
+            $apps = $policy['conditions']['applications']
+
+            # MFA for all users
+            if (($users['includeUsers'] -contains 'All') -and ($grants -contains 'mfa')) {
+                $coverageAreas['MFA for all users'] = $true
+            }
+
+            # Legacy auth blocked
+            if (($clientApps -contains 'exchangeActiveSync' -or $clientApps -contains 'other') -and ($grants -contains 'block')) {
+                $coverageAreas['Legacy auth blocked'] = $true
+            }
+
+            # Admin MFA
+            $includeRoles = $users['includeRoles']
+            if ($includeRoles) {
+                $hasAdminRole = $false
+                foreach ($role in $includeRoles) {
+                    if ($role -in $sdAdminRoles) { $hasAdminRole = $true; break }
+                }
+                if ($hasAdminRole -and ($grants -contains 'mfa')) {
+                    $coverageAreas['Admin MFA'] = $true
+                }
+            }
+
+            # Azure Management MFA
+            $includeApps = $apps['includeApplications']
+            if (($includeApps -contains $azureMgmtAppId -or $includeApps -contains 'All') -and ($grants -contains 'mfa')) {
+                $coverageAreas['Azure Management MFA'] = $true
+            }
+        }
+
+        $coveredCount = ($coverageAreas.Values | Where-Object { $_ -eq $true }).Count
+        $totalAreas = $coverageAreas.Count
+        $gaps = @($coverageAreas.GetEnumerator() | Where-Object { $_.Value -eq $false } | ForEach-Object { $_.Key })
+
+        if ($coveredCount -eq $totalAreas) {
+            $settingParams = @{
+                Category         = 'Security Defaults'
+                Setting          = 'Security Defaults Gap Analysis'
+                CurrentValue     = "All $totalAreas areas covered by Conditional Access"
+                RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
+                Status           = 'Pass'
+                CheckId          = 'ENTRA-SECDEFAULT-002'
+                Remediation      = 'No action needed. Conditional Access policies provide equivalent coverage to Security Defaults.'
+            }
+        }
+        elseif ($coveredCount -gt 0) {
+            $gapList = $gaps -join ', '
+            $settingParams = @{
+                Category         = 'Security Defaults'
+                Setting          = 'Security Defaults Gap Analysis'
+                CurrentValue     = "$coveredCount/$totalAreas covered. Gaps: $gapList"
+                RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
+                Status           = 'Review'
+                CheckId          = 'ENTRA-SECDEFAULT-002'
+                Remediation      = "Create CA policies to cover: $gapList. Entra admin center > Protection > Conditional Access."
+            }
+        }
+        else {
+            $settingParams = @{
+                Category         = 'Security Defaults'
+                Setting          = 'Security Defaults Gap Analysis'
+                CurrentValue     = "0/$totalAreas areas covered -- no CA policy protection"
+                RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
+                Status           = 'Fail'
+                CheckId          = 'ENTRA-SECDEFAULT-002'
+                Remediation      = 'Either enable Security Defaults or create CA policies for: MFA for all users, legacy auth block, admin MFA, Azure Management MFA. Entra admin center > Protection > Conditional Access.'
+            }
+        }
+        Add-Setting @settingParams
+    }
+    catch {
+        Write-Warning "Could not evaluate CA coverage for Security Defaults gap analysis: $_"
+        $settingParams = @{
+            Category         = 'Security Defaults'
+            Setting          = 'Security Defaults Gap Analysis'
+            CurrentValue     = 'Unable to evaluate'
+            RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
+            Status           = 'Review'
+            CheckId          = 'ENTRA-SECDEFAULT-002'
+            Remediation      = 'Verify CA policies are configured. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
+    }
+}
+
+# ------------------------------------------------------------------
 # 7. Self-Service Password Reset
 # ------------------------------------------------------------------
 try {
