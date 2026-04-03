@@ -29,7 +29,7 @@ function Initialize-SecurityConfig {
     [OutputType([hashtable])]
     param()
 
-    $global:AdoptionSignals = @{}
+    if (-not $global:AdoptionSignals) { $global:AdoptionSignals = @{} }
     @{
         Settings       = [System.Collections.Generic.List[PSCustomObject]]::new()
         CheckIdCounter = @{}

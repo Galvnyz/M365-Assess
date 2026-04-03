@@ -188,6 +188,10 @@ Describe 'Adoption Signal Accumulator' {
         . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
     }
 
+    BeforeEach {
+        $global:AdoptionSignals = $null
+    }
+
     It 'Should initialize with empty adoption signals' {
         $ctx = Initialize-SecurityConfig
         $signals = Get-AdoptionSignals
