@@ -111,7 +111,10 @@ param(
     [string]$CisFrameworkId = 'cis-m365-v6',
 
     [Parameter()]
-    [switch]$OpenReport
+    [switch]$OpenReport,
+
+    [Parameter()]
+    [switch]$QuickScan
 )
 
 $ErrorActionPreference = 'Stop'

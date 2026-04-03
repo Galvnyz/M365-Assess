@@ -288,6 +288,22 @@ $html = @"
         /* Full cover page hidden on screen, shown in print */
         .cover-print-only { display: none; }
 
+        /* Quick Scan mode banner */
+        .quickscan-banner {
+            background: #f59e0b;
+            color: #1a1a1a;
+            text-align: center;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 9.5pt;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        body.dark-theme .quickscan-banner {
+            background: #b45309;
+            color: #fff;
+        }
+
         /* Compact hero banner (screen only) */
         .hero-banner {
             display: flex;
@@ -2443,6 +2459,13 @@ $html += @"
 
         <div class="report-page page-active" data-page="overview" id="overview">
 "@
+
+if ($QuickScan) {
+    $html += @"
+
+        <div class="quickscan-banner">Quick Scan Mode &mdash; showing Critical and High severity findings only</div>
+"@
+}
 
 if (-not $SkipCoverPage) {
     # Compact hero banner for screen; full cover page rendered in print CSS only

@@ -270,6 +270,7 @@ function Show-InteractiveWizard {
         '3' = @{ Name = 'ExecutiveSummary';    Label = 'Executive Summary';    Selected = $true }
         '4' = @{ Name = 'NoBranding';          Label = 'Remove Branding';      Selected = $false }
         '5' = @{ Name = 'LimitFrameworks';     Label = 'Limit Frameworks';     Selected = $false }
+        '6' = @{ Name = 'QuickScan';           Label = 'Quick Scan (Critical + High only)'; Selected = $false }
     }
     $wizFrameworkFilter = @()
 
@@ -466,6 +467,7 @@ function Show-InteractiveWizard {
     if (-not $reportOptions['3'].Selected) { $wizardResult['SkipExecutiveSummary'] = $true }
     if ($reportOptions['4'].Selected) { $wizardResult['NoBranding'] = $true }
     if ($wizFrameworkFilter.Count -gt 0) { $wizardResult['FrameworkFilter'] = $wizFrameworkFilter }
+    if ($reportOptions['6'].Selected) { $wizardResult['QuickScan'] = $true }
 
     if ($tenantInput.Trim()) {
         $wizardResult['TenantId'] = $tenantInput.Trim()
