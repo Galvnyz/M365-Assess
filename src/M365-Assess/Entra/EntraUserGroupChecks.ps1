@@ -130,6 +130,66 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# 9b. ENTRA-CONSENT-003: User consent restricted to verified publishers
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking verified publisher consent restriction..."
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = '/v1.0/policies/authorizationPolicy'
+        ErrorAction = 'Stop'
+    }
+    $authzPolicy = Invoke-MgGraphRequest @graphParams
+    $consentSettings = $authzPolicy['defaultUserRolePermissions']
+    $consentAllowed = $consentSettings['permissionGrantPoliciesAssigned']
+
+    # CISA SCuBA MS.AAD.5.2v1: consent should require verified publisher
+    $requiresVerified = $consentAllowed -and ($consentAllowed -contains 'microsoft-user-default-low' -or $consentAllowed -contains 'microsoft-application-admin')
+
+    $settingParams = @{
+        Category         = 'Application Consent'
+        Setting          = 'User Consent Requires Verified Publisher'
+        CurrentValue     = $(if ($requiresVerified) { 'Restricted to verified publishers' } elseif (-not $consentAllowed -or $consentAllowed.Count -eq 0) { 'User consent fully blocked' } else { "Consent policies: $($consentAllowed -join ', ')" })
+        RecommendedValue = 'User consent restricted to verified publishers or fully blocked'
+        Status           = $(if ($requiresVerified -or -not $consentAllowed -or $consentAllowed.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-CONSENT-003'
+        Remediation      = 'Entra admin center > Enterprise applications > Consent and permissions > User consent settings > Allow consent only from verified publishers or block user consent entirely.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check verified publisher consent restriction: $_"
+}
+
+# ------------------------------------------------------------------
+# 9c. ENTRA-CONSENT-004: Tenant-wide admin consent grants to third-party apps
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking tenant-wide admin consent grants..."
+    $graphParams = @{
+        Method      = 'GET'
+        Uri         = "/v1.0/oauth2PermissionGrants?`$filter=consentType eq 'AllPrincipals'&`$top=999"
+        ErrorAction = 'Stop'
+    }
+    $allPrincipalGrants = Invoke-MgGraphRequest @graphParams
+    $tenantWideGrants = if ($allPrincipalGrants -and $allPrincipalGrants['value']) { @($allPrincipalGrants['value']) } else { @() }
+
+    $settingParams = @{
+        Category         = 'Application Consent'
+        Setting          = 'Tenant-Wide Admin Consent Grants'
+        CurrentValue     = $(if ($tenantWideGrants.Count -eq 0) { 'No tenant-wide admin consent grants' } else { "$($tenantWideGrants.Count) tenant-wide consent grant(s)" })
+        RecommendedValue = 'Review and minimize tenant-wide admin consent grants'
+        Status           = $(if ($tenantWideGrants.Count -le 5) { 'Pass' } elseif ($tenantWideGrants.Count -le 15) { 'Info' } else { 'Warning' })
+        CheckId          = 'ENTRA-CONSENT-004'
+        Remediation      = 'Review tenant-wide admin consent grants. These grants apply to all users in the tenant. Remove overly broad grants that are no longer needed. Entra admin center > Enterprise applications > filter by Admin consent.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check tenant-wide consent grants: $_"
+}
+
+# ------------------------------------------------------------------
 # 10. External Collaboration Settings (reuses $authPolicy from section 3-5)
 # ------------------------------------------------------------------
 if ($authPolicy) {

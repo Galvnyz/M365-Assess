@@ -12,9 +12,9 @@ Describe 'Import-FrameworkDefinitions' {
         }
     }
 
-    It 'Loads all 14 framework JSON files without error' {
+    It 'Loads all 15 framework JSON files without error' {
         $result = Import-FrameworkDefinitions -FrameworksPath $frameworksPath
-        $result.Count | Should -Be 14
+        $result.Count | Should -Be 15
     }
 
     It 'Each framework has required frameworkId and label' {

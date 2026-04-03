@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ps-version: ['7.2', '7.4', '7.5']
+        ps-version: ['7.4', '7.6']
     env:
       COVERAGE_THRESHOLD: 50
     steps:
@@ -157,7 +157,7 @@ jobs:
           path: coverage.xml
 
       - name: Coverage gate
-        if: always() && matrix.ps-version == '7.5'
+        if: always() && matrix.ps-version == '7.6'
         shell: pwsh
         run: |
           if (-not (Test-Path './coverage.xml')) {

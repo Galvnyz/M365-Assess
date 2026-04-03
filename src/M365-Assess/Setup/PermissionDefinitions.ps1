@@ -30,6 +30,7 @@ $script:RequiredGraphPermissions = @(
     @{ Name = 'SharePointTenantSettings.Read.All';       Sections = 'Collaboration'                          ; Reason = 'SharePoint and OneDrive tenant-level settings' }
     @{ Name = 'TeamSettings.Read.All';                   Sections = 'Collaboration'                          ; Reason = 'Teams tenant-level settings and policies' }
     @{ Name = 'TeamworkAppSettings.Read.All';            Sections = 'Collaboration'                          ; Reason = 'Teams app permission and setup policies' }
+    @{ Name = 'OrgSettings-Forms.Read.All';             Sections = 'Collaboration'                          ; Reason = 'Microsoft Forms tenant-level settings' }
     # -- Inventory -------------------------------------------------------------
     @{ Name = 'Team.ReadBasic.All';                      Sections = 'Inventory'                              ; Reason = 'Enumerate all Teams' }
     @{ Name = 'TeamMember.Read.All';                     Sections = 'Inventory'                              ; Reason = 'Teams membership details' }

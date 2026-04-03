@@ -1,8 +1,8 @@
 # PnP.PowerShell Evaluation for SharePoint/OneDrive Collectors
 
 **Issue:** [#255](https://github.com/Galvnyz/M365-Assess/issues/255)
-**Date:** 2026-04-01
-**Status:** Research Complete
+**Date:** 2026-04-01 (validated 2026-04-02)
+**Status:** Research Complete -- DEFER (no-go)
 
 ## Background
 
@@ -127,13 +127,14 @@ scope used by M365-Assess.
 
 | Metric | Value |
 |--------|-------|
-| Current version | 3.1.0 (released April 18, 2025) |
+| Current version | 3.1.0 (released April 18, 2025; still latest stable as of April 2026) |
 | Total PSGallery downloads | 50.7 million |
 | Declared PSGallery dependencies | None (self-contained) |
 | Minimum PowerShell version | 7.4.0 |
 | Runtime | .NET 8.0 |
 | Cmdlet count | 750+ |
 | Estimated install size | ~80-120 MB (assemblies + CSOM binaries) |
+| Nightly builds | 3.1.345-nightly (March 2026) |
 
 ### Dependency Concerns
 
@@ -275,6 +276,46 @@ For the checks currently stuck at "Review" status, consider adding a **documenta
 note** in the report output explaining that these checks require manual verification in
 the SharePoint admin center or via `Get-SPOTenant` in the SharePoint Online Management
 Shell. This is already partially implemented via the `Remediation` field.
+
+---
+
+## 8. Existing Legacy SPO Usage in SOC2 Collector
+
+The SOC2 confidentiality collector (`SOC2/Get-SOC2ConfidentialityControls.ps1`, lines
+81-93) already uses the legacy `Microsoft.Online.SharePoint.PowerShell` module via
+`Get-SPOTenant`. This is the only place in M365-Assess that depends on a SharePoint
+PowerShell module rather than Graph API.
+
+The SOC2 collector handles the dependency gracefully:
+
+- Checks for `Get-SPOTenant` availability via `Get-Command` (line 81)
+- Falls back to a status message if the module is not installed (line 93)
+- Requires manual `Connect-SPOService` before running the assessment (line 88)
+
+**PnP as a replacement for the legacy SPO module in SOC2?** Technically possible --
+`Get-PnPTenant` exposes the same properties. However, replacing one optional module
+dependency with another does not justify the MSAL conflict risk. If the legacy SPO module
+were to be deprecated by Microsoft, PnP would become a natural replacement candidate, but
+as of April 2026 Microsoft continues to maintain the SPO module with certificate-based
+auth support (added November 2025).
+
+---
+
+## 9. Validation (April 2026)
+
+This section documents the freshness check performed on the original research.
+
+| Data Point | Original Value | Current Value (April 2026) | Changed? |
+|------------|---------------|---------------------------|----------|
+| PnP.PowerShell stable version | 3.1.0 (April 2025) | 3.1.0 (still latest stable) | No |
+| Graph v1.0 sharepointSettings properties | ~28 properties | ~28 properties (no new additions) | No |
+| Beta properties graduated to v1.0 | None of the gap properties | Still in beta or missing | No |
+| MSAL cross-module conflict | Active (EXO 3.8.0+ vs Graph SDK) | Still active; PS 7.4 Azure Automation partial fix only | No |
+| EXO ceiling constraint (#231) | Blocked | Still blocked | No |
+| PnP nightly builds | Not checked | 3.1.345-nightly (March 2026) | N/A |
+
+**Conclusion:** All original data points remain accurate. The DEFER recommendation stands
+with no change in the underlying conditions.
 
 ---
 
