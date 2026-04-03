@@ -172,6 +172,9 @@ if ($ProjectRoot -and $AssessmentFolder) {
     if (Get-Command -Name Get-AdoptionSignals -ErrorAction SilentlyContinue) {
         $signals = Get-AdoptionSignals
     }
+    elseif ($global:AdoptionSignals) {
+        $signals = $global:AdoptionSignals.Clone()
+    }
 
     # Read sibling License Utilization CSV
     $licCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '40-License-Utilization.csv'

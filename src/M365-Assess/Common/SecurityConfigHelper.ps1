@@ -29,7 +29,7 @@ function Initialize-SecurityConfig {
     [OutputType([hashtable])]
     param()
 
-    $script:AdoptionSignals = @{}
+    $global:AdoptionSignals = @{}
     @{
         Settings       = [System.Collections.Generic.List[PSCustomObject]]::new()
         CheckIdCounter = @{}
@@ -118,7 +118,7 @@ function Add-SecuritySetting {
 
     # Accumulate adoption signal for Value Opportunity analysis
     if ($CheckId) {
-        $script:AdoptionSignals[$subCheckId] = @{
+        $global:AdoptionSignals[$subCheckId] = @{
             Status       = $Status
             Setting      = $Setting
             CurrentValue = $CurrentValue
@@ -186,8 +186,8 @@ function Get-AdoptionSignals {
     [OutputType([hashtable])]
     param()
 
-    if ($script:AdoptionSignals) {
-        return $script:AdoptionSignals.Clone()
+    if ($global:AdoptionSignals) {
+        return $global:AdoptionSignals.Clone()
     }
     return @{}
 }
