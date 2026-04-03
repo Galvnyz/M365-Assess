@@ -642,6 +642,298 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# 12. ENTRA-ENTAPP-012: Apps using client secrets instead of certificates
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps using secrets instead of certificates..."
+    $secretOnlyApps = @($regularApps | Where-Object {
+        $_['accountEnabled'] -eq $true -and
+        $_['passwordCredentials'] -and @($_['passwordCredentials']).Count -gt 0 -and
+        (-not $_['keyCredentials'] -or @($_['keyCredentials']).Count -eq 0)
+    } | ForEach-Object { $_['displayName'] })
+
+    $settingParams = @{
+        Category         = 'Credential Hygiene'
+        Setting          = 'Apps Using Secrets Instead of Certificates'
+        CurrentValue     = $(if ($secretOnlyApps.Count -eq 0) { 'No apps rely solely on client secrets' } else { "$($secretOnlyApps.Count) app(s): $($secretOnlyApps[0..4] -join '; ')$(if ($secretOnlyApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Use certificates or managed identities instead of client secrets'
+        Status           = $(if ($secretOnlyApps.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-012'
+        Remediation      = 'Migrate app credentials from client secrets to certificates or managed identities. Secrets are extractable from memory and logs. Entra admin center > App registrations > Certificates & secrets.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check secret-only apps: $_"
+}
+
+# ------------------------------------------------------------------
+# 13. ENTRA-ENTAPP-013: Apps with expired credentials still present
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps with expired credentials..."
+    $now = Get-Date
+    $expiredCredApps = @()
+
+    foreach ($sp in $regularApps) {
+        $hasExpired = $false
+        foreach ($pwd in @($sp['passwordCredentials'])) {
+            if ($pwd -and $pwd['endDateTime'] -and [datetime]$pwd['endDateTime'] -lt $now) { $hasExpired = $true; break }
+        }
+        if (-not $hasExpired) {
+            foreach ($key in @($sp['keyCredentials'])) {
+                if ($key -and $key['endDateTime'] -and [datetime]$key['endDateTime'] -lt $now) { $hasExpired = $true; break }
+            }
+        }
+        if ($hasExpired) { $expiredCredApps += $sp['displayName'] }
+    }
+
+    $settingParams = @{
+        Category         = 'Credential Hygiene'
+        Setting          = 'Apps with Expired Credentials'
+        CurrentValue     = $(if ($expiredCredApps.Count -eq 0) { 'No apps have expired credentials' } else { "$($expiredCredApps.Count) app(s): $($expiredCredApps[0..4] -join '; ')$(if ($expiredCredApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Remove expired credentials from all app registrations'
+        Status           = $(if ($expiredCredApps.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-013'
+        Remediation      = 'Remove expired credentials. Expired secrets/certs are attack surface -- they indicate poor credential lifecycle management. Entra admin center > App registrations > Certificates & secrets.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check expired credentials: $_"
+}
+
+# ------------------------------------------------------------------
+# 14. ENTRA-ENTAPP-014: Apps with both secret and certificate credentials
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking apps with multiple credential types..."
+    $dualCredApps = @($regularApps | Where-Object {
+        $_['passwordCredentials'] -and @($_['passwordCredentials']).Count -gt 0 -and
+        $_['keyCredentials'] -and @($_['keyCredentials']).Count -gt 0
+    } | ForEach-Object { $_['displayName'] })
+
+    $settingParams = @{
+        Category         = 'Credential Hygiene'
+        Setting          = 'Apps with Both Secrets and Certificates'
+        CurrentValue     = $(if ($dualCredApps.Count -eq 0) { 'No apps have dual credential types' } else { "$($dualCredApps.Count) app(s): $($dualCredApps[0..4] -join '; ')$(if ($dualCredApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Use a single credential type per app (prefer certificates)'
+        Status           = $(if ($dualCredApps.Count -eq 0) { 'Pass' } else { 'Info' })
+        CheckId          = 'ENTRA-ENTAPP-014'
+        Remediation      = 'Remove the client secret if a certificate is also configured. Dual credential types widen the attack surface. Entra admin center > App registrations > Certificates & secrets.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check dual credential apps: $_"
+}
+
+# ------------------------------------------------------------------
+# 15. ENTRA-ENTAPP-015: SPs with client secret AND permanent privileged role
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking SPs with secret + permanent privileged role..."
+    $secretPermanentRole = @()
+
+    foreach ($sp in $regularApps) {
+        $hasSecret = $_['passwordCredentials'] -and @($sp['passwordCredentials']).Count -gt 0
+        if (-not $hasSecret) { continue }
+
+        if ($spRoleAssignments.ContainsKey($sp['id'])) {
+            $secretPermanentRole += "$($sp['displayName']) ($(@($spRoleAssignments[$sp['id']]).Count) role(s))"
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Credential Hygiene'
+        Setting          = 'SPs with Secret + Permanent Directory Role'
+        CurrentValue     = $(if ($secretPermanentRole.Count -eq 0) { 'No SPs combine secrets with permanent roles' } else { "$($secretPermanentRole.Count) SP(s): $($secretPermanentRole[0..2] -join '; ')$(if ($secretPermanentRole.Count -gt 3) { '...' })" })
+        RecommendedValue = 'Privileged SPs should use certificates, not secrets'
+        Status           = $(if ($secretPermanentRole.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CheckId          = 'ENTRA-ENTAPP-015'
+        Remediation      = 'Migrate privileged service principals from client secrets to certificates or managed identities. A secret on a permanently privileged SP is a persistent backdoor risk.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check secret + permanent role SPs: $_"
+}
+
+# ------------------------------------------------------------------
+# 16. ENTRA-ENTAPP-016: Privileged apps (Tier 0 perms) with owners
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking privileged apps with owners..."
+    $privilegedWithOwners = @()
+
+    foreach ($sp in $regularApps) {
+        $appRoles = Get-SpAppRoleAssignments -SpId $sp['id']
+        $hasTier0 = $false
+        foreach ($role in $appRoles) {
+            $permId = $role['appRoleId']
+            if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
+                if ($graphPermissionMap[$permId].Name -in $tier0AppPermissions) {
+                    $hasTier0 = $true
+                    break
+                }
+            }
+        }
+        if (-not $hasTier0) { continue }
+
+        try {
+            $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id,displayName"
+            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
+            if ($owners.Count -gt 0) {
+                $ownerNames = ($owners | ForEach-Object { $_['displayName'] }) -join ', '
+                $privilegedWithOwners += "$($sp['displayName']) (owners: $ownerNames)"
+            }
+        }
+        catch {
+            Write-Verbose "Could not fetch owners for $($sp['displayName']): $_"
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Owner Risk'
+        Setting          = 'Tier 0 Apps with Owners Assigned'
+        CurrentValue     = $(if ($privilegedWithOwners.Count -eq 0) { 'No Tier 0 apps have owners' } else { "$($privilegedWithOwners.Count) app(s): $($privilegedWithOwners[0..2] -join '; ')$(if ($privilegedWithOwners.Count -gt 3) { '...' })" })
+        RecommendedValue = 'Tier 0 apps should not have owners (owners can add credentials and impersonate)'
+        Status           = $(if ($privilegedWithOwners.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CheckId          = 'ENTRA-ENTAPP-016'
+        Remediation      = 'Remove owners from apps with Tier 0 permissions. An owner of a Tier 0 app can add credentials and impersonate it to escalate to Global Admin. Entra admin center > App registrations > Owners.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check privileged app owners: $_"
+}
+
+# ------------------------------------------------------------------
+# 17. ENTRA-ENTAPP-017: Apps with directory roles that have owners
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking role-holding apps with owners..."
+    $roleAppsWithOwners = @()
+
+    foreach ($sp in $regularApps) {
+        if (-not $spRoleAssignments.ContainsKey($sp['id'])) { continue }
+
+        try {
+            $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id,displayName"
+            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
+            if ($owners.Count -gt 0) {
+                $ownerNames = ($owners | ForEach-Object { $_['displayName'] }) -join ', '
+                $roleAppsWithOwners += "$($sp['displayName']) (owners: $ownerNames)"
+            }
+        }
+        catch {
+            Write-Verbose "Could not fetch owners for $($sp['displayName']): $_"
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Owner Risk'
+        Setting          = 'Role-Holding Apps with Owners'
+        CurrentValue     = $(if ($roleAppsWithOwners.Count -eq 0) { 'No role-holding apps have owners' } else { "$($roleAppsWithOwners.Count) app(s): $($roleAppsWithOwners[0..2] -join '; ')$(if ($roleAppsWithOwners.Count -gt 3) { '...' })" })
+        RecommendedValue = 'Apps with directory roles should not have owners'
+        Status           = $(if ($roleAppsWithOwners.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-017'
+        Remediation      = 'Remove owners from apps holding Entra directory roles. Owners can add credentials and impersonate the SP to exercise those roles. Entra admin center > App registrations > Owners.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check role-holding app owners: $_"
+}
+
+# ------------------------------------------------------------------
+# 18. ENTRA-ENTAPP-018: Orphaned apps (no owners assigned)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking for orphaned apps with no owners..."
+    $orphanedApps = @()
+    $appsWithCreds = @($regularApps | Where-Object {
+        ($_['passwordCredentials'] -and @($_['passwordCredentials']).Count -gt 0) -or
+        ($_['keyCredentials'] -and @($_['keyCredentials']).Count -gt 0)
+    })
+
+    foreach ($sp in $appsWithCreds) {
+        try {
+            $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id"
+            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
+            if ($owners.Count -eq 0) {
+                $orphanedApps += $sp['displayName']
+            }
+        }
+        catch {
+            Write-Verbose "Could not fetch owners for $($sp['displayName']): $_"
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Owner Risk'
+        Setting          = 'Credentialed Apps with No Owners'
+        CurrentValue     = $(if ($orphanedApps.Count -eq 0) { 'All credentialed apps have at least one owner' } else { "$($orphanedApps.Count) orphaned app(s): $($orphanedApps[0..4] -join '; ')$(if ($orphanedApps.Count -gt 5) { '...' })" })
+        RecommendedValue = 'All apps with credentials should have at least one owner for accountability'
+        Status           = $(if ($orphanedApps.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-018'
+        Remediation      = 'Assign owners to orphaned app registrations. Without owners, no one is accountable for credential rotation or permission review. Entra admin center > App registrations > Owners > Add owner.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check orphaned apps: $_"
+}
+
+# ------------------------------------------------------------------
+# 19. ENTRA-ENTAPP-019: Unused privileged permissions (granted >30 days, never used)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking for unused privileged permissions..."
+    $unusedPrivileged = @()
+    $thirtyDaysAgo = (Get-Date).AddDays(-30).ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+    foreach ($sp in $regularApps) {
+        $appRoles = Get-SpAppRoleAssignments -SpId $sp['id']
+        $hasTier0 = $false
+        foreach ($role in $appRoles) {
+            $permId = $role['appRoleId']
+            if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
+                if ($graphPermissionMap[$permId].Name -in $tier0AppPermissions) {
+                    $hasTier0 = $true
+                    break
+                }
+            }
+        }
+        if (-not $hasTier0) { continue }
+
+        # Check sign-in activity
+        $lastSignIn = $sp['lastSignInActivity']
+        if (-not $lastSignIn) {
+            # SP with Tier 0 perms and no sign-in activity at all
+            $unusedPrivileged += $sp['displayName']
+        }
+    }
+
+    $settingParams = @{
+        Category         = 'Permission Hygiene'
+        Setting          = 'Tier 0 Apps with No Sign-In Activity'
+        CurrentValue     = $(if ($unusedPrivileged.Count -eq 0) { 'All Tier 0 apps show recent sign-in activity' } else { "$($unusedPrivileged.Count) app(s) with Tier 0 perms and no sign-in: $($unusedPrivileged[0..4] -join '; ')$(if ($unusedPrivileged.Count -gt 5) { '...' })" })
+        RecommendedValue = 'Remove Tier 0 permissions from apps that never use them'
+        Status           = $(if ($unusedPrivileged.Count -eq 0) { 'Pass' } else { 'Warning' })
+        CheckId          = 'ENTRA-ENTAPP-019'
+        Remediation      = 'Review apps with Tier 0 permissions that show no sign-in activity. These permissions may have been granted but never used -- remove them to reduce attack surface. Entra admin center > Enterprise applications > Sign-in logs.'
+    }
+    Add-Setting @settingParams
+}
+catch {
+    Write-Warning "Could not check unused privileged permissions: $_"
+}
+
+# ------------------------------------------------------------------
 # Output results
 # ------------------------------------------------------------------
 Export-SecurityConfigReport -Settings $settings -OutputPath $OutputPath -ServiceLabel 'Enterprise Apps'

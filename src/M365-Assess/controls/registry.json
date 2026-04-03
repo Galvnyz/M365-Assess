@@ -15593,6 +15593,107 @@
       }
     },
     {
+      "checkId": "ENTRA-ENTAPP-012",
+      "name": "Apps using client secrets instead of certificates",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "IA-5(2)", "title": "Public Key-Based Authentication", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.6", "evidenceType": "config-export", "title": "Logical Access Security; Security Measures Against Threats" },
+        "mitre-attack": { "controlId": "T1552.004;T1528", "title": "Unsecured Credentials: Private Keys; Steal Application Access Token" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-013",
+      "name": "Apps with expired credentials still present",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "IA-5;IA-5(1)", "title": "Authenticator Management; Password-Based Authentication", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.2", "evidenceType": "config-export", "title": "Logical Access Security; Credentials Management" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-014",
+      "name": "Apps with both secret and certificate credentials (dual credential types)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "IA-5", "title": "Authenticator Management", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1", "evidenceType": "config-export", "title": "Logical Access Security" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-015",
+      "name": "Service principals with client secret and permanent privileged directory role",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-6(5);IA-5(2)", "title": "Privileged Accounts; Public Key-Based Authentication", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" },
+        "mitre-attack": { "controlId": "T1098.001;T1078.004", "title": "Additional Cloud Credentials; Valid Accounts: Cloud Accounts" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-016",
+      "name": "Tier 0 permission apps with owners assigned (owner can impersonate)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-6(5);AC-6(10)", "title": "Privileged Accounts; Prohibit Non-Privileged Users from Executing Privileged Functions", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" },
+        "mitre-attack": { "controlId": "T1098.001;T1098.003", "title": "Additional Cloud Credentials; Additional Cloud Roles" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-017",
+      "name": "Apps with directory roles that have owners assigned",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-6(5)", "title": "Privileged Accounts", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" },
+        "mitre-attack": { "controlId": "T1098.001;T1078.004", "title": "Additional Cloud Credentials; Valid Accounts: Cloud Accounts" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-018",
+      "name": "Credentialed apps with no owners (orphaned)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-2", "title": "Account Management", "profiles": ["Low", "Moderate", "High"] },
+        "soc2": { "controlId": "CC6.2;CC6.3", "evidenceType": "config-export", "title": "Credentials Management; Enrollment and Authorization" }
+      }
+    },
+    {
+      "checkId": "ENTRA-ENTAPP-019",
+      "name": "Tier 0 apps with no sign-in activity (unused privileged permissions)",
+      "category": "ENTAPP",
+      "collector": "EntApp",
+      "hasAutomatedCheck": true,
+      "licensing": { "minimum": "E3" },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AC-2(3);AC-6", "title": "Disable Accounts; Least Privilege", "profiles": ["Moderate", "High"] },
+        "soc2": { "controlId": "CC6.1;CC6.3", "evidenceType": "config-export", "title": "Logical Access Security; Enrollment and Authorization" },
+        "mitre-attack": { "controlId": "T1078.004", "title": "Valid Accounts: Cloud Accounts" }
+      }
+    },
+    {
       "checkId": "ENTRA-STALEADMIN-001",
       "name": "Admin accounts inactive for more than 90 days",
       "category": "STALEADMIN",
