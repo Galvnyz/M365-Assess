@@ -4,6 +4,27 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-04-03
+
+### Added
+- Value Opportunity integration tests validating full collector pipeline (#348)
+- Unit tests for Build-ValueOpportunityHtml report rendering (#348)
+- MailboxSettings.Read Graph permission in app registration setup
+- Purview.ApplicationAccess and EXO API permissions in consent function
+- CheckId cross-reference validation in sku-feature-map tests
+
+### Changed
+- Replaced STANDARD sentinel in sku-feature-map.json with real Microsoft service plan IDs for accurate license detection (#346)
+- Value Opportunity bar chart colors now use CSS variables for dark mode support
+- Improved table header hover transitions across report
+
+### Fixed
+- Value Opportunity showing 0% adoption due to STANDARD sentinel auto-licensing all features (#346)
+- Secure Score M365 Average showing N/A due to Graph SDK AdditionalProperties deserialization (#350)
+- Broken CSS variable reference (--m365a-bg) in Value Opportunity stat cards
+- Duplicate .section-description CSS rule in report template
+- PSScriptAnalyzer failure from unapproved verb Analyze-ValueOpportunity (#350)
+
 ## [1.5.0] - 2026-04-03
 
 ### Added
