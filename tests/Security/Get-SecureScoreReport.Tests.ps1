@@ -7,6 +7,8 @@ Describe 'Get-SecureScoreReport' {
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
 
         function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+        function Get-MgSecuritySecureScore { }
+        function Get-MgSecuritySecureScoreControlProfile { }
         Mock Import-Module { }
 
         Mock Get-MgSecuritySecureScore {
@@ -68,6 +70,47 @@ Describe 'Get-SecureScoreReport' {
     It 'Should include percentage calculation' {
         $script:result.Percentage | Should -Be 72
     }
+
+    It 'Should include average comparative score' {
+        $script:result.AverageComparativeScore | Should -Be 55
+    }
+}
+
+Describe 'Get-SecureScoreReport - AdditionalProperties fallback' {
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+        function Get-MgSecuritySecureScore { }
+        Mock Import-Module { }
+
+        Mock Get-MgSecuritySecureScore {
+            return @(
+                [PSCustomObject]@{
+                    CurrentScore             = 60
+                    MaxScore                 = 100
+                    CreatedDateTime          = (Get-Date).AddDays(-1)
+                    AverageComparativeScores = @(
+                        [PSCustomObject]@{
+                            Basis              = $null
+                            AverageScore       = $null
+                            AdditionalProperties = @{
+                                'basis'        = 'AllTenants'
+                                'averageScore' = 48.2
+                            }
+                        }
+                    )
+                    ControlScores            = @()
+                }
+            )
+        }
+
+        $script:result = & "$PSScriptRoot/../../src/M365-Assess/Security/Get-SecureScoreReport.ps1"
+    }
+
+    It 'Should extract average from AdditionalProperties' {
+        $script:result.AverageComparativeScore | Should -Be 48.2
+    }
 }
 
 Describe 'Get-SecureScoreReport - No Data' {
@@ -75,6 +118,7 @@ Describe 'Get-SecureScoreReport - No Data' {
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
 
         function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+        function Get-MgSecuritySecureScore { }
         Mock Import-Module { }
         Mock Get-MgSecuritySecureScore { return @() }
     }

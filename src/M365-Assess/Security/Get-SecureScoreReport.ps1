@@ -74,13 +74,23 @@ else {
 }
 
 # Extract the average comparative score from the AverageComparativeScores collection
+# Graph SDK may not deserialize nested types — check AdditionalProperties fallback
 $averageComparative = 0
 if ($latestScore.AverageComparativeScores) {
     $averageEntry = $latestScore.AverageComparativeScores |
-        Where-Object { $_.Basis -eq 'AllTenants' } |
+        Where-Object {
+            ($_.Basis -eq 'AllTenants') -or
+            ($_.AdditionalProperties -and $_.AdditionalProperties['basis'] -eq 'AllTenants')
+        } |
         Select-Object -First 1
     if ($averageEntry) {
-        $averageComparative = $averageEntry.AverageScore
+        $averageComparative = if ($null -ne $averageEntry.AverageScore -and $averageEntry.AverageScore -gt 0) {
+            $averageEntry.AverageScore
+        } elseif ($averageEntry.AdditionalProperties -and $averageEntry.AdditionalProperties.ContainsKey('averageScore')) {
+            $averageEntry.AdditionalProperties['averageScore']
+        } else {
+            0
+        }
     }
 }
 
