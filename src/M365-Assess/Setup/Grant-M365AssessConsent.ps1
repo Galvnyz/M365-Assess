@@ -8,7 +8,9 @@ function Grant-M365AssessConsent {
         required by M365-Assess.
     .DESCRIPTION
         Provisions a read-only service principal for Invoke-M365Assessment with:
-        - 22 Microsoft Graph API application permissions (all .Read.All)
+        - 24 Microsoft Graph API application permissions (all .Read.All)
+        - 3 Office 365 Exchange Online API permissions (ManageAsApp, Organization.Read.All, MailboxSettings.Read)
+        - 1 Microsoft Purview API permission (Purview.ApplicationAccess)
         - 3 Entra ID directory roles (Security Reader, Compliance Admin, Global Reader)
         - 2 Exchange Online RBAC role groups (View-Only Org Management, Compliance Management)
 
@@ -519,6 +521,59 @@ function Grant-M365AssessConsent {
         }
         catch {
             Write-Warn "Could not assign Exchange.ManageAsApp: $_"
+        }
+
+        # --- Additional EXO API permissions (Organization.Read.All, MailboxSettings.Read) ---
+        $additionalExoRoles = @('Organization.Read.All', 'MailboxSettings.Read')
+        foreach ($roleName in $additionalExoRoles) {
+            $role = $exoSp.AppRoles | Where-Object { $_.Value -eq $roleName }
+            if ($role) {
+                $alreadyAssigned = $existingExoRoles | Where-Object { $_.AppRoleId -eq $role.Id -and $_.ResourceId -eq $exoSp.Id }
+                if ($alreadyAssigned) {
+                    Write-OK "$roleName  [Email]  (already assigned)"
+                }
+                elseif ($PSCmdlet.ShouldProcess($roleName, 'Grant app role')) {
+                    $roleBody = @{
+                        PrincipalId = $sp.Id
+                        ResourceId  = $exoSp.Id
+                        AppRoleId   = $role.Id
+                    }
+                    New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -BodyParameter $roleBody | Out-Null
+                    Write-OK "$roleName  [Email]"
+                }
+            }
+        }
+
+        # --- Purview.ApplicationAccess (Microsoft Purview API) ---
+        # Required for app-only certificate auth to Security & Compliance (Connect-IPPSSession).
+        Write-Step 'Adding Purview.ApplicationAccess permission for app-only Purview auth...'
+        try {
+            $purviewResourceAppId = '00000007-0000-0ff1-ce00-000000000000'
+            $purviewSp = Get-MgServicePrincipal -Filter "appId eq '$purviewResourceAppId'" -ErrorAction Stop
+            $purviewAppRole = $purviewSp.AppRoles | Where-Object { $_.Value -eq 'Purview.ApplicationAccess' }
+            if ($purviewAppRole) {
+                $sp = Get-MgServicePrincipal -Filter "appId eq '$ClientId'" -ErrorAction Stop
+                $existingPurviewRoles = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -ErrorAction SilentlyContinue
+                $alreadyAssigned = $existingPurviewRoles | Where-Object { $_.AppRoleId -eq $purviewAppRole.Id -and $_.ResourceId -eq $purviewSp.Id }
+                if ($alreadyAssigned) {
+                    Write-OK 'Purview.ApplicationAccess  [Security]  (already assigned)'
+                }
+                elseif ($PSCmdlet.ShouldProcess('Purview.ApplicationAccess', 'Grant app role')) {
+                    $roleBody = @{
+                        PrincipalId = $sp.Id
+                        ResourceId  = $purviewSp.Id
+                        AppRoleId   = $purviewAppRole.Id
+                    }
+                    New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -BodyParameter $roleBody | Out-Null
+                    Write-OK 'Purview.ApplicationAccess  [Security]'
+                }
+            }
+            else {
+                Write-Warn 'Purview.ApplicationAccess role not found on Purview service principal'
+            }
+        }
+        catch {
+            Write-Warn "Could not assign Purview.ApplicationAccess: $_"
         }
     }
 
