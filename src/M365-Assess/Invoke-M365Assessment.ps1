@@ -214,6 +214,21 @@ param(
     [switch]$DryRun,
 
     [Parameter()]
+    [ArgumentCompleter({
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+        $root = Split-Path -Parent $PSCommandPath
+        $configPath = Join-Path -Path $root -ChildPath '.m365assess.json'
+        if (Test-Path -Path $configPath) {
+            try {
+                $config = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
+                $profiles = if ($config.ContainsKey('profiles')) { $config['profiles'] } else { @{} }
+                $profiles.Keys | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $profiles[$_]['tenantId'])
+                }
+            }
+            catch { }
+        }
+    })]
     [string]$ConnectionProfile
 )
 
