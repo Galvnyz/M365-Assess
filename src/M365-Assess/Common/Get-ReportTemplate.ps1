@@ -2155,6 +2155,13 @@ $html = @"
         .report-page.page-active { display: block; }
         .report-layout.show-all-mode .report-page { display: block; }
 
+        /* Hide global expand/collapse in paginated mode -- each section has its own */
+        .report-layout:not(.show-all-mode) .report-controls { display: none; }
+        /* Force sections open in paginated mode -- collapsing makes no sense with one page */
+        .report-layout:not(.show-all-mode) .section[open] > summary,
+        .report-layout:not(.show-all-mode) details.section { pointer-events: auto; }
+        .report-layout:not(.show-all-mode) details.section > summary::after { display: none; }
+
         /* Content takes remaining width */
         .report-layout .content {
             flex: 1;
@@ -2887,6 +2894,8 @@ $html += @"
             var target = layout.querySelector('.report-page[data-page="' + pageId + '"]');
             if (target) {
                 target.classList.add('page-active');
+                // Ensure section details are open in paginated mode
+                target.querySelectorAll('details.section').forEach(function(d) { d.open = true; });
             } else if (pages.length > 0) {
                 // Fallback to first page
                 pages[0].classList.add('page-active');
