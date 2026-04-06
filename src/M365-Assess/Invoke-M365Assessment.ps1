@@ -77,7 +77,7 @@
     Run only Critical and High severity checks. Useful for CI/CD pipelines
     and daily monitoring. Collectors with no qualifying checks are skipped
     entirely. The report shows a "Quick Scan Mode" banner.
-.PARAMETER WhatIf
+.PARAMETER DryRun
     Show a dry-run preview of what the assessment would do (sections,
     services, Graph scopes, check counts) without connecting or collecting
     data. Useful for validating configuration before a real run.
@@ -116,7 +116,7 @@
     Runs a full assessment using device code auth. You choose which browser profile
     to authenticate in (useful for multi-profile machines).
 .EXAMPLE
-    PS> Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' -Section Identity,Email -WhatIf
+    PS> Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' -Section Identity,Email -DryRun
 
     Shows a dry-run preview: sections, services, Graph scopes, and check counts
     without connecting or collecting any data.
@@ -207,7 +207,7 @@ param(
     [switch]$QuickScan,
 
     [Parameter()]
-    [switch]$WhatIf
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -553,9 +553,9 @@ $sectionOrder = @(
 $Section = $sectionOrder | Where-Object { $_ -in $Section }
 
 # ------------------------------------------------------------------
-# WhatIf — dry run preview, then exit
+# DryRun — preview, then exit
 # ------------------------------------------------------------------
-if ($WhatIf) {
+if ($DryRun) {
     Write-Host ''
     Write-Host '  ── Dry Run Preview ──' -ForegroundColor Cyan
     Write-Host ''
@@ -604,7 +604,7 @@ if ($WhatIf) {
     }
 
     Write-Host '  No connections made. No data collected.' -ForegroundColor DarkGray
-    Write-Host '  Remove -WhatIf to run the assessment.' -ForegroundColor DarkGray
+    Write-Host '  Remove -DryRun to run the assessment.' -ForegroundColor DarkGray
     Write-Host ''
 
     # Clean up the empty output folder created earlier
