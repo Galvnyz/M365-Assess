@@ -2571,18 +2571,18 @@ if (-not $SkipCoverPage) {
 "@
 }
 
-# Overview page: cover + exec summary + org profile combined
-$html += @"
-
-        <div class="report-page page-active" data-page="overview" id="overview">
-"@
-
 if ($QuickScan) {
     $html += @"
 
         <div class="quickscan-banner">Quick Scan Mode &mdash; showing Critical and High severity findings only</div>
 "@
 }
+
+# Overview page: cover + exec summary + org profile combined
+$html += @"
+
+        <div class="report-page page-active" data-page="overview" id="overview">
+"@
 
 if (-not $SkipCoverPage) {
     # Full cover page (print only, hidden on screen)

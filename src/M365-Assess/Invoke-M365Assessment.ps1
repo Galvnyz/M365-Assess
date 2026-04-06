@@ -77,6 +77,10 @@
     Run only Critical and High severity checks. Useful for CI/CD pipelines
     and daily monitoring. Collectors with no qualifying checks are skipped
     entirely. The report shows a "Quick Scan Mode" banner.
+.PARAMETER DryRun
+    Show a dry-run preview of what the assessment would do (sections,
+    services, Graph scopes, check counts) without connecting or collecting
+    data. Useful for validating configuration before a real run.
 .PARAMETER NonInteractive
     Suppresses all interactive prompts for module installation, EXO downgrade,
     and script unblocking. When a required module is missing or incompatible,
@@ -111,6 +115,11 @@
 
     Runs a full assessment using device code auth. You choose which browser profile
     to authenticate in (useful for multi-profile machines).
+.EXAMPLE
+    PS> Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' -Section Identity,Email -DryRun
+
+    Shows a dry-run preview: sections, services, Graph scopes, and check counts
+    without connecting or collecting any data.
 #>
 #Requires -Version 7.0
 
@@ -195,7 +204,10 @@ param(
     [switch]$NonInteractive,
 
     [Parameter()]
-    [switch]$QuickScan
+    [switch]$QuickScan,
+
+    [Parameter()]
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -539,6 +551,68 @@ $sectionOrder = @(
     'ValueOpportunity'  # Must run last — reads adoption signals from all other sections
 )
 $Section = $sectionOrder | Where-Object { $_ -in $Section }
+
+# ------------------------------------------------------------------
+# DryRun — preview, then exit
+# ------------------------------------------------------------------
+if ($DryRun) {
+    Write-Host ''
+    Write-Host '  ── Dry Run Preview ──' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host "  Tenant:       $TenantId" -ForegroundColor White
+    Write-Host "  Environment:  $M365Environment" -ForegroundColor White
+    Write-Host "  Version:      v$script:AssessmentVersion" -ForegroundColor White
+    Write-Host "  Output:       $assessmentFolder" -ForegroundColor White
+    if ($QuickScan) { Write-Host '  Mode:         QuickScan (Critical + High only)' -ForegroundColor Yellow }
+    Write-Host ''
+
+    # Sections and their services
+    Write-Host '  Sections:' -ForegroundColor Cyan
+    foreach ($s in $Section) {
+        $services = if ($sectionServiceMap.ContainsKey($s) -and $sectionServiceMap[$s].Count -gt 0) { $sectionServiceMap[$s] -join ', ' } else { '(none)' }
+        $collectorCount = if ($collectorMap.Contains($s)) { $collectorMap[$s].Count } else { 0 }
+        $collectorNoun = if ($collectorCount -eq 1) { 'collector' } else { 'collectors' }
+        Write-Host "    $([char]0x25B8) $s — $collectorCount $collectorNoun — services: $services" -ForegroundColor DarkGray
+    }
+    Write-Host ''
+
+    # Graph scopes
+    if ($graphScopes -and $graphScopes.Count -gt 0) {
+        Write-Host "  Graph scopes ($($graphScopes.Count)):" -ForegroundColor Cyan
+        foreach ($scope in ($graphScopes | Sort-Object)) {
+            Write-Host "    $scope" -ForegroundColor DarkGray
+        }
+        Write-Host ''
+    }
+
+    # Check counts from progress state
+    if ($global:CheckProgressState) {
+        $totalChecks = $global:CheckProgressState.Total
+        $collectorCounts = $global:CheckProgressState.CollectorCounts
+        $labelMap = $global:CheckProgressState.LabelMap
+        $checkNoun = if ($totalChecks -eq 1) { 'check' } else { 'checks' }
+        Write-Host "  Security checks: $totalChecks $checkNoun queued" -ForegroundColor Cyan
+        if ($collectorCounts) {
+            # Sort by count descending for quick visual scan
+            $sorted = $collectorCounts.GetEnumerator() | Sort-Object -Property Value -Descending
+            foreach ($entry in $sorted) {
+                $label = if ($labelMap -and $labelMap.ContainsKey($entry.Key)) { $labelMap[$entry.Key] } else { $entry.Key }
+                Write-Host "    $([char]0x25B8) $label — $($entry.Value) checks" -ForegroundColor DarkGray
+            }
+        }
+        Write-Host ''
+    }
+
+    Write-Host '  No connections made. No data collected.' -ForegroundColor DarkGray
+    Write-Host '  Remove -DryRun to run the assessment.' -ForegroundColor DarkGray
+    Write-Host ''
+
+    # Clean up the empty output folder created earlier
+    if (Test-Path -Path $assessmentFolder) {
+        Remove-Item -Path $assessmentFolder -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    return
+}
 
 foreach ($sectionName in $Section) {
     if (-not $collectorMap.Contains($sectionName)) {

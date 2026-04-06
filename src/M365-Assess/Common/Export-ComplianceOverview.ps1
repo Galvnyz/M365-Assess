@@ -68,7 +68,15 @@ function Export-ComplianceOverview {
     # License-skipped notice
     if ($global:CheckProgressState -and $global:CheckProgressState.LicenseSkipped.Count -gt 0) {
         $skipCount = $global:CheckProgressState.LicenseSkipped.Count
-        $null = $html.AppendLine("<div class='callout callout-info'><div class='callout-title'><span class='callout-icon'>&#9432;</span> License-Aware Check Gating</div><div class='callout-body'>$skipCount checks were skipped because the tenant does not have the required license service plans. Upgrade your license to enable these checks.</div></div>")
+        $skipListHtml = '<ul style="margin:6px 0 0;padding-left:20px;font-size:9pt;">'
+        foreach ($entry in $global:CheckProgressState.LicenseSkipped.GetEnumerator()) {
+            $info = $entry.Value
+            $planList = if ($info -is [hashtable] -and $info.RequiredPlans) { ($info.RequiredPlans -join ' or ') } else { ($info -join ' or ') }
+            $checkName = if ($info -is [hashtable] -and $info.Name) { ": $($info.Name)" } else { '' }
+            $skipListHtml += "<li><strong>$($entry.Key)</strong>$checkName <span style='color:var(--m365a-medium-gray);'>&mdash; requires $planList</span></li>"
+        }
+        $skipListHtml += '</ul>'
+        $null = $html.AppendLine("<div class='callout callout-info'><div class='callout-title'><span class='callout-icon'>&#9432;</span> License-Aware Check Gating</div><div class='callout-body'>$skipCount checks were skipped because the tenant does not have the required license service plans.$skipListHtml</div></div>")
     }
 
     # Framework multi-selector (one checkbox per framework)
