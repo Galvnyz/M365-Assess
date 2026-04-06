@@ -129,7 +129,10 @@ function Grant-M365AssessConsent {
         [switch]$SkipExchangeRbac,
 
         [Parameter()]
-        [switch]$SkipComplianceRoles
+        [switch]$SkipComplianceRoles,
+
+        [Parameter()]
+        [string]$ProfileName
     )
 
     $ErrorActionPreference = 'Stop'
@@ -194,9 +197,31 @@ function Grant-M365AssessConsent {
     }
 
     if (-not $SkipExchangeRbac -and -not $AdminUpn) {
-        throw 'Parameter -AdminUpn is required for Exchange Online role group assignments. ' +
-              'Add-RoleGroupMember requires a delegated admin session -- this is a platform ' +
-              'constraint. Provide -AdminUpn or use -SkipExchangeRbac to skip that step.'
+        Write-Host '  Exchange Online RBAC requires a delegated admin session.' -ForegroundColor Yellow
+        Write-Host '  Enter the UPN of a Global or Exchange Administrator:' -ForegroundColor White
+        Write-Host '  > ' -ForegroundColor Cyan -NoNewline
+        $AdminUpn = (Read-Host) ?? ''
+        if (-not $AdminUpn.Trim()) {
+            Write-Host '  No UPN provided -- skipping Exchange RBAC step.' -ForegroundColor DarkGray
+            $SkipExchangeRbac = [switch]$true
+        }
+        else {
+            $AdminUpn = $AdminUpn.Trim()
+        }
+    }
+    # Compliance roles also need AdminUpn for delegated Graph session
+    if (-not $SkipComplianceRoles -and -not $AdminUpn) {
+        Write-Host '  Compliance role assignment also requires an admin UPN.' -ForegroundColor Yellow
+        Write-Host '  Enter the UPN of a Global Administrator (or press ENTER to skip):' -ForegroundColor White
+        Write-Host '  > ' -ForegroundColor Cyan -NoNewline
+        $AdminUpn = (Read-Host) ?? ''
+        if (-not $AdminUpn.Trim()) {
+            Write-Host '  No UPN provided -- skipping compliance roles step.' -ForegroundColor DarkGray
+            $SkipComplianceRoles = [switch]$true
+        }
+        else {
+            $AdminUpn = $AdminUpn.Trim()
+        }
     }
 
     # ==================================================================
@@ -805,36 +830,44 @@ function Grant-M365AssessConsent {
     }
 
     # ------------------------------------------------------------------
-    # Save credentials to .m365assess.json for auto-detect by assessment
+    # Save credentials to connection profile
     # ------------------------------------------------------------------
     if ($ClientId -and $CertificateThumbprint -and -not $WhatIfPreference) {
-        $configPath = Join-Path $PSScriptRoot '..\.m365assess.json'
-        $configPath = [System.IO.Path]::GetFullPath($configPath)
-        $config = @{}
-        if (Test-Path $configPath) {
-            try {
-                $config = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
+        $profileHelper = Join-Path $PSScriptRoot 'Save-M365ConnectionProfile.ps1'
+        if (Test-Path -Path $profileHelper) {
+            . $profileHelper
+
+            # Derive a profile name: user-specified, or extract from TenantId
+            $resolvedProfileName = if ($ProfileName) {
+                $ProfileName
             }
-            catch {
-                Write-Verbose "Could not read existing config: $_"
-                $config = @{}
+            elseif ($TenantId -match '^([^.]+)\.onmicrosoft\.(com|us)$') {
+                $Matches[1]
             }
+            elseif ($TenantId -match '^([^.]+)\.') {
+                $Matches[1]
+            }
+            else {
+                $TenantId
+            }
+
+            $appName = if ($AppDisplayName) { $AppDisplayName }
+                       elseif ($app) { $app.DisplayName }
+                       else { '' }
+
+            $profileParams = @{
+                ProfileName          = $resolvedProfileName
+                TenantId             = $TenantId
+                AuthMethod           = 'Certificate'
+                ClientId             = $ClientId
+                CertificateThumbprint = $CertificateThumbprint
+                AppName              = $appName
+            }
+            if ($AdminUpn) { $profileParams['UserPrincipalName'] = $AdminUpn }
+
+            Set-M365ConnectionProfile @profileParams
+            Write-Info "Use: Invoke-M365Assessment -ConnectionProfile '$resolvedProfileName'"
         }
-
-        $appName = if ($AppDisplayName) { $AppDisplayName }
-                   elseif ($app) { $app.DisplayName }
-                   else { '' }
-
-        $config[$TenantId] = @{
-            clientId    = $ClientId
-            thumbprint  = $CertificateThumbprint
-            appName     = $appName
-            saved       = (Get-Date).ToString('yyyy-MM-dd')
-        }
-
-        $config | ConvertTo-Json -Depth 3 | Set-Content -Path $configPath -Encoding UTF8
-        Write-OK "Credentials saved to $configPath"
-        Write-Info "The assessment will auto-detect these credentials when run with -TenantId '$TenantId'"
     }
 
     Write-Host ''
