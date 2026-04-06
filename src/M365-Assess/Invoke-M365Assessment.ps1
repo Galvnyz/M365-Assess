@@ -570,7 +570,7 @@ if ($WhatIf) {
     Write-Host '  Sections:' -ForegroundColor Cyan
     foreach ($s in $Section) {
         $services = if ($sectionServiceMap.ContainsKey($s)) { $sectionServiceMap[$s] -join ', ' } else { '(none)' }
-        $collectorCount = if ($collectorMap.ContainsKey($s)) { $collectorMap[$s].Count } else { 0 }
+        $collectorCount = if ($collectorMap.Contains($s)) { $collectorMap[$s].Count } else { 0 }
         Write-Host "    $([char]0x25B8) $s — $collectorCount collectors — services: $services" -ForegroundColor DarkGray
     }
     Write-Host ''
