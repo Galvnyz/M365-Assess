@@ -38,17 +38,16 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'collector-detail'
         }
 
-        It 'Should render expand/collapse buttons only for sections with multiple collectors' {
-            $html | Should -Match "sectionCollectors\.Count -gt 1"
+        It 'Should include callout-row flex container CSS' {
+            $html | Should -Match 'callout-row'
         }
 
-        It 'Should include matrix-controls CSS class' {
-            $html | Should -Match 'matrix-controls'
+        It 'Should include collector-grid CSS class' {
+            $html | Should -Match 'collector-grid'
         }
 
-        It 'Should hide matrix-controls in print media' {
-            # Verify the print media block suppresses the buttons
-            $html | Should -Match '\.matrix-controls \{ display: none; \}'
+        It 'Should stack callout-row in print media' {
+            $html | Should -Match '\.callout-row \{ display: block; \}'
         }
 
         It 'Should wire expand button to open collector-detail panels in parent section' {

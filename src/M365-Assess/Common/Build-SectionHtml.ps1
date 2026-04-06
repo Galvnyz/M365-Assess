@@ -258,15 +258,36 @@ foreach ($sectionName in $sections) {
     # Expand/Collapse All buttons inline with section heading
     $null = $sectionHtml.AppendLine("<div class='section-toolbar'><button type='button' class='expand-all-btn section-ctrl-btn'>&#9660; Expand All</button><button type='button' class='collapse-all-btn section-ctrl-btn'>&#9650; Collapse All</button></div>")
 
-    # Section description — visible by default (no Read More wrapper)
+    # Collector status — compact chip grid (directly under heading for visibility)
+    $null = $sectionHtml.AppendLine("<div class='collector-grid'>")
+    foreach ($c in $sectionCollectors) {
+        $statusClass = switch ($c.Status) {
+            'Complete' { 'chip-complete' }
+            'Skipped'  { 'chip-skipped' }
+            'Failed'   { 'chip-failed' }
+            default    { '' }
+        }
+        $notes = if ($c.Error) { ConvertTo-HtmlSafe -Text $c.Error } else { '' }
+        $notesHtml = if ($notes) { "<span class='chip-note' title='$notes' onclick='this.classList.toggle(""expanded"")'>$notes</span>" } else { '' }
+        $null = $sectionHtml.AppendLine("<div class='collector-chip $statusClass'>")
+        $null = $sectionHtml.AppendLine("<span class='chip-dot'></span>")
+        $null = $sectionHtml.AppendLine("<span class='chip-name'>$(ConvertTo-HtmlSafe -Text $c.Collector)</span>")
+        $null = $sectionHtml.AppendLine("<span class='chip-count'>$($c.Items)</span>")
+        $null = $sectionHtml.AppendLine($notesHtml)
+        $null = $sectionHtml.AppendLine("</div>")
+    }
+    $null = $sectionHtml.AppendLine("</div>")
+
+    # Section description
     $sectionDesc = $sectionDescriptions[$sectionName]
     if ($sectionDesc) {
         $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
     }
 
-    # Callouts — accordion types as collapsed sub-sections, simple callouts inline
+    # Callouts — flex row so info/warning boxes sit side-by-side on wide viewports
     $callouts = $sectionCallouts[$sectionName]
     if ($callouts) {
+        $null = $sectionHtml.AppendLine("<div class='callout-row'>")
         foreach ($callout in $callouts) {
             if ($callout.Type -eq 'tabs') {
                 $tabGroupId = "tabs-$(($callout.Title -replace '[^a-zA-Z0-9]', '-').ToLower())"
@@ -322,33 +343,7 @@ foreach ($sectionName in $sections) {
                 $null = $sectionHtml.AppendLine("</div>")
             }
         }
-    }
-
-    # Collector status — compact chip grid
-    $null = $sectionHtml.AppendLine("<div class='collector-grid'>")
-
-    foreach ($c in $sectionCollectors) {
-        $statusClass = switch ($c.Status) {
-            'Complete' { 'chip-complete' }
-            'Skipped'  { 'chip-skipped' }
-            'Failed'   { 'chip-failed' }
-            default    { '' }
-        }
-        $notes = if ($c.Error) { ConvertTo-HtmlSafe -Text $c.Error } else { '' }
-        $notesHtml = if ($notes) { "<span class='chip-note' title='$notes' onclick='this.classList.toggle(""expanded"")'>$notes</span>" } else { '' }
-        $null = $sectionHtml.AppendLine("<div class='collector-chip $statusClass'>")
-        $null = $sectionHtml.AppendLine("<span class='chip-dot'></span>")
-        $null = $sectionHtml.AppendLine("<span class='chip-name'>$(ConvertTo-HtmlSafe -Text $c.Collector)</span>")
-        $null = $sectionHtml.AppendLine("<span class='chip-count'>$($c.Items)</span>")
-        $null = $sectionHtml.AppendLine($notesHtml)
         $null = $sectionHtml.AppendLine("</div>")
-    }
-
-    $null = $sectionHtml.AppendLine("</div>")
-
-    # Expand/Collapse buttons (only for sections with multiple collectors)
-    if ($sectionCollectors.Count -gt 1) {
-        $null = $sectionHtml.AppendLine("<div class='matrix-controls'><button type='button' class='expand-all-btn fw-action-btn'>Expand All</button><button type='button' class='collapse-all-btn fw-action-btn'>Collapse All</button></div>")
     }
 
     # ------------------------------------------------------------------
