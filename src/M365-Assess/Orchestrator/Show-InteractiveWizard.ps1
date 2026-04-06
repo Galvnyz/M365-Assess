@@ -181,10 +181,21 @@ function Show-InteractiveWizard {
         Show-Header
         Show-StepHeader -Step $currentStep -Total $totalSteps -Title 'Authentication Method'
 
+        # Check for saved profiles
+        $profileHelper = Join-Path -Path $ProjectRoot -ChildPath 'Setup\Get-M365ConnectionProfile.ps1'
+        $savedProfiles = @()
+        if (Test-Path -Path $profileHelper) {
+            . $profileHelper
+            $savedProfiles = @(Get-M365ConnectionProfile -ErrorAction SilentlyContinue)
+        }
+
         Write-Host '  [1] Interactive login (browser popup)' -ForegroundColor $cNormal
         Write-Host '  [2] Device code login (choose your browser)' -ForegroundColor $cNormal
         Write-Host '  [3] Certificate-based (app-only)' -ForegroundColor $cNormal
         Write-Host '  [4] Skip connection (already connected)' -ForegroundColor $cNormal
+        if ($savedProfiles.Count -gt 0) {
+            Write-Host '  [5] Use saved connection profile' -ForegroundColor $cNormal
+        }
         Write-Host ''
         Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
         $authInput = (Read-Host) ?? ''
@@ -217,8 +228,42 @@ function Show-InteractiveWizard {
                 $authMethod = 'Skip'
                 $step3Done = $true
             }
+            '5' {
+                if ($savedProfiles.Count -eq 0) {
+                    Write-Host '  No saved profiles found.' -ForegroundColor $cError
+                    Start-Sleep -Seconds $errorDisplayDelay
+                }
+                else {
+                    Write-Host ''
+                    Write-Host '  Saved profiles:' -ForegroundColor $cNormal
+                    for ($i = 0; $i -lt $savedProfiles.Count; $i++) {
+                        $sp = $savedProfiles[$i]
+                        $envLabel = if ($sp.Environment -and $sp.Environment -ne 'commercial') { " [$($sp.Environment)]" } else { '' }
+                        Write-Host "    [$($i + 1)] $($sp.Name) -- $($sp.TenantId) ($($sp.AuthMethod))$envLabel" -ForegroundColor $cNormal
+                    }
+                    Write-Host ''
+                    Write-Host '  > ' -ForegroundColor $cPrompt -NoNewline
+                    $profileInput = (Read-Host) ?? ''
+                    $profileIdx = 0
+                    if ([int]::TryParse($profileInput.Trim(), [ref]$profileIdx) -and $profileIdx -ge 1 -and $profileIdx -le $savedProfiles.Count) {
+                        $selected = $savedProfiles[$profileIdx - 1]
+                        $authMethod = $selected.AuthMethod
+                        $wizConnectionProfile = $selected.Name
+                        if ($selected.TenantId) { $wizTenantId = $selected.TenantId }
+                        if ($selected.ClientId) { $wizClientId = $selected.ClientId }
+                        if ($selected.Thumbprint) { $wizCertThumb = $selected.Thumbprint }
+                        if ($selected.UPN) { $wizUpn = $selected.UPN }
+                        $step3Done = $true
+                    }
+                    else {
+                        Write-Host '  Invalid selection.' -ForegroundColor $cError
+                        Start-Sleep -Seconds $errorDisplayDelay
+                    }
+                }
+            }
             default {
-                Write-Host '  ✗ Please enter 1, 2, 3, or 4.' -ForegroundColor $cError
+                $maxOpt = if ($savedProfiles.Count -gt 0) { '5' } else { '4' }
+                Write-Host "  Please enter 1 through $maxOpt." -ForegroundColor $cError
                 Start-Sleep -Seconds $errorDisplayDelay
             }
         }
@@ -470,7 +515,12 @@ function Show-InteractiveWizard {
     if ($wizFrameworkFilter.Count -gt 0) { $wizardResult['FrameworkFilter'] = $wizFrameworkFilter }
     if ($reportOptions['6'].Selected) { $wizardResult['QuickScan'] = $true }
 
-    if ($tenantInput.Trim()) {
+    if ($wizConnectionProfile) {
+        $wizardResult['ConnectionProfile'] = $wizConnectionProfile
+        # Profile overrides tenant input when selected
+        if ($wizTenantId) { $wizardResult['TenantId'] = $wizTenantId }
+    }
+    elseif ($tenantInput.Trim()) {
         $wizardResult['TenantId'] = $tenantInput.Trim()
     }
 

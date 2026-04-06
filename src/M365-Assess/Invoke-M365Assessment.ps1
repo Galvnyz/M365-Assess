@@ -81,6 +81,10 @@
     Show a dry-run preview of what the assessment would do (sections,
     services, Graph scopes, check counts) without connecting or collecting
     data. Useful for validating configuration before a real run.
+.PARAMETER ConnectionProfile
+    Name of a saved connection profile from .m365assess.json. Use
+    Save-M365ConnectionProfile to create profiles. The profile provides
+    TenantId, ClientId, auth method, and other connection parameters.
 .PARAMETER NonInteractive
     Suppresses all interactive prompts for module installation, EXO downgrade,
     and script unblocking. When a required module is missing or incompatible,
@@ -207,7 +211,10 @@ param(
     [switch]$QuickScan,
 
     [Parameter()]
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    [Parameter()]
+    [string]$ConnectionProfile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -304,6 +311,52 @@ if ($launchWizard -and [Environment]::UserInteractive) {
     }
     if ($wizardParams.ContainsKey('FrameworkFilter') -and -not $PSBoundParameters.ContainsKey('FrameworkFilter')) {
         $FrameworkFilter = $wizardParams['FrameworkFilter']
+    }
+    if ($wizardParams.ContainsKey('ConnectionProfile') -and -not $PSBoundParameters.ContainsKey('ConnectionProfile')) {
+        $ConnectionProfile = $wizardParams['ConnectionProfile']
+    }
+}
+
+# ------------------------------------------------------------------
+# Load connection profile (if specified)
+# ------------------------------------------------------------------
+if ($ConnectionProfile) {
+    $profileHelper = Join-Path -Path $projectRoot -ChildPath 'Setup\Get-M365ConnectionProfile.ps1'
+    if (Test-Path -Path $profileHelper) {
+        . $profileHelper
+        $loadedProfile = Get-M365ConnectionProfile -ProfileName $ConnectionProfile
+        if ($loadedProfile) {
+            if (-not $TenantId) { $TenantId = $loadedProfile.TenantId }
+            if ($loadedProfile.ClientId -and -not $ClientId) { $ClientId = $loadedProfile.ClientId }
+            if ($loadedProfile.Thumbprint -and -not $CertificateThumbprint) { $CertificateThumbprint = $loadedProfile.Thumbprint }
+            if ($loadedProfile.UPN -and -not $UserPrincipalName) { $UserPrincipalName = $loadedProfile.UPN }
+            if ($loadedProfile.Environment -and -not $PSBoundParameters.ContainsKey('M365Environment')) {
+                $M365Environment = $loadedProfile.Environment
+            }
+            if ($loadedProfile.AuthMethod -eq 'DeviceCode' -and -not $UseDeviceCode) { $UseDeviceCode = [switch]$true }
+            if ($loadedProfile.AuthMethod -eq 'ManagedIdentity' -and -not $ManagedIdentity) { $ManagedIdentity = [switch]$true }
+
+            # Update last used timestamp
+            $saveHelper = Join-Path -Path $projectRoot -ChildPath 'Setup\Save-M365ConnectionProfile.ps1'
+            $configPath = Join-Path -Path $projectRoot -ChildPath '.m365assess.json'
+            if ((Test-Path -Path $configPath) -and (Test-Path -Path $saveHelper)) {
+                try {
+                    $config = Get-Content -Path $configPath -Raw | ConvertFrom-Json -AsHashtable
+                    if ($config.ContainsKey('profiles') -and $config['profiles'].ContainsKey($ConnectionProfile)) {
+                        $config['profiles'][$ConnectionProfile]['lastUsed'] = (Get-Date -Format 'yyyy-MM-dd HH:mm')
+                        $config | ConvertTo-Json -Depth 5 | Set-Content -Path $configPath -Encoding UTF8
+                    }
+                }
+                catch { }
+            }
+
+            Write-Host ''
+            Write-Host "  Connection profile: $ConnectionProfile ($TenantId)" -ForegroundColor Cyan
+        }
+        else {
+            Write-Error "Connection profile '$ConnectionProfile' not found. Use Get-M365ConnectionProfile to list available profiles."
+            return
+        }
     }
 }
 
