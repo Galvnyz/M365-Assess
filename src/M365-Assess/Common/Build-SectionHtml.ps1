@@ -284,9 +284,10 @@ foreach ($sectionName in $sections) {
         $null = $sectionHtml.AppendLine("<p class='section-description'>$sectionDesc</p>")
     }
 
-    # Callouts — flex row so info/warning boxes sit side-by-side on wide viewports
+    # Callouts — collapsed by default to keep data tables visible
     $callouts = $sectionCallouts[$sectionName]
     if ($callouts) {
+        $null = $sectionHtml.AppendLine("<details class='callout-wrapper'><summary class='callout-toggle'>Learn More</summary>")
         $null = $sectionHtml.AppendLine("<div class='callout-row'>")
         foreach ($callout in $callouts) {
             if ($callout.Type -eq 'tabs') {
@@ -344,6 +345,7 @@ foreach ($sectionName in $sections) {
             }
         }
         $null = $sectionHtml.AppendLine("</div>")
+        $null = $sectionHtml.AppendLine("</details>")
     }
 
     # ------------------------------------------------------------------

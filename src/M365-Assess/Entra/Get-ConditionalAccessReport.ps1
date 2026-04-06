@@ -55,22 +55,44 @@ if ($allPolicies.Count -eq 0) {
     return
 }
 
-$report = foreach ($policy in $allPolicies) {
-    # Flatten included users
-    $includeUsers = if ($policy.Conditions.Users.IncludeUsers) {
-        ($policy.Conditions.Users.IncludeUsers | Sort-Object) -join '; '
+# Build GUID-to-UPN lookup for user references in CA policies
+$guidPattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+$userGuids = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($p in $allPolicies) {
+    foreach ($uid in @($p.Conditions.Users.IncludeUsers; $p.Conditions.Users.ExcludeUsers)) {
+        if ($uid -match $guidPattern) { [void]$userGuids.Add($uid) }
     }
-    else {
-        ''
+}
+$guidToUpn = @{}
+if ($userGuids.Count -gt 0) {
+    Write-Verbose "Resolving $($userGuids.Count) user GUID(s) to UPN..."
+    foreach ($guid in $userGuids) {
+        try {
+            $user = Get-MgUser -UserId $guid -Property UserPrincipalName -ErrorAction Stop
+            $guidToUpn[$guid] = $user.UserPrincipalName
+        }
+        catch {
+            $guidToUpn[$guid] = $guid
+        }
     }
+}
 
-    # Flatten excluded users
-    $excludeUsers = if ($policy.Conditions.Users.ExcludeUsers) {
-        ($policy.Conditions.Users.ExcludeUsers | Sort-Object) -join '; '
+# Helper: resolve user IDs to display names (UPN for GUIDs, pass-through for 'All'/'GuestsOrExternalUsers')
+function Resolve-UserDisplay {
+    param([string[]]$UserIds)
+    if (-not $UserIds) { return '' }
+    $resolved = foreach ($uid in $UserIds) {
+        if ($guidToUpn.ContainsKey($uid)) { $guidToUpn[$uid] } else { $uid }
     }
-    else {
-        ''
-    }
+    ($resolved | Sort-Object) -join '; '
+}
+
+$report = foreach ($policy in $allPolicies) {
+    # Flatten included users (resolve GUIDs to UPN)
+    $includeUsers = Resolve-UserDisplay -UserIds $policy.Conditions.Users.IncludeUsers
+
+    # Flatten excluded users (resolve GUIDs to UPN)
+    $excludeUsers = Resolve-UserDisplay -UserIds $policy.Conditions.Users.ExcludeUsers
 
     # Flatten included applications
     $includeApps = if ($policy.Conditions.Applications.IncludeApplications) {

@@ -193,10 +193,20 @@ function Initialize-CheckProgress {
         Write-Host "    $([char]0x25B8) $label — $count checks" -ForegroundColor DarkGray
     }
     if ($licenseSkipped.Count -gt 0) {
+        # Friendly names for common service plan IDs
+        $planFriendlyNames = @{
+            'AAD_PREMIUM_P2'                    = 'Entra ID P2 (Azure AD Premium P2)'
+            'ATP_ENTERPRISE'                    = 'Microsoft Defender for Office 365'
+            'LOCKBOX_ENTERPRISE'                = 'Customer Lockbox'
+            'INTUNE_A'                          = 'Microsoft Intune'
+            'INFORMATION_PROTECTION_COMPLIANCE' = 'Microsoft 365 compliance (requires Teams license)'
+        }
         Write-Host "  $($licenseSkipped.Count) checks skipped (tenant lacks required license):" -ForegroundColor DarkYellow
         foreach ($skipEntry in $licenseSkipped.GetEnumerator()) {
             $skipInfo = $skipEntry.Value
-            $planList = $skipInfo.RequiredPlans -join ' or '
+            $planList = ($skipInfo.RequiredPlans | ForEach-Object {
+                if ($planFriendlyNames.ContainsKey($_)) { $planFriendlyNames[$_] } else { $_ }
+            }) -join ' or '
             Write-Host "    $([char]0x25B8) $($skipEntry.Key): $($skipInfo.Name)" -ForegroundColor DarkYellow
             Write-Host "      Requires: $planList" -ForegroundColor DarkGray
         }

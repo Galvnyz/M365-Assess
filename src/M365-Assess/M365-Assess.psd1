@@ -46,6 +46,10 @@
         'Get-M365PowerBISecurityConfig'
         'Get-M365PurviewRetentionConfig'
         'Grant-M365AssessConsent'
+        'New-M365ConnectionProfile'
+        'Set-M365ConnectionProfile'
+        'Remove-M365ConnectionProfile'
+        'Get-M365ConnectionProfile'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
@@ -173,6 +177,8 @@
         'controls\frameworks\soc2-tsc.json'
         'controls\frameworks\stig.json'
         'Setup\Grant-M365AssessConsent.ps1'
+        'Setup\Save-M365ConnectionProfile.ps1'
+        'Setup\Get-M365ConnectionProfile.ps1'
         'Setup\PermissionDefinitions.ps1'
         'assets\m365-assess-bg.png'
         'assets\m365-assess-logo-white.png'

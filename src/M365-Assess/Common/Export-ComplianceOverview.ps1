@@ -68,10 +68,18 @@ function Export-ComplianceOverview {
     # License-skipped notice
     if ($global:CheckProgressState -and $global:CheckProgressState.LicenseSkipped.Count -gt 0) {
         $skipCount = $global:CheckProgressState.LicenseSkipped.Count
+        $planFriendlyNames = @{
+            'AAD_PREMIUM_P2'                    = 'Entra ID P2'
+            'ATP_ENTERPRISE'                    = 'Defender for Office 365'
+            'LOCKBOX_ENTERPRISE'                = 'Customer Lockbox'
+            'INTUNE_A'                          = 'Microsoft Intune'
+            'INFORMATION_PROTECTION_COMPLIANCE' = 'Microsoft 365 compliance (requires Teams license)'
+        }
         $skipListHtml = '<ul style="margin:6px 0 0;padding-left:20px;font-size:9pt;">'
         foreach ($entry in $global:CheckProgressState.LicenseSkipped.GetEnumerator()) {
             $info = $entry.Value
-            $planList = if ($info -is [hashtable] -and $info.RequiredPlans) { ($info.RequiredPlans -join ' or ') } else { ($info -join ' or ') }
+            $rawPlans = if ($info -is [hashtable] -and $info.RequiredPlans) { $info.RequiredPlans } else { @($info) }
+            $planList = ($rawPlans | ForEach-Object { if ($planFriendlyNames.ContainsKey($_)) { $planFriendlyNames[$_] } else { $_ } }) -join ' or '
             $checkName = if ($info -is [hashtable] -and $info.Name) { ": $($info.Name)" } else { '' }
             $skipListHtml += "<li><strong>$($entry.Key)</strong>$checkName <span style='color:var(--m365a-medium-gray);'>&mdash; requires $planList</span></li>"
         }

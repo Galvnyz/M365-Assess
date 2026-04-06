@@ -402,7 +402,19 @@ $html = @"
         }
         .section-ctrl-btn:hover { color: var(--m365a-accent); border-color: var(--m365a-accent); }
         .section-description a { color: var(--m365a-accent); }
-        .callout-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 12px 0; }
+        .callout-wrapper { margin: 0 0 12px 0; }
+        .callout-toggle {
+            cursor: pointer;
+            font-size: 9pt;
+            font-weight: 600;
+            color: var(--m365a-accent);
+            list-style: none;
+            padding: 4px 0;
+        }
+        .callout-toggle::-webkit-details-marker { display: none; }
+        .callout-toggle::before { content: '\25B6\00A0'; font-size: 8pt; display: inline-block; transition: transform 0.2s; }
+        details.callout-wrapper[open] > .callout-toggle::before { transform: rotate(90deg); }
+        .callout-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 0 0; }
         .callout {
             flex: 1 1 280px;
             max-width: 480px;
@@ -2046,6 +2058,7 @@ $html = @"
         }
         .nav-title { font-weight: 600; font-size: 11pt; flex-grow: 1; color: var(--m365a-text); text-decoration: none; }
         .nav-title:hover { color: var(--m365a-accent); }
+        .nav-subtitle { display: block; font-size: 7pt; font-weight: 400; color: var(--m365a-medium-gray); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1; margin-top: 1px; }
         .nav-toggle {
             display: none;
             background: var(--m365a-card-bg);
@@ -2141,6 +2154,13 @@ $html = @"
         .report-page { display: none; }
         .report-page.page-active { display: block; }
         .report-layout.show-all-mode .report-page { display: block; }
+
+        /* Hide global expand/collapse in paginated mode -- each section has its own */
+        .report-layout:not(.show-all-mode) .report-controls { display: none; }
+        /* Force sections open in paginated mode -- collapsing makes no sense with one page */
+        .report-layout:not(.show-all-mode) .section[open] > summary,
+        .report-layout:not(.show-all-mode) details.section { pointer-events: auto; }
+        .report-layout:not(.show-all-mode) details.section > summary::after { display: none; }
 
         /* Content takes remaining width */
         .report-layout .content {
@@ -2468,7 +2488,7 @@ $accentCss
     <div class="report-layout" id="reportLayout">
         <nav class="report-nav" id="reportNav" role="navigation" aria-label="Report sections">
             <div class="nav-header">
-                <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noopener" class="nav-title">M365 Assess</a>
+                <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noopener" class="nav-title">M365 Assess<span class="nav-subtitle">repo</span></a>
                 <button class="nav-show-all" id="navShowAll" title="Toggle between paginated and scrollable view">Show All</button>
                 <button class="nav-theme-btn" id="navThemeToggle" aria-label="Toggle dark mode" title="Toggle light/dark mode">
                     <span class="nav-theme-light">&#9788;</span>
@@ -2529,6 +2549,20 @@ foreach ($navSection in $sections) {
             $skippedAll = ($sectionCollectors | Where-Object { $_.Status -eq 'Skipped' }).Count -eq $sectionCollectors.Count
             if ($skippedAll) {
                 $navBadge = "<span class='nav-badge nav-badge-skip'>skip</span>"
+            }
+            elseif ($navSection -eq 'Hybrid') {
+                # Hybrid: show sync status instead of item count
+                $hybridCsv = Get-ChildItem -Path $AssessmentFolder -Filter '23-Hybrid-Sync.csv' -ErrorAction SilentlyContinue
+                if ($hybridCsv) {
+                    $hybridData = Import-Csv -Path $hybridCsv.FullName -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $syncEnabled = $hybridData.OnPremisesSyncEnabled -eq 'True' -or $hybridData.DirSyncConfigured -eq 'True'
+                    if ($syncEnabled) {
+                        $navBadge = "<span class='nav-badge nav-badge-info'>On</span>"
+                    }
+                    else {
+                        $navBadge = "<span class='nav-badge nav-badge-neutral'>Off</span>"
+                    }
+                }
             }
             else {
                 $totalItems = ($sectionCollectors | Where-Object { $_.Status -eq 'Complete' } |
@@ -2860,6 +2894,8 @@ $html += @"
             var target = layout.querySelector('.report-page[data-page="' + pageId + '"]');
             if (target) {
                 target.classList.add('page-active');
+                // Ensure section details are open in paginated mode
+                target.querySelectorAll('details.section').forEach(function(d) { d.open = true; });
             } else if (pages.length > 0) {
                 // Fallback to first page
                 pages[0].classList.add('page-active');

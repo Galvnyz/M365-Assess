@@ -149,6 +149,7 @@ function Export-SecurityConfigReport {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [object[]]$Settings,
 
         [Parameter()]
