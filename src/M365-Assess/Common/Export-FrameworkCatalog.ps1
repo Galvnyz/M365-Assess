@@ -233,7 +233,7 @@ function ConvertTo-CatalogInlineHtml {
 
     # Group breakdown table
     $null = $html.AppendLine("<table class='catalog-groups'><thead><tr>")
-    $null = $html.AppendLine("<th>Group</th><th>Label</th><th>Coverage</th><th>Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
+    $null = $html.AppendLine("<th>Group</th><th>Label</th><th>Coverage %</th><th>Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
     $null = $html.AppendLine("</tr></thead><tbody>")
 
     foreach ($group in $groups) {
@@ -243,7 +243,8 @@ function ConvertTo-CatalogInlineHtml {
         $null = $html.AppendLine("<tr>")
         $null = $html.AppendLine("<td><span class='fw-tag $fwCss'>$($group.Key)</span></td>")
         $null = $html.AppendLine("<td>$($group.Label)</td>")
-        $coverageDisplay = if ($group.Total -gt 0) { "$($group.Covered)/$($group.Total)" } else { "$($group.Covered)" }
+        $coveragePctVal = if ($group.Total -gt 0) { [math]::Round(($group.Covered / $group.Total) * 100, 0) } else { 0 }
+        $coverageDisplay = if ($group.Total -gt 0) { "<span title='$($group.Covered) of $($group.Total) controls'>$coveragePctVal%</span>" } else { "$($group.Covered)" }
         $null = $html.AppendLine("<td>$coverageDisplay</td>")
         $null = $html.AppendLine("<td>$($group.Mapped)</td>")
         $null = $html.AppendLine("<td>$($group.Passed)</td>")
@@ -351,7 +352,7 @@ function ConvertTo-CatalogStandaloneHtml {
     # Group breakdown table
     $null = $body.AppendLine("<h2>Group Breakdown</h2>")
     $null = $body.AppendLine("<table class='catalog-groups'><thead><tr>")
-    $null = $body.AppendLine("<th>Group</th><th>Label</th><th>Coverage</th><th>Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
+    $null = $body.AppendLine("<th>Group</th><th>Label</th><th>Coverage %</th><th>Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
     $null = $body.AppendLine("</tr></thead><tbody>")
 
     foreach ($group in $groups) {
@@ -361,7 +362,8 @@ function ConvertTo-CatalogStandaloneHtml {
         $null = $body.AppendLine("<tr>")
         $null = $body.AppendLine("<td><span class='fw-tag $fwCss'>$($group.Key)</span></td>")
         $null = $body.AppendLine("<td>$($group.Label)</td>")
-        $coverageDisplay = if ($group.Total -gt 0) { "$($group.Covered)/$($group.Total)" } else { "$($group.Covered)" }
+        $coveragePctVal = if ($group.Total -gt 0) { [math]::Round(($group.Covered / $group.Total) * 100, 0) } else { 0 }
+        $coverageDisplay = if ($group.Total -gt 0) { "<span title='$($group.Covered) of $($group.Total) controls'>$coveragePctVal%</span>" } else { "$($group.Covered)" }
         $null = $body.AppendLine("<td>$coverageDisplay</td>")
         $null = $body.AppendLine("<td>$($group.Mapped)</td>")
         $null = $body.AppendLine("<td>$($group.Passed)</td>")
