@@ -170,6 +170,7 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 | `-SkipPdf` | switch | | Skip PDF generation even when wkhtmltopdf is available |
 | `-FrameworkFilter` | string[] | *(all)* | Limit compliance overview to specific framework families (e.g., `CIS`, `NIST`) |
 | `-CustomBranding` | hashtable | | White-label reports. Keys: `CompanyName`, `LogoPath`, `AccentColor` |
+| `-FrameworkExport` | string[] | | Generate standalone per-framework HTML catalog exports (e.g., `CIS`, `NIST`, or `All`) |
 | `-CisBenchmarkVersion` | string | `v6` | CIS benchmark version (`v6` for v6.0.1). Set to `v7` when available |
 | `-QuickScan` | switch | | Run only Critical and High severity checks for faster CI/CD or daily monitoring |
 | `-DryRun` | switch | | Preview sections, services, scopes, and check counts without connecting |
@@ -293,7 +294,7 @@ The self-contained HTML report opens in any browser with no dependencies. Click 
 
 </div>
 
-> See [docs/sample-report/Example-Report.html](docs/sample-report/Example-Report.html) for a full PII-scrubbed example report.
+> See [docs/sample-report/_Example-Report.html](docs/sample-report/_Example-Report.html) for a full PII-scrubbed example report.
 
 ## Project Structure
 
