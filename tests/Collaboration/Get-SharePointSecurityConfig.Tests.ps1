@@ -615,6 +615,177 @@ Describe 'Get-SharePointSecurityConfig' {
         }
     }
 
+    Context 'SPO-SITE-001 Fail when a site exceeds tenant sharing level' {
+        BeforeAll {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                switch -Wildcard ($Uri) {
+                    '*/v1.0/admin/sharepoint/settings' {
+                        return @{
+                            sharingCapability              = 'disabled'
+                            isResharingByExternalUsersEnabled = $false
+                            sharingDomainRestrictionMode    = 'none'
+                            isUnmanagedSyncClientRestricted = $true
+                            isMacSyncAppEnabled             = $false
+                            isLoopEnabled                   = $false
+                            oneDriveLoopSharingCapability   = 'disabled'
+                            defaultSharingLinkType          = 'specificPeople'
+                            externalUserExpirationRequired  = $true
+                            externalUserExpireInDays        = 30
+                            emailAttestationRequired        = $true
+                            emailAttestationReAuthDays      = 15
+                            defaultLinkPermission           = 'view'
+                            legacyAuthProtocolsEnabled      = $false
+                        }
+                    }
+                    '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
+                    '*/beta/admin/sharepoint/settings' {
+                        return @{
+                            isB2BIntegrationEnabled     = $true
+                            oneDriveSharingCapability   = 'disabled'
+                            disallowInfectedFileDownload = $true
+                            sharingCapability           = 'disabled'
+                        }
+                    }
+                    '*/v1.0/sites*' {
+                        return @{ value = @(
+                            [PSCustomObject]@{ id = '1'; displayName = 'Open Site'; sharingCapability = 'externalUserAndGuestSharing'; webUrl = 'https://tenant.sharepoint.com/sites/open' }
+                        )}
+                    }
+                    '*/v1.0/identity/conditionalAccess/policies' {
+                        return @{ value = @(
+                            @{ id = 'ca1'; displayName = 'All Apps'; state = 'enabled'; conditions = @{ applications = @{ includeApplications = @('All') } } }
+                        )}
+                    }
+                    default { return @{ value = @() } }
+                }
+            }
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+            . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-SharePointSecurityConfig.ps1"
+        }
+
+        It 'SPO-SITE-001 fails when a site is more permissive than tenant sharing level' {
+            $siteCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-001*' }
+            $siteCheck | Should -Not -BeNullOrEmpty
+            $siteCheck.Status | Should -Be 'Fail'
+        }
+    }
+
+    Context 'SPO-SITE-002 Warning when sensitive site has external sharing enabled' {
+        BeforeAll {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                switch -Wildcard ($Uri) {
+                    '*/v1.0/admin/sharepoint/settings' {
+                        return @{
+                            sharingCapability              = 'externalUserAndGuestSharing'
+                            isResharingByExternalUsersEnabled = $false
+                            sharingDomainRestrictionMode    = 'none'
+                            isUnmanagedSyncClientRestricted = $true
+                            isMacSyncAppEnabled             = $false
+                            isLoopEnabled                   = $false
+                            oneDriveLoopSharingCapability   = 'disabled'
+                            defaultSharingLinkType          = 'specificPeople'
+                            externalUserExpirationRequired  = $true
+                            externalUserExpireInDays        = 30
+                            emailAttestationRequired        = $true
+                            emailAttestationReAuthDays      = 15
+                            defaultLinkPermission           = 'view'
+                            legacyAuthProtocolsEnabled      = $false
+                        }
+                    }
+                    '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
+                    '*/beta/admin/sharepoint/settings' {
+                        return @{
+                            isB2BIntegrationEnabled     = $true
+                            oneDriveSharingCapability   = 'externalUserAndGuestSharing'
+                            disallowInfectedFileDownload = $true
+                            sharingCapability           = 'externalUserAndGuestSharing'
+                        }
+                    }
+                    '*/v1.0/sites*' {
+                        return @{ value = @(
+                            [PSCustomObject]@{ id = '1'; displayName = 'Finance Team'; sharingCapability = 'externalUserAndGuestSharing'; webUrl = 'https://tenant.sharepoint.com/sites/finance' }
+                            [PSCustomObject]@{ id = '2'; displayName = 'HR Portal'; sharingCapability = 'externalUserSharingOnly'; webUrl = 'https://tenant.sharepoint.com/sites/hr' }
+                        )}
+                    }
+                    '*/v1.0/identity/conditionalAccess/policies' {
+                        return @{ value = @(
+                            @{ id = 'ca1'; displayName = 'All Apps'; state = 'enabled'; conditions = @{ applications = @{ includeApplications = @('All') } } }
+                        )}
+                    }
+                    default { return @{ value = @() } }
+                }
+            }
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+            . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-SharePointSecurityConfig.ps1"
+        }
+
+        It 'SPO-SITE-002 warns when a sensitive-named site has external sharing' {
+            $sensitiveCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-002*' }
+            $sensitiveCheck | Should -Not -BeNullOrEmpty
+            $sensitiveCheck.Status | Should -Be 'Warning'
+        }
+    }
+
+    Context 'SPO-VERSIONING-001 passes when versioning property meets limit' {
+        BeforeAll {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                switch -Wildcard ($Uri) {
+                    '*/v1.0/admin/sharepoint/settings' {
+                        return @{
+                            sharingCapability              = 'existingExternalUserSharingOnly'
+                            isResharingByExternalUsersEnabled = $false
+                            sharingDomainRestrictionMode    = 'allowList'
+                            isUnmanagedSyncClientRestricted = $true
+                            isMacSyncAppEnabled             = $false
+                            isLoopEnabled                   = $false
+                            oneDriveLoopSharingCapability   = 'disabled'
+                            defaultSharingLinkType          = 'specificPeople'
+                            externalUserExpirationRequired  = $true
+                            externalUserExpireInDays        = 30
+                            emailAttestationRequired        = $true
+                            emailAttestationReAuthDays      = 15
+                            defaultLinkPermission           = 'view'
+                            legacyAuthProtocolsEnabled      = $false
+                            majorVersionLimit              = 200
+                        }
+                    }
+                    '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
+                    '*/beta/admin/sharepoint/settings' {
+                        return @{
+                            isB2BIntegrationEnabled     = $true
+                            oneDriveSharingCapability   = 'existingExternalUserSharingOnly'
+                            disallowInfectedFileDownload = $true
+                            sharingCapability           = 'existingExternalUserSharingOnly'
+                        }
+                    }
+                    '*/v1.0/sites*' {
+                        return @{ value = @(
+                            [PSCustomObject]@{ id = '1'; displayName = 'Team'; sharingCapability = 'disabled'; webUrl = 'https://t.sharepoint.com/s/t' }
+                        )}
+                    }
+                    '*/v1.0/identity/conditionalAccess/policies' {
+                        return @{ value = @(
+                            @{ id = 'ca1'; displayName = 'All Apps'; state = 'enabled'; conditions = @{ applications = @{ includeApplications = @('All') } } }
+                        )}
+                    }
+                    default { return @{ value = @() } }
+                }
+            }
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+            . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-SharePointSecurityConfig.ps1"
+        }
+
+        It 'SPO-VERSIONING-001 passes when majorVersionLimit is 200' {
+            $versionCheck = $settings | Where-Object { $_.CheckId -like 'SPO-VERSIONING-001*' }
+            $versionCheck | Should -Not -BeNullOrEmpty
+            $versionCheck.Status | Should -Be 'Pass'
+        }
+    }
+
+
     AfterAll {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
