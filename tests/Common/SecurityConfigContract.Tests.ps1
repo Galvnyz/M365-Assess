@@ -224,6 +224,77 @@ Describe 'Adoption Signal Accumulator' {
     }
 }
 
+Describe 'SecurityConfigHelper.ps1 - Additional Edge Cases' {
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+    }
+
+    Context 'Add-SecuritySetting edge cases' {
+        It 'should accept empty string for CurrentValue' {
+            $ctx = Initialize-SecurityConfig
+            {
+                Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+                    -Category 'Test' -Setting 'Empty Current' `
+                    -CurrentValue '' -RecommendedValue 'Enabled' `
+                    -Status 'Fail' -CheckId 'TEST-EDGE-001'
+            } | Should -Not -Throw
+            $ctx.Settings.Count | Should -Be 1
+            $ctx.Settings[0].CurrentValue | Should -BeExactly ''
+        }
+
+        It 'should accept empty string for RecommendedValue' {
+            $ctx = Initialize-SecurityConfig
+            {
+                Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+                    -Category 'Test' -Setting 'Empty Recommended' `
+                    -CurrentValue 'Value' -RecommendedValue '' `
+                    -Status 'Info' -CheckId 'TEST-EDGE-002'
+            } | Should -Not -Throw
+        }
+
+        It 'should produce .1, .2, .3 suffixes when same CheckId added three times' {
+            $ctx = Initialize-SecurityConfig
+            1..3 | ForEach-Object {
+                Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+                    -Category 'Auth' -Setting "Item $_" `
+                    -CurrentValue 'X' -RecommendedValue 'Y' `
+                    -Status 'Pass' -CheckId 'TEST-MULTI-001'
+            }
+            $ctx.Settings[0].CheckId | Should -Be 'TEST-MULTI-001.1'
+            $ctx.Settings[1].CheckId | Should -Be 'TEST-MULTI-001.2'
+            $ctx.Settings[2].CheckId | Should -Be 'TEST-MULTI-001.3'
+        }
+    }
+
+    Context 'Export-SecurityConfigReport pipeline output' {
+        It 'should return objects to pipeline when no OutputPath is provided' {
+            $testSettings = @(
+                [PSCustomObject]@{ Category = 'X'; Setting = 'S1'; Status = 'Pass' }
+                [PSCustomObject]@{ Category = 'Y'; Setting = 'S2'; Status = 'Fail' }
+                [PSCustomObject]@{ Category = 'Z'; Setting = 'S3'; Status = 'Warning' }
+            )
+            $result = @(Export-SecurityConfigReport -Settings $testSettings -ServiceLabel 'EdgeTest')
+            # Output includes the Write-Output string message plus the settings array items
+            $result.Count | Should -BeGreaterOrEqual 2
+        }
+
+        It 'should include all settings when returned to pipeline' {
+            $testSettings = @(
+                [PSCustomObject]@{ Category = 'A'; Setting = 'S1'; Status = 'Pass' }
+                [PSCustomObject]@{ Category = 'B'; Setting = 'S2'; Status = 'Fail' }
+            )
+            $result = @(Export-SecurityConfigReport -Settings $testSettings -ServiceLabel 'PipelineEdge')
+            # At least the 2 objects should be in the output
+            $objectResults = @($result | Where-Object { $_ -is [PSCustomObject] })
+            $objectResults.Count | Should -Be 2
+        }
+    }
+}
+
 Describe 'Collector Contract Compliance' -ForEach @(
     $CollectorFiles | ForEach-Object {
         @{ FileName = $_.Name; FilePath = $_.FullName; RelativePath = $_.FullName -replace [regex]::Escape((Resolve-Path "$PSScriptRoot/../..").Path + '\'), '' }
