@@ -521,7 +521,7 @@ foreach ($sectionName in $sections) {
 
         # Also pre-load DNS Authentication data
         $dnsCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '12-DNS-Email-Authentication.csv'
-        $dnsData = if (Test-Path $dnsCsvPath) { @(Import-Csv $dnsCsvPath) } else { @() }
+        $dnsData = if (Test-Path $dnsCsvPath) { @(Import-Csv $dnsCsvPath | Where-Object { $_.Domain -notmatch '\.onmicrosoft\.com$' }) } else { @() }
         $hasDns = $dnsData.Count -gt 0
 
         if ($hasMailbox -or $hasExo -or $hasPolicies -or $hasDns) {
