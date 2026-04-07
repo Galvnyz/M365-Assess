@@ -117,6 +117,37 @@ Describe 'Invoke-DnsAuthentication' {
         }
     }
 
+    Context 'when accepted domains include .onmicrosoft.com' {
+        BeforeAll {
+            $script:runDnsAuthentication = $true
+            $script:cachedAcceptedDomains = @(
+                [PSCustomObject]@{ DomainName = 'contoso.com'; DomainType = 'Authoritative'; Default = $true }
+                [PSCustomObject]@{ DomainName = 'contoso.onmicrosoft.com'; DomainType = 'Authoritative'; Default = $false }
+            )
+            $script:cachedDkimConfigs = $null
+            $script:dnsPrefetchJobs = $null
+
+            $summaryResults = [System.Collections.Generic.List[PSCustomObject]]::new()
+            $issues = [System.Collections.Generic.List[PSCustomObject]]::new()
+            $dnsCollector = @{ Name = '12-DNS-Email-Authentication'; Label = 'DNS Email Authentication' }
+            $assessmentFolder = $TestDrive
+            $projectRoot = Join-Path $PSScriptRoot '../../src/M365-Assess'
+
+            Mock Export-AssessmentCsv { return 1 }
+            Mock Resolve-DnsRecord { $null }
+
+            Invoke-DnsAuthentication -AssessmentFolder $assessmentFolder -ProjectRoot $projectRoot -SummaryResults $summaryResults -Issues $issues -DnsCollector $dnsCollector
+        }
+
+        It 'should not attempt DNS resolution for .onmicrosoft.com domains' {
+            Should -Invoke Resolve-DnsRecord -ParameterFilter { $Name -like '*onmicrosoft*' } -Times 0 -Exactly
+        }
+
+        It 'should complete without issues' {
+            $issues.Count | Should -Be 0
+        }
+    }
+
     Context 'when Get-AcceptedDomain throws (fallback from cache)' {
         BeforeAll {
             $script:runDnsAuthentication = $true

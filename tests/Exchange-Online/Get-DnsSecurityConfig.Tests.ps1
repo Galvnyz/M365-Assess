@@ -191,3 +191,77 @@ Describe 'Get-DnsSecurityConfig - Missing Records' {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-DnsSecurityConfig - .onmicrosoft.com filtering' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function Get-AcceptedDomain { }
+        function Resolve-DnsRecord { }
+        function Get-DkimSigningConfig { }
+
+        # Return one real domain plus one Microsoft-managed .onmicrosoft.com domain
+        Mock Get-AcceptedDomain {
+            return @(
+                [PSCustomObject]@{ DomainName = 'contoso.com'; DomainType = 'Authoritative' }
+                [PSCustomObject]@{ DomainName = 'contoso.onmicrosoft.com'; DomainType = 'Authoritative' }
+            )
+        }
+
+        Mock Resolve-DnsRecord {
+            param($Name, $Type)
+            if ($Name -eq 'contoso.com' -and $Type -eq 'TXT') {
+                return @([PSCustomObject]@{ Strings = @('v=spf1 include:spf.protection.outlook.com -all') })
+            }
+            if ($Name -eq '_dmarc.contoso.com' -and $Type -eq 'TXT') {
+                return @([PSCustomObject]@{ Strings = @('v=DMARC1; p=reject; rua=mailto:dmarc@contoso.com') })
+            }
+            return $null
+        }
+
+        Mock Get-Command {
+            param($Name, $ErrorAction)
+            if ($Name -eq 'Update-CheckProgress') {
+                return [PSCustomObject]@{ Name = 'Update-CheckProgress' }
+            }
+            return $null
+        }
+
+        Mock Get-DkimSigningConfig {
+            return @([PSCustomObject]@{ Domain = 'contoso.com'; Enabled = $true })
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-DnsSecurityConfig.ps1"
+    }
+
+    It 'should produce a Pass verdict when the real domain passes (not penalized for .onmicrosoft.com)' {
+        $check = $settings | Where-Object { $_.Setting -eq 'SPF Records' }
+        $check.Status | Should -Be 'Pass'
+    }
+
+    It 'should report 1/1 in CurrentValue -- .onmicrosoft.com excluded from domain count' {
+        $check = $settings | Where-Object { $_.Setting -eq 'SPF Records' }
+        $check.CurrentValue | Should -Match '1/1'
+    }
+
+    It 'should not attempt DNS resolution for .onmicrosoft.com' {
+        Should -Invoke Resolve-DnsRecord -ParameterFilter { $Name -like '*onmicrosoft*' } -Times 0 -Exactly
+    }
+
+    It 'DKIM check passes for the real domain only' {
+        $check = $settings | Where-Object { $_.Setting -eq 'DKIM Signing' }
+        $check.Status | Should -Be 'Pass'
+    }
+
+    It 'DMARC check passes for the real domain only' {
+        $check = $settings | Where-Object { $_.Setting -eq 'DMARC Records' }
+        $check.Status | Should -Be 'Pass'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}

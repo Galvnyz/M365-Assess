@@ -84,13 +84,17 @@ $authDomains = @()
 if ($AcceptedDomains -and $AcceptedDomains.Count -gt 0) {
     # Use pre-cached domains passed by the orchestrator
     Write-Verbose "Using $($AcceptedDomains.Count) pre-cached accepted domain(s)"
-    $authDomains = @($AcceptedDomains | Where-Object { $_.DomainType -eq 'Authoritative' })
+    $authDomains = @($AcceptedDomains | Where-Object {
+        $_.DomainType -eq 'Authoritative' -and $_.DomainName -notlike '*.onmicrosoft.com'
+    })
 }
 else {
     try {
         Write-Verbose "Fetching accepted domains..."
         $allDomains = Get-AcceptedDomain -ErrorAction Stop
-        $authDomains = @($allDomains | Where-Object { $_.DomainType -eq 'Authoritative' })
+        $authDomains = @($allDomains | Where-Object {
+            $_.DomainType -eq 'Authoritative' -and $_.DomainName -notlike '*.onmicrosoft.com'
+        })
     }
     catch {
         Write-Warning "Could not retrieve accepted domains: $_"
@@ -200,17 +204,11 @@ else {
             else { $dkimMissing += $domainName }
         }
 
-        $dkimOnMsft = @($dkimEnabled | Where-Object { $_ -match '\.onmicrosoft\.com$' })
-        $dkimOnMsftNote = ''
-        if ($dkimOnMsft.Count -gt 0) {
-            $dkimOnMsftNote = " ($($dkimOnMsft.Count) .onmicrosoft.com domain(s) EXO-confirmed; DNS CNAME may not be publicly resolvable)"
-        }
-
         if ($dkimMissing.Count -eq 0) {
             $settingParams = @{
                 Category         = 'DNS Authentication'
                 Setting          = 'DKIM Signing'
-                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled$dkimOnMsftNote"
+                CurrentValue     = "$($dkimEnabled.Count)/$($authDomains.Count) domains have DKIM enabled"
                 RecommendedValue = 'DKIM for all domains'
                 Status           = 'Pass'
                 CheckId          = 'DNS-DKIM-001'

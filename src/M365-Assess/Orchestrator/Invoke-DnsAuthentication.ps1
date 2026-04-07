@@ -21,6 +21,13 @@ if ($script:runDnsAuthentication) {
 
     if ($acceptedDomains -and $acceptedDomains.Count -gt 0) {
 
+    # Exclude Microsoft-managed .onmicrosoft.com domains -- no DNS records can be published for them
+    $msftCount = @($acceptedDomains | Where-Object { $_.DomainName -like '*.onmicrosoft.com' }).Count
+    $acceptedDomains = @($acceptedDomains | Where-Object { $_.DomainName -notlike '*.onmicrosoft.com' })
+    if ($msftCount -gt 0) {
+        Write-Verbose "Skipped $msftCount .onmicrosoft.com domain(s) from DNS enumeration -- Microsoft-managed, no public DNS records"
+    }
+
     # Collect prefetched DNS cache (started during Graph connect)
     $dnsCache = @{}
     if ($script:dnsPrefetchJobs) {
@@ -189,12 +196,7 @@ if ($script:runDnsAuthentication) {
                     $dkimStatus = 'OK'
                 }
                 elseif (-not $dkimDnsFound -and $exoDkimEnabled) {
-                    if ($domainName -match '\.onmicrosoft\.com$') {
-                        $dkimStatus = 'EXO Confirmed (DNS not public for .onmicrosoft.com)'
-                    }
-                    else {
-                        $dkimStatus = 'Mismatch: EXO enabled but DNS CNAME not found'
-                    }
+                    $dkimStatus = 'Mismatch: EXO enabled but DNS CNAME not found'
                 }
                 elseif ($dkimDnsFound -and -not $exoDkimEnabled) {
                     $dkimStatus = 'Mismatch: DNS CNAME exists but EXO signing disabled'
