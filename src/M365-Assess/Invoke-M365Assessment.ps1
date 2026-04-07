@@ -706,7 +706,9 @@ foreach ($sectionName in $Section) {
 
     # For sections that require Graph, verify the token is still valid before
     # running collectors. Device code tokens expire mid-run for long assessments.
-    if (-not $SkipConnection -and $sectionServiceMap[$sectionName] -contains 'Graph') {
+    # Only check if Graph was already connected in a prior section — on the first
+    # Graph section the token cannot have expired yet (Connect-RequiredService runs below).
+    if (-not $SkipConnection -and $sectionServiceMap[$sectionName] -contains 'Graph' -and $connectedServices.Contains('Graph')) {
         if (-not (Test-GraphTokenValid)) {
             Write-Warning "Graph token is no longer valid before starting $sectionName. Skipping section — re-run with Interactive or Certificate auth."
             foreach ($collector in $collectors) {
