@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '1.8.1'
+    ModuleVersion     = '1.9.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -194,7 +194,7 @@
                              'PowerBI', 'CIS', 'NIST', 'SOC2', 'HIPAA', 'ZeroTrust', 'SecurityBaseline')
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v1.8.1 - Fix connection profile regression: token validity check no longer fires before first Graph connection'
+            ReleaseNotes = 'v1.9.0 - Fix .onmicrosoft.com false-positive DNS failures; QuickScan now auto-applies triage report format (no cover page, exec summary, or compliance matrix)'
         }
     }
 }

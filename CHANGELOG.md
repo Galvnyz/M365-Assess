@@ -4,6 +4,14 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-04-07
+
+### Added
+- **QuickScan triage report format** -- `-QuickScan` now automatically omits the cover page, executive summary, and compliance overview to produce a compact, action-focused report. Each section can be individually re-enabled with `-SkipCoverPage:$false`, `-SkipExecutiveSummary:$false`, or `-SkipComplianceOverview:$false`. (#372)
+
+### Fixed
+- **DNS false-positive failures for .onmicrosoft.com domains** -- SPF, DKIM, and DMARC checks were evaluating Microsoft-managed `.onmicrosoft.com` accepted domains and marking tenants as Fail when those domains had no DNS records (they cannot, by design). These domains are now filtered at the source before any DNS check runs. (#394)
+
 ## [1.8.1] - 2026-04-07
 
 ### Fixed
