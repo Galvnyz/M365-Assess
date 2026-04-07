@@ -11,21 +11,14 @@ Describe 'Get-DnsSecurityConfig .onmicrosoft.com DKIM handling' {
         function Resolve-DnsRecord { }
         function Get-DkimSigningConfig { }
 
+        # Only a .onmicrosoft.com domain -- filtered out at domain assembly
         Mock Get-AcceptedDomain {
             return @(
                 [PSCustomObject]@{ DomainName = 'contoso.onmicrosoft.com'; DomainType = 'Authoritative' }
             )
         }
 
-        # DNS returns nothing for .onmicrosoft.com DKIM selectors
         Mock Resolve-DnsRecord {
-            param($Name, $Type)
-            if ($Name -eq 'contoso.onmicrosoft.com' -and $Type -eq 'TXT') {
-                return @([PSCustomObject]@{ Strings = @('v=spf1 include:spf.protection.outlook.com -all') })
-            }
-            if ($Name -eq '_dmarc.contoso.onmicrosoft.com' -and $Type -eq 'TXT') {
-                return @([PSCustomObject]@{ Strings = @('v=DMARC1; p=reject; rua=mailto:dmarc@contoso.com') })
-            }
             return $null
         }
 
@@ -37,7 +30,6 @@ Describe 'Get-DnsSecurityConfig .onmicrosoft.com DKIM handling' {
             return $null
         }
 
-        # EXO says DKIM is enabled
         Mock Get-DkimSigningConfig {
             return @([PSCustomObject]@{
                 Domain  = 'contoso.onmicrosoft.com'
@@ -49,15 +41,19 @@ Describe 'Get-DnsSecurityConfig .onmicrosoft.com DKIM handling' {
         . "$PSScriptRoot/../../src/M365-Assess/Exchange-Online/Get-DnsSecurityConfig.ps1"
     }
 
-    It 'Should pass DKIM check when EXO confirms signing for .onmicrosoft.com domain' {
+    It 'Should emit Review status when all accepted domains are .onmicrosoft.com (no checkable domains)' {
         $settings | Should -Not -BeNullOrEmpty
         $dkimRow = $settings | Where-Object { $_.Setting -eq 'DKIM Signing' }
         $dkimRow | Should -Not -BeNullOrEmpty
-        $dkimRow.Status | Should -Be 'Pass'
+        $dkimRow.Status | Should -Be 'Review'
     }
 
-    It 'Should note that DKIM is EXO-confirmed for .onmicrosoft.com in CurrentValue' {
+    It 'Should report no authoritative domains found when only .onmicrosoft.com domains exist' {
         $dkimRow = $settings | Where-Object { $_.Setting -eq 'DKIM Signing' }
-        $dkimRow.CurrentValue | Should -Match 'EXO.confirmed|onmicrosoft'
+        $dkimRow.CurrentValue | Should -Match 'No authoritative domains'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
