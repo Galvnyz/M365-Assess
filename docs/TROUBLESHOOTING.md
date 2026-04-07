@@ -244,17 +244,17 @@ Invoke-M365Assessment -TenantId <tenant-id> `
 
 ### Cause
 
-The `MicrosoftPowerBIMgmt` module only supports interactive (browser-based) authentication. It does not support certificate or client-secret authentication, so it cannot run in fully unattended pipelines.
+The `MicrosoftPowerBIMgmt` module supports interactive, certificate, and client secret authentication, but does not support device code or managed identity. Connection issues typically occur in headless environments where interactive login is expected but no browser is available.
 
 ### Resolution
 
-**Option A -- Skip the Power BI section:**
+**Option A -- Exclude the Power BI section:**
 
 ```powershell
-Invoke-M365Assessment -SkipPowerBI
+Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,Hybrid
 ```
 
-Use this when running in CI/CD or any non-interactive context.
+Omit `PowerBI` from the `-Section` list when running in CI/CD or any non-interactive context.
 
 **Option B -- Authenticate interactively before running the assessment:**
 
@@ -270,7 +270,7 @@ Invoke-M365Assessment
 
 If you need Power BI data but run most sections non-interactively, run two passes:
 
-1. Run the full assessment with `-SkipPowerBI` in your pipeline
+1. Run the full assessment without `PowerBI` in your `-Section` list in your pipeline
 2. Run a second interactive pass with only the Power BI section enabled
 
 ---
