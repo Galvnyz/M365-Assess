@@ -2954,6 +2954,7 @@ $html += @"
                 target.classList.add('page-active');
                 // Ensure section details are open in paginated mode
                 target.querySelectorAll('details.section').forEach(function(d) { d.open = true; });
+                initPageTableExpand(target);
             } else if (pages.length > 0) {
                 // Fallback to first page
                 pages[0].classList.add('page-active');
@@ -3052,6 +3053,7 @@ $html += @"
                     showAllBtn.textContent = 'Paginate';
                     showAllBtn.classList.add('active-toggle');
                     // Show all pages and keep current active highlighted
+                    pages.forEach(function(p) { initPageTableExpand(p); });
                 } else {
                     layout.classList.remove('show-all-mode');
                     showAllBtn.textContent = 'Show All';
@@ -3121,6 +3123,35 @@ $html += @"
                 }
             });
         });
+
+        // Inject expand buttons into tables in a page once it becomes visible.
+        // Must run after page-active is applied so scrollHeight reflects real layout.
+        function initPageTableExpand(page) {
+            // Universal expand for all collector-detail table-wrappers
+            page.querySelectorAll('.collector-detail .table-wrapper:not([data-expand-init])').forEach(function(wrapper) {
+                wrapper.setAttribute('data-expand-init', '1');
+                if (wrapper.scrollHeight <= wrapper.clientHeight) { return; }
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'table-expand-btn';
+                btn.textContent = '\u25BC Expand table';
+                btn.addEventListener('click', function() {
+                    wrapper.classList.toggle('expanded');
+                    btn.textContent = wrapper.classList.contains('expanded')
+                        ? '\u25B2 Collapse table'
+                        : '\u25BC Expand table';
+                });
+                wrapper.parentNode.insertBefore(btn, wrapper.nextSibling);
+            });
+            // Remediation viewport: hide show-more button only when table fits
+            var vp   = page.querySelector('#remTableViewport');
+            var sm   = page.querySelector('#remShowMore');
+            var fade = page.querySelector('#remViewportFade');
+            if (vp && sm && vp.scrollHeight <= vp.clientHeight) {
+                sm.style.display = 'none';
+                if (fade) { fade.style.display = 'none'; }
+            }
+        }
 
         // Initialize: show the correct page on load
         var initialPage = getInitialPage();
@@ -3580,32 +3611,6 @@ $html += @"
         }
     }
 
-    (function initRemTable() {
-        var vp   = document.getElementById('remTableViewport');
-        var sm   = document.getElementById('remShowMore');
-        var fade = document.getElementById('remViewportFade');
-        if (vp && sm && vp.scrollHeight <= vp.clientHeight) {
-            sm.style.display   = 'none';
-            if (fade) { fade.style.display = 'none'; }
-        }
-    }());
-
-    (function initTableExpand() {
-        document.querySelectorAll('.collector-detail .table-wrapper').forEach(function(wrapper) {
-            if (wrapper.scrollHeight <= wrapper.clientHeight) { return; }
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'table-expand-btn';
-            btn.textContent = '\u25BC Expand table';
-            btn.addEventListener('click', function() {
-                wrapper.classList.toggle('expanded');
-                btn.textContent = wrapper.classList.contains('expanded')
-                    ? '\u25B2 Collapse table'
-                    : '\u25BC Expand table';
-            });
-            wrapper.parentNode.insertBefore(btn, wrapper.nextSibling);
-        });
-    }());
     </script>
 </body>
 </html>
