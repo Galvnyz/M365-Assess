@@ -103,7 +103,7 @@ jobs:
       matrix:
         ps-version: ['7.4', '7.6']
     env:
-      COVERAGE_THRESHOLD: 50
+      COVERAGE_THRESHOLD: 65
     steps:
       - uses: actions/checkout@v4
 

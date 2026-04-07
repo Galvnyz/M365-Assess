@@ -1,6 +1,6 @@
 # Multi-Framework Compliance
 
-The HTML report includes a **Compliance Overview** section that maps all assessed security controls across 14 compliance frameworks simultaneously. No parameters needed; all framework data is always included.
+The HTML report includes a **Compliance Overview** section that maps all assessed security controls across 15 compliance frameworks simultaneously. No parameters needed; all framework data is always included.
 
 ## Supported Frameworks
 
@@ -69,11 +69,11 @@ ENTRA-ADMIN-001.1    First setting assessed under ENTRA-ADMIN-001
 ENTRA-ADMIN-001.2    Second setting assessed under ENTRA-ADMIN-001
 ```
 
-The assessment suite includes **191 automated security checks** across 15 security config collectors (Entra, CA Evaluator, EntApp, EXO, DNS, Defender, Compliance, Stryker Readiness, Intune, SharePoint, Teams, Power BI, Forms, Purview Retention, SOC2), each mapped to one or more compliance frameworks.
+The assessment suite includes **214 automated security checks** across 15 security config collectors (Entra, CA Evaluator, EntApp, EXO, DNS, Defender, Compliance, Stryker Readiness, Intune, SharePoint, Teams, Power BI, Forms, Purview Retention, SOC2), each mapped to one or more compliance frameworks.
 
 ## Control Registry
 
-Framework mappings are defined in `controls/registry.json`, which contains **298 control entries** (214 automated, 298 active, 84 manual-only). Each entry specifies the check ID, description, and mappings to all applicable frameworks.
+Framework mappings are defined in `controls/registry.json`, which contains **304 control entries** (219 automated, 304 active, 85 manual-only). Each entry specifies the check ID, description, and mappings to all applicable frameworks.
 
 To view or edit mappings:
 
@@ -86,7 +86,7 @@ Framework mappings are stored in two locations:
 
 ```
 controls/
-  registry.json              # Master registry (244 entries) -- contains all framework mappings inline
+  registry.json              # Master registry (298 entries) -- contains all framework mappings inline
   frameworks/
     cis-m365-v6.json         # CIS M365 v6.0.1 benchmark profiles
     soc2-tsc.json            # SOC 2 Trust Services Criteria

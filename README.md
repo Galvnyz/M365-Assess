@@ -33,7 +33,7 @@
 
 ---
 
-Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **169 automated security checks** mapped across **14 compliance frameworks**.
+Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **214 automated security checks** mapped across **15 compliance frameworks**.
 
 ## Installation
 
@@ -138,20 +138,20 @@ During execution, the console displays real-time streaming progress for each sec
 | **Inventory** *(opt-in)* | Mailbox, Group, Teams, SharePoint, OneDrive Inventory | Per-object M&A inventory: mailboxes, distribution lists, M365 groups, Teams, SharePoint sites, OneDrive accounts |
 | **ActiveDirectory** *(opt-in)* | AD Domain & Forest, AD DC Health, AD Replication, AD Security | Domain/forest topology, DC health via dcdiag, replication partners and lag, password policies, privileged group membership. Requires RSAT or domain controller access. |
 | **SOC2** *(opt-in)* | Security Controls, Confidentiality Controls, Audit Evidence, Readiness Checklist | SOC 2 Trust Services Criteria assessment: security and confidentiality controls, 30-day audit log evidence collection, organizational readiness checklist for non-automatable criteria (CC1-CC5, CC8-CC9) |
-| **ValueOpportunity** | License Utilization, Feature Adoption, Feature Readiness | Analyzes license utilization and feature adoption to identify features your tenant pays for but does not use. Produces an adoption roadmap with quick wins. |
+| **ValueOpportunity** *(opt-in)* | License Utilization, Feature Adoption, Feature Readiness | Analyzes license utilization and feature adoption to identify features your tenant pays for but does not use. Produces an adoption roadmap with quick wins. |
 ```powershell
 # Run specific sections
 Invoke-M365Assessment -Section Identity,Email -TenantId 'contoso.onmicrosoft.com'
 
 # Run everything including opt-in sections
-Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,PowerBI,Hybrid,Inventory,ActiveDirectory,SOC2 -TenantId 'contoso.onmicrosoft.com'
+Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,Collaboration,PowerBI,Hybrid,Inventory,ActiveDirectory,SOC2,ValueOpportunity -TenantId 'contoso.onmicrosoft.com'
 ```
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ActiveDirectory`, `SOC2` opt-in sections. |
+| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ActiveDirectory`, `SOC2`, `ValueOpportunity` opt-in sections. |
 | `-TenantId` | string | *(wizard prompt)* | Tenant ID or `*.onmicrosoft.com` domain |
 | `-OutputFolder` | string | `.\M365-Assessment` | Base output directory |
 | `-SkipConnection` | switch | | Skip service connections (use pre-existing) |
@@ -170,7 +170,11 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 | `-SkipPdf` | switch | | Skip PDF generation even when wkhtmltopdf is available |
 | `-FrameworkFilter` | string[] | *(all)* | Limit compliance overview to specific framework families (e.g., `CIS`, `NIST`) |
 | `-CustomBranding` | hashtable | | White-label reports. Keys: `CompanyName`, `LogoPath`, `AccentColor` |
+| `-FrameworkExport` | string[] | | Generate standalone per-framework HTML catalog exports (e.g., `CIS`, `NIST`, or `All`) |
 | `-CisBenchmarkVersion` | string | `v6` | CIS benchmark version (`v6` for v6.0.1). Set to `v7` when available |
+| `-QuickScan` | switch | | Run only Critical and High severity checks for faster CI/CD or daily monitoring |
+| `-DryRun` | switch | | Preview sections, services, scopes, and check counts without connecting |
+| `-OpenReport` | switch | | Auto-open the HTML report in the default browser after generation |
 | `-ClientSecret` | SecureString | | App Registration client secret for app-only auth |
 
 ### Interactive Wizard
@@ -270,7 +274,7 @@ M365-Assessment/
 
 ## Report Preview
 
-The self-contained HTML report opens in any browser with no dependencies. Click through from the cover page to the executive summary, drill into each security domain, and review compliance posture across 14 frameworks.
+The self-contained HTML report opens in any browser with no dependencies. Click through from the cover page to the executive summary, drill into each security domain, and review compliance posture across 15 frameworks.
 
 <div align="center">
 
@@ -290,7 +294,7 @@ The self-contained HTML report opens in any browser with no dependencies. Click 
 
 </div>
 
-> See [docs/sample-report/Example-Report.html](docs/sample-report/Example-Report.html) for a full PII-scrubbed example report.
+> See [docs/sample-report/_Example-Report.html](docs/sample-report/_Example-Report.html) for a full PII-scrubbed example report.
 
 ## Project Structure
 
@@ -323,11 +327,14 @@ M365-Assess/
 
 | Guide | Description |
 |-------|-------------|
+| [Quickstart](docs/QUICKSTART.md) | Step-by-step setup on a fresh Windows machine |
 | [Authentication](AUTHENTICATION.md) | Interactive, certificate, device code, managed identity, and pre-existing connection methods |
 | [HTML Report](REPORT.md) | Report features, custom branding, `-NoBranding`, standalone generation |
-| [Compliance](COMPLIANCE.md) | 14 frameworks, XLSX export, CheckId system, control registry |
+| [Compliance](COMPLIANCE.md) | 15 frameworks, XLSX export, CheckId system, control registry |
 | [Compatibility](docs/COMPATIBILITY.md) | Module versions, dependency matrix, known incompatibilities |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common errors, module conflicts, permission issues |
 | [CheckId Guide](docs/CheckId-Guide.md) | CheckId naming convention and mapping reference |
+| [Changelog](CHANGELOG.md) | Release history and version notes |
 | [Security](SECURITY.md) | Vulnerability reporting and security policy |
 
 ## Individual Scripts

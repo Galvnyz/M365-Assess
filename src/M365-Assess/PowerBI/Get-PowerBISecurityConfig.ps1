@@ -91,6 +91,19 @@ catch {
     }
     Write-Warning $script:settingsError
     $allSettings = @()
+
+    # Add a sentinel Warning entry so the report shows a visible failure
+    # instead of silently producing Review status for all CIS 9.x checks.
+    $sentinelParams = @{
+        Category         = 'Power BI'
+        Setting          = 'Power BI Tenant Settings'
+        CurrentValue     = "Could not verify -- API unavailable: $errMsg"
+        RecommendedValue = 'Verify settings in Power BI Admin Portal'
+        Status           = 'Warning'
+        CheckId          = ''
+        Remediation      = 'Navigate to app.powerbi.com > Admin Portal > Tenant Settings'
+    }
+    Add-Setting @sentinelParams
 }
 
 # Helper: look up a setting by settingName and return its isEnabled value

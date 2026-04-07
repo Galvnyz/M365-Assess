@@ -87,6 +87,11 @@ function Connect-RequiredService {
             $connectedServices.Add($svc) | Out-Null
             Write-AssessmentLog -Level INFO -Message "Connected to $svc successfully." -Section $SectionName
 
+            # Warn device code users about token lifetime risk
+            if ($svc -eq 'Graph' -and $UseDeviceCode) {
+                Write-Warning "Device code tokens have a limited lifetime. For multi-section assessments, use Interactive or Certificate auth to avoid mid-run token expiry."
+            }
+
             # Validate Graph scopes once after first connection
             if ($svc -eq 'Graph' -and -not $script:graphPermissionsChecked) {
                 $script:graphPermissionsChecked = $true

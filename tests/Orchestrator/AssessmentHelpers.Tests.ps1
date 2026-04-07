@@ -42,6 +42,32 @@ Describe 'Assert-GraphConnection' {
     }
 }
 
+Describe 'Test-GraphTokenValid' {
+    BeforeAll {
+        function global:Get-MgContext { }
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+    }
+
+    It 'returns true when context has TenantId' {
+        Mock Get-MgContext { return [PSCustomObject]@{ TenantId = 'test-tenant-id' } }
+        Test-GraphTokenValid | Should -Be $true
+    }
+    It 'returns false when context is null' {
+        Mock Get-MgContext { return $null }
+        Test-GraphTokenValid | Should -Be $false
+    }
+    It 'returns false when Get-MgContext throws' {
+        Mock Get-MgContext { throw 'SDK error' }
+        Test-GraphTokenValid | Should -Be $false
+    }
+    It 'returns false when TenantId is null' {
+        Mock Get-MgContext { return [PSCustomObject]@{ TenantId = $null } }
+        Test-GraphTokenValid | Should -Be $false
+    }
+
+    AfterAll { Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue }
+}
+
 Describe 'Export-AssessmentCsv' {
     BeforeAll {
         function Get-MgContext { }

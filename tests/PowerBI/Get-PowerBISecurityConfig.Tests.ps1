@@ -247,13 +247,14 @@ Describe 'Get-PowerBISecurityConfig - Edge Cases' {
             . $PSScriptRoot/../../src/M365-Assess/PowerBI/Get-PowerBISecurityConfig.ps1
         }
 
-        It 'should produce settings with Review status' {
+        It 'should produce settings (at least one Warning from API failure)' {
             $settings | Should -Not -BeNullOrEmpty
-            $settings | ForEach-Object { $_.Status | Should -Be 'Review' }
+            ($settings | Where-Object { $_.Status -eq 'Warning' }) | Should -Not -BeNullOrEmpty
         }
 
-        It 'should include permission error in CurrentValue' {
-            $settings[0].CurrentValue | Should -Match 'denied|permission|403'
+        It 'should include permission error in Warning sentinel CurrentValue' {
+            $warnSetting = $settings | Where-Object { $_.Status -eq 'Warning' } | Select-Object -First 1
+            $warnSetting.CurrentValue | Should -Match 'denied|permission|403|unavailable'
         }
 
         AfterAll {
@@ -278,13 +279,47 @@ Describe 'Get-PowerBISecurityConfig - Edge Cases' {
             . $PSScriptRoot/../../src/M365-Assess/PowerBI/Get-PowerBISecurityConfig.ps1
         }
 
-        It 'should produce settings with Review status' {
+        It 'should produce settings (at least one Warning from API failure)' {
             $settings | Should -Not -BeNullOrEmpty
-            $settings | ForEach-Object { $_.Status | Should -Be 'Review' }
+            ($settings | Where-Object { $_.Status -eq 'Warning' }) | Should -Not -BeNullOrEmpty
         }
 
-        It 'should include admin API message in CurrentValue' {
-            $settings[0].CurrentValue | Should -Match 'admin API|not available|Administrator'
+        It 'should include admin API message in Warning sentinel CurrentValue' {
+            $warnSetting = $settings | Where-Object { $_.Status -eq 'Warning' } | Select-Object -First 1
+            $warnSetting.CurrentValue | Should -Match 'admin API|not available|Administrator|unavailable'
+        }
+
+        AfterAll {
+            Remove-Item -Path Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Import-Module -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context 'when Power BI API is unavailable (generic error)' {
+        BeforeAll {
+            Remove-Item -Path Function:\Get-PowerBIAccessToken -ErrorAction SilentlyContinue
+            Remove-Item -Path Function:\Invoke-PowerBIRestMethod -ErrorAction SilentlyContinue
+            function global:Update-CheckProgress { param($CheckId, $Status) }
+            function global:Import-Module { }
+            function global:Get-PowerBIAccessToken { return @{ 'Authorization' = 'Bearer test' } }
+            function global:Invoke-PowerBIRestMethod { throw 'API unavailable' }
+
+            . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+            . $PSScriptRoot/../../src/M365-Assess/PowerBI/Get-PowerBISecurityConfig.ps1
+            $script:failResult = @($settings)
+        }
+
+        It 'returns at least one setting instead of empty result' {
+            $script:failResult.Count | Should -BeGreaterThan 0
+        }
+        It 'returns Warning status when API unavailable' {
+            $script:failResult | Where-Object { $_.Status -eq 'Warning' } | Should -Not -BeNullOrEmpty
+        }
+        It 'does not return only non-Warning/non-Review checks' {
+            $unexpected = $script:failResult | Where-Object { $_.Status -ne 'Review' -and $_.Status -ne 'Warning' }
+            $unexpected | Should -BeNullOrEmpty
         }
 
         AfterAll {

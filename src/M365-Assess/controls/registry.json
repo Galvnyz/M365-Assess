@@ -16602,6 +16602,240 @@
           "title": "Monitoring of System Components; Evaluation of Detected Events; Response to Events"
         }
       }
+    },
+    {
+      "checkId": "SPO-SITE-001",
+      "name": "Ensure site-level sharing does not exceed tenant sharing policy",
+      "category": "SHARING",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-3;AC-6",
+          "title": "Access Enforcement; Least Privilege",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.9.4.1",
+          "title": "Information access restriction"
+        },
+        "soc2": {
+          "controlId": "CC6.3",
+          "evidenceType": "config-export",
+          "title": "Role-Based Access and Least Privilege"
+        },
+        "cis-controls-v8": {
+          "controlId": "3.3;6.6"
+        },
+        "fedramp": {
+          "controlId": "AC-3;AC-6"
+        },
+        "mitre-attack": {
+          "controlId": "T1530;T1565"
+        }
+      }
+    },
+    {
+      "checkId": "SPO-SITE-002",
+      "name": "Ensure sensitive sites have restricted external sharing",
+      "category": "SHARING",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-3;AC-6",
+          "title": "Access Enforcement; Least Privilege",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.9.4.1",
+          "title": "Information access restriction"
+        },
+        "soc2": {
+          "controlId": "CC6.3",
+          "evidenceType": "config-export",
+          "title": "Role-Based Access and Least Privilege"
+        },
+        "cis-controls-v8": {
+          "controlId": "3.3;6.6"
+        },
+        "fedramp": {
+          "controlId": "AC-3;AC-6"
+        },
+        "mitre-attack": {
+          "controlId": "T1530;T1565"
+        }
+      }
+    },
+    {
+      "checkId": "SPO-SITE-003",
+      "name": "Review site collection administrator assignments",
+      "category": "ACCESS",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": false,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-2;AC-6(5)",
+          "title": "Account Management; Privileged Accounts",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.9.2.3",
+          "title": "Management of privileged access rights"
+        },
+        "soc2": {
+          "controlId": "CC6.2",
+          "evidenceType": "config-export",
+          "title": "User Registration and Authorization"
+        },
+        "cis-controls-v8": {
+          "controlId": "5.4;6.1"
+        },
+        "fedramp": {
+          "controlId": "AC-2;AC-6(5)"
+        },
+        "mitre-attack": {
+          "controlId": "T1078;T1078.004"
+        }
+      }
+    },
+    {
+      "checkId": "SPO-ACCESS-001",
+      "name": "Ensure Conditional Access policy covers SharePoint Online",
+      "category": "ACCESS",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-17;IA-2",
+          "title": "Remote Access; Identification and Authentication",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.9.4.2",
+          "title": "Secure log-on procedures"
+        },
+        "soc2": {
+          "controlId": "CC6.1;CC6.6",
+          "evidenceType": "config-export",
+          "title": "Logical Access Security; Logical and Physical Access Restrictions"
+        },
+        "cis-controls-v8": {
+          "controlId": "6.3;6.4;6.5"
+        },
+        "fedramp": {
+          "controlId": "AC-17;IA-2"
+        },
+        "mitre-attack": {
+          "controlId": "T1078;T1078.004;T1530"
+        }
+      }
+    },
+    {
+      "checkId": "SPO-ACCESS-002",
+      "name": "Ensure unmanaged device sync is restricted",
+      "category": "SYNC",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "AC-3;MP-7",
+          "title": "Access Enforcement; Media Use",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.8.3.1",
+          "title": "Management of removable media"
+        },
+        "soc2": {
+          "controlId": "CC6.7",
+          "evidenceType": "config-export",
+          "title": "Restriction of Transmission, Movement, and Removal of Information"
+        },
+        "cis-controls-v8": {
+          "controlId": "4.6;10.5"
+        },
+        "fedramp": {
+          "controlId": "AC-3;MP-7"
+        },
+        "mitre-attack": {
+          "controlId": "T1052;T1565"
+        }
+      }
+    },
+    {
+      "checkId": "SPO-VERSIONING-001",
+      "name": "Verify version history configuration for SharePoint libraries",
+      "category": "DATA_PROTECTION",
+      "collector": "SharePoint",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "requiredServicePlans": []
+      },
+      "frameworks": {
+        "nist-800-53": {
+          "controlId": "CP-9;CP-10",
+          "title": "Information System Backup; Information System Recovery and Reconstitution",
+          "profiles": [
+            "Low",
+            "Moderate",
+            "High"
+          ]
+        },
+        "iso-27001": {
+          "controlId": "A.12.3.1",
+          "title": "Information backup"
+        },
+        "soc2": {
+          "controlId": "A1.2;A1.3",
+          "evidenceType": "config-export",
+          "title": "Environmental Protections; Recovery and Resumption of Operations"
+        },
+        "cis-controls-v8": {
+          "controlId": "11.1;11.2"
+        },
+        "fedramp": {
+          "controlId": "CP-9;CP-10"
+        },
+        "mitre-attack": {
+          "controlId": "T1485;T1490"
+        }
+      }
     }
   ]
 }

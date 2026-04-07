@@ -1,6 +1,6 @@
 # CheckId System Guide
 
-The CheckId system is the backbone of M365-Assess's multi-framework compliance reporting. Each security check gets a framework-agnostic identifier that maps to controls across 13 compliance frameworks simultaneously.
+The CheckId system is the backbone of M365-Assess's multi-framework compliance reporting. Each security check gets a framework-agnostic identifier that maps to controls across 15 compliance frameworks simultaneously.
 
 ## What Is a CheckId?
 
@@ -44,10 +44,10 @@ Controls not yet automated use the format `MANUAL-CIS-{controlId}` (e.g., `MANUA
 
 | Type | Count | Description |
 |------|-------|-------------|
-| Automated | 138 | Checked by collectors, appear in CSV output and reports |
+| Automated | 214 | Checked by collectors, appear in CSV output and reports |
 | Superseded | 81 | Former manual checks now replaced by automated equivalents |
-| Manual | 14 | CIS benchmark controls not yet automated, tracked for coverage |
-| **Total** | **233** | Full registry across all frameworks |
+| Manual | 3 | CIS benchmark controls not yet automated, tracked for coverage |
+| **Total** | **298** | Full registry across all frameworks |
 
 ## The Control Registry
 
@@ -60,7 +60,7 @@ All CheckIds live in `controls/registry.json`. Each entry contains:
   "category": "ADMIN",
   "collector": "Entra",
   "hasAutomatedCheck": true,
-  "licensing": { "minimum": "E3" },
+  "licensing": { "requiredServicePlans": [] },
   "frameworks": {
     "cis-m365-v6": {
       "controlId": "1.1.3",
@@ -83,7 +83,7 @@ All CheckIds live in `controls/registry.json`. Each entry contains:
 **Key fields:**
 - `hasAutomatedCheck` -- Whether a collector evaluates this check automatically
 - `collector` -- Which collector script produces the result (see Collectors table below)
-- `licensing.minimum` -- E3 or E5 license required
+- `licensing.requiredServicePlans` -- Array of service plan names required (empty = no gating)
 - `frameworks` -- Maps to every applicable compliance framework
 - `supersededBy` -- (on MANUAL entries) Points to the automated CheckId that replaced it
 
@@ -93,13 +93,19 @@ All CheckIds live in `controls/registry.json`. Each entry contains:
 |--------------|--------|---------|
 | `Entra` | `Entra/Get-EntraSecurityConfig.ps1` | Identity |
 | `CAEvaluator` | `Entra/Get-CASecurityConfig.ps1` | Identity |
+| `EntApp` | `Entra/Get-EntAppSecurityConfig.ps1` | Identity |
 | `ExchangeOnline` | `Exchange-Online/Get-ExoSecurityConfig.ps1` | Email |
 | `DNS` | `Exchange-Online/Get-DnsSecurityConfig.ps1` | Email |
 | `Defender` | `Security/Get-DefenderSecurityConfig.ps1` | Security |
 | `Compliance` | `Security/Get-ComplianceSecurityConfig.ps1` | Security |
+| `StrykerReadiness` | `Security/Get-StrykerIncidentReadiness.ps1` | Security |
 | `Intune` | `Intune/Get-IntuneSecurityConfig.ps1` | Intune |
 | `SharePoint` | `Collaboration/Get-SharePointSecurityConfig.ps1` | Collaboration |
 | `Teams` | `Collaboration/Get-TeamsSecurityConfig.ps1` | Collaboration |
+| `Forms` | `Collaboration/Get-FormsSecurityConfig.ps1` | Collaboration |
+| `PowerBI` | `PowerBI/Get-PowerBISecurityConfig.ps1` | PowerBI |
+| `PurviewRetention` | `Purview/Get-PurviewRetentionConfig.ps1` | Security |
+| `SOC2` | `SOC2/Get-SOC2SecurityConfig.ps1` | SOC2 |
 
 ## Supported Frameworks
 
@@ -115,6 +121,11 @@ All CheckIds live in `controls/registry.json`. Each entry contains:
 | HIPAA Security Rule | `hipaa` | Sec. 164.3xx references |
 | CISA SCuBA | `cisa-scuba` | MS.AAD/EXO/DEFENDER/SPO/TEAMS baselines |
 | SOC 2 TSC | `soc2` | Trust Services Criteria (CC/A/C/PI/P) |
+| FedRAMP | `fedramp` | Federal Risk and Authorization Management Program |
+| Essential Eight | `essential-eight` | Australian Cyber Security Centre maturity model |
+| CIS Controls v8 | `cis-controls-v8` | CIS Critical Security Controls |
+| MITRE ATT&CK | `mitre-attack` | Adversary techniques and mitigations |
+| Entra ID STIG V1R1 | `entra-id-stig` | DISA security controls for Entra ID |
 
 SOC 2 mappings are auto-derived from NIST 800-53 control families using rules in `controls/Build-Registry.ps1`.
 
@@ -131,7 +142,7 @@ checks settings      (e.g., ENTRA-ADMIN-001)   in registry.json
                                               mappings from one entry
                                                     |
                                                     v
-                                              Populates 13 framework
+                                              Populates 15 framework
                                               columns in compliance
                                               matrix (HTML + XLSX)
 ```
@@ -186,7 +197,7 @@ controls/check-id-mapping.csv     ->  CheckId assignments + collector mapping
                                controls/Build-Registry.ps1
                                          |
                                          v
-                               controls/registry.json (233 entries)
+                               controls/registry.json (298 entries)
 ```
 
 To rebuild after editing the source CSVs:

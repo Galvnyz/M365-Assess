@@ -704,6 +704,28 @@ foreach ($sectionName in $Section) {
 
     Show-SectionHeader -Name $sectionName
 
+    # For sections that require Graph, verify the token is still valid before
+    # running collectors. Device code tokens expire mid-run for long assessments.
+    if (-not $SkipConnection -and $sectionServiceMap[$sectionName] -contains 'Graph') {
+        if (-not (Test-GraphTokenValid)) {
+            Write-Warning "Graph token is no longer valid before starting $sectionName. Skipping section — re-run with Interactive or Certificate auth."
+            foreach ($collector in $collectors) {
+                $summaryResults.Add([PSCustomObject]@{
+                    Section   = $sectionName
+                    Collector = $collector.Label
+                    FileName  = "$($collector.Name).csv"
+                    Status    = 'Skipped'
+                    Items     = 0
+                    Duration  = '00:00'
+                    Error     = 'Graph token expired'
+                })
+                Show-CollectorResult -Label $collector.Label -Status 'Skipped' -Items 0 -DurationSeconds 0 -ErrorMessage 'Graph token expired'
+                Write-AssessmentLog -Level WARN -Message "Skipped: $($collector.Label) — Graph token expired" -Section $sectionName -Collector $collector.Label
+            }
+            continue
+        }
+    }
+
     # Connect to services: use per-collector RequiredServices if defined,
     # otherwise connect all section-level services up front.
     # This ensures only one non-Graph service is active at a time.

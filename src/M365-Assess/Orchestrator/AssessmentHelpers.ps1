@@ -22,6 +22,19 @@ function Assert-GraphConnection {
     return $true
 }
 
+function Test-GraphTokenValid {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+    try {
+        $ctx = Get-MgContext
+        return ($null -ne $ctx -and $null -ne $ctx.TenantId)
+    }
+    catch {
+        return $false
+    }
+}
+
 function Export-AssessmentCsv {
     [CmdletBinding()]
     param(

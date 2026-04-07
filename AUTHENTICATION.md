@@ -7,7 +7,7 @@ M365 Assess supports multiple authentication methods for connecting to Microsoft
 A browser window opens for each service (Graph, Exchange Online, etc.). Best for one-time or ad-hoc assessments.
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com'
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com'
 ```
 
 ## Interactive with UPN
@@ -15,7 +15,7 @@ A browser window opens for each service (Graph, Exchange Online, etc.). Best for
 Specifying `-UserPrincipalName` avoids WAM (Web Account Manager) broker errors that can occur on some Windows systems, particularly when multiple accounts are signed in.
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' `
     -UserPrincipalName 'admin@contoso.onmicrosoft.com'
 ```
 
@@ -24,7 +24,7 @@ Specifying `-UserPrincipalName` avoids WAM (Web Account Manager) broker errors t
 For environments where a browser cannot open (headless servers, remote SSH sessions), use device code flow. You'll be given a URL and code to enter on any device with a browser.
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' -UseDeviceCode
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' -UseDeviceCode
 ```
 
 ## Certificate-Based (App-Only)
@@ -47,7 +47,7 @@ This creates an app named "M365-Assess-Reader" with a 2-year certificate and ass
 ### Running the Assessment
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' `
     -ClientId '00000000-0000-0000-0000-000000000000' `
     -CertificateThumbprint 'ABC123DEF456'
 ```
@@ -84,7 +84,7 @@ $secret = ConvertTo-SecureString 'your-client-secret' -AsPlainText -Force
 # Or prompt interactively (recommended - secret never visible in terminal)
 $secret = Read-Host -AsSecureString -Prompt 'Client Secret'
 
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' `
     -ClientId '00000000-0000-0000-0000-000000000000' `
     -ClientSecret $secret `
     -Section Tenant,Identity,Licensing
@@ -97,7 +97,7 @@ $secret = Read-Host -AsSecureString -Prompt 'Client Secret'
 For workloads running on Azure (VMs, App Service, Azure Functions, Azure Automation), use managed identity to authenticate without credentials. The Azure resource must have a system- or user-assigned managed identity with appropriate permissions.
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -ManagedIdentity
+Invoke-M365Assessment -ManagedIdentity
 ```
 
 Managed identity is supported for Graph and Exchange Online. Purview and Power BI do not support managed identity and will fall back to browser-based login with a warning.
@@ -108,13 +108,13 @@ For CI/CD pipelines, scheduled tasks, or any environment without an interactive 
 
 ```powershell
 # Scheduled task with certificate auth — no prompts
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.com' `
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' `
     -ClientId '00000000-0000-0000-0000-000000000000' `
     -CertificateThumbprint 'ABC123DEF456' `
     -NonInteractive
 
 # Azure VM with managed identity — no prompts
-.\Invoke-M365Assessment.ps1 -ManagedIdentity -NonInteractive
+Invoke-M365Assessment -ManagedIdentity -NonInteractive
 ```
 
 If required modules are missing, the script logs the exact install commands and exits with an error instead of hanging on a prompt. Optional module issues (e.g., MicrosoftPowerBIMgmt) cause the affected section to be skipped with a warning.
@@ -126,7 +126,7 @@ If required modules are missing, the script logs the exact install commands and 
 If you have already connected to the required services (e.g., via `Connect-MgGraph` and `Connect-ExchangeOnline`), skip the connection step entirely:
 
 ```powershell
-.\Invoke-M365Assessment.ps1 -SkipConnection
+Invoke-M365Assessment -SkipConnection
 ```
 
 This is useful when:
@@ -140,10 +140,10 @@ Use `-M365Environment` for government or sovereign cloud tenants:
 
 ```powershell
 # GCC High
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.us' -M365Environment gcchigh
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.us' -M365Environment gcchigh
 
 # DoD
-.\Invoke-M365Assessment.ps1 -TenantId 'contoso.onmicrosoft.mil' -M365Environment dod
+Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.mil' -M365Environment dod
 ```
 
 | Value | Environment |
