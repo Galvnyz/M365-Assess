@@ -4,6 +4,18 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-04-07
+
+### Added
+- **6 new SharePoint security checks** -- site sharing vs tenant policy (SPO-SITE-001), sensitive site external sharing (SPO-SITE-002), site admin visibility (SPO-SITE-003), CA coverage for SharePoint (SPO-ACCESS-001), unmanaged device sync restriction (SPO-ACCESS-002), version history configuration (SPO-VERSIONING-001). Registry: 304 entries (219 automated). (#382)
+- **Device code token expiry detection** -- `Test-GraphTokenValid` added to AssessmentHelpers; pre-section token check skips Graph-dependent collectors with a Warning if the token has expired mid-run; startup warning advises using Interactive or Certificate auth for long assessments. (#380)
+
+### Changed
+- **SharePoint Review statuses replaced with Warning** -- SPO-SESSION-001, SPO-MALWARE-002, SPO-B2B-001, SPO-SHARING-008 now emit Warning with "Could not verify" when the Graph/beta API is unavailable, instead of silently returning Review. (#383)
+- **SharePoint sharing thresholds hardened** -- SPO-SHARING-001 `externalUserAndGuestSharing` escalated to Fail; SPO-SHARING-004 anonymous links escalated to Fail; SPO-SHARING-003/005/006 null/missing values escalated to Warning; SPO-SYNC-002 and SPO-LOOP-001/002 evaluate to Pass/Warning/Review instead of always Info. (#381)
+- **Power BI API failures now surface as Warning** -- connection errors no longer silently set `$allSettings = @()` causing all CIS 9.x checks to return Review; a sentinel Warning entry is emitted with "Could not verify -- API unavailable". (#357)
+- **CI line coverage gate raised from 50% to 65%** -- reflects improved test baseline after 495-test coverage sweep (PRs #386-#388). (#389)
+
 ## [1.7.0] - 2026-04-06
 
 ### Added
