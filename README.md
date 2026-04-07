@@ -176,12 +176,74 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 | `-DryRun` | switch | | Preview sections, services, scopes, and check counts without connecting |
 | `-OpenReport` | switch | | Auto-open the HTML report in the default browser after generation |
 | `-ClientSecret` | SecureString | | App Registration client secret for app-only auth |
+| `-ConnectionProfile` | string | | Name of a saved connection profile from `.m365assess.json` |
 
 ### Interactive Wizard
 
 When no connection parameters are provided (`-TenantId`, `-SkipConnection`, `-ClientId`, or `-ManagedIdentity`), an interactive wizard prompts for tenant, auth method, and output folder. If `-Section` or `-OutputFolder` are provided on the command line, those wizard steps are skipped automatically.
 
 See [Authentication](AUTHENTICATION.md) for detailed auth examples and App Registration setup.
+
+## Connection Profiles
+
+Connection profiles let you save tenant and auth settings once and reuse them across runs. Profiles are stored in `.m365assess.json` at the module root.
+
+### Create a profile
+
+**Interactive (browser sign-in):**
+```powershell
+New-M365ConnectionProfile -ProfileName 'Contoso' `
+    -TenantId 'contoso.onmicrosoft.com' `
+    -AuthMethod Interactive
+```
+
+**Device code (headless / remote sessions):**
+```powershell
+New-M365ConnectionProfile -ProfileName 'ContosoDevice' `
+    -TenantId 'contoso.onmicrosoft.com' `
+    -AuthMethod DeviceCode
+```
+
+**Certificate / app-only (CI/CD, unattended):**
+```powershell
+New-M365ConnectionProfile -ProfileName 'ContosoCert' `
+    -TenantId 'contoso.onmicrosoft.com' `
+    -AuthMethod Certificate `
+    -ClientId 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' `
+    -CertificateThumbprint 'ABCDEF1234567890...' `
+    -AppName 'M365-Assess App Reg'
+```
+
+### Use a profile
+
+```powershell
+# Run full assessment using a saved profile
+Invoke-M365Assessment -ConnectionProfile 'Contoso'
+
+# QuickScan using a cert-auth profile -- no interactive prompts
+Invoke-M365Assessment -ConnectionProfile 'ContosoCert' -QuickScan -NonInteractive
+```
+
+### Manage profiles
+
+```powershell
+# List all saved profiles
+Get-M365ConnectionProfile
+
+# View a specific profile
+Get-M365ConnectionProfile -ProfileName 'Contoso'
+
+# Update an existing profile (upsert)
+Set-M365ConnectionProfile -ProfileName 'Contoso' -TenantId 'contoso.onmicrosoft.com' -AuthMethod DeviceCode
+
+# Remove a profile
+Remove-M365ConnectionProfile -ProfileName 'OldTenant'
+
+# Remove all profiles
+Remove-M365ConnectionProfile -All
+```
+
+> Profiles are stored per-install in `.m365assess.json` at the module root. For GCC/GCC High/DoD tenants, pass `-M365Environment gcc` (or `gcchigh`, `dod`) when creating the profile.
 
 ## Module Helper
 
