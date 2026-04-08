@@ -160,6 +160,7 @@
         'controls\role-tiers.json'
         'controls\sku-feature-map.json'
         'controls\registry.json'
+        'controls\licensing-overlay.json'
         'controls\risk-severity.json'
         'controls\mitre-technique-map.json'
         'controls\frameworks\cis-controls-v8.json'

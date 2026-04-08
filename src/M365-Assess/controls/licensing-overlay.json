@@ -1,0 +1,23 @@
+{
+  "description": "M365-Assess-specific service plan gating for checks that require E5 features. CheckID only carries a coarse E3/E5 signal; this overlay maps each E5 check to the exact Microsoft service plan ID that must be active in the tenant. Checks omitted here (or with empty arrays) run on all tenants regardless of license.",
+  "version": "1.0.0",
+  "checks": {
+    "CA-SIGNINRISK-001":       ["AAD_PREMIUM_P2"],
+    "CA-SIGNINRISK-002":       ["AAD_PREMIUM_P2"],
+    "CA-USERRISK-001":         ["AAD_PREMIUM_P2"],
+    "ENTRA-PIM-001":           ["AAD_PREMIUM_P2"],
+    "ENTRA-PIM-002":           ["AAD_PREMIUM_P2"],
+    "ENTRA-PIM-003":           ["AAD_PREMIUM_P2"],
+    "ENTRA-PIM-004":           ["AAD_PREMIUM_P2"],
+    "ENTRA-PIM-005":           ["AAD_PREMIUM_P2"],
+    "DEFENDER-ANTIPHISH-001":  ["ATP_ENTERPRISE"],
+    "DEFENDER-PRIORITY-001":   ["ATP_ENTERPRISE"],
+    "DEFENDER-PRIORITY-002":   ["ATP_ENTERPRISE"],
+    "DEFENDER-SAFEATTACH-001": ["ATP_ENTERPRISE"],
+    "DEFENDER-SAFEATTACH-002": ["ATP_ENTERPRISE"],
+    "DEFENDER-SAFELINKS-001":  ["ATP_ENTERPRISE"],
+    "DEFENDER-ZAP-001":        ["ATP_ENTERPRISE"],
+    "EXO-LOCKBOX-001":         ["LOCKBOX_ENTERPRISE"],
+    "COMPLIANCE-DLP-002":      ["INFORMATION_PROTECTION_COMPLIANCE"]
+  }
+}

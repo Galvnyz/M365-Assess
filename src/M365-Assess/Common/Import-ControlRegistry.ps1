@@ -6,12 +6,16 @@
     CheckID via CI). Returns a hashtable keyed by CheckId with framework
     mappings and risk severity.
 
+    Supports both CheckID schema versions:
+    - v1.x: licensing.requiredServicePlans (array of plan IDs)
+    - v2.0.0: licensing.minimum ("E3" or "E5") normalized via licensing-overlay.json
+
     Also builds a reverse lookup from CIS control IDs to CheckIds (stored
     under the special key '__cisReverseLookup') for backward compatibility
     with CSVs that still use the CisControl column.
 .PARAMETER ControlsPath
-    Path to the controls/ directory containing registry.json and
-    risk-severity.json (local overlay).
+    Path to the controls/ directory containing registry.json,
+    risk-severity.json, and licensing-overlay.json.
 .PARAMETER CisFrameworkId
     Framework ID for the active CIS benchmark version, used for the reverse
     lookup. Defaults to 'cis-m365-v6'.
@@ -37,20 +41,46 @@ function Import-ControlRegistry {
 
     $raw = Get-Content -Path $registryPath -Raw | ConvertFrom-Json
     $checks = @($raw.checks)
-    Write-Verbose "Loaded $($checks.Count) checks from local registry.json"
+    $schemaVersion = if ($raw.PSObject.Properties.Name -contains 'schemaVersion') { $raw.schemaVersion } else { '1.x' }
+    Write-Verbose "Loaded $($checks.Count) checks from registry.json (schema $schemaVersion, data $($raw.dataVersion))"
+
+    # Load licensing overlay (M365-Assess-specific service plan gating)
+    $licensingOverlay = @{}
+    $overlayPath = Join-Path -Path $ControlsPath -ChildPath 'licensing-overlay.json'
+    if (Test-Path -Path $overlayPath) {
+        $overlayData = Get-Content -Path $overlayPath -Raw | ConvertFrom-Json
+        foreach ($prop in $overlayData.checks.PSObject.Properties) {
+            $licensingOverlay[$prop.Name] = @($prop.Value)
+        }
+        Write-Verbose "Loaded $($licensingOverlay.Count) licensing overrides from licensing-overlay.json"
+    }
 
     # Build hashtable keyed by CheckId
     $lookup = @{}
     $cisReverse = @{}
 
     foreach ($check in $checks) {
+        # Normalize licensing across schema versions:
+        # v1.x: { requiredServicePlans: [...] }  — pass through
+        # v2.0.0: { minimum: "E3"|"E5" }         — resolved via licensing-overlay.json
+        # Initialize to empty array; only populated if overlay or v1.x data matches.
+        # Note: $requiredPlans must be declared with @() before conditional mutation —
+        # assigning @() via an if/else expression returns $null in PowerShell because
+        # an empty array emits nothing to the pipeline in that context.
+        $requiredPlans = @()
+        if ($licensingOverlay.ContainsKey($check.checkId)) {
+            $requiredPlans = $licensingOverlay[$check.checkId]
+        } elseif ($check.licensing -and $check.licensing.PSObject.Properties.Name -contains 'requiredServicePlans') {
+            $requiredPlans = @($check.licensing.requiredServicePlans)
+        }
+
         $entry = @{
             checkId           = $check.checkId
             name              = $check.name
             category          = $check.category
             collector         = $check.collector
             hasAutomatedCheck = $check.hasAutomatedCheck
-            licensing         = $check.licensing
+            licensing         = @{ requiredServicePlans = $requiredPlans }
             frameworks        = @{}
         }
 
