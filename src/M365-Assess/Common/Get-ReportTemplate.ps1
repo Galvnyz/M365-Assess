@@ -2507,6 +2507,16 @@ $html = @"
         .remediation-table tr.remediation-row-high td:first-child     { border-left: 4px solid var(--m365a-warning); }
         .remediation-table tr.remediation-row-medium td:first-child   { border-left: 4px solid var(--m365a-info); }
         .remediation-table tr.remediation-row-low td:first-child      { border-left: 4px solid var(--m365a-neutral); }
+        .remediation-row-critical { background-color: var(--m365a-danger-bg); }
+        .remediation-row-high     { background-color: var(--m365a-warning-bg); }
+        .remediation-row-medium   { background-color: var(--m365a-info-bg); }
+        .remediation-row-low      { background-color: var(--m365a-neutral-bg); }
+        .remediation-row-critical:nth-child(even),
+        .remediation-row-high:nth-child(even),
+        .remediation-row-medium:nth-child(even),
+        .remediation-row-low:nth-child(even) {
+            background-image: linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06));
+        }
         /* Remediation table — taller compact view than the standard 260px */
         .remediation-table-wrapper { max-height: 380px; }
         .remediation-empty { font-size: 0.875rem; color: var(--m365a-medium-gray); padding: 1rem 0; }
