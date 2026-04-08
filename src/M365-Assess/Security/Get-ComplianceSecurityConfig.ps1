@@ -3,8 +3,9 @@
     Collects Microsoft Purview/Compliance security configuration settings for M365 assessment.
 .DESCRIPTION
     Queries Security & Compliance PowerShell for compliance-related security settings
-    including unified audit log, DLP policies, and sensitivity labels. Returns a structured
-    inventory of settings with current values and CIS benchmark recommendations.
+    including unified audit log, DLP policies, sensitivity labels, alert policies,
+    auto-labeling, and communication compliance. Returns a structured inventory of
+    settings with current values and CIS benchmark recommendations.
 
     Requires an active Security & Compliance (Purview) connection.
 .PARAMETER OutputPath
@@ -163,6 +164,23 @@ try {
             }
             Add-Setting @settingParams
         }
+
+        # DLP workload coverage -- Exchange and SharePoint/OneDrive
+        $exoPolicies  = @($enabledPolicies | Where-Object { $_.ExchangeLocation -or ($_.Workload -and $_.Workload -match 'Exchange') })
+        $spodPolicies = @($enabledPolicies | Where-Object { $_.SharePointLocation -or $_.OneDriveLocation -or ($_.Workload -and $_.Workload -match 'SharePoint') })
+        $coverageStatus = if ($exoPolicies.Count -gt 0 -and $spodPolicies.Count -gt 0) { 'Pass' }
+                          elseif ($exoPolicies.Count -gt 0 -or $spodPolicies.Count -gt 0) { 'Warning' }
+                          else { 'Fail' }
+        $settingParams = @{
+            Category         = 'Data Loss Prevention'
+            Setting          = 'DLP Workload Coverage'
+            CurrentValue     = "Exchange: $($exoPolicies.Count -gt 0), SharePoint/OneDrive: $($spodPolicies.Count -gt 0)"
+            RecommendedValue = 'Policies cover Exchange and SharePoint/OneDrive'
+            Status           = $coverageStatus
+            CheckId          = 'COMPLIANCE-DLP-003'
+            Remediation      = 'Microsoft Purview > Data loss prevention > Policies > Edit existing policies to include Exchange email and SharePoint/OneDrive locations for comprehensive data protection.'
+        }
+        Add-Setting @settingParams
     }
     else {
         $settingParams = @{
@@ -230,6 +248,148 @@ try {
 }
 catch {
     Write-Warning "Could not check sensitivity labels: $_"
+}
+
+# ------------------------------------------------------------------
+# 4. Security Alert Policies
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking security alert policies..."
+    $alertAvailable = Get-Command -Name Get-ProtectionAlert -ErrorAction SilentlyContinue
+    if ($alertAvailable) {
+        $alerts = @(Get-ProtectionAlert -ErrorAction Stop)
+        $enabledAlerts = @($alerts | Where-Object { -not $_.Disabled })
+        $alertStatus = if ($enabledAlerts.Count -gt 0) { 'Pass' } else { 'Fail' }
+        $settingParams = @{
+            Category         = 'Alert Policies'
+            Setting          = 'Security Alert Policies Enabled'
+            CurrentValue     = "$($enabledAlerts.Count) enabled (of $($alerts.Count) total)"
+            RecommendedValue = 'At least 1 enabled'
+            Status           = $alertStatus
+            CheckId          = 'COMPLIANCE-ALERTPOLICY-001'
+            Remediation      = 'Microsoft Purview > Alert policies > Review and enable default alert policies. Ensure high-severity policies for suspicious activity, malware, and privilege escalation are active.'
+        }
+        Add-Setting @settingParams
+    }
+    else {
+        $settingParams = @{
+            Category         = 'Alert Policies'
+            Setting          = 'Security Alert Policies Enabled'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'At least 1 enabled'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-ALERTPOLICY-001'
+            Remediation      = 'Connect to Security & Compliance PowerShell to check alert policies.'
+        }
+        Add-Setting @settingParams
+    }
+}
+catch {
+    Write-Warning "Could not check alert policies: $_"
+}
+
+# ------------------------------------------------------------------
+# 5. Auto-Sensitivity Labeling Policies (requires AIP P2 / E5)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking auto-labeling policies..."
+    $autoLabelAvailable = Get-Command -Name Get-AutoSensitivityLabelPolicy -ErrorAction SilentlyContinue
+    if ($autoLabelAvailable) {
+        $autoLabelPolicies = @(Get-AutoSensitivityLabelPolicy -ErrorAction Stop)
+        $enabledAutoLabel  = @($autoLabelPolicies | Where-Object { $_.Enabled -eq $true })
+        if ($enabledAutoLabel.Count -gt 0) {
+            $autoLabelCount = $enabledAutoLabel.Count
+            $settingParams = @{
+                Category         = 'Information Protection'
+                Setting          = 'Auto-Sensitivity Labeling Policies'
+                CurrentValue     = "$autoLabelCount enabled auto-labeling $(if ($autoLabelCount -eq 1) { 'policy' } else { 'policies' })"
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Pass'
+                CheckId          = 'COMPLIANCE-LABELS-002'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
+        }
+        else {
+            $settingParams = @{
+                Category         = 'Information Protection'
+                Setting          = 'Auto-Sensitivity Labeling Policies'
+                CurrentValue     = if ($autoLabelPolicies.Count -eq 0) { 'None configured' } else { "$($autoLabelPolicies.Count) policies (none enabled)" }
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Fail'
+                CheckId          = 'COMPLIANCE-LABELS-002'
+                Remediation      = 'Microsoft Purview > Information protection > Auto-labeling > Create a policy to automatically classify sensitive content. Requires Azure Information Protection P2 (E5 or E5 Compliance).'
+            }
+            Add-Setting @settingParams
+        }
+    }
+    else {
+        $settingParams = @{
+            Category         = 'Information Protection'
+            Setting          = 'Auto-Sensitivity Labeling Policies'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'At least 1 enabled'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-LABELS-002'
+            Remediation      = 'Auto-labeling requires Azure Information Protection P2 (E5 or E5 Compliance). Connect to Security & Compliance PowerShell to verify.'
+        }
+        Add-Setting @settingParams
+    }
+}
+catch {
+    Write-Warning "Could not check auto-labeling policies: $_"
+}
+
+# ------------------------------------------------------------------
+# 6. Communication Compliance Policies (requires E5 Compliance)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking communication compliance policies..."
+    $commAvailable = Get-Command -Name Get-CommunicationCompliancePolicy -ErrorAction SilentlyContinue
+    if ($commAvailable) {
+        $commPolicies  = @(Get-CommunicationCompliancePolicy -ErrorAction Stop)
+        $enabledComm   = @($commPolicies | Where-Object { $_.Enabled -eq $true })
+        if ($enabledComm.Count -gt 0) {
+            $enabledCommCount = $enabledComm.Count
+            $settingParams = @{
+                Category         = 'Communication Compliance'
+                Setting          = 'Communication Compliance Policies'
+                CurrentValue     = "$enabledCommCount enabled $(if ($enabledCommCount -eq 1) { 'policy' } else { 'policies' })"
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Pass'
+                CheckId          = 'COMPLIANCE-COMMS-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
+        }
+        else {
+            $settingParams = @{
+                Category         = 'Communication Compliance'
+                Setting          = 'Communication Compliance Policies'
+                CurrentValue     = if ($commPolicies.Count -eq 0) { 'None configured' } else { "$($commPolicies.Count) policies (none enabled)" }
+                RecommendedValue = 'At least 1 enabled'
+                Status           = 'Warning'
+                CheckId          = 'COMPLIANCE-COMMS-001'
+                Remediation      = 'Microsoft Purview > Communication compliance > Create a policy to monitor communications for policy violations and insider risk. Requires E5 Compliance licensing.'
+            }
+            Add-Setting @settingParams
+        }
+    }
+    else {
+        $settingParams = @{
+            Category         = 'Communication Compliance'
+            Setting          = 'Communication Compliance Policies'
+            CurrentValue     = 'Cmdlet not available'
+            RecommendedValue = 'At least 1 enabled'
+            Status           = 'Review'
+            CheckId          = 'COMPLIANCE-COMMS-001'
+            Remediation      = 'Communication compliance requires E5 Compliance licensing. Connect to Security & Compliance PowerShell to verify policy status.'
+        }
+        Add-Setting @settingParams
+    }
+}
+catch {
+    Write-Warning "Could not check communication compliance policies: $_"
 }
 
 # ------------------------------------------------------------------

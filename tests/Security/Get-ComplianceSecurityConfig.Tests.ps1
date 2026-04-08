@@ -28,6 +28,26 @@ Describe 'Get-ComplianceSecurityConfig' {
             )
         }
 
+        function Get-ProtectionAlert {
+            return @(
+                @{ Name = 'Activity from infrequent country'; Disabled = $false }
+                @{ Name = 'Mass file deletion';               Disabled = $false }
+                @{ Name = 'Disabled Alert';                   Disabled = $true }
+            )
+        }
+
+        function Get-AutoSensitivityLabelPolicy {
+            return @(
+                @{ Name = 'Auto-label PII'; Enabled = $true }
+            )
+        }
+
+        function Get-CommunicationCompliancePolicy {
+            return @(
+                @{ Name = 'Comm Compliance Policy'; Enabled = $true }
+            )
+        }
+
         # Run the collector by dot-sourcing it
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1"
@@ -105,9 +125,33 @@ Describe 'Get-ComplianceSecurityConfig' {
         $labelCheck.Status | Should -Be 'Pass'
     }
 
+    It 'DLP Workload Coverage check passes when Exchange and SharePoint are covered' {
+        $dlpCoverage = $settings | Where-Object { $_.CheckId -like 'COMPLIANCE-DLP-003*' }
+        $dlpCoverage | Should -Not -BeNullOrEmpty
+        $dlpCoverage.Status | Should -Be 'Pass'
+    }
+
+    It 'Alert Policies check passes when enabled policies exist' {
+        $alertCheck = $settings | Where-Object { $_.CheckId -like 'COMPLIANCE-ALERTPOLICY-001*' }
+        $alertCheck | Should -Not -BeNullOrEmpty
+        $alertCheck.Status | Should -Be 'Pass'
+    }
+
+    It 'Auto-Labeling check passes when enabled policies exist' {
+        $autoLabel = $settings | Where-Object { $_.CheckId -like 'COMPLIANCE-LABELS-002*' }
+        $autoLabel | Should -Not -BeNullOrEmpty
+        $autoLabel.Status | Should -Be 'Pass'
+    }
+
+    It 'Communication Compliance check passes when enabled policies exist' {
+        $comms = $settings | Where-Object { $_.CheckId -like 'COMPLIANCE-COMMS-001*' }
+        $comms | Should -Not -BeNullOrEmpty
+        $comms.Status | Should -Be 'Pass'
+    }
+
     It 'Produces settings across multiple categories' {
         $categories = $settings | Select-Object -ExpandProperty Category -Unique
-        $categories.Count | Should -BeGreaterOrEqual 2
+        $categories.Count | Should -BeGreaterOrEqual 4
     }
 
     AfterAll {

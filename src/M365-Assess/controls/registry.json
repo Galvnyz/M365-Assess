@@ -43567,6 +43567,48 @@
           "title": "Use Alternate Authentication Material: Application Access Token"
         }
       }
+    },
+    {
+      "checkId": "COMPLIANCE-DLP-003",
+      "name": "DLP Policies Cover Exchange and SharePoint/OneDrive",
+      "category": "DLP",
+      "collector": "Compliance",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "nist-800-53": { "controlId": "SC-28;AC-3" },
+        "soc2": { "controlId": "CC6.1" }
+      }
+    },
+    {
+      "checkId": "COMPLIANCE-LABELS-002",
+      "name": "Auto-Sensitivity Labeling Policies Configured",
+      "category": "LABELS",
+      "collector": "Compliance",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E5"
+      },
+      "frameworks": {
+        "nist-800-53": { "controlId": "SC-28;AC-3" },
+        "soc2": { "controlId": "CC6.1;CC6.7" }
+      }
+    },
+    {
+      "checkId": "COMPLIANCE-COMMS-001",
+      "name": "Communication Compliance Policies Enabled",
+      "category": "COMMS",
+      "collector": "Compliance",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E5"
+      },
+      "frameworks": {
+        "nist-800-53": { "controlId": "AU-2;SI-4" },
+        "soc2": { "controlId": "CC7.2" }
+      }
     }
   ]
 }
