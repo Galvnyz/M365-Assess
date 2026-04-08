@@ -3,10 +3,13 @@
     Exports compliance overview data as a formatted XLSX workbook.
 .DESCRIPTION
     Reads security config CSVs from an assessment folder, looks up each CheckId
-    in the control registry, and generates a two-sheet XLSX file:
-      Sheet 1 - Compliance Matrix (one row per check with all framework mappings)
+    in the control registry, and generates an XLSX file with up to four sheets:
+      Sheet 1 - Compliance Matrix (one row per check; framework columns + SCF impact/domain)
       Sheet 2 - Summary (pass/fail counts and coverage per framework)
+      Sheet 3 - Grouped by Profile (CIS M365 profile-level breakdown)
+      Sheet 4 - Verification (one row per SCF assessment objective -- audit guidance)
     Framework columns are auto-discovered from JSON definitions in controls/frameworks/.
+    SCF impact and verification data require CheckID v2.0.0 registry entries.
     Requires the ImportExcel module. If not available, logs a warning and returns.
 .PARAMETER AssessmentFolder
     Path to the assessment output folder containing collector CSVs and the summary file.
@@ -118,13 +121,18 @@ foreach ($c in $summary) {
 
         # Fixed columns
         $finding = [ordered]@{
-            CheckId      = $row.CheckId
-            Setting      = $row.Setting
-            Category     = $row.Category
-            Status       = $row.Status
-            RiskSeverity = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { '' }
-            Source       = $c.Collector
-            Remediation  = $row.Remediation
+            CheckId         = $row.CheckId
+            Setting         = $row.Setting
+            Category        = $row.Category
+            Status          = $row.Status
+            RiskSeverity    = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { '' }
+            ImpactSeverity  = if ($entry -and $entry.impactRating) { $entry.impactRating.severity }  else { '' }
+            ImpactRationale = if ($entry -and $entry.impactRating) { $entry.impactRating.rationale } else { '' }
+            SCFDomain       = if ($entry -and $entry.scf)          { $entry.scf.domain }             else { '' }
+            CSFFunction     = if ($entry -and $entry.scf)          { $entry.scf.csfFunction }        else { '' }
+            SCFWeight       = if ($entry -and $entry.scf)          { $entry.scf.relativeWeighting }  else { '' }
+            Source          = $c.Collector
+            Remediation     = $row.Remediation
         }
 
         # Dynamic framework columns (one per framework, sorted by displayOrder)
@@ -286,15 +294,48 @@ if ($cisFw -and $findings.Count -gt 0) {
     }
 }
 
+# Sheet 4 - Verification (one row per SCF assessment objective)
+$verificationRows = [System.Collections.Generic.List[PSCustomObject]]::new()
+$seenVerifIds = [System.Collections.Generic.HashSet[string]]::new()
+
+foreach ($vFinding in $sortedFindings) {
+    $vBaseId = $vFinding.CheckId -replace '\.\d+$', ''
+    if (-not $seenVerifIds.Add($vBaseId)) { continue }
+    $vEntry = if ($controlRegistry.ContainsKey($vBaseId)) { $controlRegistry[$vBaseId] } else { $null }
+    if (-not $vEntry -or -not $vEntry.scf -or -not $vEntry.scf.assessmentObjectives) { continue }
+
+    foreach ($ao in $vEntry.scf.assessmentObjectives) {
+        $verificationRows.Add([PSCustomObject][ordered]@{
+            CheckId    = $vBaseId
+            'Check Name' = $vEntry.name
+            'AO ID'    = $ao.aoId
+            Objective  = $ao.text
+        })
+    }
+}
+
+if ($verificationRows.Count -gt 0) {
+    $verifParams = @{
+        Path          = $outputFile
+        WorksheetName = 'Verification'
+        AutoSize      = $true
+        FreezeTopRow  = $true
+        BoldTopRow    = $true
+        TableStyle    = 'Medium15'
+    }
+    $verificationRows | Export-Excel @verifParams
+}
+
 # ------------------------------------------------------------------
 # Apply conditional formatting
 # ------------------------------------------------------------------
 $pkg = Open-ExcelPackage -Path $outputFile
 
-# Matrix sheet - color-code Status and RiskSeverity columns
+# Matrix sheet - color-code Status, RiskSeverity, and ImpactSeverity columns
 $matrixSheet = $pkg.Workbook.Worksheets['Compliance Matrix']
-$statusCol = 4       # Column D = Status
-$riskSevCol = 5      # Column E = RiskSeverity
+$statusCol      = 4   # Column D = Status
+$riskSevCol     = 5   # Column E = RiskSeverity
+$impactSevCol   = 6   # Column F = ImpactSeverity
 $lastRow = $matrixSheet.Dimension.End.Row
 
 for ($r = 2; $r -le $lastRow; $r++) {
@@ -314,6 +355,14 @@ for ($r = 2; $r -le $lastRow; $r++) {
         'Medium'   { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
         'Low'      { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(21, 128, 61));  $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(220, 252, 231)) }
         'Info'     { $matrixSheet.Cells[$r, $riskSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(107, 114, 128)); $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $riskSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(243, 244, 246)) }
+    }
+
+    $impactVal = $matrixSheet.Cells[$r, $impactSevCol].Value
+    switch ($impactVal) {
+        'Critical' { $matrixSheet.Cells[$r, $impactSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(185, 28, 28));  $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 226, 226)) }
+        'High'     { $matrixSheet.Cells[$r, $impactSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(154, 52, 18));  $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(255, 237, 213)) }
+        'Medium'   { $matrixSheet.Cells[$r, $impactSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
+        'Low'      { $matrixSheet.Cells[$r, $impactSevCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(21, 128, 61));  $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $impactSevCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(220, 252, 231)) }
     }
 }
 

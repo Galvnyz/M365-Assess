@@ -82,6 +82,8 @@ function Import-ControlRegistry {
             hasAutomatedCheck = $check.hasAutomatedCheck
             licensing         = @{ requiredServicePlans = $requiredPlans }
             frameworks        = @{}
+            scf               = $check.scf           # PSCustomObject from CheckID v2.0.0; $null for local extensions
+            impactRating      = $check.impactRating   # PSCustomObject from CheckID v2.0.0; $null for local extensions
         }
 
         # Convert framework PSCustomObject properties to hashtable

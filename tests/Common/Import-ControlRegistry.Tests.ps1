@@ -50,6 +50,44 @@ Describe 'Import-ControlRegistry' {
         $registry.Keys.Count | Should -BeGreaterThan 10 -Because 'local registry.json should load as fallback'
     }
 
+    Context 'SCF and impact data passthrough' {
+        It 'passes scf object through for v2.0.0 entries' {
+            $registry = Import-ControlRegistry -ControlsPath $testRoot
+            $withScf = @($registry.Keys | Where-Object { $_ -ne '__cisReverseLookup' } |
+                ForEach-Object { $registry[$_] } | Where-Object { $null -ne $_.scf })
+            $withScf.Count | Should -BeGreaterThan 0 -Because 'CheckID v2.0.0 entries carry scf objects'
+            $withScf[0].scf.domain | Should -Not -BeNullOrEmpty
+            $withScf[0].scf.csfFunction | Should -Not -BeNullOrEmpty
+        }
+
+        It 'passes impactRating object through for v2.0.0 entries' {
+            $registry = Import-ControlRegistry -ControlsPath $testRoot
+            $withImpact = @($registry.Keys | Where-Object { $_ -ne '__cisReverseLookup' } |
+                ForEach-Object { $registry[$_] } | Where-Object { $null -ne $_.impactRating })
+            $withImpact.Count | Should -BeGreaterThan 0 -Because 'CheckID v2.0.0 entries carry impactRating objects'
+            $withImpact[0].impactRating.severity | Should -BeIn @('Critical', 'High', 'Medium', 'Low')
+            $withImpact[0].impactRating.rationale | Should -Not -BeNullOrEmpty
+        }
+
+        It 'scf and impactRating are null for local extension entries without upstream data' {
+            $tmpDir = Join-Path $TestDrive 'controls-local-ext'
+            New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+            $reg = @{
+                schemaVersion = '1.x'
+                checks        = @(
+                    @{ checkId = 'LOCAL-001'; name = 'Local Check'; category = 'X'; collector = 'X'
+                       hasAutomatedCheck = $true
+                       licensing = @{ requiredServicePlans = @() }
+                       frameworks = [PSCustomObject]@{} }
+                )
+            }
+            $reg | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $tmpDir 'registry.json')
+            $result = Import-ControlRegistry -ControlsPath $tmpDir
+            $result['LOCAL-001'].scf         | Should -BeNullOrEmpty
+            $result['LOCAL-001'].impactRating | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'licensing normalization' {
         It 'every entry exposes licensing.requiredServicePlans as an array' {
             $registry = Import-ControlRegistry -ControlsPath $testRoot
