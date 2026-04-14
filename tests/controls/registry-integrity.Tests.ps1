@@ -19,7 +19,9 @@ Describe 'Control Registry Integrity' {
         foreach ($check in $checks) {
             $check.checkId | Should -Not -BeNullOrEmpty
             $check.name | Should -Not -BeNullOrEmpty
-            $check.frameworks | Should -Not -BeNullOrEmpty
+            # frameworks must be declared (not $null); empty {} is allowed for local
+            # extension checks that are pending upstream CheckID framework mapping
+            $check.frameworks | Should -Not -Be $null -Because "$($check.checkId) must declare a frameworks property"
         }
     }
 
