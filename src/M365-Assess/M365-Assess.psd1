@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '1.9.0'
+    ModuleVersion     = '1.10.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -197,7 +197,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v1.9.0 - Fix .onmicrosoft.com false-positive DNS failures; QuickScan now auto-applies triage report format (no cover page, exec summary, or compliance matrix)'
+            ReleaseNotes = 'v1.10.0 - Remediation Action Plan, Purview checks, CheckID v2.0.0, XLSX enrichment, registry gaps restored, collector error hardening'
         }
     }
 }

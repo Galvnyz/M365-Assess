@@ -4,6 +4,36 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-04-15
+
+### Added
+- Remediation Action Plan page in HTML report with severity/section chip filters (#401)
+- Per-table column visibility picker (CheckId, Category, RecommendedValue hidden by default)
+- Universal compact/expand toggle for all section tables
+- Bar chart in Remediation Action Plan header showing checks by section
+- Numbered index column in Appendix: Checks Run table
+- Purview compliance checks: DLP workload coverage, alert policies, auto-labeling, comms compliance (#409)
+- XLSX compliance matrix: 5 new SCF columns (ImpactSeverity, SCFDomain, CSFFunction, etc.) and Verification sheet (#408)
+- CheckID v2.0.0 schema compatibility (scf/impactRating objects, E3/E5 licensing minimum) (#405)
+- 8 missing registry entries restored: CA-NAMEDLOC-001, CA-REPORTONLY-001, CA-SESSION-001, SPO-ACCESS-001/002, SPO-SITE-001/002, SPO-VERSIONING-001 (#411)
+- Project CLAUDE.md with architecture overview and key workflows (#411)
+
+### Changed
+- QuickScan auto-applies compact report format (SkipCoverPage, SkipExecutiveSummary, SkipComplianceOverview)
+- PSGallery package optimized (~8MB to ~4MB via PNG compression and JSON minification)
+
+### Fixed
+- Bar chart section counts were all zero due to ForEach-Object `$_` variable shadowing in nested Where-Object
+- Remediation Action Plan chart card visual cohesion (removed double-card background, added left border divider)
+- Severity row hover now shows white text on all section, data, and remediation tables (removed opacity fade)
+- Null-array exceptions in Entra password checks when directory settings or authenticator feature settings are absent (#426)
+- Null-array exceptions in CA sign-in frequency checks when sessionControls is absent from a policy (#426)
+- EXO hidden mailboxes OPATH filter boolean type mismatch causing 400 Bad Request errors (#425)
+- EXO transient server-side errors now caught and reported as Review status instead of surfacing as warnings (#425)
+- Get-Mailbox ResultSize warnings suppressed with -WarningAction SilentlyContinue (#425)
+- Issues log now captures technical collector failures, not only permission errors (#425)
+- DNS false positives for .onmicrosoft.com domains filtered at source (carried from #397)
+
 ## [1.9.0] - 2026-04-07
 
 ### Added
