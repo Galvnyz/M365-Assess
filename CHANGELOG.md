@@ -4,6 +4,16 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-04-15
+
+### Fixed
+- Entra Security Config and EXO Security Config collectors returned 0 items due to
+  `Add-Setting @{ }` hashtable literal in catch blocks binding entire object to `$Category` (#431)
+- Authenticator fatigue protection check threw 'Cannot index into a null array' when
+  `featureSettings` sub-properties are absent on fresh tenants (#431)
+- Password hash sync check swallowed result via throw-to-catch anti-pattern;
+  null org data now emits a Review row instead of a silent Write-Warning (#431)
+
 ## [1.10.0] - 2026-04-15
 
 ### Added
