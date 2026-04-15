@@ -1562,9 +1562,11 @@ if ($allCisFindings.Count -gt 0) {
     $null = $checksRunHtml.AppendLine("<div class='table-wrapper'>")
     $null = $checksRunHtml.AppendLine("<table class='data-table'>")
     $null = $checksRunHtml.AppendLine("<caption class='sr-only'>Complete list of checks run during this assessment</caption>")
-    $null = $checksRunHtml.AppendLine("<thead><tr><th scope='col'>CheckId</th><th scope='col'>Setting</th><th scope='col'>Category</th><th scope='col'>Status</th><th scope='col'>Section</th></tr></thead>")
+    $null = $checksRunHtml.AppendLine("<thead><tr><th scope='col' class='appendix-index-col'>#</th><th scope='col'>CheckId</th><th scope='col'>Setting</th><th scope='col'>Category</th><th scope='col'>Status</th><th scope='col'>Section</th></tr></thead>")
     $null = $checksRunHtml.AppendLine("<tbody>")
+    $rowIndex = 0
     foreach ($check in $sortedChecks) {
+        $rowIndex++
         $statusBadgeClass = switch ($check.Status) {
             'Pass'    { 'badge-complete' }
             'Fail'    { 'badge-failed' }
@@ -1581,6 +1583,7 @@ if ($allCisFindings.Count -gt 0) {
             ConvertTo-HtmlSafe -Text $check.Status
         }
         $null = $checksRunHtml.AppendLine("<tr>")
+        $null = $checksRunHtml.AppendLine("<td class='appendix-index-col'>$rowIndex</td>")
         $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.CheckId)</td>")
         $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Setting)</td>")
         $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Category)</td>")
@@ -1666,7 +1669,10 @@ function Build-RemediationPlanHtml {
     $null = $html.AppendLine("<details class='section' id='remediation-plan-section' open>")
     $null = $html.AppendLine("<summary><h2>Remediation Action Plan</h2></summary>")
 
-    # Stat tiles
+    # Header row: severity tiles + section bar chart side by side
+    $null = $html.AppendLine("<div class='remediation-header-row'>")
+
+    # Severity stat tiles
     $null = $html.AppendLine("<div class='remediation-stats'>")
     foreach ($sevEntry in @( @('Critical',$critCount,'critical'), @('High',$highCount,'high'), @('Medium',$medCount,'medium'), @('Low',$lowCount,'low') )) {
         if ($sevEntry[1] -gt 0) {
@@ -1674,6 +1680,29 @@ function Build-RemediationPlanHtml {
         }
     }
     $null = $html.AppendLine("</div>")
+
+    # Section bar chart
+    if ($uniqueSections.Count -gt 0) {
+        $sectionsSorted = $uniqueSections | ForEach-Object {
+            $sectionName = $_
+            [PSCustomObject]@{ Name = $sectionName; Count = @($sorted | Where-Object { $_.Section -eq $sectionName }).Count }
+        } | Sort-Object -Property Count -Descending
+        $maxSectionCount = ($sectionsSorted | Measure-Object -Property Count -Maximum).Maximum
+        $null = $html.AppendLine("<div class='remediation-section-chart'>")
+        $null = $html.AppendLine("<div class='section-chart-title'>By Section</div>")
+        foreach ($sec in $sectionsSorted) {
+            $pct = if ($maxSectionCount -gt 0) { [int]([Math]::Round(($sec.Count / $maxSectionCount) * 100)) } else { 0 }
+            $secEncoded = ConvertTo-HtmlSafe -Text $sec.Name
+            $null = $html.AppendLine("<div class='section-bar-row'>")
+            $null = $html.AppendLine("<span class='section-bar-label'>$secEncoded</span>")
+            $null = $html.AppendLine("<div class='section-bar-track'><div class='section-bar-fill' style='width:$pct%'></div></div>")
+            $null = $html.AppendLine("<span class='section-bar-count'>$($sec.Count)</span>")
+            $null = $html.AppendLine("</div>")
+        }
+        $null = $html.AppendLine("</div>") # remediation-section-chart
+    }
+
+    $null = $html.AppendLine("</div>") # remediation-header-row
 
     # ---- Severity chip filter row ----
     $null = $html.AppendLine("<div class='remediation-chip-bar'>")

@@ -1901,12 +1901,26 @@ $html = @"
         .matrix-table tbody tr:nth-child(even) { background: transparent; }
         .matrix-table tbody tr.stripe-even td { background-color: rgba(148, 163, 184, 0.12); }
         .matrix-table tbody tr:hover td { background-color: transparent; }
-        .matrix-table tbody tr.cis-row-pass:hover { background-color: var(--m365a-success); opacity: 0.85; }
-        .matrix-table tbody tr.cis-row-fail:hover { background-color: var(--m365a-danger); opacity: 0.85; }
-        .matrix-table tbody tr.cis-row-warning:hover { background-color: var(--m365a-warning); opacity: 0.85; }
-        .matrix-table tbody tr.cis-row-review:hover { background-color: var(--m365a-accent); opacity: 0.85; }
-        .matrix-table tbody tr.cis-row-info:hover { background-color: var(--m365a-neutral); opacity: 0.85; }
-        .matrix-table tbody tr.cis-row-unknown:hover { background-color: var(--m365a-medium-gray); opacity: 0.85; }
+        /* Severity-tinted hover — shared by data-table (section tables) and matrix-table.
+           Uses full status color (vs muted -bg base) for the "different tone" shift.
+           opacity removed: it fades text + badges, hurting contrast. color:#fff is explicit. */
+        .data-table tr.cis-row-pass:hover,
+        .matrix-table tbody tr.cis-row-pass:hover    { background-color: var(--m365a-success); color: #fff; }
+        .data-table tr.cis-row-fail:hover,
+        .matrix-table tbody tr.cis-row-fail:hover    { background-color: var(--m365a-danger);  color: #fff; }
+        .data-table tr.cis-row-warning:hover,
+        .matrix-table tbody tr.cis-row-warning:hover { background-color: var(--m365a-warning); color: #fff; }
+        .data-table tr.cis-row-review:hover,
+        .matrix-table tbody tr.cis-row-review:hover  { background-color: var(--m365a-accent);  color: #fff; }
+        .data-table tr.cis-row-info:hover,
+        .matrix-table tbody tr.cis-row-info:hover    { background-color: var(--m365a-neutral); color: #fff; }
+        .data-table tr.cis-row-unknown:hover,
+        .matrix-table tbody tr.cis-row-unknown:hover { background-color: var(--m365a-medium-gray); color: #fff; }
+        /* Remediation Action Plan table severity hover */
+        .remediation-table tr.remediation-row-critical:hover { background-color: var(--m365a-danger);  color: #fff; }
+        .remediation-table tr.remediation-row-high:hover     { background-color: var(--m365a-warning); color: #fff; }
+        .remediation-table tr.remediation-row-medium:hover   { background-color: var(--m365a-info);    color: #fff; }
+        .remediation-table tr.remediation-row-low:hover      { background-color: var(--m365a-neutral); color: #fff; }
         .matrix-table .framework-refs { max-width: 180px; }
 
         /* ----------------------------------------------------------
@@ -2019,6 +2033,7 @@ $html = @"
         .appendix-section h2 { color: var(--m365a-dark); border-bottom: 2px solid var(--m365a-border); padding-bottom: 8px; }
         .appendix-desc { color: var(--m365a-medium-gray); font-size: 9pt; margin-bottom: 16px; }
         .appendix-count { color: var(--m365a-medium-gray); font-size: 9pt; margin-top: 12px; font-style: italic; }
+        .appendix-index-col { width: 36px; min-width: 36px; text-align: center; color: var(--m365a-medium-gray); font-variant-numeric: tabular-nums; }
 
         /* ----------------------------------------------------------
            Focus Styles
@@ -2520,6 +2535,17 @@ $html = @"
         /* Remediation table — taller compact view than the standard 260px */
         .remediation-table-wrapper { max-height: 380px; }
         .remediation-empty { font-size: 0.875rem; color: var(--m365a-medium-gray); padding: 1rem 0; }
+        /* Header row: severity tiles + section bar chart */
+        .remediation-header-row { display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; }
+        .remediation-header-row .remediation-stats { margin-bottom: 0; flex-shrink: 0; }
+        .remediation-section-chart { flex: 1; min-width: 200px; padding: 0.5rem 0 0.5rem 1.5rem; border-left: 1px solid var(--m365a-border); align-self: center; }
+        .section-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--m365a-medium-gray); margin-bottom: 0.6rem; }
+        .section-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .section-bar-row:last-child { margin-bottom: 0; }
+        .section-bar-label { font-size: 0.8rem; color: var(--m365a-text); min-width: 100px; white-space: nowrap; }
+        .section-bar-track { flex: 1; height: 8px; background: var(--m365a-border); border-radius: 4px; overflow: hidden; }
+        .section-bar-fill { height: 100%; background: var(--m365a-primary); border-radius: 4px; }
+        .section-bar-count { font-size: 0.8rem; font-weight: 700; color: var(--m365a-text); min-width: 24px; text-align: right; }
         /* Column picker */
         .col-picker-bar { position: relative; display: inline-block; margin-bottom: 6px; }
         .col-picker-toggle { padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-medium-gray); cursor: pointer; font-size: 0.82em; }

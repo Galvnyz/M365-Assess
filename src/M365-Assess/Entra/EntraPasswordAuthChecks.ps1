@@ -329,7 +329,23 @@ try {
     }
 }
 catch {
-    Write-Warning "Could not check password protection: $_"
+    if ($_.ToString() -match '400 Bad Request|BadRequest|Resource not found for the segment') {
+        # Tenant has no configured directory settings — normal for tenants that have never
+        # customized Entra password protection. Add a single Info item so the check appears
+        # in the report rather than silently disappearing.
+        Add-Setting @{
+            Category         = 'Password Management'
+            Setting          = 'Custom Banned Password Protection'
+            CurrentValue     = 'Directory settings not configured (using Entra defaults)'
+            RecommendedValue = 'Configured'
+            Status           = 'Info'
+            CheckId          = 'ENTRA-PASSWORD-002'
+            Remediation      = 'Entra admin center > Protection > Authentication methods > Password protection. Configure a custom banned password list and smart lockout threshold.'
+        }
+    }
+    else {
+        Write-Warning "Could not check password protection: $_"
+    }
 }
 
 # ------------------------------------------------------------------
@@ -370,20 +386,34 @@ try {
 
         if ($authenticator) {
             $featureSettings = $authenticator['featureSettings']
-            $numberMatch = $featureSettings['numberMatchingRequiredState']['state']
-            $appInfo = $featureSettings['displayAppInformationRequiredState']['state']
+            if ($null -ne $featureSettings) {
+                $numberMatch = $featureSettings['numberMatchingRequiredState']['state']
+                $appInfo = $featureSettings['displayAppInformationRequiredState']['state']
 
-            $fatiguePassed = ($numberMatch -eq 'enabled') -and ($appInfo -eq 'enabled')
-            $settingParams = @{
-                Category         = 'Authentication Methods'
-                Setting          = 'Authenticator Fatigue Protection'
-                CurrentValue     = "Number matching: $numberMatch; App context: $appInfo"
-                RecommendedValue = 'Both enabled'
-                Status           = $(if ($fatiguePassed) { 'Pass' } else { 'Fail' })
-                CheckId          = 'ENTRA-AUTHMETHOD-003'
-                Remediation      = 'Entra admin center > Protection > Authentication methods > Microsoft Authenticator > Configure > Require number matching = Enabled, Show application name = Enabled.'
+                $fatiguePassed = ($numberMatch -eq 'enabled') -and ($appInfo -eq 'enabled')
+                $settingParams = @{
+                    Category         = 'Authentication Methods'
+                    Setting          = 'Authenticator Fatigue Protection'
+                    CurrentValue     = "Number matching: $numberMatch; App context: $appInfo"
+                    RecommendedValue = 'Both enabled'
+                    Status           = $(if ($fatiguePassed) { 'Pass' } else { 'Fail' })
+                    CheckId          = 'ENTRA-AUTHMETHOD-003'
+                    Remediation      = 'Entra admin center > Protection > Authentication methods > Microsoft Authenticator > Configure > Require number matching = Enabled, Show application name = Enabled.'
+                }
+                Add-Setting @settingParams
             }
-            Add-Setting @settingParams
+            else {
+                $settingParams = @{
+                    Category         = 'Authentication Methods'
+                    Setting          = 'Authenticator Fatigue Protection'
+                    CurrentValue     = 'Feature settings not available for Microsoft Authenticator'
+                    RecommendedValue = 'Both enabled'
+                    Status           = 'Review'
+                    CheckId          = 'ENTRA-AUTHMETHOD-003'
+                    Remediation      = 'Verify Microsoft Authenticator feature settings in Entra admin center > Protection > Authentication methods > Microsoft Authenticator > Configure.'
+                }
+                Add-Setting @settingParams
+            }
         }
         else {
             $settingParams = @{
@@ -502,6 +532,9 @@ try {
     $orgValue = if ($orgInfo -and $orgInfo['value']) { @($orgInfo['value']) } else { @() }
     if ($orgValue -and $orgValue.Count -gt 0) {
         $org = $orgValue[0]
+        if ($null -eq $org) {
+            throw "Organization data returned null element — cannot evaluate hybrid sync state"
+        }
         $onPremSync = $org['onPremisesSyncEnabled']
 
         if ($null -eq $onPremSync -or $onPremSync -eq $false) {

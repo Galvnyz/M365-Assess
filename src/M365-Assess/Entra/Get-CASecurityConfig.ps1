@@ -303,7 +303,10 @@ try {
     Write-Verbose "Checking CA: Sign-in frequency for admins..."
     $signinFreqPolicies = @($enabledPolicies | Where-Object {
         (Test-TargetAdminRole -Policy $_) -and
+        $null -ne $_['sessionControls'] -and
+        $null -ne $_['sessionControls']['signInFrequency'] -and
         $_['sessionControls']['signInFrequency']['isEnabled'] -eq $true -and
+        $null -ne $_['sessionControls']['persistentBrowser'] -and
         $_['sessionControls']['persistentBrowser']['mode'] -eq 'never'
     })
 
@@ -606,6 +609,8 @@ try {
     $intuneFreqPolicies = @($enabledPolicies | Where-Object {
         $includeApps = $_['conditions']['applications']['includeApplications']
         ($includeApps -contains $intuneAppId -or $includeApps -contains 'All') -and
+        $null -ne $_['sessionControls'] -and
+        $null -ne $_['sessionControls']['signInFrequency'] -and
         $_['sessionControls']['signInFrequency']['isEnabled'] -eq $true -and
         $_['sessionControls']['signInFrequency']['type'] -eq 'everyTime'
     })
