@@ -2520,6 +2520,17 @@ $html = @"
         /* Remediation table — taller compact view than the standard 260px */
         .remediation-table-wrapper { max-height: 380px; }
         .remediation-empty { font-size: 0.875rem; color: var(--m365a-medium-gray); padding: 1rem 0; }
+        /* Header row: severity tiles + section bar chart */
+        .remediation-header-row { display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; }
+        .remediation-header-row .remediation-stats { margin-bottom: 0; flex-shrink: 0; }
+        .remediation-section-chart { flex: 1; min-width: 200px; padding: 0.75rem 1rem; background: var(--m365a-light-gray); border: 1px solid var(--m365a-border); border-radius: 8px; align-self: center; }
+        .section-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--m365a-medium-gray); margin-bottom: 0.6rem; }
+        .section-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .section-bar-row:last-child { margin-bottom: 0; }
+        .section-bar-label { font-size: 0.8rem; color: var(--m365a-text); min-width: 100px; white-space: nowrap; }
+        .section-bar-track { flex: 1; height: 8px; background: var(--m365a-border); border-radius: 4px; overflow: hidden; }
+        .section-bar-fill { height: 100%; background: var(--m365a-primary); border-radius: 4px; }
+        .section-bar-count { font-size: 0.8rem; font-weight: 700; color: var(--m365a-text); min-width: 24px; text-align: right; }
         /* Column picker */
         .col-picker-bar { position: relative; display: inline-block; margin-bottom: 6px; }
         .col-picker-toggle { padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-medium-gray); cursor: pointer; font-size: 0.82em; }
