@@ -204,7 +204,21 @@ try {
     Add-Setting @settingParams
 }
 catch {
-    Write-Warning "Could not check external sender tagging: $_"
+    if ($_.ToString() -match 'server side error|try again after some time') {
+        # Transient EXO REST API error — emit Review so the check appears in the report
+        Add-Setting @{
+            Category         = 'Email Security'
+            Setting          = 'External Sender Tagging'
+            CurrentValue     = 'Could not verify — transient API error'
+            RecommendedValue = 'True'
+            Status           = 'Review'
+            CheckId          = 'EXO-EXTTAG-001'
+            Remediation      = 'Verify manually: Get-ExternalInOutlook. Enable with: Set-ExternalInOutlook -Enabled $true.'
+        }
+    }
+    else {
+        Write-Warning "Could not check external sender tagging: $_"
+    }
 }
 
 # ------------------------------------------------------------------
@@ -446,7 +460,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking mailbox auditing (sampling 50 mailboxes)..."
-    $mailboxes = Get-Mailbox -ResultSize 50 -RecipientTypeDetails UserMailbox -ErrorAction Stop
+    $mailboxes = Get-Mailbox -ResultSize 50 -RecipientTypeDetails UserMailbox -ErrorAction Stop -WarningAction SilentlyContinue
 
     if (@($mailboxes).Count -eq 0) {
         $settingParams = @{
@@ -501,7 +515,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking shared mailbox sign-in status..."
-    $sharedMailboxes = Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize 100 -ErrorAction Stop
+    $sharedMailboxes = Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize 100 -ErrorAction Stop -WarningAction SilentlyContinue
 
     if ($sharedMailboxes.Count -eq 0) {
         $settingParams = @{
@@ -628,7 +642,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking for hidden user mailboxes..."
-    $hiddenMailboxes = @(Get-EXOMailbox -RecipientTypeDetails UserMailbox -ResultSize Unlimited -Filter "HiddenFromAddressListsEnabled -eq 'True'" -Properties DisplayName, PrimarySmtpAddress -ErrorAction Stop)
+    $hiddenMailboxes = @(Get-EXOMailbox -RecipientTypeDetails UserMailbox -ResultSize Unlimited -Filter 'HiddenFromAddressListsEnabled -eq $True' -Properties DisplayName, PrimarySmtpAddress -ErrorAction Stop)
 
     if ($hiddenMailboxes.Count -eq 0) {
         $settingParams = @{

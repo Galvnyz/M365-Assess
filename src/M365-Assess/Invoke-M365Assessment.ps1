@@ -971,7 +971,8 @@ foreach ($sectionName in $Section) {
             $capturedWarnings = @($rawOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $results = @($rawOutput | Where-Object { $null -ne $_ -and $_ -isnot [System.Management.Automation.WarningRecord] })
 
-            # Log captured warnings; track permission-related ones as issues
+            # Log captured warnings; track permission failures as WARNING issues,
+            # other technical failures (API errors, null-index) as INFO issues
             $hasPermissionWarning = $false
             foreach ($w in $capturedWarnings) {
                 Write-AssessmentLog -Level WARN -Message $w.Message -Section $sectionName -Collector $collector.Label
@@ -979,6 +980,16 @@ foreach ($sectionName in $Section) {
                     $hasPermissionWarning = $true
                     $issues.Add([PSCustomObject]@{
                         Severity     = 'WARNING'
+                        Section      = $sectionName
+                        Collector    = $collector.Label
+                        Description  = $w.Message
+                        ErrorMessage = $w.Message
+                        Action       = Get-RecommendedAction -ErrorMessage $w.Message
+                    })
+                }
+                elseif ($w.Message -match 'Could not check|Could not retrieve|server side error|querying REST|Cannot index') {
+                    $issues.Add([PSCustomObject]@{
+                        Severity     = 'INFO'
                         Section      = $sectionName
                         Collector    = $collector.Label
                         Description  = $w.Message
