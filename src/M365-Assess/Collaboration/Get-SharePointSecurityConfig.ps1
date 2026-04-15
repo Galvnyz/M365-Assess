@@ -221,7 +221,7 @@ try {
     $settingParams = @{
         Category         = 'Sync & Access'
         Setting          = 'Block Sync from Unmanaged Devices'
-        CurrentValue     = "$unmanagedSync"
+        CurrentValue     = if ($null -ne $unmanagedSync) { "$unmanagedSync" } else { 'Not configured' }
         RecommendedValue = 'True'
         Status           = if ($unmanagedSync) { 'Pass' } else { 'Warning' }
         CheckId          = 'SPO-SYNC-001'
@@ -962,7 +962,7 @@ try {
     $settingParams = @{
         Category         = 'Sync & Access'
         Setting          = 'Unmanaged Device Sync Restriction'
-        CurrentValue     = "$unmanagedSyncRestricted"
+        CurrentValue     = if ($null -ne $unmanagedSyncRestricted) { "$unmanagedSyncRestricted" } else { 'Not configured' }
         RecommendedValue = 'True'
         Status           = if ($unmanagedSyncRestricted) { 'Pass' } else { 'Warning' }
         CheckId          = 'SPO-ACCESS-002'

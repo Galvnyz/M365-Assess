@@ -3460,7 +3460,9 @@ $html += @"
 
         // --- Table-level status filters (security config tables) ---
         document.querySelectorAll('.table-status-filter').forEach(function(filterBar) {
-            var tableWrapper = filterBar.nextElementSibling;
+            // Use querySelector rather than nextElementSibling so that intermediate
+            // siblings (e.g. col-picker-bar) do not break the lookup.
+            var tableWrapper = filterBar.parentElement ? filterBar.parentElement.querySelector('.table-wrapper') : null;
             if (!tableWrapper) return;
             var table = tableWrapper.querySelector('table');
             if (!table) return;

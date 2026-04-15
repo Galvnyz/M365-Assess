@@ -74,7 +74,7 @@ try {
 
         $settingParams = @{
             Category         = 'Audit'
-            Setting          = 'Unified Audit Log Ingestion'
+            Setting          = 'Unified Audit Log (UAL) Ingestion'
             CurrentValue     = "$auditEnabled"
             RecommendedValue = 'True'
             Status           = if ($auditEnabled) { 'Pass' } else { 'Fail' }
@@ -86,7 +86,7 @@ try {
     else {
         $settingParams = @{
             Category         = 'Audit'
-            Setting          = 'Unified Audit Log Ingestion'
+            Setting          = 'Unified Audit Log (UAL) Ingestion'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'True'
             Status           = 'Review'

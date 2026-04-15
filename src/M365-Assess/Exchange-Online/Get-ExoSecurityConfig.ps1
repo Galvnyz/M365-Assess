@@ -84,12 +84,12 @@ try {
     $auditEnabled = $orgConfig.AuditDisabled
     $settingParams = @{
         Category         = 'Auditing'
-        Setting          = 'Org-Level Audit Enabled'
+        Setting          = 'Exchange Org Audit Config'
         CurrentValue     = "$(if ($auditEnabled) { 'Disabled' } else { 'Enabled' })"
         RecommendedValue = 'Enabled'
         Status           = if (-not $auditEnabled) { 'Pass' } else { 'Fail' }
         CheckId          = 'EXO-AUDIT-001'
-        Remediation      = 'Run: Set-OrganizationConfig -AuditDisabled $false. Ensure unified audit log is enabled in Microsoft Purview.'
+        Remediation      = 'Run: Set-OrganizationConfig -AuditDisabled $false. Note: this is the Exchange org-level audit flag and is a pre-condition for UAL, but does not guarantee UAL ingestion is active. Verify UAL separately (COMPLIANCE-AUDIT-001).'
     }
     Add-Setting @settingParams
 
