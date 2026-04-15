@@ -55,7 +55,9 @@ $checkIdCounter = $ctx.CheckIdCounter
 function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
+        [string]$RecommendedValue,
+        [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Unknown')]
+        [string]$Status,
         [string]$CheckId = '', [string]$Remediation = ''
     )
     $p = @{

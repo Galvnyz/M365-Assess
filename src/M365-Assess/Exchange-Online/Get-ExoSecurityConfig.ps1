@@ -41,7 +41,9 @@ $checkIdCounter = $ctx.CheckIdCounter
 function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
+        [string]$RecommendedValue,
+        [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Unknown')]
+        [string]$Status,
         [string]$CheckId = '', [string]$Remediation = ''
     )
     $p = @{
@@ -206,7 +208,7 @@ try {
 catch {
     if ($_.ToString() -match 'server side error|try again after some time') {
         # Transient EXO REST API error — emit Review so the check appears in the report
-        Add-Setting @{
+        $settingParams = @{
             Category         = 'Email Security'
             Setting          = 'External Sender Tagging'
             CurrentValue     = 'Could not verify — transient API error'
@@ -215,6 +217,7 @@ catch {
             CheckId          = 'EXO-EXTTAG-001'
             Remediation      = 'Verify manually: Get-ExternalInOutlook. Enable with: Set-ExternalInOutlook -Enabled $true.'
         }
+        Add-Setting @settingParams
     }
     else {
         Write-Warning "Could not check external sender tagging: $_"
