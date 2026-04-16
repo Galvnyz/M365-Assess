@@ -1744,8 +1744,8 @@ $html = @"
             overflow-x: auto;
         }
         .collector-detail .table-wrapper.expanded { max-height: none; }
-        .table-expand-btn { display: block; width: 100%; padding: 5px 0; border: 1px solid var(--m365a-border); border-top: none; border-radius: 0 0 4px 4px; background: var(--m365a-card-bg); color: var(--m365a-medium-gray); cursor: pointer; font-size: 0.82em; text-align: center; transition: background 0.15s, color 0.15s; }
-        .table-expand-btn:hover { background: var(--m365a-hover-bg); color: var(--m365a-text); }
+        .table-expand-btn { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 6px 0; border: 1px solid var(--m365a-accent); border-top: none; border-radius: 0 0 4px 4px; background: var(--m365a-hover-bg); color: var(--m365a-accent); cursor: pointer; font-size: 0.82em; font-weight: 500; text-align: center; transition: background 0.15s, color 0.15s; letter-spacing: 0.02em; }
+        .table-expand-btn:hover { background: var(--m365a-accent); color: #fff; }
 
         .collector-detail .data-table thead th {
             position: sticky;
@@ -2150,6 +2150,8 @@ $html = @"
             vertical-align: -2px;
         }
         .nav-item.active .nav-icon { opacity: 1; }
+        .nav-item-muted a { opacity: 0.6; }
+        .nav-item-muted a:hover { opacity: 1; }
         .nav-badge {
             margin-left: auto;
             font-size: 8pt;
@@ -2455,6 +2457,7 @@ $html = @"
             .status-filter { display: none; }
             .section-filter { display: none; }
             .col-picker-bar { display: none; }
+            .csv-export-btn { display: none; }
             .table-expand-btn { display: none; }
             .matrix-controls { display: none; }
             .callout-row { display: block; }
@@ -2555,6 +2558,9 @@ $html = @"
         .col-picker-panel { position: absolute; top: 100%; left: 0; z-index: 10; min-width: 160px; padding: 8px; background: var(--m365a-card-bg); border: 1px solid var(--m365a-border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .col-picker-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 0.85em; cursor: pointer; white-space: nowrap; }
         .col-picker-item input { cursor: pointer; }
+        /* CSV export button — in control bar, accent color */
+        .csv-export-btn { padding: 4px 10px; border: 1px solid var(--m365a-accent); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-accent); cursor: pointer; font-size: 0.82em; font-weight: 500; white-space: nowrap; }
+        .csv-export-btn:hover { background: var(--m365a-accent); color: #fff; }
     </style>
 $accentCss
 </head>
@@ -2602,6 +2608,17 @@ $navIcons = @{
     'remediation'         = '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M11 2C11.5523 2 12 2.44772 12 3H13.5C14.3284 3 15 3.67157 15 4.5V15.5C15 16.3284 14.3284 17 13.5 17H6.5C5.67157 17 5 16.3284 5 15.5V4.5C5 3.67157 5.67157 3 6.5 3H8C8 2.44772 8.44772 2 9 2H11ZM9 3H8V4C8 4.55228 8.44772 5 9 5H11C11.5523 5 12 4.55228 12 4V3H11C11 3.55228 10.5523 4 10 4C9.44772 4 9 3.55228 9 3ZM13.3536 8.35355C13.5488 8.15829 13.5488 7.84171 13.3536 7.64645C13.1583 7.45118 12.8417 7.45118 12.6464 7.64645L9 11.2929L7.35355 9.64645C7.15829 9.45118 6.84171 9.45118 6.64645 9.64645C6.45118 9.84171 6.45118 10.1583 6.64645 10.3536L8.64645 12.3536C8.84171 12.5488 9.15829 12.5488 9.35355 12.3536L13.3536 8.35355Z"/></svg>'
 }
 
+# Pre-compute Hybrid sync status to decide nav placement (#415)
+$hybridSyncEnabled = $false
+$hybridNavItemHtml  = ''
+$hybridCsvFile = Get-ChildItem -Path $AssessmentFolder -Filter '23-Hybrid-Sync.csv' -ErrorAction SilentlyContinue
+if ($hybridCsvFile) {
+    $hybridRow = Import-Csv -Path $hybridCsvFile.FullName -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($hybridRow) {
+        $hybridSyncEnabled = $hybridRow.OnPremisesSyncEnabled -eq 'True' -or $hybridRow.DirSyncConfigured -eq 'True'
+    }
+}
+
 # Build sidebar nav items -- Overview combines cover + exec summary + org profile
 $navIconOverview = $navIcons['overview']
 $html += "                <li class='nav-item active' data-page='overview'><a href='#overview'>$navIconOverview Overview</a></li>`n"
@@ -2613,6 +2630,14 @@ if ($remActionableCount -gt 0) {
 foreach ($navSection in $sections) {
     # Tenant is merged into Overview page -- skip separate nav entry
     if ($navSection -eq 'Tenant') { continue }
+
+    # Hybrid deferred to bottom when cloud-only (sync=Off) -- built and emitted after main loop
+    if ($navSection -eq 'Hybrid' -and -not $hybridSyncEnabled) {
+        $hybridPageId   = "section-hybrid"
+        $hybridIconSvg  = if ($navIcons.ContainsKey('hybrid')) { $navIcons['hybrid'] } else { '' }
+        $hybridNavItemHtml = "                <li class='nav-item nav-item-muted' data-page='$hybridPageId'><a href='#$hybridPageId'>$hybridIconSvg Hybrid<span class='nav-badge nav-badge-neutral'>Off</span></a></li>`n"
+        continue
+    }
 
     $navPageId = "section-$(($navSection -replace '[^a-zA-Z0-9]', '-').ToLower())"
     $navLabel = [System.Web.HttpUtility]::HtmlEncode($navSection)
@@ -2639,18 +2664,8 @@ foreach ($navSection in $sections) {
                 $navBadge = "<span class='nav-badge nav-badge-skip'>skip</span>"
             }
             elseif ($navSection -eq 'Hybrid') {
-                # Hybrid: show sync status instead of item count
-                $hybridCsv = Get-ChildItem -Path $AssessmentFolder -Filter '23-Hybrid-Sync.csv' -ErrorAction SilentlyContinue
-                if ($hybridCsv) {
-                    $hybridData = Import-Csv -Path $hybridCsv.FullName -ErrorAction SilentlyContinue | Select-Object -First 1
-                    $syncEnabled = $hybridData.OnPremisesSyncEnabled -eq 'True' -or $hybridData.DirSyncConfigured -eq 'True'
-                    if ($syncEnabled) {
-                        $navBadge = "<span class='nav-badge nav-badge-info'>On</span>"
-                    }
-                    else {
-                        $navBadge = "<span class='nav-badge nav-badge-neutral'>Off</span>"
-                    }
-                }
+                # Sync is On -- show active badge
+                $navBadge = "<span class='nav-badge nav-badge-info'>On</span>"
             }
             else {
                 $totalItems = ($sectionCollectors | Where-Object { $_.Status -eq 'Complete' } |
@@ -2664,6 +2679,12 @@ foreach ($navSection in $sections) {
     $navIconKey = $navSection.ToLower()
     $navIconSvg = if ($navIcons.ContainsKey($navIconKey)) { $navIcons[$navIconKey] } else { '' }
     $html += "                <li class='nav-item' data-page='$navPageId'><a href='#$navPageId'>$navIconSvg $navLabel$navBadge</a></li>`n"
+}
+
+# Hybrid deferred to bottom of main nav when cloud-only
+if ($hybridNavItemHtml) {
+    $html += "                <li class='nav-separator' role='separator'></li>`n"
+    $html += $hybridNavItemHtml
 }
 
 # Separator before extra sections
@@ -2950,6 +2971,9 @@ $html += @"
         }
     })();
 
+    // Report metadata for client-side export
+    var reportTenantName = '$(($TenantName -replace "'", "\'") -replace '<', '&lt;' -replace '>', '&gt;')';
+
     // --- Paginated Navigation ---
     (function() {
         var layout = document.getElementById('reportLayout');
@@ -3174,12 +3198,15 @@ $html += @"
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'table-expand-btn';
-                btn.textContent = '\u25BC Expand table';
+                var iconSpan = document.createElement('span');
+                iconSpan.setAttribute('aria-hidden', 'true');
+                iconSpan.textContent = '\u2195';
+                btn.appendChild(iconSpan);
+                btn.appendChild(document.createTextNode(' Expand table'));
                 btn.addEventListener('click', function() {
                     wrapper.classList.toggle('expanded');
-                    btn.textContent = wrapper.classList.contains('expanded')
-                        ? '\u25B2 Collapse table'
-                        : '\u25BC Expand table';
+                    var expanded = wrapper.classList.contains('expanded');
+                    btn.lastChild.textContent = expanded ? ' Collapse table' : ' Expand table';
                 });
                 wrapper.parentNode.insertBefore(btn, wrapper.nextSibling);
             });
@@ -3190,6 +3217,52 @@ $html += @"
             table.querySelectorAll('[data-col-key="' + colKey + '"]').forEach(function(el) {
                 el.style.display = visible ? '' : 'none';
             });
+        }
+
+        function exportTableCsv(btn) {
+            var detail = btn.closest('.collector-detail');
+            if (!detail) { return; }
+            var table = detail.querySelector('.data-table');
+            if (!table) { return; }
+
+            // Visible headers only (respect column picker)
+            var headers = Array.from(table.querySelectorAll('thead th')).filter(function(th) {
+                return th.style.display !== 'none';
+            });
+            var headerRow = headers.map(function(th) {
+                return '"' + (th.textContent || '').replace(/"/g, '""') + '"';
+            }).join(',');
+
+            // Visible rows only (respect status filter)
+            var dataRows = [];
+            table.querySelectorAll('tbody tr').forEach(function(row) {
+                if (row.style.display === 'none') { return; }
+                var cells = headers.map(function(th) {
+                    var colKey = th.getAttribute('data-col-key');
+                    var cell = colKey ? row.querySelector('[data-col-key="' + colKey + '"]') : null;
+                    var text = cell ? (cell.textContent || '').trim() : '';
+                    return '"' + text.replace(/"/g, '""') + '"';
+                });
+                dataRows.push(cells.join(','));
+            });
+
+            var csv = [headerRow].concat(dataRows).join('\r\n');
+            var heading = detail.querySelector('h3');
+            var collectorName = heading ? heading.textContent.replace(/\s*\(\d+ rows\)\s*$/, '').trim() : 'export';
+            var date = new Date().toISOString().slice(0, 10);
+            var safeTenant = (reportTenantName || 'tenant').replace(/[^a-zA-Z0-9._-]/g, '_');
+            var safeName   = collectorName.replace(/[^a-zA-Z0-9._-]/g, '_');
+            var filename = safeName + '_' + safeTenant + '_' + date + '.csv';
+
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function initColPickers(page) {

@@ -1256,6 +1256,7 @@ foreach ($sectionName in $sections) {
             $null = $sectionHtml.AppendLine("<label class='col-picker-item'><input type='checkbox' data-col-key='$col'$defaultAttr$checkedAttr> $(ConvertTo-HtmlSafe -Text $displayCol)</label>")
         }
         $null = $sectionHtml.AppendLine("</div></div>")
+        $null = $sectionHtml.AppendLine("<button type='button' class='csv-export-btn' onclick='exportTableCsv(this)' title='Export visible rows to CSV'>&#8595; CSV</button>")
         $null = $sectionHtml.AppendLine("</div>")
 
         $null = $sectionHtml.AppendLine("<div class='table-wrapper'>")
