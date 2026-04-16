@@ -1218,8 +1218,12 @@ foreach ($sectionName in $sections) {
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
         # Control bar: status filter (security config) + column picker (all tables)
+        # Only attach table-status-filter class when the table has status data — the JS
+        # filter uses that class as its selector and defaults to hiding all rows, so
+        # non-security-config tables must not carry it.
         $hiddenByDefault = @('CheckId', 'Category', 'RecommendedValue')
-        $null = $sectionHtml.AppendLine("<div class='status-filter table-status-filter'>")
+        $controlBarClass = if ($isSecurityConfig) { 'status-filter table-status-filter' } else { 'status-filter' }
+        $null = $sectionHtml.AppendLine("<div class='$controlBarClass'>")
         if ($isSecurityConfig) {
             $tblPass   = @($data | Where-Object { $_.Status -eq 'Pass' }).Count
             $tblFail   = @($data | Where-Object { $_.Status -eq 'Fail' }).Count
