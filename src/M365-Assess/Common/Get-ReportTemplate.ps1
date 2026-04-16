@@ -1772,8 +1772,6 @@ $html = @"
         .copy-btn.copied { opacity: 1; }
         .impact-rationale { display: block; margin-top: 5px; font-size: 0.80em; color: var(--m365a-dark); opacity: 0.65; font-style: italic; line-height: 1.4; }
 
-        .impact-rationale { display: block; margin-top: 5px; font-size: 0.80em; color: var(--m365a-dark); opacity: 0.65; font-style: italic; line-height: 1.4; }
-
         /* Drift Analysis */
         .drift-header { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
         .drift-baseline-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
