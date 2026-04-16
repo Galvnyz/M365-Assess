@@ -23,7 +23,7 @@ $sectionServiceMap = @{
 # ------------------------------------------------------------------
 $sectionScopeMap = @{
     'Tenant'        = @('Organization.Read.All', 'Domain.Read.All', 'Policy.Read.All', 'User.Read.All', 'Group.Read.All')
-    'Identity'      = @('User.Read.All', 'AuditLog.Read.All', 'UserAuthenticationMethod.Read.All', 'RoleManagement.Read.Directory', 'Policy.Read.All', 'Application.Read.All', 'Domain.Read.All', 'Directory.Read.All')
+    'Identity'      = @('User.Read.All', 'AuditLog.Read.All', 'UserAuthenticationMethod.Read.All', 'RoleManagement.Read.Directory', 'Policy.Read.All', 'Application.Read.All', 'Domain.Read.All', 'Directory.Read.All', 'Agreement.Read.All')
     'Licensing'     = @('Organization.Read.All', 'User.Read.All')
     'Intune'        = @('DeviceManagementManagedDevices.Read.All', 'DeviceManagementConfiguration.Read.All')
     'Security'      = @('SecurityEvents.Read.All')
@@ -73,6 +73,9 @@ $collectorMap = [ordered]@{
         @{ Name = '07b-Entra-Security-Config'; Script = 'Entra\Get-EntraSecurityConfig.ps1';       Label = 'Entra Security Config' }
         @{ Name = '07c-CA-Security-Config';   Script = 'Entra\Get-CASecurityConfig.ps1';         Label = 'CA Policy Evaluation' }
         @{ Name = '07d-EntApp-Security-Config'; Script = 'Entra\Get-EntAppSecurityConfig.ps1';   Label = 'Enterprise App Security' }
+        @{ Name = '07e-Entra-SoD-Config';    Script = 'Entra\Get-EntraSoDConfig.ps1';         Label = 'Separation of Duties'; RequiredServices = @('Graph') }
+        @{ Name = '07f-Entra-ToU-Config';    Script = 'Entra\Get-EntraTouConfig.ps1';         Label = 'Terms of Use'; RequiredServices = @('Graph') }
+        @{ Name = '07g-Entra-PrivRemote';    Script = 'Entra\Get-EntraPrivRemoteConfig.ps1';  Label = 'Privileged Remote Access'; RequiredServices = @('Graph') }
     )
     'Licensing' = @(
         @{ Name = '08-License-Summary'; Script = 'Entra\Get-LicenseReport.ps1'; Label = 'License Summary'; Params = @{} }
@@ -89,6 +92,12 @@ $collectorMap = [ordered]@{
         @{ Name = '14-Compliance-Policies';  Script = 'Intune\Get-CompliancePolicyReport.ps1';    Label = 'Compliance Policies' }
         @{ Name = '15-Config-Profiles';      Script = 'Intune\Get-ConfigProfileReport.ps1';       Label = 'Config Profiles' }
         @{ Name = '15b-Intune-Security-Config'; Script = 'Intune\Get-IntuneSecurityConfig.ps1'; Label = 'Intune Security Config'; RequiredServices = @('Graph') }
+        @{ Name = '15c-Intune-MobileEncrypt'; Script = 'Intune\Get-IntuneMobileEncryptConfig.ps1'; Label = 'Mobile Encryption'; RequiredServices = @('Graph') }
+        @{ Name = '15d-Intune-PortStorage';   Script = 'Intune\Get-IntunePortStorageConfig.ps1';   Label = 'Portable Storage'; RequiredServices = @('Graph') }
+        @{ Name = '15e-Intune-AppControl';    Script = 'Intune\Get-IntuneAppControlConfig.ps1';    Label = 'Application Control'; RequiredServices = @('Graph') }
+        @{ Name = '15f-Intune-FIPS';          Script = 'Intune\Get-IntuneFipsConfig.ps1';          Label = 'FIPS Cryptography'; RequiredServices = @('Graph') }
+        @{ Name = '15g-Intune-Inventory';     Script = 'Intune\Get-IntuneInventoryConfig.ps1';     Label = 'Device Inventory'; RequiredServices = @('Graph') }
+        @{ Name = '15h-Intune-AutoDisc';      Script = 'Intune\Get-IntuneAutoDiscConfig.ps1';      Label = 'Auto Discovery'; RequiredServices = @('Graph') }
     )
     'Security' = @(
         @{ Name = '16-Secure-Score';       Script = 'Security\Get-SecureScoreReport.ps1';   Label = 'Secure Score'; HasSecondary = $true; SecondaryName = '17-Improvement-Actions'; RequiredServices = @('Graph') }
@@ -98,6 +107,10 @@ $collectorMap = [ordered]@{
         @{ Name = '19b-Compliance-Security-Config'; Script = 'Security\Get-ComplianceSecurityConfig.ps1'; Label = 'Compliance Security Config'; RequiredServices = @('Purview') }
         @{ Name = '19c-Purview-Retention-Config'; Script = 'Purview\Get-PurviewRetentionConfig.ps1'; Label = 'Purview Retention Config'; RequiredServices = @('Purview') }
         @{ Name = '24-StrykerIncidentReadiness'; Script = 'Security\Get-StrykerIncidentReadiness.ps1'; Label = 'Stryker Incident Readiness'; RequiredServices = @('Graph') }
+        @{ Name = '25-Defender-VulnScan';         Script = 'Security\Get-DefenderVulnScanConfig.ps1';    Label = 'Vulnerability Scanning'; RequiredServices = @('Graph') }
+        @{ Name = '26-Defender-RealTimeScan';     Script = 'Security\Get-DefenderScanConfig.ps1';        Label = 'Real-time Scanning'; RequiredServices = @('Graph') }
+        @{ Name = '27-Defender-SecureMon';        Script = 'Security\Get-DefenderSecureMonConfig.ps1';   Label = 'Security Monitoring'; RequiredServices = @('Graph') }
+        @{ Name = '28-Defender-CfgDetect';        Script = 'Security\Get-DefenderCfgDetectConfig.ps1';   Label = 'Config Detection'; RequiredServices = @('Graph') }
     )
     'Collaboration' = @(
         @{ Name = '20-SharePoint-OneDrive'; Script = 'Collaboration\Get-SharePointOneDriveReport.ps1'; Label = 'SharePoint & OneDrive' }
