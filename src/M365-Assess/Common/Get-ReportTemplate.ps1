@@ -1770,6 +1770,7 @@ $html = @"
         .copy-btn { background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 0.85em; opacity: 0.5; transition: opacity 0.15s; vertical-align: middle; margin-left: 4px; }
         .copy-btn:hover { opacity: 1; }
         .copy-btn.copied { opacity: 1; }
+        .impact-rationale { display: block; margin-top: 5px; font-size: 0.80em; color: var(--m365a-dark); opacity: 0.65; font-style: italic; line-height: 1.4; }
 
         .cis-row-pass { border-left: 3px solid var(--m365a-success); background-color: var(--m365a-success-bg); }
         .cis-row-fail { border-left: 3px solid var(--m365a-danger); background-color: var(--m365a-danger-bg); }

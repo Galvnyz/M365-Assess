@@ -1435,8 +1435,9 @@ foreach ($c in $summary) {
             Remediation  = $row.Remediation
             Section      = $c.Section
             Source       = $c.Collector
-            RiskSeverity = if ($entry) { $entry.riskSeverity } else { 'Medium' }
-            Frameworks   = $fwHash
+            RiskSeverity    = if ($entry) { $entry.riskSeverity } else { 'Medium' }
+            ImpactRationale = if ($entry -and $entry.impactRating -and $entry.impactRating.rationale) { $entry.impactRating.rationale } else { '' }
+            Frameworks      = $fwHash
         })
     }
 }
@@ -1785,6 +1786,8 @@ function Build-RemediationPlanHtml {
         $checkIdEncoded  = ConvertTo-HtmlSafe -Text $(if ($finding.CheckId) { $finding.CheckId } else { '' })
         $currentEncoded  = ConvertTo-HtmlSafe -Text $finding.CurrentValue
         $remEncoded      = ConvertTo-HtmlSafe -Text $(if ($finding.Remediation) { $finding.Remediation } else { '' })
+        $rationaleEncoded = ConvertTo-HtmlSafe -Text $(if ($finding.ImpactRationale) { $finding.ImpactRationale } else { '' })
+        $rationaleHtml   = if ($rationaleEncoded) { "<span class='impact-rationale'>Why it matters: $rationaleEncoded</span>" } else { '' }
 
         $null = $html.AppendLine("<tr class='$sevClass' data-severity='$sev' data-section='$sectionEncoded'>")
         $null = $html.AppendLine("<td data-col-key='Severity'><span class='badge $badgeClass'>$(ConvertTo-HtmlSafe -Text $sev)</span></td>")
@@ -1792,7 +1795,7 @@ function Build-RemediationPlanHtml {
         $null = $html.AppendLine("<td data-col-key='Check'>$checkEncoded</td>")
         $null = $html.AppendLine("<td data-col-key='CheckId' style='display:none'>$checkIdEncoded</td>")
         $null = $html.AppendLine("<td data-col-key='CurrentState'>$currentEncoded</td>")
-        $null = $html.AppendLine("<td data-col-key='Remediation'><span class='rem-text'>$remEncoded</span><button class='copy-btn' onclick='copyRemediation(this)' title='Copy to clipboard'>&#128203;</button></td>")
+        $null = $html.AppendLine("<td data-col-key='Remediation'><span class='rem-text'>$remEncoded</span><button class='copy-btn' onclick='copyRemediation(this)' title='Copy to clipboard'>&#128203;</button>$rationaleHtml</td>")
         $null = $html.AppendLine("</tr>")
     }
 

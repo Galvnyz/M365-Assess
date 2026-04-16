@@ -405,6 +405,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.1.1v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enforce Security Defaults exposes the tenant to: MFA bypass via legacy authentication protocols, Password spray attacks succeeding against accounts without baseline identity protection.",
+        "scfWeighting": 8
       }
     },
     {
@@ -2382,6 +2387,11 @@
           "controlId": "PR.AA-03",
           "title": "Users, services, and hardware are authenticated"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to ensure all users have an MFA method registered exposes the tenant to: Account takeover via phishing or credential stuffing, Unauthorized access to M365 services without a second authentication factor.",
+        "scfWeighting": 8
       }
     },
     {
@@ -2690,6 +2700,11 @@
           "controlId": "CC6.1;CC6.2;CC6.2-POF1;CC6.2-POF3;CC6.3-POF1;CC6.3-POF2;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to monitor external guest user counts exposes the tenant to: Excessive third-party access accumulation, Unauthorized data access by former collaborators whose accounts were not removed.",
+        "scfWeighting": 5
       }
     },
     {
@@ -2880,6 +2895,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.7.2v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to protect groups assigned to privileged roles exposes the tenant to: Privilege escalation via group membership manipulation by non-privileged users, Lateral movement through unguarded admin access paths.",
+        "scfWeighting": 8
       }
     },
     {
@@ -3957,6 +3977,11 @@
           "controlId": "CC6.1",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to configure custom banned passwords exposes the tenant to: Password spray attacks using organization-specific terms (company name, product names, locations) that bypass default banned password lists.",
+        "scfWeighting": 5
       }
     },
     {
@@ -5991,6 +6016,11 @@
           "controlId": "PR.AA-01;PR.AA-05",
           "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization; Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to disable stale administrator accounts exposes the tenant to: Compromised dormant credentials providing persistent privileged access, Inability to detect unauthorized use of long-inactive admin accounts.",
+        "scfWeighting": 7
       }
     },
     {
@@ -6360,6 +6390,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.2;CC6.2-POF1;CC6.2-POF3;CC6.3-POF1;CC6.3-POF2;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict user-controllable dynamic group membership rules exposes the tenant to: Privilege escalation by users manipulating their own attributes to join privileged groups, Improper assignment of privileged functions.",
+        "scfWeighting": 7
       }
     },
     {
@@ -7034,6 +7069,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.1.1v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to maintain emergency access accounts exposes the tenant to: Complete administrative lockout during authentication system failures or identity provider outages, Inability to recover from Conditional Access misconfiguration.",
+        "scfWeighting": 8
       }
     },
     {
@@ -7177,6 +7217,11 @@
           "controlId": "PR.AA-05",
           "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enforce time-limited Tier-0 role eligibility in PIM exposes the tenant to: Persistent privileged access that cannot be granularly revoked, Privilege accumulation across multiple roles without just-in-time controls.",
+        "scfWeighting": 7
       }
     },
     {
@@ -7321,6 +7366,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to limit Tier-0 role activation duration exposes the tenant to: Extended adversarial access to Global Admin capabilities following a single approved activation request, Unauthorized actions over prolonged activation windows.",
+        "scfWeighting": 7
       }
     },
     {
@@ -7478,6 +7528,11 @@
           "controlId": "CC6.1;CC6.2-POF2",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to disable inactive apps with credentials exposes the tenant to: Exploitation of forgotten privileged service accounts with stale but valid secrets, Credential reuse attacks against unmonitored application identities.",
+        "scfWeighting": 7
       }
     },
     {
@@ -7659,6 +7714,11 @@
           "controlId": "CC6.1;CC6.1-POF7;CC6.7-POF1;CC7.1;CC7.1-POF1;CC7.2;CC7.2-POF1;CC7.2-POF4;CC7.3;CC8.1;CC8.1-POF12;CC8.1-POF6;PI1.4",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Detection and Monitoring of New Vulnerabilities; Monitoring System Components for Anomalies; Evaluation of Identified Security Events; Changes to Infrastructure, Data, Software, and Procedures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to require business justification for Tier-0 role activation exposes the tenant to: Unaudited privilege use with no accountability trail, Inability to detect unauthorized role activations through audit log review.",
+        "scfWeighting": 7
       }
     },
     {
@@ -8852,6 +8912,11 @@
           "controlId": "CC6.1;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to implement Conditional Access policies exposes the tenant to: Uncontrolled access from unmanaged devices and risky locations, Inability to enforce context-aware access controls based on user risk, device compliance, or location.",
+        "scfWeighting": 6
       }
     },
     {
@@ -9037,6 +9102,11 @@
           "controlId": "CC6.1;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to maintain sufficient active Conditional Access policies exposes the tenant to: Policy gaps enabling unauthorized access from risky sign-in contexts that are not covered by existing policy scope.",
+        "scfWeighting": 6
       }
     },
     {
@@ -9631,6 +9701,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.3.1v1;MS.AAD.3.2v1"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to include all privileged administrators in Conditional Access scope exposes the tenant to: Unprotected admin access paths bypassing MFA and device compliance controls, Privilege escalation through policy exclusions.",
+        "scfWeighting": 9
       }
     },
     {
@@ -10914,6 +10989,11 @@
         "cisa-scuba": {
           "controlId": "MS.INTUNE.1.2v1"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to scope Intune RBAC roles with granular scope tags exposes the tenant to: Overprivileged administrators with tenant-wide device management access beyond their operational responsibility.",
+        "scfWeighting": 5
       }
     },
     {
@@ -11117,6 +11197,11 @@
           "controlId": "CC3.3;CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "COSO Principle 8: Assesses Fraud Risk; Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to control dangerous third-party application permissions exposes the tenant to: Unauthorized bulk data exfiltration, Persistent backdoor access via OAuth application permissions that survive password resets.",
+        "scfWeighting": 9
       }
     },
     {
@@ -11319,6 +11404,11 @@
           "controlId": "CC3.3;CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "COSO Principle 8: Assesses Fraud Risk; Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict dangerous delegated permissions granted to third-party apps exposes the tenant to: Data exfiltration acting as authenticated users, Unauthorized mail and file access on behalf of compromised user accounts.",
+        "scfWeighting": 8
       }
     },
     {
@@ -11492,6 +11582,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply least-privilege to application permission grants exposes the tenant to: Overscoped service accounts enabling broad data access following app credential compromise, Inability to contain blast radius.",
+        "scfWeighting": 7
       }
     },
     {
@@ -11665,6 +11760,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict Azure managed identity permissions exposes the tenant to: Credential-free lateral movement from compromised Azure workloads into M365 data and Entra ID administration.",
+        "scfWeighting": 7
       }
     },
     {
@@ -12021,6 +12121,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.7.4v1"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to use cloud-only accounts for privileged roles exposes the tenant to: Privilege escalation via on-premises Active Directory compromise, Pass-the-hash or DCSync attacks reaching cloud tenant administration.",
+        "scfWeighting": 9
       }
     },
     {
@@ -13140,6 +13245,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict Service Principal access to Power BI APIs exposes the tenant to: Unauthorized automated data extraction from business intelligence reports and datasets without user interaction.",
+        "scfWeighting": 5
       }
     },
     {
@@ -13291,6 +13401,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to prevent Service Principals from creating Power BI profiles exposes the tenant to: Unauthorized impersonation of user contexts within Power BI, enabling data access beyond the service principal's intended scope.",
+        "scfWeighting": 5
       }
     },
     {
@@ -13592,6 +13707,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to disable Self-Service Password Reset for admin accounts exposes the tenant to: Account takeover via SSPR authentication factor weaknesses, Privilege escalation by resetting admin passwords through lower-assurance authentication methods.",
+        "scfWeighting": 7
       }
     },
     {
@@ -13759,6 +13879,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.6-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to enforce MFA during Tier-0 role activation exposes the tenant to: Immediate Global Admin access following single-factor authentication compromise, Complete tenant takeover without step-up authentication barrier.",
+        "scfWeighting": 9
       }
     },
     {
@@ -13922,6 +14047,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply Conditional Access to all active Tier-0 roles exposes the tenant to: Unprotected admin sign-ins from risky locations or unmanaged devices for roles not targeted by existing CA policy scope.",
+        "scfWeighting": 8
       }
     },
     {
@@ -14100,6 +14230,11 @@
           "controlId": "CC3.3;CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.2;CC6.2-POF1;CC6.2-POF3;CC6.3-POF1;CC6.3-POF2;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "COSO Principle 8: Assesses Fraud Risk; Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to prevent third-party apps from holding Entra directory roles exposes the tenant to: Persistent Global Admin access via compromised OAuth application credentials that do not expire with user password changes.",
+        "scfWeighting": 9
       }
     },
     {
@@ -14264,6 +14399,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.2;CC6.2-POF1;CC6.2-POF3;CC6.3-POF1;CC6.3-POF2;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict managed identity Entra directory role assignments exposes the tenant to: Lateral movement from compromised Azure workloads directly into Entra ID administration without credential artifacts.",
+        "scfWeighting": 8
       }
     },
     {
@@ -14427,6 +14567,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to protect privileged groups with the role-assignable flag exposes the tenant to: Unauthorized group membership manipulation enabling privilege escalation, Improper assignment of privileged functions via unguarded group membership.",
+        "scfWeighting": 7
       }
     },
     {
@@ -14591,6 +14736,11 @@
           "controlId": "CC5.2-POF3;CC6.1;CC6.1-POF12;CC6.1-POF13;CC6.1-POF7;CC6.2;CC6.2-POF1;CC6.2-POF3;CC6.3-POF1;CC6.3-POF2;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to use cloud-only accounts for sensitive Entra roles exposes the tenant to: Entra ID privilege escalation via on-premises Active Directory attacks including DCSync, enabling full cloud tenant takeover from a domain compromise.",
+        "scfWeighting": 9
       }
     },
     {
@@ -15460,6 +15610,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.6.1v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict Intune write permissions in app registrations exposes the tenant to: Remote device manipulation including mass device wipe and policy bypass via compromised app credentials with DeviceManagementConfiguration.ReadWrite.",
+        "scfWeighting": 8
       }
     },
     {
@@ -15623,6 +15778,11 @@
           "controlId": "CC6.1",
           "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to configure smart lockout to an appropriate threshold exposes the tenant to: Brute-force password spray attacks succeeding before lockout triggers, particularly against accounts with commonly used passwords.",
+        "scfWeighting": 5
       }
     },
     {
@@ -15825,6 +15985,11 @@
           "controlId": "CC6.6;CC6.6-POF2;CC7.2;CC7.2-POF1;CC7.3;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Restriction of Access to System Boundaries; Monitoring System Components for Anomalies; Evaluation of Identified Security Events"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to separate sign-in and user risk Conditional Access policies exposes the tenant to: Risk evaluation collisions causing unintended access blocks or risk signals being suppressed when both conditions appear in the same policy.",
+        "scfWeighting": 4
       }
     },
     {
@@ -17684,6 +17849,11 @@
         "soc2": {
           "controlId": "CC2.1-POF6;CC2.1-POF9;CC6.1-POF1"
         }
+      },
+      "impactRating": {
+        "severity": "Low",
+        "rationale": "Failure to control Mac OneDrive sync client access exposes the tenant to: Unauthorized data synchronization to unmanaged macOS devices outside MDM control, bypassing device compliance requirements.",
+        "scfWeighting": 3
       }
     },
     {
@@ -17850,6 +18020,11 @@
         "soc2": {
           "controlId": "CC2.1-POF6;CC2.1-POF9;CC6.1-POF1"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict Loop component sharing in SharePoint exposes the tenant to: Uncontrolled collaborative content spreading to external users beyond SharePoint sharing governance and DLP policy boundaries.",
+        "scfWeighting": 4
       }
     },
     {
@@ -18016,6 +18191,11 @@
         "soc2": {
           "controlId": "CC2.1-POF6;CC2.1-POF9;CC6.1-POF1"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict Loop component sharing from OneDrive exposes the tenant to: External sharing of collaborative Loop content outside organizational data governance boundaries and sensitivity label controls.",
+        "scfWeighting": 4
       }
     },
     {
@@ -18182,6 +18362,11 @@
         "soc2": {
           "controlId": "CC2.1-POF6;CC2.1-POF9;CC6.1-POF1"
         }
+      },
+      "impactRating": {
+        "severity": "Low",
+        "rationale": "Failure to confirm active workloads prior to assessment exposes the tenant to: Blind spots in security assessment scope; Teams-specific controls may be skipped if the workload active state is unknown.",
+        "scfWeighting": 2
       }
     },
     {
@@ -19195,6 +19380,11 @@
           "controlId": "PR.AA-05",
           "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict external collaboration in Microsoft Forms exposes the tenant to: Unauthorized co-authoring of internal forms by external parties, potential data collection bypass, and distribution of internal survey links outside the organization.",
+        "scfWeighting": 5
       }
     },
     {
@@ -19400,6 +19590,11 @@
           "controlId": "PR.AA-05",
           "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict external responses to Microsoft Forms exposes the tenant to: Uncontrolled external data collection, potential phishing via Forms pages, and responses from unauthenticated parties submitting data to internal forms.",
+        "scfWeighting": 5
       }
     },
     {
@@ -19594,6 +19789,11 @@
           "controlId": "CC6.1;CC6.6;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict external access to Microsoft Forms results exposes the tenant to: Unauthorized disclosure of survey or form response data to external parties who did not participate in the form.",
+        "scfWeighting": 5
       }
     },
     {
@@ -19796,6 +19996,11 @@
           "controlId": "GV.SC-07",
           "title": "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship"
         }
+      },
+      "impactRating": {
+        "severity": "Low",
+        "rationale": "Failure to disable Bing image and video search in Microsoft Forms exposes the tenant to: Potential data leakage via external Bing API queries submitted from within the form authoring experience.",
+        "scfWeighting": 2
       }
     },
     {
@@ -20726,6 +20931,11 @@
           "controlId": "CC6.1;CC6.1-POF7;CC6.7-POF1;CC7.1;CC7.1-POF1;CC8.1;CC8.1-POF12;CC8.1-POF6",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Detection and Monitoring of New Vulnerabilities; Changes to Infrastructure, Data, Software, and Procedures"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to audit apps with active client secrets or certificates exposes the tenant to: Compromised long-lived credentials enabling persistent unauthorized API access long after the app is no longer maintained or monitored.",
+        "scfWeighting": 6
       }
     },
     {
@@ -20899,6 +21109,11 @@
           "controlId": "CC5.2-POF3;CC6.1-POF7;CC6.7-POF1;CC7.1;CC7.1-POF1;CC8.1;CC8.1-POF12;CC8.1-POF6",
           "title": "Detection and Monitoring of New Vulnerabilities; Changes to Infrastructure, Data, Software, and Procedures"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to enable app instance property lock exposes the tenant to: Service principal property tampering by non-owner administrators in multi-tenant scenarios, enabling privilege escalation via app identity manipulation.",
+        "scfWeighting": 5
       }
     },
     {
@@ -22344,6 +22559,11 @@
         "stig": {
           "controlId": "V-260338"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to block legacy authentication protocols exposes the tenant to: MFA bypass via SMTP AUTH, IMAP, and POP3 which do not support modern authentication challenges, enabling password spray attacks to succeed.",
+        "scfWeighting": 8
       }
     },
     {
@@ -26004,6 +26224,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict guest user access in Power BI exposes the tenant to: External users accessing internal business intelligence data, dashboards, and reports beyond their intended scope of access.",
+        "scfWeighting": 5
       }
     },
     {
@@ -26411,6 +26636,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict external invitations in Power BI exposes the tenant to: Uncontrolled sharing of business intelligence workspaces and content with external parties without administrator oversight.",
+        "scfWeighting": 5
       }
     },
     {
@@ -27024,6 +27254,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict guest content access in Power BI exposes the tenant to: External users browsing and consuming sensitive business data through shared Power BI workspaces without explicit sharing intent.",
+        "scfWeighting": 5
       }
     },
     {
@@ -27225,6 +27460,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict Publish to Web in Power BI exposes the tenant to: Inadvertent public disclosure of internal business intelligence data via anonymously accessible web embeds visible to anyone with the link.",
+        "scfWeighting": 7
       }
     },
     {
@@ -27902,6 +28142,11 @@
             "E5-L2"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict R and Python visual sharing in Power BI exposes the tenant to: Code execution within visuals enabling data exfiltration via external HTTP calls or arbitrary script execution in shared report contexts.",
+        "scfWeighting": 5
       }
     },
     {
@@ -28103,6 +28348,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict external data sharing in Power BI exposes the tenant to: Sending of internal Power BI datasets to external storage accounts or third-party services without governance controls.",
+        "scfWeighting": 5
       }
     },
     {
@@ -28710,6 +28960,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to block ResourceKey authentication in Power BI exposes the tenant to: Unauthorized access to dashboards and reports via leaked static resource keys which do not require Entra ID authentication.",
+        "scfWeighting": 7
       }
     },
     {
@@ -28898,6 +29153,11 @@
         "cisa-scuba": {
           "controlId": "MS.AAD.5.3v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict user-initiated app registrations exposes the tenant to: Unauthorized OAuth applications created by non-admins harvesting user credentials and data, and bypassing app governance policies.",
+        "scfWeighting": 7
       }
     },
     {
@@ -29083,6 +29343,11 @@
         "soc2": {
           "controlId": "CC5.2-POF3;CC6.1-POF7;CC6.7-POF1"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to restrict resource-specific consent for Teams apps exposes the tenant to: Third-party Teams applications accessing chat messages and meeting content without administrator approval or awareness.",
+        "scfWeighting": 5
       }
     },
     {
@@ -29475,6 +29740,11 @@
           "controlId": "C1.2;CC2.2-POF13;CC3.4;CC3.4-POF4;CC6.8-POF3;CC8.1;CC8.1-POF1;CC8.1-POF10;CC8.1-POF11;CC8.1-POF13;CC8.1-POF14;CC8.1-POF16;CC8.1-POF2;CC8.1-POF3;CC8.1-POF4;CC8.1-POF5;CC8.1-POF6;CC8.1-POF7;CC8.1-POF8;CC8.1-POF9",
           "title": "COSO Principle 9: Identifies and Analyzes Changes; Changes to Infrastructure, Data, Software, and Procedures"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enforce retention policies (leaving them in simulation mode) exposes the tenant to: Evidence destruction during active litigation holds, regulatory non-compliance, and inability to satisfy eDiscovery preservation obligations.",
+        "scfWeighting": 7
       }
     },
     {
@@ -29800,6 +30070,11 @@
         "cisa-scuba": {
           "controlId": "MS.INTUNE.1.1v1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to require multi-admin approval for destructive Intune operations exposes the tenant to: A single compromised or malicious admin account performing mass device wipes, policy removals, or enrollment resets without peer oversight.",
+        "scfWeighting": 8
       }
     },
     {
@@ -30712,6 +30987,11 @@
           "controlId": "CC6.1-POF7;CC6.7-POF1;CC7.1;CC7.1-POF1;CC7.2;CC7.2-POF1;CC7.2-POF4;CC7.3;CC8.1;CC8.1-POF12;CC8.1-POF6;PI1.4",
           "title": "Detection and Monitoring of New Vulnerabilities; Monitoring System Components for Anomalies; Evaluation of Identified Security Events; Changes to Infrastructure, Data, Software, and Procedures"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to enable respondent identity recording in Microsoft Forms exposes the tenant to: Inability to attribute malicious or fraudulent form submissions to specific internal users, preventing investigation and accountability.",
+        "scfWeighting": 5
       }
     },
     {
@@ -31275,6 +31555,11 @@
           "controlId": "CC2.2-POF6;CC2.3-POF8;CC7.2;CC7.2-POF1;CC7.3;CC7.3-POF2;CC7.4;CC7.4-POF6;CC7.4-POF9",
           "title": "Monitoring System Components for Anomalies; Evaluation of Identified Security Events; Response to Identified Security Incidents"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to configure admin notifications on Tier-0 role activation exposes the tenant to: Undetected unauthorized privilege escalation, delayed incident response, and no out-of-band alert when unexpected activations occur.",
+        "scfWeighting": 7
       }
     },
     {
@@ -31471,6 +31756,11 @@
         "cisa-scuba": {
           "controlId": "MS.INTUNE.1.3v1"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Mass device wipe activity detected in Intune audit logs may indicate active ransomware, insider threat, or compromised admin credentials performing destructive operations against the device fleet.",
+        "scfWeighting": 9
       }
     },
     {
@@ -32487,6 +32777,11 @@
         "soc2": {
           "controlId": "C1.1-POF3;C1.2;C1.2-POF1;C1.2-POF2;CC6.5;CC6.5-POF2;P4.0;P4.2;P4.2-POF1;P4.3;P4.3-POF2;P4.3-POF3;PI1.5"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply retention policies to Teams exposes the tenant to: Unrecoverable loss of Teams messages and meeting content, eDiscovery gaps, and regulatory non-compliance with record retention requirements.",
+        "scfWeighting": 7
       }
     },
     {
@@ -32649,6 +32944,11 @@
         "soc2": {
           "controlId": "C1.1-POF3;C1.2;C1.2-POF1;C1.2-POF2;CC6.5;CC6.5-POF2;P4.0;P4.2;P4.2-POF1;P4.3;P4.3-POF2;P4.3-POF3;PI1.5"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply retention policies to Exchange exposes the tenant to: Email evidence destruction during litigation, regulatory non-compliance with GDPR, FINRA, and financial record retention requirements.",
+        "scfWeighting": 7
       }
     },
     {
@@ -32811,6 +33111,11 @@
         "soc2": {
           "controlId": "C1.1-POF3;C1.2;C1.2-POF1;C1.2-POF2;CC6.5;CC6.5-POF2;P4.0;P4.2;P4.2-POF1;P4.3;P4.3-POF2;P4.3-POF3;PI1.5"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply retention policies to SharePoint and OneDrive exposes the tenant to: File deletion destroying evidence during litigation holds and regulatory data retention non-compliance for document management systems.",
+        "scfWeighting": 7
       }
     },
     {
@@ -33955,6 +34260,11 @@
           "controlId": "PR.DS-01",
           "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to enable sensitivity label application in Power BI exposes the tenant to: Unclassified business intelligence data flowing outside DLP policy boundaries, bypassing data protection controls that depend on label presence.",
+        "scfWeighting": 5
       }
     },
     {
@@ -34299,6 +34609,11 @@
           "controlId": "PR.AA-05;PR.DS-01",
           "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties; The confidentiality, integrity, and availability of data-at-rest are protected"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict shareable links in Power BI exposes the tenant to: Uncontrolled distribution of internal reports via unauthenticated links accessible to anyone, including external parties beyond the intended recipients.",
+        "scfWeighting": 7
       }
     },
     {
@@ -35855,6 +36170,11 @@
           "controlId": "CC6.1;CC6.1-POF6;CC6.6;CC6.6-POF1;CC6.6-POF2;PI1.2-POF1;PI1.2-POF2;PI1.2-POF3",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Restriction of Access to System Boundaries"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to audit and restrict public M365 groups exposes the tenant to: Any authenticated user joining and accessing group resources, conversations, and associated SharePoint sites without explicit membership approval.",
+        "scfWeighting": 5
       }
     },
     {
@@ -39839,6 +40159,11 @@
             "E5-L1"
           ]
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enable phishing protection in Microsoft Forms exposes the tenant to: Credential harvesting attacks using Forms pages that impersonate trusted Microsoft authentication pages to steal user passwords.",
+        "scfWeighting": 7
       }
     },
     {
@@ -42999,6 +43324,11 @@
         "mitre-attack": {
           "controlId": "T1556;T1111;T1621"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to enforce phishing-resistant MFA for Global Administrators exposes the tenant to: Complete tenant compromise via adversary-in-the-middle phishing attacks that steal or replay authentication tokens for the highest-privilege accounts.",
+        "scfWeighting": 9
       }
     },
     {
@@ -43035,6 +43365,11 @@
         "mitre-attack": {
           "controlId": "T1564;T1564.008"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to audit mailboxes hidden from the Global Address List exposes the tenant to: Covert communication channels used by insider threats or compromised accounts operating outside normal mailbox visibility and monitoring.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43074,6 +43409,11 @@
           "evidenceType": "config-export",
           "title": "Logical Access Security Software, Infrastructure, and Architectures; Prior to Issuing System Credentials and Granting System Access"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to maintain CA policy coverage equivalent to Security Defaults exposes the tenant to: Authentication gaps allowing legacy protocol sign-ins or MFA bypass for specific user populations not covered by existing Conditional Access policies.",
+        "scfWeighting": 6
       }
     },
     {
@@ -43111,6 +43451,11 @@
           "controlId": "T1078.004;T1098.003",
           "title": "Valid Accounts: Cloud Accounts; Additional Cloud Roles"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to prevent internal apps from holding Global Admin-equivalent permissions exposes the tenant to: Complete tenant takeover via compromised app credentials with RoleManagement.ReadWrite.Directory or equivalent Tier 0 application permissions.",
+        "scfWeighting": 10
       }
     },
     {
@@ -43141,6 +43486,11 @@
           "controlId": "T1114;T1530",
           "title": "Email Collection; Data from Cloud Storage"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to audit third-party apps with broad data access permissions exposes the tenant to: Unauthorized bulk exfiltration of mail, files, and SharePoint content via OAuth application permissions that persist independently of user accounts.",
+        "scfWeighting": 8
       }
     },
     {
@@ -43170,6 +43520,11 @@
           "controlId": "T1552.004;T1528",
           "title": "Unsecured Credentials: Private Keys; Steal Application Access Token"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to use certificate-based authentication for app credentials exposes the tenant to: Client secret interception and reuse; secrets can be extracted from source code, configuration files, and application logs unlike private key material.",
+        "scfWeighting": 6
       }
     },
     {
@@ -43196,6 +43551,11 @@
           "evidenceType": "config-export",
           "title": "Logical Access Security; Credentials Management"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to remove expired app credentials exposes the tenant to: Residual access if credentials are secretly extended without audit trail, and investigation confusion that masks active threats behind apparent credential expiry.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43222,6 +43582,11 @@
           "evidenceType": "config-export",
           "title": "Logical Access Security"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to enforce a single credential type per app exposes the tenant to: Expanded attack surface where compromise of either a secret or a certificate independently grants full application access, doubling the credential attack vectors.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43251,6 +43616,11 @@
           "controlId": "T1098.001;T1078.004",
           "title": "Additional Cloud Credentials; Valid Accounts: Cloud Accounts"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to prevent service principals from combining static secrets with permanent privileged roles exposes the tenant to: Persistent tenant-level compromise via a single leaked secret with no PIM time-limit or just-in-time activation requirement.",
+        "scfWeighting": 9
       }
     },
     {
@@ -43280,6 +43650,11 @@
           "controlId": "T1098.001;T1098.003",
           "title": "Additional Cloud Credentials; Additional Cloud Roles"
         }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "Failure to prevent ownership of Tier 0 permission apps exposes the tenant to: App owners impersonating the service principal to exercise Global Admin-equivalent permissions without holding the role directly in Entra PIM.",
+        "scfWeighting": 9
       }
     },
     {
@@ -43309,6 +43684,11 @@
           "controlId": "T1098.001;T1078.004",
           "title": "Additional Cloud Credentials; Valid Accounts: Cloud Accounts"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to prevent ownership of directory role-holding apps exposes the tenant to: Indirect privilege escalation via app owner impersonation of service principals that hold Entra directory roles with privileged capabilities.",
+        "scfWeighting": 8
       }
     },
     {
@@ -43335,6 +43715,11 @@
           "evidenceType": "config-export",
           "title": "Credentials Management; Enrollment and Authorization"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to assign owners to credentialed apps exposes the tenant to: Orphaned high-privilege credentials with no accountability, making remediation impossible without breaking changes that may impact production workloads.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43364,6 +43749,11 @@
           "controlId": "T1078.004",
           "title": "Valid Accounts: Cloud Accounts"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to disable unused Tier 0 applications exposes the tenant to: Exploitation of dormant high-privilege service accounts with no active monitoring coverage and credentials that may remain valid indefinitely.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43393,6 +43783,11 @@
           "controlId": "T1036;T1566.002",
           "title": "Masquerading; Spearphishing Link"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to detect apps impersonating Microsoft product names exposes the tenant to: OAuth consent phishing where users trust and approve a Microsoft-branded third-party app that harvests access tokens or sensitive data.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43419,6 +43814,11 @@
           "evidenceType": "config-export",
           "title": "Logical Access Security"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to audit multi-tenant app registrations exposes the tenant to: External tenant users authenticating as the app's service principal in their own tenant, expanding the attack surface beyond the registering organization's control.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43448,6 +43848,11 @@
           "controlId": "T1528",
           "title": "Steal Application Access Token"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to remove localhost redirect URIs from production apps exposes the tenant to: Authorization code interception via local network attacks targeting developer endpoint redirect URIs active in production OAuth flows.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43477,6 +43882,11 @@
           "controlId": "T1557;T1528",
           "title": "Adversary-in-the-Middle; Steal Application Access Token"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enforce HTTPS-only redirect URIs exposes the tenant to: Authorization code theft via man-in-the-middle interception of OAuth redirect traffic traversing unencrypted HTTP connections.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43506,6 +43916,11 @@
           "controlId": "T1528",
           "title": "Steal Application Access Token"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict redirect URIs to specific paths exposes the tenant to: Open redirect attacks enabling authorization code theft by redirecting OAuth callbacks to attacker-controlled subpaths of a legitimate domain.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43536,6 +43951,11 @@
           "evidenceType": "config-export",
           "title": "Logical Access Security; Enrollment and Authorization"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict OAuth consent to verified publishers exposes the tenant to: Consent phishing attacks where users authorize unverified malicious apps to access their mail, files, and contacts via delegated permissions.",
+        "scfWeighting": 8
       }
     },
     {
@@ -43566,6 +43986,11 @@
           "controlId": "T1550.001",
           "title": "Use Alternate Authentication Material: Application Access Token"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to audit tenant-wide admin consent grants exposes the tenant to: Persistent third-party data access that survives user account changes, password resets, and is rarely reviewed once granted by an administrator.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43584,6 +44009,11 @@
         "soc2": {
           "controlId": "CC6.1"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to apply DLP policies across Exchange and SharePoint exposes the tenant to: Undetected exfiltration of regulated data (PII, financial records, health information) via email attachments and file sharing without policy enforcement.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43602,6 +44032,11 @@
         "soc2": {
           "controlId": "CC6.1;CC6.7"
         }
+      },
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to configure auto-sensitivity labeling policies exposes the tenant to: Sensitive data stored without classification labels, bypassing DLP controls and encryption policies that depend on label presence for enforcement.",
+        "scfWeighting": 5
       }
     },
     {
@@ -43620,6 +44055,11 @@
         "soc2": {
           "controlId": "CC7.2"
         }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enable communication compliance monitoring exposes the tenant to: Regulatory violations, insider trading activity, and hostile workplace communications going undetected without policy-based surveillance of internal messaging.",
+        "scfWeighting": 7
       }
     },
     {
@@ -43631,7 +44071,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to use compliant-device conditions rather than IP-based trust exposes the tenant to: IP spoofing bypassing Conditional Access location controls, enabling authentication from attacker-controlled networks without triggering risk signals.",
+        "scfWeighting": 7
+      }
     },
     {
       "checkId": "CA-REPORTONLY-001",
@@ -43642,7 +44087,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to move Conditional Access policies out of report-only mode exposes the tenant to: Unconstrained access from all conditions the policy was designed to control, as report-only mode does not enforce block or grant actions.",
+        "scfWeighting": 8
+      }
     },
     {
       "checkId": "CA-SESSION-001",
@@ -43653,7 +44103,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to limit persistent browser sessions exposes the tenant to: Session hijacking enabling long-lived access from unmanaged or compromised browsers after the original authentication event, without requiring re-authentication.",
+        "scfWeighting": 7
+      }
     },
     {
       "checkId": "SPO-ACCESS-001",
@@ -43664,7 +44119,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to enforce Conditional Access for SharePoint access exposes the tenant to: Unmanaged device access to SharePoint document libraries, bypassing device compliance and data protection controls for the organization's primary file storage.",
+        "scfWeighting": 7
+      }
     },
     {
       "checkId": "SPO-ACCESS-002",
@@ -43675,7 +44135,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict OneDrive sync to managed devices exposes the tenant to: Mass data exfiltration by syncing entire SharePoint and OneDrive libraries to unmanaged personal machines outside organizational control.",
+        "scfWeighting": 8
+      }
     },
     {
       "checkId": "SPO-SITE-001",
@@ -43686,7 +44151,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to align site sharing levels with tenant policy exposes the tenant to: Sites configured more permissively than the organizational sharing baseline, allowing unintended external sharing or anonymous access.",
+        "scfWeighting": 5
+      }
     },
     {
       "checkId": "SPO-SITE-002",
@@ -43697,7 +44167,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to restrict external sharing on sensitive sites exposes the tenant to: Confidential project, HR, or financial data being shared with external parties without oversight, bypassing data classification controls.",
+        "scfWeighting": 7
+      }
     },
     {
       "checkId": "SPO-VERSIONING-001",
@@ -43708,7 +44183,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "Medium",
+        "rationale": "Failure to configure SharePoint version history exposes the tenant to: Inability to recover from ransomware encryption or accidental deletion of SharePoint content, as previous versions are unavailable for restoration.",
+        "scfWeighting": 5
+      }
     },
     {
       "checkId": "DNS-MX-001",
@@ -43719,7 +44199,12 @@
       "licensing": {
         "minimum": "E3"
       },
-      "frameworks": {}
+      "frameworks": {},
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Failure to route email through Exchange Online mail flow exposes the tenant to: Security control bypass; mail not traversing Exchange Online skips ATP scanning, DLP policies, mail flow rules, and anti-phishing defenses.",
+        "scfWeighting": 7
+      }
     }
   ]
 }
