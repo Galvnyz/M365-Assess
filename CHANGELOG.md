@@ -22,6 +22,7 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ### Fixed
 - ENTRA-ENTAPP-020 excluded Microsoft first-party service principals (`appOwnerOrganizationId == f8cdef31...`) from credential hygiene check, eliminating 47+ false positives on E5 tenants (#419)
 - Status filter chips and All/None buttons now apply correctly across all section tables (#416)
+- Non-security-config table rows (MFA Report, Admin Roles, Conditional Access list, App Registrations, etc.) were hidden on load because the JS status filter defaulted to `display:none` when no status checkboxes existed (#440)
 
 ## [1.10.1] - 2026-04-15
 
