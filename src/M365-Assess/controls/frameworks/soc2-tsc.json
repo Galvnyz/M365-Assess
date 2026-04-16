@@ -1,5 +1,5 @@
 {
-  "frameworkId": "soc2-tsc",
+  "frameworkId": "soc2",
   "label": "SOC 2 Trust Services Criteria",
   "version": "2022",
   "css": "fw-soc2",
