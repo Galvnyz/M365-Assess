@@ -1217,14 +1217,15 @@ foreach ($sectionName in $sections) {
         $null = $sectionHtml.AppendLine("<details class='collector-detail' open>")
         $null = $sectionHtml.AppendLine("<summary><h3>$(ConvertTo-HtmlSafe -Text $collectorDisplay) <span class='row-count'>($rowCount rows)</span></h3></summary>")
 
-        # Status filter bar for security config tables
+        # Control bar: status filter (security config) + column picker (all tables)
+        $hiddenByDefault = @('CheckId', 'Category', 'RecommendedValue')
+        $null = $sectionHtml.AppendLine("<div class='status-filter table-status-filter'>")
         if ($isSecurityConfig) {
             $tblPass   = @($data | Where-Object { $_.Status -eq 'Pass' }).Count
             $tblFail   = @($data | Where-Object { $_.Status -eq 'Fail' }).Count
             $tblWarn   = @($data | Where-Object { $_.Status -eq 'Warning' }).Count
             $tblReview = @($data | Where-Object { $_.Status -eq 'Review' }).Count
             $tblInfo   = @($data | Where-Object { $_.Status -eq 'Info' }).Count
-            $null = $sectionHtml.AppendLine("<div class='status-filter table-status-filter'>")
             $null = $sectionHtml.AppendLine("<span class='status-filter-label'>Status:</span>")
             if ($tblFail -gt 0) {
                 $null = $sectionHtml.AppendLine("<label class='status-checkbox status-fail'><input type='checkbox' value='fail' checked> Fail ($tblFail)</label>")
@@ -1242,24 +1243,20 @@ foreach ($sectionName in $sections) {
                 $null = $sectionHtml.AppendLine("<label class='status-checkbox status-info'><input type='checkbox' value='info' checked> Info ($tblInfo)</label>")
             }
             $null = $sectionHtml.AppendLine("<span class='fw-selector-actions'><button type='button' class='fw-action-btn tbl-status-all'>All</button><button type='button' class='fw-action-btn tbl-status-none'>None</button></span>")
-            $null = $sectionHtml.AppendLine("</div>")
         }
-
-        # Column visibility picker (security config tables only)
-        $hiddenByDefault = @('CheckId', 'Category', 'RecommendedValue')
-        if ($isSecurityConfig) {
-            $null = $sectionHtml.AppendLine("<div class='col-picker-bar'>")
-            $null = $sectionHtml.AppendLine("<button type='button' class='col-picker-toggle'>Columns &#9662;</button>")
-            $null = $sectionHtml.AppendLine("<div class='col-picker-panel' hidden>")
-            foreach ($col in $columns) {
-                $displayCol    = Format-ColumnHeader -Name $col
-                $isColHidden   = $hiddenByDefault -contains $col
-                $defaultAttr   = if ($isColHidden) { " data-col-default='hidden'" } else { '' }
-                $checkedAttr   = if ($isColHidden) { '' } else { ' checked' }
-                $null = $sectionHtml.AppendLine("<label class='col-picker-item'><input type='checkbox' data-col-key='$col'$defaultAttr$checkedAttr> $(ConvertTo-HtmlSafe -Text $displayCol)</label>")
-            }
-            $null = $sectionHtml.AppendLine("</div></div>")
+        # Column picker — all tables, inside the control bar
+        $null = $sectionHtml.AppendLine("<div class='col-picker-bar'>")
+        $null = $sectionHtml.AppendLine("<button type='button' class='col-picker-toggle'>Columns &#9662;</button>")
+        $null = $sectionHtml.AppendLine("<div class='col-picker-panel' hidden>")
+        foreach ($col in $columns) {
+            $displayCol  = Format-ColumnHeader -Name $col
+            $isColHidden = $hiddenByDefault -contains $col
+            $defaultAttr = if ($isColHidden) { " data-col-default='hidden'" } else { '' }
+            $checkedAttr = if ($isColHidden) { '' } else { ' checked' }
+            $null = $sectionHtml.AppendLine("<label class='col-picker-item'><input type='checkbox' data-col-key='$col'$defaultAttr$checkedAttr> $(ConvertTo-HtmlSafe -Text $displayCol)</label>")
         }
+        $null = $sectionHtml.AppendLine("</div></div>")
+        $null = $sectionHtml.AppendLine("</div>")
 
         $null = $sectionHtml.AppendLine("<div class='table-wrapper'>")
         $null = $sectionHtml.AppendLine("<table class='data-table'>")
@@ -1313,12 +1310,12 @@ foreach ($sectionName in $sections) {
                 $colKeyAttr = " data-col-key='$col'"
                 $initStyle  = if ($isSecurityConfig -and ($hiddenByDefault -contains $col)) { " style='display:none'" } else { '' }
                 # Security config Status column — add badge styling
-                if ($isSecurityConfig -and $col -eq 'Status') {
+                if ($col -eq 'Status' -and $val) {
                     $badgeClass = switch ($val) {
                         'Pass'    { 'badge-complete' }
                         'Fail'    { 'badge-failed' }
                         'Warning' { 'badge-warning' }
-                        'Review'  { 'badge-info' }
+                        'Review'  { 'badge-review' }
                         'Info'    { 'badge-neutral' }
                         'Unknown' { 'badge-skipped' }
                         default   { '' }
@@ -1571,7 +1568,7 @@ if ($allCisFindings.Count -gt 0) {
             'Pass'    { 'badge-complete' }
             'Fail'    { 'badge-failed' }
             'Warning' { 'badge-warning' }
-            'Review'  { 'badge-info' }
+            'Review'  { 'badge-review' }
             'Info'    { 'badge-neutral' }
             'Unknown' { 'badge-skipped' }
             default   { '' }

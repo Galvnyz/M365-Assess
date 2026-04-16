@@ -1582,6 +1582,7 @@ $html = @"
         .badge-skipped { background: var(--m365a-skipped-bg); color: var(--m365a-skipped-text); }
         .badge-failed { background: var(--m365a-danger-bg); color: var(--m365a-danger-text); }
         .badge-warning { background: var(--m365a-warning-bg); color: var(--m365a-warning-text); }
+        .badge-review { background: #ede9fe; color: #5b21b6; }
         .badge-info { background: var(--m365a-info-bg); color: var(--m365a-info-text); }
         .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
         .badge-critical { background: var(--m365a-critical-bg); color: var(--m365a-critical-text); }
@@ -1958,6 +1959,7 @@ $html = @"
 
         /* Badge colors now handled via CSS variables in :root / body.dark-theme */
         body.dark-theme .badge-neutral { background-color: var(--m365a-neutral-bg); color: var(--m365a-neutral); }
+        body.dark-theme .badge-review  { background: #3b0764; color: #c4b5fd; }
 
         body.dark-theme .fw-cis    { background: #1E3A5F; color: #93C5FD; }
         body.dark-theme .fw-cis-l2 { background: #1E3A5F; color: #60A5FA; }
@@ -2546,8 +2548,8 @@ $html = @"
         .section-bar-track { flex: 1; height: 8px; background: var(--m365a-border); border-radius: 4px; overflow: hidden; }
         .section-bar-fill { height: 100%; background: var(--m365a-primary); border-radius: 4px; }
         .section-bar-count { font-size: 0.8rem; font-weight: 700; color: var(--m365a-text); min-width: 24px; text-align: right; }
-        /* Column picker */
-        .col-picker-bar { position: relative; display: inline-block; margin-bottom: 6px; }
+        /* Column picker — lives inside .status-filter flex container */
+        .col-picker-bar { position: relative; display: inline-block; }
         .col-picker-toggle { padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-medium-gray); cursor: pointer; font-size: 0.82em; }
         .col-picker-toggle:hover { background: var(--m365a-hover-bg); color: var(--m365a-text); }
         .col-picker-panel { position: absolute; top: 100%; left: 0; z-index: 10; min-width: 160px; padding: 8px; background: var(--m365a-card-bg); border: 1px solid var(--m365a-border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -3467,7 +3469,7 @@ $html += @"
             var table = tableWrapper.querySelector('table');
             if (!table) return;
             var rows = table.querySelectorAll('tbody tr');
-            var cbs = filterBar.querySelectorAll('input[type="checkbox"]');
+            var cbs = filterBar.querySelectorAll('.status-checkbox input[type="checkbox"]');
 
             function applyFilter() {
                 var active = [];
