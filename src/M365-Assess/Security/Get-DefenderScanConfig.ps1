@@ -89,7 +89,8 @@ try {
             $realtimeScan = $config['defenderMonitorFileActivity']
             $realtimeProtection = $config['defenderRealtimeScanDirection']
 
-            if ($realtimeScan -eq 'monitorAllFiles' -or $null -ne $realtimeProtection) {
+            if ($realtimeScan -eq 'monitorAllFiles' -or
+                ($null -ne $realtimeProtection -and $realtimeProtection -ne 'notConfigured')) {
                 $realtimeEnabled = $true
                 $policyDetail = "Real-time monitoring configured (Policy: $displayName)"
             }

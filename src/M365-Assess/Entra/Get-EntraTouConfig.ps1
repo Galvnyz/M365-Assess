@@ -77,33 +77,25 @@ try {
 
     $agreementCount = $agreementList.Count
 
-    if ($agreementCount -gt 0) {
-        $activeAgreements = @($agreementList | Where-Object { $_['isViewingBeforeAcceptanceRequired'] -eq $true -or $null -ne $_['displayName'] })
-        $currentValue = "$agreementCount agreement(s) configured"
+    $activeAgreements = @($agreementList | Where-Object { $_['isViewingBeforeAcceptanceRequired'] -eq $true })
+    $status = if ($activeAgreements.Count -gt 0) { 'Pass' } elseif ($agreementCount -gt 0) { 'Warning' } else { 'Fail' }
 
-        $settingParams = @{
-            Category         = 'Terms of Use'
-            Setting          = 'Terms of Use Agreement Policy'
-            CurrentValue     = $currentValue
-            RecommendedValue = 'At least one Terms of Use agreement configured and assigned'
-            Status           = 'Pass'
-            CheckId          = 'ENTRA-TOU-001'
-            Remediation      = 'Entra admin center > Identity Governance > Terms of use. Verify agreements are assigned via Conditional Access policies.'
-        }
-        Add-Setting @settingParams
+    $currentValue = switch ($status) {
+        'Pass'    { "$($activeAgreements.Count) agreement(s) with acceptance required before viewing" }
+        'Warning' { "Agreement exists but acceptance not required before viewing" }
+        default   { 'No agreements configured' }
     }
-    else {
-        $settingParams = @{
-            Category         = 'Terms of Use'
-            Setting          = 'Terms of Use Agreement Policy'
-            CurrentValue     = 'No agreements configured'
-            RecommendedValue = 'At least one Terms of Use agreement configured and assigned'
-            Status           = 'Fail'
-            CheckId          = 'ENTRA-TOU-001'
-            Remediation      = 'Entra admin center > Identity Governance > Terms of use > Create a new terms of use document and assign via Conditional Access.'
-        }
-        Add-Setting @settingParams
+
+    $settingParams = @{
+        Category         = 'Terms of Use'
+        Setting          = 'Terms of Use Agreement Policy'
+        CurrentValue     = $currentValue
+        RecommendedValue = 'At least one Terms of Use agreement with isViewingBeforeAcceptanceRequired = true'
+        Status           = $status
+        CheckId          = 'ENTRA-TOU-001'
+        Remediation      = 'Entra admin center > Identity Governance > Terms of use. Verify agreements have "Require users to expand the terms of use" enabled and are assigned via Conditional Access policies.'
     }
+    Add-Setting @settingParams
 }
 catch {
     if ($_.Exception.Message -match '403|Forbidden|Authorization') {

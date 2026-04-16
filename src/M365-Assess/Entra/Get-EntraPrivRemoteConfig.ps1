@@ -86,12 +86,13 @@ try {
         $permanentCount = @($activeAssignments['value']).Count
     }
 
-    # Try to get eligible (PIM) assignments via beta endpoint
+    # Try to get eligible (PIM) assignments via v1.0 endpoint
     $eligibleCount = 0
+    $eligibleNote = $null
     try {
         $eligibleParams = @{
             Method      = 'GET'
-            Uri         = "/beta/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$globalAdminRoleId'"
+            Uri         = "/v1.0/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$globalAdminRoleId'"
             ErrorAction = 'Stop'
         }
         $eligibleAssignments = Invoke-MgGraphRequest @eligibleParams
@@ -101,21 +102,41 @@ try {
         }
     }
     catch {
-        Write-Verbose "Could not query PIM eligible assignments (PIM may not be licensed): $_"
+        # Silent degradation replaced with Review status
+        $eligibleNote = 'PIM eligible assignments not available (requires Entra ID P2)'
+        Write-Verbose "Could not query PIM eligible assignments: $_"
     }
 
     $pimInUse = $eligibleCount -gt 0
-    $currentValue = "Permanent: $permanentCount, Eligible (PIM): $eligibleCount"
+    $currentValue = if ($null -ne $eligibleNote) {
+        "Permanent: $permanentCount, Eligible (PIM): $eligibleNote"
+    }
+    else {
+        "Permanent: $permanentCount, Eligible (PIM): $eligibleCount"
+    }
 
     # Pass if PIM eligible assignments exist and permanent assignments are minimal (break-glass only)
     $passCondition = $pimInUse -and ($permanentCount -le 2)
+
+    $privStatus = if ($null -ne $eligibleNote) {
+        'Review'
+    }
+    elseif ($passCondition) {
+        'Pass'
+    }
+    elseif ($pimInUse) {
+        'Warning'
+    }
+    else {
+        'Fail'
+    }
 
     $settingParams = @{
         Category         = 'Privileged Remote Access'
         Setting          = 'PIM Required for Global Admin Activation'
         CurrentValue     = $currentValue
         RecommendedValue = 'PIM enabled with eligible assignments; max 2 permanent (break-glass)'
-        Status           = if ($passCondition) { 'Pass' } elseif ($pimInUse) { 'Warning' } else { 'Fail' }
+        Status           = $privStatus
         CheckId          = 'ENTRA-PRIVREMOTE-001'
         Remediation      = 'Enable Entra ID PIM. Convert permanent role assignments to eligible. Configure activation to require justification and MFA. Entra admin center > Identity Governance > Privileged Identity Management > Entra ID roles.'
     }

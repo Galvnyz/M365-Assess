@@ -93,10 +93,10 @@ try {
             }
         }
 
-        # If device-related controls exist at all, that indicates MDE is providing detection
+        # If device controls exist but none are actively configured, do NOT pass
         if ($deviceConfigControls.Count -gt 0 -and -not $configDetectionActive) {
-            $configDetectionActive = $true
-            $activeControls += "$($deviceConfigControls.Count) device configuration controls tracked"
+            $currentDetail = "$($deviceConfigControls.Count) device config controls tracked in Secure Score but none are actively configured"
+            # Do NOT set $configDetectionActive = $true here
         }
     }
 

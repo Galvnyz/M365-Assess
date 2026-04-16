@@ -79,6 +79,7 @@ try {
     }
 
     $fipsEnforced = $false
+    $fipsStatus = 'Fail'
     $policyDetail = 'Not configured'
 
     foreach ($config in $configList) {
@@ -108,7 +109,10 @@ try {
         if ($odataType -match 'windows10EndpointProtectionConfiguration') {
             $displayName = $config['displayName']
             if ($displayName -match 'FIPS|Cryptograph') {
-                $policyDetail = "Potential FIPS config via Endpoint Protection (Policy: $displayName)"
+                $fipsEnforced = $false  # still can't confirm without OMA-URI
+                $policyDetail = "Potential FIPS-related policy detected: '$displayName' — verify OMA-URI setting is present"
+                # Override status to Warning instead of Fail
+                $fipsStatus = 'Warning'
             }
         }
     }
@@ -118,7 +122,7 @@ try {
         Setting          = 'FIPS Algorithm Policy Enforced on Windows Devices'
         CurrentValue     = $policyDetail
         RecommendedValue = 'FIPS algorithm policy enabled via Intune OMA-URI'
-        Status           = if ($fipsEnforced) { 'Pass' } else { 'Fail' }
+        Status           = if ($fipsEnforced) { 'Pass' } elseif ($fipsStatus -eq 'Warning') { 'Warning' } else { 'Fail' }
         CheckId          = 'INTUNE-FIPS-001'
         Remediation      = 'Intune admin center > Devices > Configuration > Create profile > Custom OMA-URI > Add setting: ./Device/Vendor/MSFT/Policy/Config/Cryptography/AllowFipsAlgorithmPolicy = 1.'
     }

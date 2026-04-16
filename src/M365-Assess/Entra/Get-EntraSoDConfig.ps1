@@ -73,7 +73,7 @@ try {
     Write-Verbose 'Checking role assignments for Global Administrator...'
     $gaParams = @{
         Method      = 'GET'
-        Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$globalAdminRoleId'"
+        Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$globalAdminRoleId'&`$top=999&`$expand=principal"
         ErrorAction = 'Stop'
     }
     $gaAssignments = Invoke-MgGraphRequest @gaParams
@@ -86,7 +86,7 @@ try {
     Write-Verbose 'Checking role assignments for Privileged Role Administrator...'
     $praParams = @{
         Method      = 'GET'
-        Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$privRoleAdminRoleId'"
+        Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$privRoleAdminRoleId'&`$top=999&`$expand=principal"
         ErrorAction = 'Stop'
     }
     $praAssignments = Invoke-MgGraphRequest @praParams

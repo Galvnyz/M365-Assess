@@ -73,8 +73,8 @@ try {
     $overview = Invoke-MgGraphRequest @overviewParams
 
     $enrolledCount = 0
-    if ($overview) {
-        $enrolledCount = [int]($overview['enrolledDeviceCount'] ?? 0)
+    if ($null -ne $overview -and $null -ne $overview['enrolledDeviceCount']) {
+        $enrolledCount = [int]$overview['enrolledDeviceCount']
     }
 
     Write-Verbose 'Checking device categories...'

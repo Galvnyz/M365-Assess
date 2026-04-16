@@ -84,13 +84,13 @@ try {
         $odataType = $config['@odata.type']
         $displayName = $config['displayName']
 
-        # Windows auto-enrollment (MDM)
-        if ($odataType -match 'deviceEnrollmentWindowsHelloForBusinessConfiguration|deviceEnrollmentPlatformRestrictionsConfiguration|deviceEnrollmentLimitConfiguration') {
+        # Windows MDM auto-enrollment — only count types that prove auto-enrollment is configured
+        if ($odataType -match 'deviceEnrollmentWindowsAutoEnrollment') {
             $autoEnrollFound = $true
-            $enrollDetail = "Enrollment config found: $displayName ($odataType)"
+            $enrollDetail = "MDM auto-enrollment configuration found: $displayName"
         }
 
-        # Look for Windows Autopilot deployment profiles
+        # Look for Windows Autopilot deployment profiles (inline, from the enrollment configs endpoint)
         if ($odataType -match 'windowsAutopilot') {
             $autoEnrollFound = $true
             $enrollDetail = "Autopilot deployment profile: $displayName"
@@ -118,12 +118,17 @@ try {
         }
     }
 
+    $autoDiscStatus = if ($autoEnrollFound) { 'Pass' } else { 'Warning' }
+    if (-not $autoEnrollFound) {
+        $enrollDetail = 'No MDM auto-enrollment or Autopilot profile detected — manual enrollment or alternate MDM scope may be in use'
+    }
+
     $settingParams = @{
         Category         = 'Automated Discovery'
         Setting          = 'Automatic Device Enrollment and Discovery'
         CurrentValue     = $enrollDetail
         RecommendedValue = 'MDM auto-enrollment configured (scope: All or Some users)'
-        Status           = if ($autoEnrollFound) { 'Pass' } else { 'Fail' }
+        Status           = $autoDiscStatus
         CheckId          = 'INTUNE-AUTODISC-001'
         Remediation      = 'Configure Intune automatic enrollment: Entra admin center > Mobility (MDM and WIP) > Microsoft Intune > MDM user scope: All or Some. Consider configuring Windows Autopilot for zero-touch provisioning.'
     }
