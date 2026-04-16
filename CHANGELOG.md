@@ -4,6 +4,25 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-16
+
+### Added
+- DNS-MX-001: MX record verification check — Pass when MX resolves to `*.mail.protection.outlook.com`, Warning for third-party relays (Proofpoint, Mimecast, etc.), Fail when no MX record exists (#423)
+- Column picker extended to all section tables (previously only security-config tables had it) (#412)
+- Per-table CSV export button in control bar — client-side JS, respects active status filters and hidden columns; filename `<Section>_<Tenant>_<Date>.csv` (#418)
+- Graphical emphasis on Expand Table button: accent-colored border, icon, and distinct hover state (#417)
+
+### Changed
+- Column picker merged into the status filter bar (no longer a separate element above it) (#413)
+- Status chips consistently color-coded across all tables: Fail=red, Warning=amber, Review=purple, Pass=green, Info=grey (#414)
+- Hybrid section demoted to bottom of left nav when `onPremisesSyncEnabled` is false/null; muted badge indicates cloud-only (#415)
+- EXO-AUDIT-001 setting name updated to `Exchange Org Audit Config`; COMPLIANCE-AUDIT-001 updated to `Unified Audit Log (UAL) Ingestion` (#420)
+- SPO-SYNC-001 and SPO-ACCESS-002 empty `CurrentValue` now emits `'Not configured'` or `'Could not retrieve via Graph API'` instead of blank (#421)
+
+### Fixed
+- ENTRA-ENTAPP-020 excluded Microsoft first-party service principals (`appOwnerOrganizationId == f8cdef31...`) from credential hygiene check, eliminating 47+ false positives on E5 tenants (#419)
+- Status filter chips and All/None buttons now apply correctly across all section tables (#416)
+
 ## [1.10.1] - 2026-04-15
 
 ### Fixed
