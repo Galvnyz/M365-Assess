@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '1.11.0'
+    ModuleVersion     = '1.12.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -200,7 +200,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v1.11.0 - DNS-MX-001 MX record check, ENTRA-ENTAPP-020 false positive fix, status filter + column picker UI overhaul, hybrid nav demotion, styled expand button, per-table CSV export'
+            ReleaseNotes = 'v1.12.0 - Policy drift detection (-SaveBaseline/-CompareBaseline), impactRationale for all 254 checks surfaced in Remediation Action Plan'
         }
     }
 }

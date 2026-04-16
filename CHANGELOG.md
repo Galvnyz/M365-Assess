@@ -4,6 +4,12 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-04-16
+
+### Added
+- Policy drift detection: `-SaveBaseline <label>` saves the current assessment as a named JSON snapshot; `-CompareBaseline <label>` compares the next run against it and adds a "Drift Analysis" page to the HTML report with Regressed/Improved/Modified/New/Removed classification (#370)
+- `impactRationale` surfaced in Remediation Action Plan — "Why it matters:" sub-line rendered below each remediation cell, drawn from `registry.json` for all 254 checks (#424)
+
 ## [1.11.0] - 2026-04-16
 
 ### Added
