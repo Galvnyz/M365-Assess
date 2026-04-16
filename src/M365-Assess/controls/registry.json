@@ -1238,7 +1238,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2;IA-2(1);IA-2(2);IA-2(8);IA-5;IA-5(1)",
-          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts — Replay Resistant; Authenticator Management; Password-based Authentication",
+          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201d Replay Resistant; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -1427,7 +1427,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2;IA-2(1);IA-2(13);IA-2(2);IA-2(8);IA-5;IA-5(1)",
-          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Out-of-band Authentication; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts — Replay Resistant; Authenticator Management; Password-based Authentication",
+          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Out-of-band Authentication; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201d Replay Resistant; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -2300,7 +2300,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2);IA-2(6);IA-5;IA-5(1)",
-          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts —separate Device; Authenticator Management; Password-based Authentication",
+          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201dseparate Device; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -2485,7 +2485,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2);IA-2(6);IA-5;IA-5(1)",
-          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts —separate Device; Authenticator Management; Password-based Authentication",
+          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201dseparate Device; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -2852,7 +2852,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2);IA-2(6);IA-5;IA-5(1)",
-          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts —separate Device; Authenticator Management; Password-based Authentication",
+          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201dseparate Device; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -3031,7 +3031,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2);IA-2(6);IA-5;IA-5(1)",
-          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts —separate Device; Authenticator Management; Password-based Authentication",
+          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201dseparate Device; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -3383,7 +3383,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2(1);IA-2(2);IA-2(6);IA-5;IA-5(1)",
-          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts —separate Device; Authenticator Management; Password-based Authentication",
+          "title": "Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201dseparate Device; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -3548,7 +3548,7 @@
         },
         "nist-800-53": {
           "controlId": "IA-2;IA-2(1);IA-2(2);IA-2(8);IA-5;IA-5(1)",
-          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts — Replay Resistant; Authenticator Management; Password-based Authentication",
+          "title": "Identification and Authentication (Organizational Users); Multi-factor Authentication to Privileged Accounts; Multi-factor Authentication to Non-privileged Accounts; Access to Accounts \u00e2\u20ac\u201d Replay Resistant; Authenticator Management; Password-based Authentication",
           "profiles": [
             "Low",
             "Moderate",
@@ -7265,6 +7265,10 @@
         },
         "stig": {
           "controlId": "V-260336"
+        },
+        "entra-id-stig": {
+          "controlId": "V-270335",
+          "title": "Microsoft Entra ID must use Privileged Identity Management (PIM)"
         }
       },
       "impactRating": {
@@ -18667,7 +18671,7 @@
         },
         "nist-800-53": {
           "controlId": "AC-6;AC-6(10);CM-7;CM-7(4);CM-7(5);SA-8(14);SC-18(4)",
-          "title": "Least Privilege; Prohibit Non-privileged Users from Executing Privileged Functions; Least Functionality; Unauthorized Software — Deny-by-exception; Authorized Software — Allow-by-exception; Prevent Automatic Execution",
+          "title": "Least Privilege; Prohibit Non-privileged Users from Executing Privileged Functions; Least Functionality; Unauthorized Software \u00e2\u20ac\u201d Deny-by-exception; Authorized Software \u00e2\u20ac\u201d Allow-by-exception; Prevent Automatic Execution",
           "profiles": [
             "Low",
             "Moderate",
@@ -19584,8 +19588,8 @@
           "MON-16"
         ],
         "domain": "Human Resources Security",
-        "controlName": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
-        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlName": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
         "relativeWeighting": 9,
         "csfFunction": "Protect",
         "maturityLevels": {
@@ -19758,7 +19762,7 @@
       },
       "impactRating": {
         "severity": "High",
-        "rationale": "Failure to expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
+        "rationale": "Failure to expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
         "scfWeighting": 9
       }
     },
@@ -19778,8 +19782,8 @@
           "MON-16"
         ],
         "domain": "Human Resources Security",
-        "controlName": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
-        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlName": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
         "relativeWeighting": 9,
         "csfFunction": "Protect",
         "maturityLevels": {
@@ -19952,7 +19956,7 @@
       },
       "impactRating": {
         "severity": "High",
-        "rationale": "Failure to expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
+        "rationale": "Failure to expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
         "scfWeighting": 9
       }
     },
@@ -19972,8 +19976,8 @@
           "MON-16"
         ],
         "domain": "Human Resources Security",
-        "controlName": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
-        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlName": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
+        "controlDescription": "Does the organization expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management?",
         "relativeWeighting": 9,
         "csfFunction": "Protect",
         "maturityLevels": {
@@ -20146,7 +20150,7 @@
       },
       "impactRating": {
         "severity": "High",
-        "rationale": "Failure to expedite the process of removing \"high risk\" individual’s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
+        "rationale": "Failure to expedite the process of removing \"high risk\" individual\u00e2\u20ac\u2122s access to Technology Assets, Applications, Services and/or Data (TAASD) upon termination, as determined by management exposes the tenant to: Improper assignment of privileged functions, Unauthorized access.",
         "scfWeighting": 9
       }
     },
@@ -21881,7 +21885,7 @@
           },
           {
             "aoId": "DCH-13_A16",
-            "text": "authorized individuals are permitted to use external systems to access the organizational system or to process, store, or transmit CUI only after verifying that the security requirements on the external systems as specified in the organization’s system security plans have been satisfied."
+            "text": "authorized individuals are permitted to use external systems to access the organizational system or to process, store, or transmit CUI only after verifying that the security requirements on the external systems as specified in the organization\u00e2\u20ac\u2122s system security plans have been satisfied."
           },
           {
             "aoId": "DCH-13_A17",
@@ -22108,7 +22112,7 @@
           },
           {
             "aoId": "DCH-13_A16",
-            "text": "authorized individuals are permitted to use external systems to access the organizational system or to process, store, or transmit CUI only after verifying that the security requirements on the external systems as specified in the organization’s system security plans have been satisfied."
+            "text": "authorized individuals are permitted to use external systems to access the organizational system or to process, store, or transmit CUI only after verifying that the security requirements on the external systems as specified in the organization\u00e2\u20ac\u2122s system security plans have been satisfied."
           },
           {
             "aoId": "DCH-13_A17",
@@ -22379,7 +22383,7 @@
         },
         "nist-800-53": {
           "controlId": "AC-20;AC-20(2);AC-20(5)",
-          "title": "Use of External Systems; Portable Storage Devices — Restricted Use; Portable Storage Devices — Prohibited Use",
+          "title": "Use of External Systems; Portable Storage Devices \u00e2\u20ac\u201d Restricted Use; Portable Storage Devices \u00e2\u20ac\u201d Prohibited Use",
           "profiles": [
             "Low",
             "Moderate",
@@ -22430,11 +22434,11 @@
         "assessmentObjectives": [
           {
             "aoId": "DCH-14_A01",
-            "text": "information-sharing circumstances where user discretion is required to determine whether access authorizations assigned to a sharing partner match the information’s access and use restrictions are defined."
+            "text": "information-sharing circumstances where user discretion is required to determine whether access authorizations assigned to a sharing partner match the information\u00e2\u20ac\u2122s access and use restrictions are defined."
           },
           {
             "aoId": "DCH-14_A02",
-            "text": "authorized users are enabled to determine whether access authorizations assigned to a sharing partner match the information’s access and use restrictions for organization-defined information-sharing circumstances."
+            "text": "authorized users are enabled to determine whether access authorizations assigned to a sharing partner match the information\u00e2\u20ac\u2122s access and use restrictions for organization-defined information-sharing circumstances."
           },
           {
             "aoId": "DCH-14_A03",
@@ -22607,11 +22611,11 @@
         "assessmentObjectives": [
           {
             "aoId": "DCH-14_A01",
-            "text": "information-sharing circumstances where user discretion is required to determine whether access authorizations assigned to a sharing partner match the information’s access and use restrictions are defined."
+            "text": "information-sharing circumstances where user discretion is required to determine whether access authorizations assigned to a sharing partner match the information\u00e2\u20ac\u2122s access and use restrictions are defined."
           },
           {
             "aoId": "DCH-14_A02",
-            "text": "authorized users are enabled to determine whether access authorizations assigned to a sharing partner match the information’s access and use restrictions for organization-defined information-sharing circumstances."
+            "text": "authorized users are enabled to determine whether access authorizations assigned to a sharing partner match the information\u00e2\u20ac\u2122s access and use restrictions for organization-defined information-sharing circumstances."
           },
           {
             "aoId": "DCH-14_A03",
