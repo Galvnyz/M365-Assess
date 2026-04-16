@@ -2,18 +2,23 @@
   "frameworkId": "cis-m365-v6",
   "label": "CIS Microsoft 365 v6.0.1",
   "version": "6.0.1",
-  "description": "Center for Internet Security benchmark for Microsoft 365 tenant configuration",
   "css": "fw-cis",
   "totalControls": 139,
+  "registryKey": "cis-m365-v6",
+  "csvColumn": "Cis",
   "displayOrder": 1,
   "scoring": {
     "method": "profile-compliance",
     "profiles": {
       "E3-L1": { "label": "CIS E3 Level 1", "css": "fw-cis", "profileKey": "E3-L1" },
-      "E3-L2": { "label": "CIS E3 Level 2", "css": "fw-cis-l2", "profileKey": "E3-L2" },
+      "E3-L2": { "label": "CIS E3 Level 2", "css": "fw-cis-l2", "profileKey": "E3-L2", "colors": { "light": { "background": "#dbeafe", "color": "#1e40af" }, "dark": { "background": "#1E3A5F", "color": "#60A5FA" } } },
       "E5-L1": { "label": "CIS E5 Level 1", "css": "fw-cis", "profileKey": "E5-L1" },
-      "E5-L2": { "label": "CIS E5 Level 2", "css": "fw-cis-l2", "profileKey": "E5-L2" }
+      "E5-L2": { "label": "CIS E5 Level 2", "css": "fw-cis-l2", "profileKey": "E5-L2", "colors": { "light": { "background": "#dbeafe", "color": "#1e40af" }, "dark": { "background": "#1E3A5F", "color": "#60A5FA" } } }
     }
+  },
+  "colors": {
+    "light": { "background": "#e8f0fe", "color": "#1a56db" },
+    "dark": { "background": "#1E3A5F", "color": "#93C5FD" }
   },
   "groupBy": "section-prefix",
   "sections": {

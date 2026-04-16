@@ -1,10 +1,11 @@
 {
-  "frameworkId": "soc2",
+  "frameworkId": "soc2-tsc",
   "label": "SOC 2 Trust Services Criteria",
   "version": "2022",
-  "description": "AICPA Trust Services Criteria for service organization controls",
   "css": "fw-soc2",
   "totalControls": 11,
+  "registryKey": "soc2",
+  "csvColumn": "Soc2",
   "displayOrder": 10,
   "scoring": {
     "method": "criteria-coverage",
@@ -71,5 +72,9 @@
     "CC3": { "label": "Risk Assessment", "note": "Partially automatable via Secure Score (Phase 2)" },
     "CC4": { "label": "Monitoring Activities", "note": "Partially automatable via Compliance Manager" },
     "CC9": { "label": "Risk Mitigation", "note": "Requires vendor management and business continuity review" }
+  },
+  "colors": {
+    "light": { "background": "#eff6ff", "color": "#1e3a5f" },
+    "dark": { "background": "#1E3A5F", "color": "#60A5FA" }
   }
 }

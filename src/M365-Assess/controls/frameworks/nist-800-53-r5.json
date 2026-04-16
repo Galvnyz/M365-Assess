@@ -2,9 +2,10 @@
   "frameworkId": "nist-800-53",
   "label": "NIST SP 800-53 Rev 5",
   "version": "5.2.0",
-  "description": "Federal information system security and privacy controls",
   "css": "fw-nist",
   "totalControls": 1189,
+  "registryKey": "nist-800-53",
+  "csvColumn": "Nist80053",
   "displayOrder": 2,
   "scoring": {
     "method": "profile-compliance",
@@ -25,14 +26,20 @@
         "label": "NIST 800-53 High",
         "css": "fw-nist-high",
         "profileKey": "High",
-        "controlCount": 370
+        "controlCount": 370,
+        "colors": { "light": { "background": "#dbeafe", "color": "#1e40af" }, "dark": { "background": "#1E3A5F", "color": "#60A5FA" } }
       },
       "Privacy": {
         "label": "NIST 800-53 Privacy",
         "css": "fw-nist-privacy",
         "profileKey": "Privacy",
-        "controlCount": 96
+        "controlCount": 96,
+        "colors": { "light": { "background": "#ede9fe", "color": "#5b21b6" }, "dark": { "background": "#4C1D95", "color": "#C4B5FD" } }
       }
     }
+  },
+  "colors": {
+    "light": { "background": "#e8f0fe", "color": "#1a56db" },
+    "dark": { "background": "#1E3A5F", "color": "#93C5FD" }
   }
 }
