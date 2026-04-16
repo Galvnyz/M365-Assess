@@ -95,7 +95,7 @@ Describe 'Get-ComplianceSecurityConfig' {
 
     It 'Unified Audit Log check passes when enabled' {
         $auditCheck = $settings | Where-Object {
-            $_.CheckId -like 'COMPLIANCE-AUDIT-001*' -and $_.Setting -eq 'Unified Audit Log Ingestion'
+            $_.CheckId -like 'COMPLIANCE-AUDIT-001*' -and $_.Setting -eq 'Unified Audit Log (UAL) Ingestion'
         }
         $auditCheck | Should -Not -BeNullOrEmpty
         $auditCheck.Status | Should -Be 'Pass'
