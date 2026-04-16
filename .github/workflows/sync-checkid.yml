@@ -24,7 +24,7 @@ jobs:
 
       - name: Fetch CheckID data
         env:
-          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
         run: |
           TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           echo "Syncing from CheckID $TAG"
@@ -44,7 +44,7 @@ jobs:
       - name: Create PR if changed
         if: steps.diff.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
         run: |
           TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           BRANCH="chore/sync-checkid-$TAG"
