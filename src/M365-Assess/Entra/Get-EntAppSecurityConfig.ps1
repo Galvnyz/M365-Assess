@@ -1064,7 +1064,12 @@ try {
     $msNames = @('Microsoft Teams', 'Microsoft Graph', 'Microsoft Office', 'Microsoft Azure', 'Microsoft Intune', 'Microsoft Exchange', 'Microsoft SharePoint', 'Microsoft Outlook', 'Microsoft OneDrive', 'Microsoft Defender')
     $impersonators = @()
 
-    foreach ($sp in $foreignApps) {
+    # Exclude legitimate Microsoft first-party SPs (appOwnerOrganizationId == Microsoft tenant).
+    # These are automatically provisioned by the platform and are not impersonators.
+    $msTenantId = 'f8cdef31-a31e-4b4a-93e4-5f571e91255a'
+    $nonMsForeignApps = @($foreignApps | Where-Object { $_['appOwnerOrganizationId'] -ne $msTenantId })
+
+    foreach ($sp in $nonMsForeignApps) {
         $name = $sp['displayName']
         foreach ($msName in $msNames) {
             if ($name -eq $msName -or $name -like "$msName *") {
