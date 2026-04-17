@@ -194,7 +194,6 @@
         'controls\frameworks\pci-dss-v4.json'
         'controls\frameworks\soc2-tsc.json'
         'controls\frameworks\stig.json'
-        'controls\frameworks\entra-id-stig.json'
         'Setup\Grant-M365AssessConsent.ps1'
         'Setup\Save-M365ConnectionProfile.ps1'
         'Setup\Get-M365ConnectionProfile.ps1'

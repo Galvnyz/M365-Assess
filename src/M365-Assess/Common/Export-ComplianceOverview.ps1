@@ -87,16 +87,7 @@ function Export-ComplianceOverview {
         $null = $html.AppendLine("<div class='callout callout-info'><div class='callout-title'><span class='callout-icon'>&#9432;</span> License-Aware Check Gating</div><div class='callout-body'>$skipCount checks were skipped because the tenant does not have the required license service plans.$skipListHtml</div></div>")
     }
 
-    # Framework multi-selector (one checkbox per framework)
-    $null = $html.AppendLine("<div class='fw-selector' id='fwSelector'>")
-    $null = $html.AppendLine("<span class='fw-selector-label'>Frameworks:</span>")
-    foreach ($fw in $displayFrameworks) {
-        $null = $html.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fw.frameworkId)' checked> $($fw.label)</label>")
-    }
-    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
-    $null = $html.AppendLine("</div>")
-
-    # Status counts
+    # Pre-compute filter data
     $totalFindings = $Findings.Count
     $passCount = @($Findings | Where-Object { $_.Status -eq 'Pass' }).Count
     $failCount = @($Findings | Where-Object { $_.Status -eq 'Fail' }).Count
@@ -105,6 +96,84 @@ function Export-ComplianceOverview {
     $infoCount = @($Findings | Where-Object { $_.Status -eq 'Info' }).Count
     $knownStatuses = @('Pass', 'Fail', 'Warning', 'Review', 'Info')
     $unknownCount = @($Findings | Where-Object { $_.Status -notin $knownStatuses }).Count
+    $uniqueSections = @($Findings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    $severityOrder = @('Critical', 'High', 'Medium', 'Low', 'Info')
+    $uniqueSeverities = @($Findings | Select-Object -ExpandProperty RiskSeverity -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    $orderedSeverities = @($severityOrder | Where-Object { $_ -in $uniqueSeverities })
+
+    # Collapsible filter panel
+    $null = $html.AppendLine("<details class='co-filter-panel' id='coFilterPanel' open>")
+    $null = $html.AppendLine("<summary class='co-filter-summary'><span class='co-filter-title'>Filters</span><span class='co-filter-badge' id='coFilterBadge' style='display:none'></span><button type='button' class='fw-action-btn co-reset-btn' id='coFilterReset'>Reset All</button></summary>")
+
+    # Severity row
+    $null = $html.AppendLine("<div class='co-filter-row' id='severityFilter'>")
+    $null = $html.AppendLine("<span class='co-filter-label'>Severity:</span>")
+    foreach ($sv in $orderedSeverities) {
+        $svLower = $sv.ToLower()
+        $svCount = @($Findings | Where-Object { $_.RiskSeverity -eq $sv }).Count
+        $svClass = switch ($sv) { 'Critical' { 'badge-critical' } 'High' { 'badge-failed' } 'Medium' { 'badge-warning' } 'Low' { 'badge-info' } default { 'badge-neutral' } }
+        $null = $html.AppendLine("<label class='co-chip $svClass active' data-value='$svLower'><input type='checkbox' value='$svLower' checked style='display:none'> $sv ($svCount)</label>")
+    }
+    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='svSelectAll' class='fw-action-btn'>All</button><button type='button' id='svSelectNone' class='fw-action-btn'>None</button></span>")
+    $null = $html.AppendLine("</div>")
+
+    # Status row
+    $null = $html.AppendLine("<div class='co-filter-row' id='statusFilter'>")
+    $null = $html.AppendLine("<span class='co-filter-label'>Status:</span>")
+    $null = $html.AppendLine("<label class='status-checkbox status-fail'><input type='checkbox' value='fail' checked> Fail ($failCount)</label>")
+    if ($warnCount -gt 0) {
+        $null = $html.AppendLine("<label class='status-checkbox status-warning'><input type='checkbox' value='warning' checked> Warning ($warnCount)</label>")
+    }
+    if ($reviewCount -gt 0) {
+        $null = $html.AppendLine("<label class='status-checkbox status-review'><input type='checkbox' value='review' checked> Review ($reviewCount)</label>")
+    }
+    $null = $html.AppendLine("<label class='status-checkbox status-pass'><input type='checkbox' value='pass' checked> Pass ($passCount)</label>")
+    if ($infoCount -gt 0) {
+        $null = $html.AppendLine("<label class='status-checkbox status-info'><input type='checkbox' value='info' checked> Info ($infoCount)</label>")
+    }
+    if ($unknownCount -gt 0) {
+        $null = $html.AppendLine("<label class='status-checkbox status-unknown'><input type='checkbox' value='unknown' checked> Unknown ($unknownCount)</label>")
+    }
+    if ($infoCount -gt 0) {
+        $null = $html.AppendLine("<span class='info-note-inline'><span class='badge badge-neutral'>Info</span> = no pass/fail criteria; not included in pass rates</span>")
+    }
+    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
+    $null = $html.AppendLine("</div>")
+
+    # Framework row
+    $null = $html.AppendLine("<div class='co-filter-row' id='fwSelector'>")
+    $null = $html.AppendLine("<span class='co-filter-label'>Frameworks:</span>")
+    foreach ($fw in $displayFrameworks) {
+        $null = $html.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fw.frameworkId)' checked> $($fw.label)</label>")
+    }
+    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
+    $null = $html.AppendLine("</div>")
+
+    # CIS profile sub-filter (shown when cis-m365-v6 is active)
+    $null = $html.AppendLine("<div class='co-filter-row' id='cisSubFilter' style='display:none'>")
+    $null = $html.AppendLine("<span class='co-filter-label'>CIS Profile:</span>")
+    $null = $html.AppendLine("<div class='co-profile-group'>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn active' data-profile='all'>All Profiles</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-profile='E3-L1'>E3 L1</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-profile='E3-L2'>E3 L2</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-profile='E5-L1'>E5 L1</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-profile='E5-L2'>E5 L2</button>")
+    $null = $html.AppendLine("</div>")
+    $null = $html.AppendLine("</div>")
+
+    # Section row
+    if ($uniqueSections.Count -gt 1) {
+        $null = $html.AppendLine("<div class='co-filter-row' id='sectionFilter'>")
+        $null = $html.AppendLine("<span class='co-filter-label'>Sections:</span>")
+        foreach ($sec in $uniqueSections) {
+            $secCount = @($Findings | Where-Object { $_.Section -eq $sec }).Count
+            $null = $html.AppendLine("<label class='section-checkbox'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $sec)' checked> $(ConvertTo-HtmlSafe -Text $sec) ($secCount)</label>")
+        }
+        $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='sectionSelectAll' class='fw-action-btn'>All</button><button type='button' id='sectionSelectNone' class='fw-action-btn'>None</button></span>")
+        $null = $html.AppendLine("</div>")
+    }
+
+    $null = $html.AppendLine("</details>")
 
     # Status distribution bar chart
     if ($totalFindings -gt 0) {
@@ -206,42 +275,6 @@ function Export-ComplianceOverview {
     }
     $null = $html.AppendLine("</div>")
 
-    # Status filter (multi-select checkboxes)
-    $null = $html.AppendLine("<div class='status-filter' id='statusFilter'>")
-    $null = $html.AppendLine("<span class='status-filter-label'>Status:</span>")
-    $null = $html.AppendLine("<label class='status-checkbox status-fail'><input type='checkbox' value='fail' checked> Fail ($failCount)</label>")
-    if ($warnCount -gt 0) {
-        $null = $html.AppendLine("<label class='status-checkbox status-warning'><input type='checkbox' value='warning' checked> Warning ($warnCount)</label>")
-    }
-    if ($reviewCount -gt 0) {
-        $null = $html.AppendLine("<label class='status-checkbox status-review'><input type='checkbox' value='review' checked> Review ($reviewCount)</label>")
-    }
-    $null = $html.AppendLine("<label class='status-checkbox status-pass'><input type='checkbox' value='pass' checked> Pass ($passCount)</label>")
-    if ($infoCount -gt 0) {
-        $null = $html.AppendLine("<label class='status-checkbox status-info'><input type='checkbox' value='info' checked> Info ($infoCount)</label>")
-    }
-    if ($unknownCount -gt 0) {
-        $null = $html.AppendLine("<label class='status-checkbox status-unknown'><input type='checkbox' value='unknown' checked> Unknown ($unknownCount)</label>")
-    }
-    if ($infoCount -gt 0) {
-        $null = $html.AppendLine("<span class='info-note-inline'><span class='badge badge-neutral'>Info</span> = no pass/fail criteria; not included in pass rates</span>")
-    }
-    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
-    $null = $html.AppendLine("</div>")
-
-    # Section filter (scopes compliance view by assessment domain)
-    $uniqueSections = @($Findings | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
-    if ($uniqueSections.Count -gt 1) {
-        $null = $html.AppendLine("<div class='section-filter' id='sectionFilter'>")
-        $null = $html.AppendLine("<span class='section-filter-label'>Sections:</span>")
-        foreach ($sec in $uniqueSections) {
-            $secCount = @($Findings | Where-Object { $_.Section -eq $sec }).Count
-            $null = $html.AppendLine("<label class='section-checkbox'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $sec)' checked> $(ConvertTo-HtmlSafe -Text $sec) ($secCount)</label>")
-        }
-        $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='sectionSelectAll' class='fw-action-btn'>All</button><button type='button' id='sectionSelectNone' class='fw-action-btn'>None</button></span>")
-        $null = $html.AppendLine("</div>")
-    }
-
     # Unified compliance matrix table (one column per framework)
     $null = $html.AppendLine("<div class='table-wrapper'>")
     $null = $html.AppendLine("<table class='data-table matrix-table' id='complianceTable'>")
@@ -269,7 +302,16 @@ function Export-ComplianceOverview {
         $checkRef = ConvertTo-HtmlSafe -Text $finding.CheckId
         $settingText = ConvertTo-HtmlSafe -Text $finding.Setting
 
-        $null = $html.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'>")
+        $svAttr = if ($finding.RiskSeverity) { " data-sv='$($finding.RiskSeverity.ToLower())'" } else { '' }
+        $cisProfilesAttr = ''
+        $cisFwId = 'cis-m365-v6'
+        if ($finding.Frameworks -and $finding.Frameworks.ContainsKey($cisFwId)) {
+            $cisEntry = $finding.Frameworks[$cisFwId]
+            if ($cisEntry.profiles -and $cisEntry.profiles.Count -gt 0) {
+                $cisProfilesAttr = " data-cis-profiles='$($cisEntry.profiles -join ',')'"
+            }
+        }
+        $null = $html.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'$svAttr$cisProfilesAttr>")
         $severityClass = switch ($finding.RiskSeverity) {
             'Critical' { 'badge-critical' }
             'High'     { 'badge-failed' }

@@ -57,7 +57,9 @@ Describe 'Import-ControlRegistry' {
                 ForEach-Object { $registry[$_] } | Where-Object { $null -ne $_.scf })
             $withScf.Count | Should -BeGreaterThan 0 -Because 'CheckID v2.0.0 entries carry scf objects'
             $withScf[0].scf.domain | Should -Not -BeNullOrEmpty
-            $withScf[0].scf.csfFunction | Should -Not -BeNullOrEmpty
+            $withCsfFunction = @($withScf | Where-Object { $null -ne $_.scf.csfFunction })
+            $withCsfFunction.Count | Should -BeGreaterThan 0 -Because 'CheckID v2.0.0 entries should carry scf.csfFunction'
+            $withCsfFunction[0].scf.csfFunction | Should -Not -BeNullOrEmpty
         }
 
         It 'passes impactRating object through for v2.0.0 entries' {

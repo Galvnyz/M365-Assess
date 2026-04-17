@@ -1908,6 +1908,25 @@ $html = @"
         .section-checkbox input[type="checkbox"] { display: none; }
         .no-results { text-align: center; padding: 40px; color: var(--m365a-medium-gray); font-style: italic; }
 
+        /* Compliance Overview collapsible filter panel */
+        .co-filter-panel { border: 1px solid var(--m365a-border); border-radius: 6px; margin: 0 0 12px; }
+        .co-filter-panel > summary { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--m365a-light-gray); border-radius: 6px; cursor: pointer; list-style: none; user-select: none; font-size: 0.85em; }
+        .co-filter-panel[open] > summary { border-radius: 6px 6px 0 0; border-bottom: 1px solid var(--m365a-border); }
+        .co-filter-panel > summary::-webkit-details-marker { display: none; }
+        .co-filter-panel > summary::before { content: '\25B6'; font-size: 8px; color: var(--m365a-medium-gray); transition: transform 0.15s; display: inline-block; }
+        .co-filter-panel[open] > summary::before { transform: rotate(90deg); }
+        .co-filter-title { font-weight: 600; color: var(--m365a-dark); }
+        .co-filter-badge { background: var(--m365a-accent); color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 0.75em; font-weight: 700; }
+        .co-reset-btn { margin-left: auto; }
+        .co-filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 12px; border-top: 1px solid var(--m365a-border); }
+        .co-filter-label { font-weight: 600; font-size: 0.85em; color: var(--m365a-dark); margin-right: 4px; min-width: 72px; }
+        .co-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 4px; font-size: 0.82em; cursor: pointer; user-select: none; transition: opacity 0.1s; opacity: 0.4; }
+        .co-chip.active { opacity: 1; }
+        .co-profile-group { display: flex; gap: 4px; flex-wrap: wrap; }
+        .co-profile-btn { padding: 3px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; background: var(--m365a-card-bg); font-size: 0.82em; cursor: pointer; color: var(--m365a-dark); transition: all 0.15s; }
+        .co-profile-btn:hover { background: var(--m365a-hover-bg); border-color: var(--m365a-accent); }
+        .co-profile-btn.active { background: var(--m365a-dark); color: #fff; border-color: var(--m365a-dark); }
+
         /* Compact scan header (shown when exec summary is skipped) */
         .scan-header {
             background: var(--m365a-card-bg); border: 1px solid var(--m365a-border);
@@ -2500,6 +2519,7 @@ $html = @"
             .data-table { page-break-inside: auto; }
             tr { page-break-inside: avoid; }
             .report-controls { display: none; }
+            .co-filter-panel { display: none; }
             .fw-selector { display: none; }
             .status-filter { display: none; }
             .section-filter { display: none; }
@@ -3388,8 +3408,13 @@ $html += @"
         var fwSelector = document.getElementById('fwSelector');
         var statusFilter = document.getElementById('statusFilter');
         var sectionFilter = document.getElementById('sectionFilter');
+        var severityFilter = document.getElementById('severityFilter');
+        var cisSubFilter = document.getElementById('cisSubFilter');
+        var coFilterBadge = document.getElementById('coFilterBadge');
+        var coFilterReset = document.getElementById('coFilterReset');
         var compTable = document.getElementById('complianceTable');
         var cards = document.querySelectorAll('.fw-card');
+        var CO_LS_KEY = 'm365a-co-filters';
 
         if (compTable) {
             var compRows = compTable.querySelectorAll('tbody tr');
@@ -3397,6 +3422,7 @@ $html += @"
             var fwCbs = fwSelector ? fwSelector.querySelectorAll('input[type="checkbox"]') : [];
             var statusCbs = statusFilter ? statusFilter.querySelectorAll('input[type="checkbox"]') : [];
             var sectionCbs = sectionFilter ? sectionFilter.querySelectorAll('input[type="checkbox"]') : [];
+            var svChips = severityFilter ? Array.from(severityFilter.querySelectorAll('.co-chip')) : [];
 
             function getActive(cbs, parentClass) {
                 var active = [];
@@ -3408,12 +3434,60 @@ $html += @"
                 return active;
             }
 
+            function getActiveSeverities() {
+                var active = [];
+                svChips.forEach(function(chip) {
+                    var cb = chip.querySelector('input');
+                    if (cb && cb.checked) active.push(cb.value);
+                });
+                return active;
+            }
+
+            function getActiveCisProfile() {
+                if (!cisSubFilter || cisSubFilter.style.display === 'none') return 'all';
+                var activeBtn = cisSubFilter.querySelector('.co-profile-btn.active');
+                return activeBtn ? activeBtn.getAttribute('data-profile') : 'all';
+            }
+
+            function updateCisSubFilter(activeFw) {
+                if (!cisSubFilter) return;
+                var cisActive = activeFw.indexOf('cis-m365-v6') !== -1;
+                cisSubFilter.style.display = cisActive ? '' : 'none';
+                if (!cisActive) {
+                    cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                    var allBtn = cisSubFilter.querySelector('[data-profile="all"]');
+                    if (allBtn) allBtn.classList.add('active');
+                }
+            }
+
+            function updateFilterBadge(activeFw, activeStatus, activeSv, activeSec, cisProfile) {
+                if (!coFilterBadge) return;
+                var deselected = (fwCbs.length - activeFw.length) + (statusCbs.length - activeStatus.length) +
+                    (svChips.length - activeSv.length) + (sectionCbs.length - activeSec.length) + (cisProfile !== 'all' ? 1 : 0);
+                if (deselected > 0) {
+                    coFilterBadge.textContent = deselected + ' filter' + (deselected !== 1 ? 's' : '') + ' active';
+                    coFilterBadge.style.display = '';
+                } else {
+                    coFilterBadge.style.display = 'none';
+                }
+            }
+
+            function saveFilters(activeFw, activeSt, activeSv, activeSec, cisProfile) {
+                try { localStorage.setItem(CO_LS_KEY, JSON.stringify({ fw: activeFw, st: activeSt, sv: activeSv, sec: activeSec, cis: cisProfile })); } catch(e) {}
+            }
+
             function applyAllFilters() {
                 var activeFw = getActive(fwCbs, '.fw-checkbox');
                 var activeStatus = getActive(statusCbs, '.status-checkbox');
+                var activeSeverities = getActiveSeverities();
                 var activeSections = sectionCbs.length > 0
                     ? getActive(sectionCbs, '.section-checkbox')
                     : Array.from(new Set(Array.from(compRows).map(function(r) { return r.getAttribute('data-section') || ''; })));
+                var cisProfile = getActiveCisProfile();
+
+                updateCisSubFilter(activeFw);
+                updateFilterBadge(activeFw, activeStatus, activeSeverities, activeSections, cisProfile);
+                saveFilters(activeFw, activeStatus, activeSeverities, activeSections, cisProfile);
 
                 // 1. Toggle framework columns and cards
                 allFwCols.forEach(function(el) {
@@ -3425,7 +3499,7 @@ $html += @"
                     card.style.display = activeFw.indexOf(fw) !== -1 ? '' : 'none';
                 });
 
-                // 2. Filter rows by status + section + framework mapping
+                // 2. Filter rows by status + section + framework + severity + CIS profile
                 var visibleCount = 0;
                 compRows.forEach(function(row) {
                     var sec = row.getAttribute('data-section') || '';
@@ -3434,7 +3508,6 @@ $html += @"
                     for (var i = 0; i < activeStatus.length; i++) {
                         if ((row.className || '').indexOf('cis-row-' + activeStatus[i]) !== -1) { statusOk = true; break; }
                     }
-                    // Hide rows where every active framework column is unmapped (—)
                     var fwOk = activeFw.length === 0;
                     if (!fwOk) {
                         var fwCells = Array.from(row.querySelectorAll('td.fw-col'));
@@ -3443,7 +3516,9 @@ $html += @"
                                    td.querySelector('.fw-unmapped') === null;
                         });
                     }
-                    var show = sectionOk && statusOk && fwOk;
+                    var svOk = activeSeverities.length === 0 || activeSeverities.indexOf((row.getAttribute('data-sv') || '').toLowerCase()) !== -1;
+                    var cisOk = cisProfile === 'all' || (row.getAttribute('data-cis-profiles') || '').split(',').indexOf(cisProfile) !== -1;
+                    var show = sectionOk && statusOk && fwOk && svOk && cisOk;
                     row.style.display = show ? '' : 'none';
                     if (show) visibleCount++;
                 });
@@ -3554,6 +3629,28 @@ $html += @"
             fwCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
             statusCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
             sectionCbs.forEach(function(cb) { cb.addEventListener('change', applyAllFilters); });
+            svChips.forEach(function(chip) {
+                var cb = chip.querySelector('input');
+                if (cb) cb.addEventListener('change', function() {
+                    chip.classList.toggle('active', cb.checked);
+                    applyAllFilters();
+                });
+            });
+            if (cisSubFilter) {
+                cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        btn.classList.add('active');
+                        applyAllFilters();
+                    });
+                });
+            }
+
+            // All/None buttons -- severity
+            var svAll = document.getElementById('svSelectAll');
+            var svNone = document.getElementById('svSelectNone');
+            if (svAll) svAll.addEventListener('click', function() { svChips.forEach(function(c) { c.classList.add('active'); var cb = c.querySelector('input'); if (cb) cb.checked = true; }); applyAllFilters(); });
+            if (svNone) svNone.addEventListener('click', function() { svChips.forEach(function(c) { c.classList.remove('active'); var cb = c.querySelector('input'); if (cb) cb.checked = false; }); applyAllFilters(); });
 
             // All/None buttons -- framework
             var fwAll = document.getElementById('fwSelectAll');
@@ -3572,6 +3669,39 @@ $html += @"
             var secNone = document.getElementById('sectionSelectNone');
             if (secAll) secAll.addEventListener('click', function() { sectionCbs.forEach(function(cb) { cb.checked = true; }); applyAllFilters(); });
             if (secNone) secNone.addEventListener('click', function() { sectionCbs.forEach(function(cb) { cb.checked = false; }); applyAllFilters(); });
+
+            // Reset All button
+            if (coFilterReset) {
+                coFilterReset.addEventListener('click', function() {
+                    fwCbs.forEach(function(cb) { cb.checked = true; });
+                    statusCbs.forEach(function(cb) { cb.checked = true; });
+                    sectionCbs.forEach(function(cb) { cb.checked = true; });
+                    svChips.forEach(function(c) { c.classList.add('active'); var cb = c.querySelector('input'); if (cb) cb.checked = true; });
+                    if (cisSubFilter) {
+                        cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        var allBtn = cisSubFilter.querySelector('[data-profile="all"]');
+                        if (allBtn) allBtn.classList.add('active');
+                    }
+                    try { localStorage.removeItem(CO_LS_KEY); } catch(e) {}
+                    applyAllFilters();
+                });
+            }
+
+            // Restore from localStorage
+            try {
+                var coSaved = JSON.parse(localStorage.getItem(CO_LS_KEY) || 'null');
+                if (coSaved) {
+                    if (coSaved.fw) fwCbs.forEach(function(cb) { cb.checked = coSaved.fw.indexOf(cb.value) !== -1; });
+                    if (coSaved.st) statusCbs.forEach(function(cb) { cb.checked = coSaved.st.indexOf(cb.value) !== -1; });
+                    if (coSaved.sv) svChips.forEach(function(chip) { var cb = chip.querySelector('input'); if (cb) { cb.checked = coSaved.sv.indexOf(cb.value) !== -1; chip.classList.toggle('active', cb.checked); } });
+                    if (coSaved.sec) sectionCbs.forEach(function(cb) { cb.checked = coSaved.sec.indexOf(cb.value) !== -1; });
+                    if (coSaved.cis && cisSubFilter) {
+                        cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        var savedBtn = cisSubFilter.querySelector('[data-profile="' + coSaved.cis + '"]');
+                        if (savedBtn) savedBtn.classList.add('active');
+                    }
+                }
+            } catch(e) {}
 
             // Initialize
             applyAllFilters();
