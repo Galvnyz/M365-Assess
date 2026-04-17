@@ -4,6 +4,30 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-04-17
+
+### Added
+- Compliance Overview filter panel revamped: collapsible `<details>` panel with severity chips (Critical/High/Medium/Low/Info), all filter groups unified, localStorage persistence across page reloads (#465)
+- CIS profile/level sub-filters in Compliance Overview framework selector: E3 L1 / E3 L2 / E5 L1 / E5 L2 pill buttons, visible only when CIS M365 v6 filter is active (#452)
+- Appendix enriched with impact/risk metadata columns (ImpactRationale, SCFWeighting, SCFDomain, SCFControl, Collector, LicensingMin), column picker to toggle visibility, status/severity/collector chip filters, and per-table CSV export (#456)
+- Intune Overview dashboard page with metric cards, category coverage grid, and filterable findings table; auto-skips when Intune not in assessment scope (#470)
+- DNS SERVFAIL detection: `Test-DnsZoneAvailable` emits DNS-ZONE-001 (High) and suppresses all downstream DNS checks to prevent false positives on broken zones (#460)
+- RFC 7505 null MX and defensive lockdown pattern recognized: null SPF + null MX + DMARC reject/quarantine emits DNS-LOCKDOWN-001 (Pass) instead of cascading failures (#461)
+
+### Changed
+- Framework Catalog scoring method labels now display human-readable names (e.g. "Profile Compliance" instead of "profile-compliance") (#457)
+- Framework Catalog summary stats enriched with descriptive `title` tooltips and plain-language labels ("Checks Assessed", "Pass Rate", "Coverage") (#458)
+- Sections with a single table automatically expand to fill available viewport height; expand button hidden (#459)
+- Collaboration Settings dashboard tiles updated with status badges, group headers (SharePoint & OneDrive / Microsoft Teams), and descriptive tooltips (#464)
+- CheckID registry synced to v2.6.1 (4 new CMMC L2 Phase 4 checks: INTUNE-VPNCONFIG-001, INTUNE-WIFI-001, CA-REMOTEDEVICE-001, INTUNE-REMOTEVPN-001) (#482)
+- Sync workflow now normalizes Windows-1252 bytes to UTF-8 after each CheckID download, preventing recurrence of encoding corruption
+
+### Fixed
+- CIS assessed check count now consistent between Compliance Overview card and Framework Catalog — both deduplicate by parent CheckId (strips sub-number suffix) (#453)
+- Compliance Overview no longer shows unmapped rows (—) when a framework filter chip is active (#451)
+- `cmmc.json`, `hipaa.json`, and `stig.json` corrected from Windows-1252 encoding (0x97 em dash, 0xa7 section sign) to proper UTF-8 (#485)
+- Identity collectors 02-07d missing `RequiredServices` annotation — Graph connected too late, causing up to 6 collectors to be silently skipped (#473)
+
 ## [1.12.0] - 2026-04-16
 
 ### Added
