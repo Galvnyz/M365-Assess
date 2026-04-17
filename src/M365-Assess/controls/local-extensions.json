@@ -1,0 +1,87 @@
+[
+  {
+    "checkId": "COMPLIANCE-DLP-003",
+    "name": "DLP Policies Cover Exchange and SharePoint/OneDrive",
+    "category": "DLP",
+    "collector": "Compliance",
+    "hasAutomatedCheck": true,
+    "licensing": {
+      "minimum": "E3"
+    },
+    "frameworks": {
+      "nist-800-53": {
+        "controlId": "SC-28;AC-3"
+      },
+      "soc2": {
+        "controlId": "CC6.1"
+      }
+    },
+    "impactRating": {
+      "severity": "High",
+      "rationale": "Failure to apply DLP policies across Exchange and SharePoint exposes the tenant to: Undetected exfiltration of regulated data (PII, financial records, health information) via email attachments and file sharing without policy enforcement.",
+      "scfWeighting": 7
+    }
+  },
+  {
+    "checkId": "COMPLIANCE-LABELS-002",
+    "name": "Auto-Sensitivity Labeling Policies Configured",
+    "category": "LABELS",
+    "collector": "Compliance",
+    "hasAutomatedCheck": true,
+    "licensing": {
+      "minimum": "E5"
+    },
+    "frameworks": {
+      "nist-800-53": {
+        "controlId": "SC-28;AC-3"
+      },
+      "soc2": {
+        "controlId": "CC6.1;CC6.7"
+      }
+    },
+    "impactRating": {
+      "severity": "Medium",
+      "rationale": "Failure to configure auto-sensitivity labeling policies exposes the tenant to: Sensitive data stored without classification labels, bypassing DLP controls and encryption policies that depend on label presence for enforcement.",
+      "scfWeighting": 5
+    }
+  },
+  {
+    "checkId": "COMPLIANCE-COMMS-001",
+    "name": "Communication Compliance Policies Enabled",
+    "category": "COMMS",
+    "collector": "Compliance",
+    "hasAutomatedCheck": true,
+    "licensing": {
+      "minimum": "E5"
+    },
+    "frameworks": {
+      "nist-800-53": {
+        "controlId": "AU-2;SI-4"
+      },
+      "soc2": {
+        "controlId": "CC7.2"
+      }
+    },
+    "impactRating": {
+      "severity": "High",
+      "rationale": "Failure to enable communication compliance monitoring exposes the tenant to: Regulatory violations, insider trading activity, and hostile workplace communications going undetected without policy-based surveillance of internal messaging.",
+      "scfWeighting": 7
+    }
+  },
+  {
+    "checkId": "DNS-MX-001",
+    "name": "Ensure MX records exist and point to Exchange Online for all email domains",
+    "category": "MX",
+    "collector": "DNS",
+    "hasAutomatedCheck": true,
+    "licensing": {
+      "minimum": "E3"
+    },
+    "frameworks": {},
+    "impactRating": {
+      "severity": "High",
+      "rationale": "Failure to route email through Exchange Online mail flow exposes the tenant to: Security control bypass; mail not traversing Exchange Online skips ATP scanning, DLP policies, mail flow rules, and anti-phishing defenses.",
+      "scfWeighting": 7
+    }
+  }
+]

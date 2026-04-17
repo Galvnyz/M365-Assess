@@ -35,6 +35,34 @@ jobs:
             curl -sL "$BASE/frameworks/$f.json" -o "src/M365-Assess/controls/frameworks/$f.json"
           done
 
+      - name: Merge local extension checks
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+
+          with open('src/M365-Assess/controls/registry.json', encoding='utf-8') as f:
+              reg = json.load(f)
+
+          with open('src/M365-Assess/controls/local-extensions.json', encoding='utf-8') as f:
+              local = json.load(f)
+
+          existing_ids = {c['checkId'] for c in reg['checks']}
+          added = []
+          for check in local:
+              if check['checkId'] not in existing_ids:
+                  reg['checks'].append(check)
+                  added.append(check['checkId'])
+
+          with open('src/M365-Assess/controls/registry.json', 'w', encoding='utf-8') as f:
+              json.dump(reg, f, indent=2, ensure_ascii=False)
+              f.write('\n')
+
+          if added:
+              print(f"Merged {len(added)} local extension checks: {', '.join(added)}")
+          else:
+              print("All local extension checks already present in upstream registry")
+          EOF
+
       - name: Check for changes
         id: diff
         run: |
