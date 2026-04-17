@@ -12,13 +12,42 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  quality-gates:
+  changes:
     if: github.event_name != 'schedule'
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - '.github/workflows/ci.yml'
+              - 'PSScriptAnalyzerSettings.psd1'
+
+  quality-gates:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     name: Quality Gates
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: C:\Users\runneradmin\Documents\PowerShell\Modules
+          key: psmodules-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: psmodules-${{ runner.os }}-
 
       - name: Install modules
         shell: pwsh
@@ -95,7 +124,8 @@ jobs:
           Write-Host "Version consistency: manifest=$expected, README badge matches, runtime readers use manifest" -ForegroundColor Green
 
   test:
-    if: github.event_name != 'schedule'
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     name: Pester Tests (PS ${{ matrix.ps-version }})
     runs-on: windows-latest
     strategy:
@@ -106,6 +136,12 @@ jobs:
       COVERAGE_THRESHOLD: 65
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: C:\Users\runneradmin\Documents\PowerShell\Modules
+          key: psmodules-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: psmodules-${{ runner.os }}-
 
       - name: Install PowerShell ${{ matrix.ps-version }}
         shell: pwsh
@@ -135,11 +171,11 @@ jobs:
           $config.TestResult.Enabled = $true
           $config.TestResult.OutputPath = './test-results.xml'
           $config.TestResult.OutputFormat = 'NUnitXml'
-          $config.CodeCoverage.Enabled = $true
+          $config.CodeCoverage.Enabled = '${{ matrix.ps-version }}' -eq '7.6'
           $config.CodeCoverage.Path = @('./src/M365-Assess/Invoke-M365Assessment.ps1', './src/M365-Assess/Common/', './src/M365-Assess/Entra/', './src/M365-Assess/Exchange-Online/', './src/M365-Assess/Security/', './src/M365-Assess/Intune/', './src/M365-Assess/Collaboration/', './src/M365-Assess/PowerBI/', './src/M365-Assess/Purview/', './src/M365-Assess/SOC2/', './src/M365-Assess/ActiveDirectory/', './src/M365-Assess/Orchestrator/', './src/M365-Assess/Inventory/')
           $config.CodeCoverage.OutputPath = './coverage.xml'
           $config.CodeCoverage.OutputFormat = 'JaCoCo'
-          $config.Output.Verbosity = 'Detailed'
+          $config.Output.Verbosity = if ('${{ matrix.ps-version }}' -eq '7.6') { 'Detailed' } else { 'Normal' }
           Invoke-Pester -Configuration $config
 
       - name: Upload test results
@@ -150,7 +186,7 @@ jobs:
           path: test-results.xml
 
       - name: Upload coverage report
-        if: always()
+        if: always() && matrix.ps-version == '7.6'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-ps${{ matrix.ps-version }}
@@ -207,6 +243,23 @@ jobs:
           }
           Write-Host "Coverage gate passed" -ForegroundColor Green
 
+  ci-status:
+    name: CI
+    needs: [quality-gates, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          qg="${{ needs.quality-gates.result }}"
+          t="${{ needs.test.result }}"
+          if [[ "$qg" == "success" || "$qg" == "skipped" ]] && \
+             [[ "$t" == "success" || "$t" == "skipped" ]]; then
+            echo "CI passed (quality-gates=$qg, test=$t)"
+          else
+            echo "CI failed (quality-gates=$qg, test=$t)"
+            exit 1
+          fi
 
   sync-checkid:
     name: Sync CheckID Fallback Cache
