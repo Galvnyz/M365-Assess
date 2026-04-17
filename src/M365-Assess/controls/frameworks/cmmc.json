@@ -11,17 +11,17 @@
     "method": "maturity-level",
     "maturityLevels": {
       "L1": {
-        "label": "Level 1 \u2014 Foundational",
+        "label": "Level 1 — Foundational",
         "description": "Basic safeguarding of Federal Contract Information (FCI)",
         "practiceCount": 17
       },
       "L2": {
-        "label": "Level 2 \u2014 Advanced",
+        "label": "Level 2 — Advanced",
         "description": "Protection of Controlled Unclassified Information (CUI), aligned with NIST SP 800-171 Rev 2",
         "practiceCount": 110
       },
       "L3": {
-        "label": "Level 3 \u2014 Expert",
+        "label": "Level 3 — Expert",
         "description": "Enhanced protection against Advanced Persistent Threats (APTs), adds NIST SP 800-172 requirements",
         "practiceCount": 134
       }

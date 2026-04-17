@@ -76,17 +76,22 @@ jobs:
         run: |
           TAG="${{ github.event.client_payload.tag || github.event.inputs.tag }}"
           BRANCH="chore/sync-checkid-$TAG"
-          git checkout -b "$BRANCH"
+          git checkout -B "$BRANCH"
           git add src/M365-Assess/controls/
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: sync CheckID registry to $TAG"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "chore: sync CheckID registry to $TAG" \
-            --body "Automated PR triggered by CheckID $TAG release. Updates controls/registry.json and framework definitions from upstream CheckID. Review the diff and merge when ready." \
-            --base main \
-            --head "$BRANCH"
+          git push --force origin "$BRANCH"
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
+          if [ -z "$EXISTING_PR" ]; then
+            gh pr create \
+              --title "chore: sync CheckID registry to $TAG" \
+              --body "Automated PR triggered by CheckID $TAG release. Updates controls/registry.json and framework definitions from upstream CheckID. Review the diff and merge when ready." \
+              --base main \
+              --head "$BRANCH"
+          else
+            echo "PR #$EXISTING_PR already exists for $BRANCH — skipping creation"
+          fi
 
       - name: Summary
         run: |
