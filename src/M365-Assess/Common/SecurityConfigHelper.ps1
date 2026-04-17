@@ -106,6 +106,15 @@ function Add-SecuritySetting {
         $subCheckId = "$CheckId.$($CheckIdCounter[$CheckId])"
     }
 
+    # Registry remediation used as fallback so new collectors can omit the param
+    if ([string]::IsNullOrWhiteSpace($Remediation) -and $CheckId) {
+        $reg = Get-Variable -Name 'M365AssessRegistry' -Scope Global -ErrorAction SilentlyContinue
+        if ($reg -and $reg.Value -and $reg.Value.ContainsKey($CheckId)) {
+            $entry = $reg.Value[$CheckId]
+            if ($entry -and $entry.remediation) { $Remediation = $entry.remediation }
+        }
+    }
+
     $Settings.Add([PSCustomObject]@{
         Category         = $Category
         Setting          = $Setting

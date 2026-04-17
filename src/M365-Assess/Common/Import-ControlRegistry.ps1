@@ -84,6 +84,7 @@ function Import-ControlRegistry {
             frameworks        = @{}
             scf               = $check.scf           # PSCustomObject from CheckID v2.0.0; $null for local extensions
             impactRating      = $check.impactRating   # PSCustomObject from CheckID v2.0.0; $null for local extensions
+            remediation       = if ($check.remediation) { [string]$check.remediation } else { '' }  # empty string not $null
         }
 
         # Convert framework PSCustomObject properties to hashtable
