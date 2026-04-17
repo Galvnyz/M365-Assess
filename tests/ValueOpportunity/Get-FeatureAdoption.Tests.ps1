@@ -4,19 +4,19 @@ BeforeAll {
 
 Describe 'Get-FeatureAdoption' {
     BeforeAll {
-        # Use a small mock feature map with known structure
-        $script:mockFeatureMap = @{
-            features = @(
-                @{
-                    featureId = 'test-feature'
-                    name = 'Test Feature'
-                    category = 'identity-access'
-                    checkIds = @('TEST-001', 'TEST-002')
-                    csvSignals = @()
-                    requiredServicePlans = @('PLAN_A')
+        $script:mockFeatureMap = [PSCustomObject]@{
+            featureGroups = [PSCustomObject]@{
+                'test-feature' = [PSCustomObject]@{
+                    displayName     = 'Test Feature'
+                    category        = 'Identity & Access'
+                    effortTier      = 'Quick Win'
+                    servicePlans    = @('PLAN_A')
+                    detectionChecks = @('TEST-001', 'TEST-002')
+                    prerequisites   = @()
+                    learnUrl        = 'https://learn.microsoft.com/test'
+                    csvSignals      = $null
                 }
-            )
-            categories = @(@{ id = 'identity-access'; name = 'Identity & Access' })
+            }
         }
     }
 
@@ -99,29 +99,29 @@ Describe 'Get-FeatureAdoption' {
     }
 
     It 'Should handle multiple features in the map' {
-        $multiMap = @{
-            features = @(
-                @{
-                    featureId = 'feature-a'
-                    name = 'Feature A'
-                    category = 'identity-access'
-                    checkIds = @('A-001')
-                    csvSignals = @()
-                    requiredServicePlans = @('PLAN_A')
-                },
-                @{
-                    featureId = 'feature-b'
-                    name = 'Feature B'
-                    category = 'email-security'
-                    checkIds = @('B-001')
-                    csvSignals = @()
-                    requiredServicePlans = @('PLAN_B')
+        $multiMap = [PSCustomObject]@{
+            featureGroups = [PSCustomObject]@{
+                'feature-a' = [PSCustomObject]@{
+                    displayName     = 'Feature A'
+                    category        = 'Identity & Access'
+                    effortTier      = 'Quick Win'
+                    servicePlans    = @('PLAN_A')
+                    detectionChecks = @('A-001')
+                    prerequisites   = @()
+                    learnUrl        = 'https://learn.microsoft.com/a'
+                    csvSignals      = $null
                 }
-            )
-            categories = @(
-                @{ id = 'identity-access'; name = 'Identity & Access' },
-                @{ id = 'email-security'; name = 'Email Security' }
-            )
+                'feature-b' = [PSCustomObject]@{
+                    displayName     = 'Feature B'
+                    category        = 'Email Security'
+                    effortTier      = 'Medium'
+                    servicePlans    = @('PLAN_B')
+                    detectionChecks = @('B-001')
+                    prerequisites   = @()
+                    learnUrl        = 'https://learn.microsoft.com/b'
+                    csvSignals      = $null
+                }
+            }
         }
         $signals = @{
             'A-001.1' = @{ Status = 'Pass'; Setting = 'SA'; CurrentValue = 'VA'; Category = 'CA' }
@@ -139,20 +139,21 @@ Describe 'Get-FeatureAdoption' {
     }
 
     It 'Should not fail when CSV signal file does not exist' {
-        $csvMap = @{
-            features = @(
-                @{
-                    featureId = 'csv-feature'
-                    name = 'CSV Feature'
-                    category = 'identity-access'
-                    checkIds = @('CSV-001')
-                    csvSignals = @(
+        $csvMap = [PSCustomObject]@{
+            featureGroups = [PSCustomObject]@{
+                'csv-feature' = [PSCustomObject]@{
+                    displayName     = 'CSV Feature'
+                    category        = 'Identity & Access'
+                    effortTier      = 'Quick Win'
+                    servicePlans    = @('PLAN_A')
+                    detectionChecks = @('CSV-001')
+                    prerequisites   = @()
+                    learnUrl        = 'https://learn.microsoft.com/csv'
+                    csvSignals      = @(
                         @{ file = 'nonexistent.csv'; metric = 'count'; column = 'Status'; pattern = 'Pass'; label = 'Passes' }
                     )
-                    requiredServicePlans = @('PLAN_A')
                 }
-            )
-            categories = @(@{ id = 'identity-access'; name = 'Identity & Access' })
+            }
         }
         $signals = @{
             'CSV-001.1' = @{ Status = 'Pass'; Setting = 'S1'; CurrentValue = 'V1'; Category = 'C1' }

@@ -4,28 +4,27 @@ BeforeAll {
 
 Describe 'Get-FeatureReadiness' {
     BeforeAll {
-        $script:mockFeatureMap = @{
-            features = @(
-                @{
-                    featureId = 'feature-a'
-                    name = 'Feature A'
-                    category = 'identity-access'
-                    effortTier = 'Quick Win'
-                    requiredServicePlans = @('PLAN_A')
-                    prerequisites = @()
-                    learnUrl = 'https://learn.microsoft.com/test-a'
+        $script:mockFeatureMap = [PSCustomObject]@{
+            featureGroups = [PSCustomObject]@{
+                'feature-a' = [PSCustomObject]@{
+                    displayName     = 'Feature A'
+                    category        = 'Identity & Access'
+                    effortTier      = 'Quick Win'
+                    servicePlans    = @('PLAN_A')
+                    prerequisites   = @()
+                    learnUrl        = 'https://learn.microsoft.com/test-a'
+                    detectionChecks = @()
                 }
-                @{
-                    featureId = 'feature-b'
-                    name = 'Feature B'
-                    category = 'identity-access'
-                    effortTier = 'Medium'
-                    requiredServicePlans = @('PLAN_B')
-                    prerequisites = @('feature-a')
-                    learnUrl = 'https://learn.microsoft.com/test-b'
+                'feature-b' = [PSCustomObject]@{
+                    displayName     = 'Feature B'
+                    category        = 'Identity & Access'
+                    effortTier      = 'Medium'
+                    servicePlans    = @('PLAN_B')
+                    prerequisites   = @('feature-a')
+                    learnUrl        = 'https://learn.microsoft.com/test-b'
+                    detectionChecks = @()
                 }
-            )
-            categories = @(@{ id = 'identity-access'; name = 'Identity & Access' })
+            }
         }
     }
 

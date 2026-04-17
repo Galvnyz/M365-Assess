@@ -47,14 +47,8 @@ function Measure-ValueOpportunity {
     }
 
     $featureMapLookup = @{}
-    foreach ($item in $FeatureMap.features) {
-        $featureMapLookup[$item.featureId] = $item
-    }
-
-    # Build category name lookup from FeatureMap
-    $categoryNameLookup = @{}
-    foreach ($cat in $FeatureMap.categories) {
-        $categoryNameLookup[$cat.id] = $cat.name
+    foreach ($entry in $FeatureMap.featureGroups.PSObject.Properties) {
+        $featureMapLookup[$entry.Name] = $entry.Value
     }
 
     # Identify licensed feature IDs
@@ -192,7 +186,7 @@ function Measure-ValueOpportunity {
                 FeatureName          = if ($adoption) { $adoption.FeatureName } else { '' }
                 Category             = if ($adoption) { $adoption.Category } else { '' }
                 EffortTier           = if ($readiness) { $readiness.EffortTier } else { '' }
-                RequiredServicePlans = if ($mapEntry) { $mapEntry.requiredServicePlans } else { @() }
+                RequiredServicePlans = if ($mapEntry) { $mapEntry.servicePlans } else { @() }
             }
         }
     }

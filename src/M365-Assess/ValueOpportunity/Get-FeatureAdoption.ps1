@@ -4,7 +4,7 @@
 .DESCRIPTION
     For each feature in sku-feature-map.json, determines adoption state by
     cross-referencing signals accumulated by Add-SecuritySetting against
-    the feature's checkIds. Reads sibling License Utilization CSV for
+    the feature's detectionChecks. Reads sibling License Utilization CSV for
     license gating. Zero new API calls.
 .PARAMETER ProjectRoot
     Path to the module root (contains controls/).
@@ -40,18 +40,14 @@ function Get-FeatureAdoption {
         [string]$OutputPath
     )
 
-    $categories = @{}
-    foreach ($cat in $FeatureMap.categories) {
-        $categories[$cat.id] = $cat.name
-    }
-
     $licenseLookup = @{}
     foreach ($lic in $LicenseUtilization) {
         $licenseLookup[$lic.FeatureId] = $lic.IsLicensed
     }
 
-    $results = foreach ($feature in $FeatureMap.features) {
-        $featureId = $feature.featureId
+    $results = foreach ($entry in $FeatureMap.featureGroups.PSObject.Properties) {
+        $featureId = $entry.Name
+        $feature   = $entry.Value
         $isLicensed = $false
         if ($licenseLookup.ContainsKey($featureId)) {
             $isLicensed = $licenseLookup[$featureId]
@@ -60,8 +56,8 @@ function Get-FeatureAdoption {
         if (-not $isLicensed) {
             [PSCustomObject]@{
                 FeatureId     = $featureId
-                FeatureName   = $feature.name
-                Category      = $categories[$feature.category]
+                FeatureName   = $feature.displayName
+                Category      = $feature.category
                 AdoptionState = 'NotLicensed'
                 AdoptionScore = 0
                 PassedChecks  = 0
@@ -74,7 +70,7 @@ function Get-FeatureAdoption {
         $passedCount = 0
         $totalCount = 0
 
-        foreach ($baseId in $feature.checkIds) {
+        foreach ($baseId in $feature.detectionChecks) {
             $prefix = "$baseId."
             foreach ($signalKey in $AdoptionSignals.Keys) {
                 if ($signalKey.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -140,8 +136,8 @@ function Get-FeatureAdoption {
 
         [PSCustomObject]@{
             FeatureId     = $featureId
-            FeatureName   = $feature.name
-            Category      = $categories[$feature.category]
+            FeatureName   = $feature.displayName
+            Category      = $feature.category
             AdoptionState = $adoptionState
             AdoptionScore = $adoptionScore
             PassedChecks  = $passedCount
@@ -176,7 +172,6 @@ if ($ProjectRoot -and $AssessmentFolder) {
         $signals = $global:AdoptionSignals.Clone()
     }
 
-    # Read sibling License Utilization CSV
     $licCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '40-License-Utilization.csv'
     $licenseData = @()
     if (Test-Path -Path $licCsvPath) {
