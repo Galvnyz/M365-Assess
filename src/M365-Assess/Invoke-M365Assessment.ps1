@@ -855,6 +855,7 @@ foreach ($sectionName in $Section) {
             # ships Microsoft.Identity.Client 4.64 while Microsoft.Graph loads 4.78;
             # a child process gets its own AppDomain and avoids the clash.
             if ($collector.ContainsKey('IsChildProcess') -and $collector.IsChildProcess) {
+                Write-Host "    Connecting to Power BI..." -ForegroundColor Yellow
                 Write-Host "    Running in isolated process (assembly compatibility)..." -ForegroundColor Gray
                 Write-AssessmentLog -Level INFO -Message "Running $($collector.Label) in child process to avoid MSAL assembly conflict" -Section $sectionName -Collector $collector.Label
                 $childCsvPath = $csvPath
@@ -908,16 +909,7 @@ foreach ($sectionName in $Section) {
                             -NoNewWindow -PassThru
                     }
 
-                    # Poll with countdown so the user sees progress instead of a frozen screen
-                    $exited = $false
-                    for ($waited = 0; $waited -lt $childTimeoutSec; $waited += 5) {
-                        $exited = $childProc.WaitForExit(5000)
-                        if ($exited) { break }
-                        $remaining = $childTimeoutSec - $waited - 5
-                        if ($remaining -gt 0 -and -not $childNeedsConsole) {
-                            Write-Host "    Waiting for Power BI response... (${remaining}s until timeout)" -ForegroundColor Gray
-                        }
-                    }
+                    $exited = $childProc.WaitForExit($childTimeoutSec * 1000)
 
                     if (-not $exited) {
                         $childProc.Kill()

@@ -247,7 +247,10 @@ try {
             if ($ManagedIdentity) {
                 throw "Power BI (Connect-PowerBIServiceAccount) does not support managed identity auth. Use -ClientId and -CertificateThumbprint for non-interactive auth."
             }
-            elseif ($ClientId -and $CertificateThumbprint) {
+            if ($UseDeviceCode) {
+                Write-Warning "Power BI (Connect-PowerBIServiceAccount) does not support device code auth. Falling back to interactive login."
+            }
+            if ($ClientId -and $CertificateThumbprint) {
                 $connectParams['ServicePrincipal'] = $true
                 $connectParams['ApplicationId'] = $ClientId
                 $connectParams['CertificateThumbprint'] = $CertificateThumbprint
