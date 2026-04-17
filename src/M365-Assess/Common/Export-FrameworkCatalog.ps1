@@ -307,12 +307,24 @@ function ConvertTo-CatalogInlineHtml {
     }
     $null = $html.AppendLine("</div>")
 
-    # Group breakdown table
-    $null = $html.AppendLine("<table class='catalog-groups'><thead><tr>")
+    # Group breakdown table with catalog CSV export button
+    $catalogTableId = "catalog-groups-$fwId"
+    $null = $html.AppendLine("<div class='catalog-filter-bar status-filter' style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;'>")
+    $null = $html.AppendLine("<button class='catalog-csv-btn csv-export-btn'>Export CSV</button>")
+    $null = $html.AppendLine("</div>")
+    $null = $html.AppendLine("<table id='$catalogTableId' class='catalog-groups' data-catalog-table='$fwId'><thead><tr>")
     $null = $html.AppendLine("<th>Group</th><th>Label</th><th>Coverage %</th><th>Automated Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
     $null = $html.AppendLine("</tr></thead><tbody>")
 
     foreach ($group in $groups) {
+        # Gap row: control exists in framework definition but has no automated checks
+        if ($group.IsGap) {
+            $idEncoded    = [System.Web.HttpUtility]::HtmlEncode([string]$group.ControlId)
+            $labelEncoded = [System.Web.HttpUtility]::HtmlEncode([string]$group.Label)
+            $null = $html.AppendLine("<tr class='fw-catalog-gap-row'><td><span class='fw-tag $fwCss'>$idEncoded</span></td><td>$labelEncoded</td><td colspan='7'><span class='fw-catalog-gap-badge'>No automated check</span></td></tr>")
+            continue
+        }
+
         $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
         $grpClass = if ($group.Mapped -eq 0) { '' } elseif ($grpPassRate -ge 80) { 'success' } elseif ($grpPassRate -ge 60) { 'warning' } else { 'danger' }
 
