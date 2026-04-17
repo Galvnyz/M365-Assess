@@ -77,6 +77,7 @@ $collectorMap = [ordered]@{
         @{ Name = '07f-Entra-ToU-Config';      Script = 'Entra\Get-EntraTouConfig.ps1';            Label = 'Terms of Use';              RequiredServices = @('Graph') }
         @{ Name = '07g-Entra-PrivRemote';      Script = 'Entra\Get-EntraPrivRemoteConfig.ps1';     Label = 'Privileged Remote Access';  RequiredServices = @('Graph') }
         @{ Name = '07h-Entra-AdminRoleSep';    Script = 'Entra\Get-EntraAdminRoleSeparationConfig.ps1'; Label = 'Admin Role Separation'; RequiredServices = @('Graph') }
+        @{ Name = '07i-Entra-CaRemoteDevice';  Script = 'Entra\Get-EntraCaRemoteDevicePolicy.ps1';       Label = 'CA Remote Device Policy'; RequiredServices = @('Graph') }
     )
     'Licensing' = @(
         @{ Name = '08-License-Summary'; Script = 'Entra\Get-LicenseReport.ps1'; Label = 'License Summary'; Params = @{} }
@@ -100,6 +101,9 @@ $collectorMap = [ordered]@{
         @{ Name = '15g-Intune-Inventory';     Script = 'Intune\Get-IntuneInventoryConfig.ps1';     Label = 'Device Inventory'; RequiredServices = @('Graph') }
         @{ Name = '15h-Intune-AutoDisc';      Script = 'Intune\Get-IntuneAutoDiscConfig.ps1';      Label = 'Auto Discovery'; RequiredServices = @('Graph') }
         @{ Name = '15i-Intune-RemovableMedia'; Script = 'Intune\Get-IntuneRemovableMediaConfig.ps1'; Label = 'Removable Media'; RequiredServices = @('Graph') }
+        @{ Name = '15j-Intune-AlwaysOnVpn';   Script = 'Intune\Get-IntuneAlwaysOnVpnConfig.ps1';    Label = 'Always-On VPN'; RequiredServices = @('Graph') }
+        @{ Name = '15k-Intune-VpnSplitTunnel'; Script = 'Intune\Get-IntuneVpnSplitTunnelConfig.ps1'; Label = 'VPN Split Tunnel'; RequiredServices = @('Graph') }
+        @{ Name = '15l-Intune-WifiEap';        Script = 'Intune\Get-IntuneWifiEapConfig.ps1';         Label = 'Wi-Fi EAP'; RequiredServices = @('Graph') }
     )
     'Security' = @(
         @{ Name = '16-Secure-Score';       Script = 'Security\Get-SecureScoreReport.ps1';   Label = 'Secure Score'; HasSecondary = $true; SecondaryName = '17-Improvement-Actions'; RequiredServices = @('Graph') }
