@@ -138,7 +138,6 @@ function Measure-ValueOpportunity {
 
         if ($adoption.AdoptionState -in @('NotAdopted', 'Unknown')) {
             $readiness = $readinessLookup[$featureId]
-            $mapEntry = $featureMapLookup[$featureId]
 
             $effortTier = if ($readiness) { $readiness.EffortTier } else { 'Strategic' }
             $mergedObj = [PSCustomObject]@{
