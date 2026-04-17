@@ -2066,6 +2066,8 @@ $html = @"
         .appendix-desc { color: var(--m365a-medium-gray); font-size: 9pt; margin-bottom: 16px; }
         .appendix-count { color: var(--m365a-medium-gray); font-size: 9pt; margin-top: 12px; font-style: italic; }
         .appendix-index-col { width: 36px; min-width: 36px; text-align: center; color: var(--m365a-medium-gray); font-variant-numeric: tabular-nums; }
+        .appendix-section .collector-detail .table-wrapper { max-height: none; overflow-y: visible; }
+        .appendix-section .table-expand-btn { display: none; }
 
         /* ----------------------------------------------------------
            Focus Styles
@@ -3298,7 +3300,7 @@ $html += @"
 
             var csv = [headerRow].concat(dataRows).join('\r\n');
             var heading = detail.querySelector('h3');
-            var collectorName = heading ? heading.textContent.replace(/\s*\(\d+ rows\)\s*$/, '').trim() : 'export';
+            var collectorName = heading ? heading.textContent.replace(/\s*\(\d+[^)]*\)\s*$/, '').trim() : 'export';
             var date = new Date().toISOString().slice(0, 10);
             var safeTenant = (reportTenantName || 'tenant').replace(/[^a-zA-Z0-9._-]/g, '_');
             var safeName   = collectorName.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -3839,6 +3841,59 @@ $html += @"
             chip.classList.toggle('active', activate);
         });
         filterIntuneTable();
+    }
+
+    // ── Appendix filter ────────────────────────────────────────────
+    function filterAppendixTable() {
+        function getChecked(containerId) {
+            var vals = [];
+            var el = document.getElementById(containerId);
+            if (!el) { return vals; }
+            el.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                if (cb.checked) { vals.push(cb.value.toLowerCase()); }
+            });
+            return vals;
+        }
+        var activeStatus   = getChecked('appendixStatusChips');
+        var activeSeverity = getChecked('appendixSeverityChips');
+        var activeSection  = getChecked('appendixSectionChips');
+        var visible = 0;
+        var table = document.getElementById('appendixTable');
+        if (!table) { return; }
+        table.querySelectorAll('tbody tr').forEach(function(row) {
+            var st  = (row.getAttribute('data-app-status')   || '').toLowerCase();
+            var sv  = (row.getAttribute('data-app-severity') || '').toLowerCase();
+            var sec = (row.getAttribute('data-app-section')  || '').toLowerCase();
+            var show = activeStatus.indexOf(st) !== -1 &&
+                       activeSeverity.indexOf(sv) !== -1 &&
+                       activeSection.indexOf(sec) !== -1;
+            row.style.display = show ? '' : 'none';
+            if (show) { visible++; }
+        });
+        var countEl = document.getElementById('appendixMatchCount');
+        if (countEl) { countEl.textContent = '(' + visible + (visible === 1 ? ' check)' : ' checks)'); }
+        var noRes = document.getElementById('appendixTableNoResults');
+        if (noRes) { noRes.style.display = visible === 0 ? '' : 'none'; }
+    }
+
+    function toggleAppendixChip(label) {
+        var cb = label.querySelector('input[type="checkbox"]');
+        if (cb) { cb.checked = !cb.checked; }
+        label.classList.toggle('active', cb ? cb.checked : false);
+        filterAppendixTable();
+    }
+
+    function appendixFilterAll(activate) {
+        ['appendixStatusChips', 'appendixSeverityChips', 'appendixSectionChips'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) { return; }
+            el.querySelectorAll('.fw-checkbox').forEach(function(chip) {
+                var cb = chip.querySelector('input[type="checkbox"]');
+                if (cb) { cb.checked = activate; }
+                chip.classList.toggle('active', activate);
+            });
+        });
+        filterAppendixTable();
     }
 
 

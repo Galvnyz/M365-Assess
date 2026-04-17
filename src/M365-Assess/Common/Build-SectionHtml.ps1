@@ -1596,46 +1596,150 @@ if ($issues.Count -gt 0) {
 $checksRunHtml = [System.Text.StringBuilder]::new()
 if ($allCisFindings.Count -gt 0) {
     $sortedChecks = @($allCisFindings | Sort-Object -Property CheckId)
-    $sectionNames = @($sortedChecks | Select-Object -ExpandProperty Section -Unique)
+    $sectionNames = @($sortedChecks | Select-Object -ExpandProperty Section -Unique | Sort-Object)
+
+    # Collect distinct filter values (preserve severity priority order)
+    $appendixStatuses    = @('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped') |
+                            Where-Object { $sortedChecks.Status -contains $_ }
+    $appendixSeverities  = @('Critical', 'High', 'Medium', 'Low', 'Info') |
+                            Where-Object { $sortedChecks.RiskSeverity -contains $_ }
+
+    # Status badge classes
+    $appStatusBadge = @{
+        'Pass'    = 'badge-complete'
+        'Fail'    = 'badge-failed'
+        'Warning' = 'badge-warning'
+        'Review'  = 'badge-review'
+        'Info'    = 'badge-neutral'
+        'Skipped' = 'badge-skipped'
+    }
+
     $null = $checksRunHtml.AppendLine("<div class='appendix-section' id='appendix-checks-run'>")
     $null = $checksRunHtml.AppendLine("<h2>Appendix: Checks Run</h2>")
-    $null = $checksRunHtml.AppendLine("<p class='appendix-desc'>Complete list of all security configuration checks executed during this assessment.</p>")
+    $null = $checksRunHtml.AppendLine("<p class='appendix-desc'>Complete list of all security configuration checks executed during this assessment. Use filters below to narrow by status, severity, or section. Hidden columns are toggled via the Columns picker.</p>")
+
+    $null = $checksRunHtml.AppendLine("<details class='collector-detail' open>")
+    $null = $checksRunHtml.AppendLine("<summary><h3>All Checks <span id='appendixMatchCount' class='row-count'>($($sortedChecks.Count) checks)</span></h3></summary>")
+
+    # ── Control bar ──────────────────────────────────────────────────
+    $null = $checksRunHtml.AppendLine("<div class='status-filter'>")
+
+    # Status chips
+    $null = $checksRunHtml.AppendLine("<span class='fw-selector-label'>Status:</span>")
+    $null = $checksRunHtml.AppendLine("<div id='appendixStatusChips' style='display:contents'>")
+    foreach ($st in $appendixStatuses) {
+        $stLower = $st.ToLower()
+        $badgeCss = if ($appStatusBadge.ContainsKey($st)) { $appStatusBadge[$st] } else { '' }
+        $null = $checksRunHtml.AppendLine("<label class='fw-checkbox' onclick='toggleAppendixChip(this)'><input type='checkbox' value='$stLower' checked><span class='badge $badgeCss' style='pointer-events:none'>$st</span></label>")
+    }
+    $null = $checksRunHtml.AppendLine("</div>")
+
+    # Severity chips
+    $null = $checksRunHtml.AppendLine("<span class='fw-selector-label' style='margin-left:8px'>Severity:</span>")
+    $null = $checksRunHtml.AppendLine("<div id='appendixSeverityChips' style='display:contents'>")
+    foreach ($sv in $appendixSeverities) {
+        $svLower = $sv.ToLower()
+        $null = $checksRunHtml.AppendLine("<label class='fw-checkbox' onclick='toggleAppendixChip(this)'><input type='checkbox' value='$svLower' checked>$sv</label>")
+    }
+    $null = $checksRunHtml.AppendLine("</div>")
+
+    # Section chips
+    $null = $checksRunHtml.AppendLine("<span class='fw-selector-label' style='margin-left:8px'>Section:</span>")
+    $null = $checksRunHtml.AppendLine("<div id='appendixSectionChips' style='display:contents'>")
+    foreach ($sec in $sectionNames) {
+        $secLower = $sec.ToLower()
+        $null = $checksRunHtml.AppendLine("<label class='fw-checkbox' onclick='toggleAppendixChip(this)'><input type='checkbox' value='$(ConvertTo-HtmlSafe -Text $secLower)' checked>$(ConvertTo-HtmlSafe -Text $sec)</label>")
+    }
+    $null = $checksRunHtml.AppendLine("</div>")
+
+    # All/None toggles
+    $null = $checksRunHtml.AppendLine("<span class='fw-selector-actions'>")
+    $null = $checksRunHtml.AppendLine("<button type='button' class='fw-action-btn' onclick='appendixFilterAll(true)'>All</button>")
+    $null = $checksRunHtml.AppendLine("<button type='button' class='fw-action-btn' onclick='appendixFilterAll(false)'>None</button>")
+    $null = $checksRunHtml.AppendLine("</span>")
+
+    # Column picker — hidden columns toggled here
+    $null = $checksRunHtml.AppendLine("<div class='col-picker-bar'>")
+    $null = $checksRunHtml.AppendLine("<button type='button' class='col-picker-toggle'>Columns &#9662;</button>")
+    $null = $checksRunHtml.AppendLine("<div class='col-picker-panel' hidden>")
+    $hiddenAppendixCols = @(
+        @{ Key = 'Collector';        Label = 'Collector' }
+        @{ Key = 'ImpactRationale';  Label = 'Impact Rationale' }
+        @{ Key = 'SCFWeighting';     Label = 'SCF Weighting' }
+        @{ Key = 'SCFDomain';        Label = 'SCF Domain' }
+        @{ Key = 'SCFControl';       Label = 'SCF Control ID' }
+        @{ Key = 'LicensingMin';     Label = 'Licensing Min' }
+    )
+    foreach ($col in $hiddenAppendixCols) {
+        $null = $checksRunHtml.AppendLine("<label class='col-picker-item'><input type='checkbox' data-col-key='$($col.Key)' data-col-default='hidden'> $($col.Label)</label>")
+    }
+    $null = $checksRunHtml.AppendLine("</div></div>")
+
+    # CSV export
+    $null = $checksRunHtml.AppendLine("<button type='button' class='csv-export-btn' onclick='exportTableCsv(this)' title='Export visible rows to CSV'>&#8595; CSV</button>")
+    $null = $checksRunHtml.AppendLine("</div>") # end status-filter
+
+    # ── Table ────────────────────────────────────────────────────────
     $null = $checksRunHtml.AppendLine("<div class='table-wrapper'>")
-    $null = $checksRunHtml.AppendLine("<table class='data-table'>")
+    $null = $checksRunHtml.AppendLine("<table id='appendixTable' class='data-table'>")
     $null = $checksRunHtml.AppendLine("<caption class='sr-only'>Complete list of checks run during this assessment</caption>")
-    $null = $checksRunHtml.AppendLine("<thead><tr><th scope='col' class='appendix-index-col'>#</th><th scope='col'>CheckId</th><th scope='col'>Setting</th><th scope='col'>Category</th><th scope='col'>Status</th><th scope='col'>Section</th></tr></thead>")
+    $null = $checksRunHtml.AppendLine("<thead><tr>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' class='appendix-index-col' data-col-key='#'>#</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='CheckId'>CheckId</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='Setting'>Setting</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='Category'>Category</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='Severity'>Severity</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='Status'>Status</th>")
+    $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='Section'>Section</th>")
+    foreach ($col in $hiddenAppendixCols) {
+        $null = $checksRunHtml.AppendLine("<th scope='col' data-col-key='$($col.Key)' style='display:none'>$($col.Label)</th>")
+    }
+    $null = $checksRunHtml.AppendLine("</tr></thead>")
     $null = $checksRunHtml.AppendLine("<tbody>")
+
     $rowIndex = 0
     foreach ($check in $sortedChecks) {
         $rowIndex++
-        $statusBadgeClass = switch ($check.Status) {
-            'Pass'    { 'badge-complete' }
-            'Fail'    { 'badge-failed' }
-            'Warning' { 'badge-warning' }
-            'Review'  { 'badge-review' }
-            'Info'    { 'badge-neutral' }
-            'Unknown' { 'badge-skipped' }
-            default   { '' }
-        }
-        $statusCell = if ($statusBadgeClass) {
-            "<span class='badge $statusBadgeClass'>$(ConvertTo-HtmlSafe -Text $check.Status)</span>"
-        }
-        else {
-            ConvertTo-HtmlSafe -Text $check.Status
-        }
-        $null = $checksRunHtml.AppendLine("<tr>")
-        $null = $checksRunHtml.AppendLine("<td class='appendix-index-col'>$rowIndex</td>")
-        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.CheckId)</td>")
-        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Setting)</td>")
-        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Category)</td>")
-        $null = $checksRunHtml.AppendLine("<td>$statusCell</td>")
-        $null = $checksRunHtml.AppendLine("<td>$(ConvertTo-HtmlSafe -Text $check.Section)</td>")
+        $stLower  = if ($check.Status)       { $check.Status.ToLower() }       else { '' }
+        $svLower  = if ($check.RiskSeverity) { $check.RiskSeverity.ToLower() } else { 'medium' }
+        $secLower = if ($check.Section)      { $check.Section.ToLower() }      else { '' }
+
+        $badgeCss   = if ($appStatusBadge.ContainsKey($check.Status)) { $appStatusBadge[$check.Status] } else { '' }
+        $statusCell = if ($badgeCss) { "<span class='badge $badgeCss'>$(ConvertTo-HtmlSafe -Text $check.Status)</span>" } else { ConvertTo-HtmlSafe -Text $check.Status }
+        $sevBadge   = Get-SeverityBadge -Severity $check.RiskSeverity
+
+        # Hidden column data from registry
+        $baseCheckId   = $check.CheckId -replace '\.\d+$', ''
+        $regEntry      = if ($controlRegistry.ContainsKey($baseCheckId)) { $controlRegistry[$baseCheckId] } else { $null }
+        $scfDomain     = if ($regEntry -and $regEntry.scf)            { $regEntry.scf.domain }               else { '' }
+        $scfControl    = if ($regEntry -and $regEntry.scf)            { $regEntry.scf.primaryControlId }      else { '' }
+        $scfWeighting  = if ($regEntry -and $regEntry.impactRating)   { $regEntry.impactRating.scfWeighting } else { '' }
+        $licensingMin  = if ($regEntry -and $regEntry.licensing)      { $regEntry.licensing.minimum }         else { '' }
+        $collectorName = if ($check.PSObject.Properties.Name -contains 'Source') { $check.Source } else { '' }
+
+        $null = $checksRunHtml.AppendLine("<tr data-app-status='$stLower' data-app-severity='$svLower' data-app-section='$(ConvertTo-HtmlSafe -Text $secLower)'>")
+        $null = $checksRunHtml.AppendLine("<td class='appendix-index-col' data-col-key='#'>$rowIndex</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='CheckId'>$(ConvertTo-HtmlSafe -Text $check.CheckId)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Setting'>$(ConvertTo-HtmlSafe -Text $check.Setting)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Category'>$(ConvertTo-HtmlSafe -Text $check.Category)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Severity'>$sevBadge</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Status'>$statusCell</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Section'>$(ConvertTo-HtmlSafe -Text $check.Section)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='Collector' style='display:none'>$(ConvertTo-HtmlSafe -Text $collectorName)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='ImpactRationale' style='display:none'>$(ConvertTo-HtmlSafe -Text $check.ImpactRationale)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='SCFWeighting' style='display:none'>$(ConvertTo-HtmlSafe -Text $scfWeighting)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='SCFDomain' style='display:none'>$(ConvertTo-HtmlSafe -Text $scfDomain)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='SCFControl' style='display:none'>$(ConvertTo-HtmlSafe -Text $scfControl)</td>")
+        $null = $checksRunHtml.AppendLine("<td data-col-key='LicensingMin' style='display:none'>$(ConvertTo-HtmlSafe -Text $licensingMin)</td>")
         $null = $checksRunHtml.AppendLine("</tr>")
     }
+
     $null = $checksRunHtml.AppendLine("</tbody></table>")
-    $null = $checksRunHtml.AppendLine("</div>")
+    $null = $checksRunHtml.AppendLine("</div>") # table-wrapper
+    $null = $checksRunHtml.AppendLine("<p id='appendixTableNoResults' class='no-results' style='display:none'>No checks match the current filter selection.</p>")
+    $null = $checksRunHtml.AppendLine("</details>") # collector-detail
     $null = $checksRunHtml.AppendLine("<p class='appendix-count'>Total: $($sortedChecks.Count) checks across $($sectionNames.Count) sections</p>")
-    $null = $checksRunHtml.AppendLine("</div>")
+    $null = $checksRunHtml.AppendLine("</div>") # appendix-section
 }
 
 # Append conditional entries to TOC now that compliance/issues counts are known
