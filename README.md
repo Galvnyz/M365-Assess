@@ -340,19 +340,23 @@ The self-contained HTML report opens in any browser with no dependencies. Click 
 
 <div align="center">
 
-<img src="docs/images/cover-page.png" alt="Report cover page" width="340" />
+<img src="docs/images/cover-page.png" alt="Report cover page showing v1.13.0 banner and tenant overview dashboard" width="700" />
 
 <br /><br />
 
-<img src="docs/images/exec-summary.png" alt="Executive summary with collector status, org profile, and section navigation" width="700" />
+<img src="docs/images/exec-summary.png" alt="Identity section with user summary dashboard and MFA report" width="700" />
 
 <br /><br />
 
-<img src="docs/images/security-dash.png" alt="Security section showing Secure Score, Defender controls, and security config checks" width="700" />
+<img src="docs/images/email-section.png" alt="Email section showing mailbox summary, EXO security controls, and DNS email authentication scorecard" width="700" />
 
 <br /><br />
 
-<img src="docs/images/compliance-overview.png" alt="Compliance overview with framework selector, finding distribution, and control matrix" width="700" />
+<img src="docs/images/intune-overview.png" alt="Intune Overview dashboard with device metrics, compliance %, category coverage grid, and filterable findings table" width="700" />
+
+<br /><br />
+
+<img src="docs/images/compliance-overview.png" alt="Compliance Overview with framework filter chips, severity distribution bar, and per-framework pass rate cards" width="700" />
 
 </div>
 
