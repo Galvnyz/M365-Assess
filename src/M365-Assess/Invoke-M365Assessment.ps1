@@ -740,9 +740,13 @@ foreach ($sectionName in $Section) {
 
     # Connect to services: use per-collector RequiredServices if defined,
     # otherwise connect all section-level services up front.
-    # This ensures only one non-Graph service is active at a time.
+    # If the section is MIXED (some collectors have RequiredServices, others do not),
+    # connect section-level services upfront so un-annotated collectors are never
+    # dispatched without a connection. Per-collector Connect-RequiredService calls
+    # below are idempotent and will no-op if already connected.
     $hasPerCollectorRequirements = ($collectors | Where-Object { $_.ContainsKey('RequiredServices') }).Count -gt 0
-    if (-not $SkipConnection -and -not $hasPerCollectorRequirements) {
+    $hasMixedRequirements        = $hasPerCollectorRequirements -and ($collectors | Where-Object { -not $_.ContainsKey('RequiredServices') }).Count -gt 0
+    if (-not $SkipConnection -and (-not $hasPerCollectorRequirements -or $hasMixedRequirements)) {
         $sectionServices = $sectionServiceMap[$sectionName]
         Connect-RequiredService -Services $sectionServices -SectionName $sectionName
     }

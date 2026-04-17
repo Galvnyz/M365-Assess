@@ -64,18 +64,18 @@ $collectorMap = [ordered]@{
         @{ Name = '01-Tenant-Info';   Script = 'Entra\Get-TenantInfo.ps1'; Label = 'Tenant Information' }
     )
     'Identity' = @(
-        @{ Name = '02-User-Summary';           Script = 'Entra\Get-UserSummary.ps1';              Label = 'User Summary' }
-        @{ Name = '03-MFA-Report';             Script = 'Entra\Get-MfaReport.ps1';                Label = 'MFA Report' }
-        @{ Name = '04-Admin-Roles';            Script = 'Entra\Get-AdminRoleReport.ps1';           Label = 'Admin Roles' }
-        @{ Name = '05-Conditional-Access';     Script = 'Entra\Get-ConditionalAccessReport.ps1';   Label = 'Conditional Access' }
-        @{ Name = '06-App-Registrations';      Script = 'Entra\Get-AppRegistrationReport.ps1';     Label = 'App Registrations' }
-        @{ Name = '07-Password-Policy';        Script = 'Entra\Get-PasswordPolicyReport.ps1';      Label = 'Password Policy' }
-        @{ Name = '07b-Entra-Security-Config'; Script = 'Entra\Get-EntraSecurityConfig.ps1';       Label = 'Entra Security Config' }
-        @{ Name = '07c-CA-Security-Config';   Script = 'Entra\Get-CASecurityConfig.ps1';         Label = 'CA Policy Evaluation' }
-        @{ Name = '07d-EntApp-Security-Config'; Script = 'Entra\Get-EntAppSecurityConfig.ps1';   Label = 'Enterprise App Security' }
-        @{ Name = '07e-Entra-SoD-Config';    Script = 'Entra\Get-EntraSoDConfig.ps1';         Label = 'Separation of Duties'; RequiredServices = @('Graph') }
-        @{ Name = '07f-Entra-ToU-Config';    Script = 'Entra\Get-EntraTouConfig.ps1';         Label = 'Terms of Use'; RequiredServices = @('Graph') }
-        @{ Name = '07g-Entra-PrivRemote';    Script = 'Entra\Get-EntraPrivRemoteConfig.ps1';  Label = 'Privileged Remote Access'; RequiredServices = @('Graph') }
+        @{ Name = '02-User-Summary';           Script = 'Entra\Get-UserSummary.ps1';              Label = 'User Summary';              RequiredServices = @('Graph') }
+        @{ Name = '03-MFA-Report';             Script = 'Entra\Get-MfaReport.ps1';                Label = 'MFA Report';                RequiredServices = @('Graph') }
+        @{ Name = '04-Admin-Roles';            Script = 'Entra\Get-AdminRoleReport.ps1';           Label = 'Admin Roles';               RequiredServices = @('Graph') }
+        @{ Name = '05-Conditional-Access';     Script = 'Entra\Get-ConditionalAccessReport.ps1';   Label = 'Conditional Access';        RequiredServices = @('Graph') }
+        @{ Name = '06-App-Registrations';      Script = 'Entra\Get-AppRegistrationReport.ps1';     Label = 'App Registrations';         RequiredServices = @('Graph') }
+        @{ Name = '07-Password-Policy';        Script = 'Entra\Get-PasswordPolicyReport.ps1';      Label = 'Password Policy';           RequiredServices = @('Graph') }
+        @{ Name = '07b-Entra-Security-Config'; Script = 'Entra\Get-EntraSecurityConfig.ps1';       Label = 'Entra Security Config';     RequiredServices = @('Graph') }
+        @{ Name = '07c-CA-Security-Config';    Script = 'Entra\Get-CASecurityConfig.ps1';          Label = 'CA Policy Evaluation';      RequiredServices = @('Graph') }
+        @{ Name = '07d-EntApp-Security-Config'; Script = 'Entra\Get-EntAppSecurityConfig.ps1';     Label = 'Enterprise App Security';   RequiredServices = @('Graph') }
+        @{ Name = '07e-Entra-SoD-Config';      Script = 'Entra\Get-EntraSoDConfig.ps1';            Label = 'Separation of Duties';      RequiredServices = @('Graph') }
+        @{ Name = '07f-Entra-ToU-Config';      Script = 'Entra\Get-EntraTouConfig.ps1';            Label = 'Terms of Use';              RequiredServices = @('Graph') }
+        @{ Name = '07g-Entra-PrivRemote';      Script = 'Entra\Get-EntraPrivRemoteConfig.ps1';     Label = 'Privileged Remote Access';  RequiredServices = @('Graph') }
     )
     'Licensing' = @(
         @{ Name = '08-License-Summary'; Script = 'Entra\Get-LicenseReport.ps1'; Label = 'License Summary'; Params = @{} }
