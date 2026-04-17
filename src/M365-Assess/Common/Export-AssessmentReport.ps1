@@ -91,6 +91,9 @@ param(
     [switch]$SkipComplianceOverview,
 
     [Parameter()]
+    [switch]$SkipIntuneOverview,
+
+    [Parameter()]
     [switch]$SkipCoverPage,
 
     [Parameter()]
@@ -364,6 +367,13 @@ if ((Test-Path -Path $voLicensePath) -and (Test-Path -Path $voAdoptionPath) -and
 
 # Build remediation plan page (requires $allCisFindings set by Build-SectionHtml.ps1)
 $remediationPlanHtml = Build-RemediationPlanHtml -Findings $allCisFindings -IsQuickScan:$QuickScan
+
+# Build Intune overview page (requires $allCisFindings set by Build-SectionHtml.ps1)
+$intuneOverviewHtml = ''
+if (-not $SkipIntuneOverview -and ($allCisFindings | Where-Object { $_.CheckId -like 'INTUNE-*' })) {
+    . (Join-Path -Path $PSScriptRoot -ChildPath 'Build-IntuneOverviewHtml.ps1')
+    $intuneOverviewHtml = Build-IntuneOverviewHtml -Findings $allCisFindings -AssessmentFolder $AssessmentFolder
+}
 
 # Build drift analysis page (if a baseline comparison was run)
 $driftHtml = ''

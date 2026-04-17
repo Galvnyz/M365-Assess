@@ -182,6 +182,9 @@ param(
     [switch]$SkipComplianceOverview,
 
     [Parameter()]
+    [switch]$SkipIntuneOverview,
+
+    [Parameter()]
     [switch]$SkipCoverPage,
 
     [Parameter()]
@@ -1202,6 +1205,7 @@ if (Test-Path -Path $reportScriptPath) {
         elseif ($TenantId)        { $reportParams['TenantName'] = $TenantId }
         if ($NoBranding) { $reportParams['NoBranding'] = $true }
         if ($SkipComplianceOverview) { $reportParams['SkipComplianceOverview'] = $true }
+        if ($SkipIntuneOverview -or 'Intune' -notin $Section) { $reportParams['SkipIntuneOverview'] = $true }
         if ($SkipCoverPage) { $reportParams['SkipCoverPage'] = $true }
         if ($SkipExecutiveSummary) { $reportParams['SkipExecutiveSummary'] = $true }
         if ($SkipPdf) { $reportParams['SkipPdf'] = $true }

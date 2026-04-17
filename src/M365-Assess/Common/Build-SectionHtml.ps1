@@ -51,6 +51,23 @@ $sectionCallouts = @{
             Body  = 'Security Defaults provide a basic level of protection for all users. Conditional Access policies offer granular control and are recommended for organizations with Microsoft Entra ID P1 or P2 licenses.'
         }
     )
+    'Intune'        = @(
+        @{
+            Type  = 'info'
+            Title = 'Why Compliance Policies Matter'
+            Body  = 'Compliance policies define the rules devices must meet (encryption, OS version, PIN) before accessing company data. Without them, any enrolled device &mdash; including unmanaged personal phones &mdash; can reach email, files, and apps. Pair compliance policies with Conditional Access to enforce the connection.'
+        }
+        @{
+            Type  = 'warning'
+            Title = 'Personal Device Enrollment Risk'
+            Body  = 'Allowing personally-owned device enrollment by default gives users access to corporate data from unmanaged hardware. Best practice is to block personal enrollment at the platform level (iOS, Android, Windows) and require corporate-owned or BYOD-approved devices with a managed app policy.'
+        }
+        @{
+            Type  = 'tip'
+            Title = 'FIPS and Application Control'
+            Body  = 'FIPS-validated cryptography (INTUNE-FIPS-001) and Application Control policies (WDAC/AppLocker) are high-value CMMC Level 2 requirements. If your organization handles Controlled Unclassified Information (CUI) or is pursuing CMMC, prioritize these two checks &mdash; they are commonly cited in audits and have clear configuration paths via Intune OMA-URI policies.'
+        }
+    )
     'Email'         = @(
         @{
             Type  = 'tabs'

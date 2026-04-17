@@ -2591,6 +2591,18 @@ $html = @"
         /* CSV export button — in control bar, accent color */
         .csv-export-btn { padding: 4px 10px; border: 1px solid var(--m365a-accent); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-accent); cursor: pointer; font-size: 0.82em; font-weight: 500; white-space: nowrap; }
         .csv-export-btn:hover { background: var(--m365a-accent); color: #fff; }
+        /* Intune Overview — category coverage grid */
+        .intune-category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 12px 0 4px; }
+        .intune-cat-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--m365a-card-bg); border: 1px solid var(--m365a-border); border-left: 3px solid var(--m365a-border); }
+        .intune-cat-card.intune-cat-fail    { border-left-color: var(--m365a-danger); }
+        .intune-cat-card.intune-cat-warning { border-left-color: var(--m365a-warning); }
+        .intune-cat-card.intune-cat-review  { border-left-color: var(--m365a-review, #6366f1); }
+        .intune-cat-card.intune-cat-pass    { border-left-color: var(--m365a-success); }
+        .intune-cat-icon { font-size: 1.4em; line-height: 1; flex-shrink: 0; }
+        .intune-cat-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        .intune-cat-name { font-size: 0.85em; font-weight: 600; color: var(--m365a-text); }
+        .intune-cat-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .intune-cat-count { font-size: 0.78em; color: var(--m365a-medium-gray); }
     </style>
 $accentCss
 </head>
@@ -2725,6 +2737,10 @@ if ($hasExtraSections) {
 if ($complianceHtml) {
     $navIconCompliance = $navIcons['compliance overview']
     $html += "                <li class='nav-item' data-page='compliance-overview'><a href='#compliance-overview'>$navIconCompliance Compliance Overview</a></li>`n"
+}
+if ($intuneOverviewHtml) {
+    $navIconIntune = '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M7 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V3a1 1 0 0 0-1-1H7Zm0 2h6v1H7V4ZM4 8h12v8H4V8Zm2 2v2h2v-2H6Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2Z"/></svg>'
+    $html += "                <li class='nav-item' data-page='intune-overview'><a href='#intune-overview'>$navIconIntune Intune Overview</a></li>`n"
 }
 if ($catalogHtml) {
     $navIconCatalogs = $navIcons['framework catalogs']
@@ -2937,6 +2953,17 @@ if ($complianceHtml) {
         <a id="compliance-overview"></a>
         <h1>Compliance Overview</h1>
         $complianceHtml
+        </div>
+"@
+}
+
+if ($intuneOverviewHtml) {
+    $html += @"
+
+        <div class="report-page" data-page="intune-overview" id="intune-overview">
+        <a id="intune-overview-anchor"></a>
+        <h1>Intune Overview</h1>
+        $intuneOverviewHtml
         </div>
 "@
 }
@@ -3781,6 +3808,52 @@ $html += @"
             chip.classList.toggle('active', activate);
         });
         filterRemediationTable();
+    }
+
+    // Generic single-attribute chip filter — reusable by any overview page.
+    // tableId: table element id, countElId: row-count span id,
+    // chipGroupId: chip container id, attrName: data-* attr on <tr>,
+    // singularWord / pluralWord: label for the count display.
+    function filterTableByAttr(tableId, countElId, chipGroupId, attrName, singularWord, pluralWord) {
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var rows   = table.querySelectorAll('tbody tr');
+        var active = [];
+        document.querySelectorAll('#' + chipGroupId + ' .fw-checkbox').forEach(function(chip) {
+            var cb = chip.querySelector('input[type="checkbox"]');
+            if (cb && cb.checked) { active.push(chip.getAttribute(attrName)); }
+        });
+        var visible = 0;
+        rows.forEach(function(row) {
+            var show = active.indexOf(row.getAttribute(attrName)) !== -1;
+            row.style.display = show ? '' : 'none';
+            if (show) { visible++; }
+        });
+        var countEl = document.getElementById(countElId);
+        if (countEl) { countEl.textContent = '(' + visible + ' ' + (visible === 1 ? singularWord : pluralWord) + ')'; }
+        var noResults = document.getElementById(tableId + 'NoResults');
+        if (noResults) { noResults.style.display = (visible === 0) ? '' : 'none'; }
+    }
+
+    function filterIntuneTable()  { filterTableByAttr('intuneTable', 'intuneMatchCount', 'intuneStatusChips', 'data-intune-status', 'check', 'checks'); }
+
+    function toggleIntuneChip(label) {
+        var cb = label.querySelector('input[type="checkbox"]');
+        if (cb) { cb.checked = !cb.checked; }
+        label.classList.toggle('active', cb ? cb.checked : false);
+        filterIntuneTable();
+    }
+
+    function setAllIntuneChips(btn) {
+        var activate = btn.classList.contains('rem-intune-all');
+        var section  = btn.closest('.rem-chip-section');
+        if (!section) { return; }
+        section.querySelectorAll('.fw-checkbox').forEach(function(chip) {
+            var cb = chip.querySelector('input[type="checkbox"]');
+            if (cb) { cb.checked = activate; }
+            chip.classList.toggle('active', activate);
+        });
+        filterIntuneTable();
     }
 
 
