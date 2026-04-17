@@ -18,7 +18,7 @@ Describe 'Get-LicenseUtilization' {
         }
 
         $results = Get-LicenseUtilization -TenantLicenses $mockLicenses -FeatureMap $script:featureMap
-        $pim = $results | Where-Object { $_.FeatureId -eq 'pim' }
+        $pim = $results | Where-Object { $_.FeatureId -eq 'privileged-identity-management' }
         $pim.IsLicensed | Should -Be $true
     }
 
@@ -35,7 +35,7 @@ Describe 'Get-LicenseUtilization' {
         }
 
         $results = Get-LicenseUtilization -TenantLicenses $mockLicenses -FeatureMap $script:featureMap
-        $pim = $results | Where-Object { $_.FeatureId -eq 'pim' }
+        $pim = $results | Where-Object { $_.FeatureId -eq 'privileged-identity-management' }
         $pim.IsLicensed | Should -Be $false
     }
 
@@ -61,6 +61,6 @@ Describe 'Get-LicenseUtilization' {
         }
 
         $results = Get-LicenseUtilization -TenantLicenses $mockLicenses -FeatureMap $script:featureMap
-        $results.Count | Should -Be $script:featureMap.features.Count
+        $results.Count | Should -Be @($script:featureMap.featureGroups.PSObject.Properties).Count
     }
 }
