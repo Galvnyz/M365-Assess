@@ -28,12 +28,12 @@
 - **Security Administrator** -- Run CIS benchmark checks against production M365 tenants and get actionable findings with remediation guidance
 - **Compliance Officer** -- Map findings to NIST, SOC 2, HIPAA, ISO 27001, and 10+ frameworks simultaneously from a single scan
 - **IT Consultant / vCISO** -- Generate branded, white-label assessment reports for client engagements with custom logos and colors
-- **Auditor** -- Export an XLSX compliance matrix with per-control framework alignment evidence across 14 standards
+- **Auditor** -- Export an XLSX compliance matrix with per-control framework alignment evidence across 15 frameworks
 - **DevOps / CI Pipeline** -- Automated posture monitoring with non-interactive mode, certificate auth, and managed identity support
 
 ---
 
-Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **214 automated security checks** mapped across **15 compliance frameworks**.
+Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **274 security checks** mapped across **15 compliance frameworks**.
 
 ## Installation
 
@@ -130,7 +130,7 @@ During execution, the console displays real-time streaming progress for each sec
 | **Identity** | User Summary, MFA Report, Admin Roles, Conditional Access, App Registrations, Password Policy, Entra Security Config | User accounts, MFA status, RBAC, CA policies, app registrations, consent settings, password protection |
 | **Licensing** | License Summary | SKU allocation and assignment counts |
 | **Email** | Mailbox Summary, Mail Flow, Email Security, EXO Security Config, DNS Authentication | Mailbox types, transport rules, anti-spam/phishing, modern auth, audit settings, external sender tagging, SPF/DKIM/DMARC |
-| **Intune** | Device Summary, Compliance Policies, Config Profiles | Managed devices, compliance state, configuration profiles |
+| **Intune** | Device Summary, Compliance Policies, Config Profiles, Intune Security Config, Mobile Encryption, Port Storage, App Control, FIPS, Device Inventory, Auto Discovery, Removable Media | Managed devices, compliance state, configuration profiles, CMMC L2 security controls. Includes an Intune Overview dashboard with device metrics and category coverage grid. |
 | **Security** | Secure Score, Improvement Actions, Defender Policies, Defender Security Config, DLP Policies, Stryker Incident Readiness | Microsoft Secure Score, Defender for Office 365, anti-phishing/spam/malware, Safe Links/Attachments, data loss prevention, incident readiness checks (stale admins, CA exclusions, break-glass, device wipe audit) |
 | **Collaboration** | SharePoint & OneDrive, SharePoint Security Config, Teams Access, Teams Security Config, Forms Security Config | Sharing settings, external sharing controls, sync restrictions, Teams meeting policies, third-party app restrictions, Forms phishing/data sharing settings |
 | **Hybrid** | Hybrid Sync | Microsoft Entra Connect sync status and domain configuration |
@@ -139,6 +139,7 @@ During execution, the console displays real-time streaming progress for each sec
 | **ActiveDirectory** *(opt-in)* | AD Domain & Forest, AD DC Health, AD Replication, AD Security | Domain/forest topology, DC health via dcdiag, replication partners and lag, password policies, privileged group membership. Requires RSAT or domain controller access. |
 | **SOC2** *(opt-in)* | Security Controls, Confidentiality Controls, Audit Evidence, Readiness Checklist | SOC 2 Trust Services Criteria assessment: security and confidentiality controls, 30-day audit log evidence collection, organizational readiness checklist for non-automatable criteria (CC1-CC5, CC8-CC9) |
 | **ValueOpportunity** *(opt-in)* | License Utilization, Feature Adoption, Feature Readiness | Analyzes license utilization and feature adoption to identify features your tenant pays for but does not use. Produces an adoption roadmap with quick wins. |
+
 ```powershell
 # Run specific sections
 Invoke-M365Assessment -Section Identity,Email -TenantId 'contoso.onmicrosoft.com'
@@ -383,7 +384,7 @@ M365-Assess/
     Inventory/                      # M&A inventory
     SOC2/                           # SOC 2 readiness assessment
     assets/                         # Branding (logos, background) + SKU data
-    controls/                       # Control registry + 14 framework mappings
+    controls/                       # Control registry + 15 framework mappings
   tests/                            # Pester test suite
   docs/                             # Detailed documentation
   Setup/                            # App Registration provisioning scripts
