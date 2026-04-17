@@ -2166,7 +2166,8 @@
         "primaryControlId": "IAC-06",
         "domain": "Identification & Authentication",
         "controlName": "Account Management",
-        "controlDescription": "Guest user accounts in Azure AD should be reviewed and minimized. External identities with persistent access to Azure resources increase the risk of unauthorized access."
+        "controlDescription": "Guest user accounts in Azure AD should be reviewed and minimized. External identities with persistent access to Azure resources increase the risk of unauthorized access.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -2192,7 +2193,8 @@
         "primaryControlId": "IAC-06",
         "domain": "Identification & Authentication",
         "controlName": "Account Management",
-        "controlDescription": "AKS clusters must have Azure AD integration (AAD profile or OIDC issuer) enabled to enforce organizational identity policies, MFA, and conditional access for cluster authentication."
+        "controlDescription": "AKS clusters must have Azure AD integration (AAD profile or OIDC issuer) enabled to enforce organizational identity policies, MFA, and conditional access for cluster authentication.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -3638,7 +3640,8 @@
         "primaryControlId": "IAC-07",
         "domain": "Identification & Authentication",
         "controlName": "Identifier Management",
-        "controlDescription": "Service principal credentials (client secrets and certificates) must not be expired. Expired credentials indicate abandoned applications or poor credential lifecycle management."
+        "controlDescription": "Service principal credentials (client secrets and certificates) must not be expired. Expired credentials indicate abandoned applications or poor credential lifecycle management.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -5823,7 +5826,7 @@
         },
         "soc2": {
           "controlId": "CC6.1",
-          "title": "Logical and Physical Access Controls — Authentication"
+          "title": "Logical Access Security Software, Infrastructure, and Architectures"
         }
       },
       "impactRating": {
@@ -5845,7 +5848,8 @@
         "primaryControlId": "IAC-14",
         "domain": "Identification & Authentication",
         "controlName": "Least Privilege",
-        "controlDescription": "Access to Azure subscription management must be restricted. Owner role assignments should not exceed 3 principals to limit blast radius from compromised accounts."
+        "controlDescription": "Access to Azure subscription management must be restricted. Owner role assignments should not exceed 3 principals to limit blast radius from compromised accounts.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -5871,7 +5875,8 @@
         "primaryControlId": "IAC-14",
         "domain": "Identification & Authentication",
         "controlName": "Least Privilege",
-        "controlDescription": "Azure resources should use managed identities instead of service principals with stored secrets where possible, reducing credential exposure and enforcing least-privilege identity patterns."
+        "controlDescription": "Azure resources should use managed identities instead of service principals with stored secrets where possible, reducing credential exposure and enforcing least-privilege identity patterns.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -5897,7 +5902,8 @@
         "primaryControlId": "IAC-14",
         "domain": "Identification & Authentication",
         "controlName": "Least Privilege",
-        "controlDescription": "All AKS clusters must have Kubernetes RBAC enabled to enforce role-based access control on Kubernetes API operations and prevent unauthorized access to cluster resources."
+        "controlDescription": "All AKS clusters must have Kubernetes RBAC enabled to enforce role-based access control on Kubernetes API operations and prevent unauthorized access to cluster resources.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -24343,7 +24349,8 @@
         "primaryControlId": "CFG-01",
         "domain": "Configuration Management",
         "controlName": "Configuration Management Policy",
-        "controlDescription": "Azure Policy compliance must be reviewed manually in the Portal to confirm that assigned policies are not generating non-compliant findings against baseline configurations."
+        "controlDescription": "Azure Policy compliance must be reviewed manually in the Portal to confirm that assigned policies are not generating non-compliant findings against baseline configurations.",
+        "csfFunction": "Govern"
       },
       "frameworks": {
         "cmmc": {
@@ -24655,7 +24662,8 @@
         "primaryControlId": "CFG-02",
         "domain": "Configuration Management",
         "controlName": "Configuration Baselines",
-        "controlDescription": "Azure subscriptions must have at least one resource lock configured to prevent accidental or unauthorized deletion or modification of critical resources."
+        "controlDescription": "Azure subscriptions must have at least one resource lock configured to prevent accidental or unauthorized deletion or modification of critical resources.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -36343,7 +36351,8 @@
         "primaryControlId": "MON-01",
         "domain": "Continuous Monitoring",
         "controlName": "Audit Logging",
-        "controlDescription": "Defender for Cloud auto-provisioning of monitoring agents (MMA/AMA) must be enabled to ensure all VMs automatically receive threat detection coverage without manual intervention."
+        "controlDescription": "Defender for Cloud auto-provisioning of monitoring agents (MMA/AMA) must be enabled to ensure all VMs automatically receive threat detection coverage without manual intervention.",
+        "csfFunction": "Govern"
       },
       "frameworks": {
         "cmmc": {
@@ -36369,7 +36378,8 @@
         "primaryControlId": "MON-01",
         "domain": "Continuous Monitoring",
         "controlName": "Audit Logging",
-        "controlDescription": "At least one Log Analytics workspace must exist in the subscription to serve as a central repository for audit logs, diagnostic data, and security events."
+        "controlDescription": "At least one Log Analytics workspace must exist in the subscription to serve as a central repository for audit logs, diagnostic data, and security events.",
+        "csfFunction": "Govern"
       },
       "frameworks": {
         "cmmc": {
@@ -36395,7 +36405,8 @@
         "primaryControlId": "MON-01",
         "domain": "Continuous Monitoring",
         "controlName": "Audit Logging",
-        "controlDescription": "SQL Server auditing must be enabled on all Azure SQL servers to track database events, schema changes, and data access for compliance and incident investigation."
+        "controlDescription": "SQL Server auditing must be enabled on all Azure SQL servers to track database events, schema changes, and data access for compliance and incident investigation.",
+        "csfFunction": "Govern"
       },
       "frameworks": {
         "cmmc": {
@@ -38279,7 +38290,8 @@
         "primaryControlId": "MON-03",
         "domain": "Continuous Monitoring",
         "controlName": "Audit Log Review",
-        "controlDescription": "An enabled Activity Log Alert must exist for the Microsoft.Authorization/policyAssignments/delete operation to detect and respond to unauthorized removal of security policies."
+        "controlDescription": "An enabled Activity Log Alert must exist for the Microsoft.Authorization/policyAssignments/delete operation to detect and respond to unauthorized removal of security policies.",
+        "csfFunction": "Detect"
       },
       "frameworks": {
         "cmmc": {
@@ -39779,7 +39791,7 @@
         },
         "soc2": {
           "controlId": "CC2.2",
-          "title": "Communication of Policies and Procedures"
+          "title": "COSO Principle 14: Internal Communication"
         }
       },
       "impactRating": {
@@ -40354,7 +40366,8 @@
         "primaryControlId": "NET-01",
         "domain": "Network Security",
         "controlName": "Network Architecture",
-        "controlDescription": "VMs with public IP addresses must each have an associated NSG. Review all public-IP VMs to verify the exposure is intentional and protected."
+        "controlDescription": "VMs with public IP addresses must each have an associated NSG. Review all public-IP VMs to verify the exposure is intentional and protected.",
+        "csfFunction": "Govern"
       },
       "frameworks": {
         "cmmc": {
@@ -40550,7 +40563,8 @@
         "primaryControlId": "NET-03",
         "domain": "Network Security",
         "controlName": "Boundary Protection",
-        "controlDescription": "Network Security Groups must not allow inbound RDP (TCP 3389) from any internet source (0.0.0.0/0, *, or Internet). Unrestricted RDP exposure is a primary vector for brute-force and ransomware attacks."
+        "controlDescription": "Network Security Groups must not allow inbound RDP (TCP 3389) from any internet source (0.0.0.0/0, *, or Internet). Unrestricted RDP exposure is a primary vector for brute-force and ransomware attacks.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -40576,7 +40590,8 @@
         "primaryControlId": "NET-03",
         "domain": "Network Security",
         "controlName": "Boundary Protection",
-        "controlDescription": "Network Security Groups must not allow inbound SSH (TCP 22) from any internet source. Unrestricted SSH exposure enables brute-force credential attacks against Linux VMs."
+        "controlDescription": "Network Security Groups must not allow inbound SSH (TCP 22) from any internet source. Unrestricted SSH exposure enables brute-force credential attacks against Linux VMs.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -40602,7 +40617,8 @@
         "primaryControlId": "NET-03",
         "domain": "Network Security",
         "controlName": "Boundary Protection",
-        "controlDescription": "Azure SQL Server firewall rules must not allow unrestricted access from all Azure services (0.0.0.0-0.0.0.0) or from the entire internet (0.0.0.0-255.255.255.255)."
+        "controlDescription": "Azure SQL Server firewall rules must not allow unrestricted access from all Azure services (0.0.0.0-0.0.0.0) or from the entire internet (0.0.0.0-255.255.255.255).",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -40628,7 +40644,8 @@
         "primaryControlId": "NET-03",
         "domain": "Network Security",
         "controlName": "Boundary Protection",
-        "controlDescription": "AKS clusters must have a network policy (Azure or Calico) configured to control pod-to-pod traffic and enforce microsegmentation within the cluster."
+        "controlDescription": "AKS clusters must have a network policy (Azure or Calico) configured to control pod-to-pod traffic and enforce microsegmentation within the cluster.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -43947,7 +43964,7 @@
         },
         "soc2": {
           "controlId": "CC6.6",
-          "title": "Logical Access Restrictions"
+          "title": "Restriction of Access to System Boundaries"
         }
       },
       "impactRating": {
@@ -44066,7 +44083,7 @@
         },
         "soc2": {
           "controlId": "CC6.6",
-          "title": "Logical Access Restrictions"
+          "title": "Restriction of Access to System Boundaries"
         }
       },
       "impactRating": {
@@ -45040,7 +45057,7 @@
         },
         "soc2": {
           "controlId": "CC6.1;CC6.3",
-          "title": "Logical and Physical Access Controls"
+          "title": "Logical Access Security Software, Infrastructure, and Architectures; Enrollment and Authorization Based on Credentials"
         }
       },
       "impactRating": {
@@ -49882,7 +49899,8 @@
         "primaryControlId": "END-04",
         "domain": "Endpoint Security",
         "controlName": "Malicious Code Protection",
-        "controlDescription": "All virtual machines must have an endpoint protection extension installed (Microsoft Antimalware or Microsoft Defender for Endpoint) to detect and prevent malicious code execution."
+        "controlDescription": "All virtual machines must have an endpoint protection extension installed (Microsoft Antimalware or Microsoft Defender for Endpoint) to detect and prevent malicious code execution.",
+        "csfFunction": "Detect"
       },
       "frameworks": {
         "cmmc": {
@@ -51305,7 +51323,7 @@
         },
         "soc2": {
           "controlId": "CC6.6",
-          "title": "Logical Access Restrictions"
+          "title": "Restriction of Access to System Boundaries"
         }
       },
       "impactRating": {
@@ -52690,7 +52708,8 @@
         "primaryControlId": "CRY-02",
         "domain": "Cryptographic Protections",
         "controlName": "Key Management",
-        "controlDescription": "Azure Key Vaults must have soft delete enabled to allow recovery of accidentally or maliciously deleted secrets, keys, and certificates within the retention period."
+        "controlDescription": "Azure Key Vaults must have soft delete enabled to allow recovery of accidentally or maliciously deleted secrets, keys, and certificates within the retention period.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -52716,7 +52735,8 @@
         "primaryControlId": "CRY-02",
         "domain": "Cryptographic Protections",
         "controlName": "Key Management",
-        "controlDescription": "Azure Key Vaults must have purge protection enabled to prevent permanent deletion during the soft-delete retention period, protecting against ransomware-style attacks targeting cryptographic material."
+        "controlDescription": "Azure Key Vaults must have purge protection enabled to prevent permanent deletion during the soft-delete retention period, protecting against ransomware-style attacks targeting cryptographic material.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -52742,7 +52762,8 @@
         "primaryControlId": "CRY-02",
         "domain": "Cryptographic Protections",
         "controlName": "Key Management",
-        "controlDescription": "Cryptographic keys and secrets stored in Azure Key Vault must have expiry dates configured to enforce key rotation and reduce the window of exposure if a key is compromised."
+        "controlDescription": "Cryptographic keys and secrets stored in Azure Key Vault must have expiry dates configured to enforce key rotation and reduce the window of exposure if a key is compromised.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53086,7 +53107,8 @@
         "primaryControlId": "CRY-03",
         "domain": "Cryptographic Protections",
         "controlName": "Encryption in Transit",
-        "controlDescription": "All storage accounts must enforce HTTPS-only traffic to protect data in transit. HTTP connections must be rejected to prevent interception of data or credentials."
+        "controlDescription": "All storage accounts must enforce HTTPS-only traffic to protect data in transit. HTTP connections must be rejected to prevent interception of data or credentials.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53112,7 +53134,8 @@
         "primaryControlId": "CRY-03",
         "domain": "Cryptographic Protections",
         "controlName": "Encryption in Transit",
-        "controlDescription": "Storage accounts must enforce TLS 1.2 as the minimum version. TLS 1.0 and 1.1 have known vulnerabilities (POODLE, BEAST) that can be exploited to decrypt communications."
+        "controlDescription": "Storage accounts must enforce TLS 1.2 as the minimum version. TLS 1.0 and 1.1 have known vulnerabilities (POODLE, BEAST) that can be exploited to decrypt communications.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53138,7 +53161,8 @@
         "primaryControlId": "CRY-04",
         "domain": "Cryptographic Protections",
         "controlName": "Encryption at Rest",
-        "controlDescription": "Storage accounts must not allow anonymous (unauthenticated) access to blob containers. Public blob access exposes potentially sensitive data to the internet without any authentication."
+        "controlDescription": "Storage accounts must not allow anonymous (unauthenticated) access to blob containers. Public blob access exposes potentially sensitive data to the internet without any authentication.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53164,7 +53188,8 @@
         "primaryControlId": "CRY-04",
         "domain": "Cryptographic Protections",
         "controlName": "Encryption at Rest",
-        "controlDescription": "All virtual machines must have the Azure Disk Encryption extension installed and in a Succeeded provisioning state to protect OS and data disks with BitLocker (Windows) or dm-crypt (Linux)."
+        "controlDescription": "All virtual machines must have the Azure Disk Encryption extension installed and in a Succeeded provisioning state to protect OS and data disks with BitLocker (Windows) or dm-crypt (Linux).",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53190,7 +53215,8 @@
         "primaryControlId": "CRY-04",
         "domain": "Cryptographic Protections",
         "controlName": "Encryption at Rest",
-        "controlDescription": "All Azure SQL databases (excluding system databases) must have Transparent Data Encryption enabled to protect database files, log files, and backups at rest."
+        "controlDescription": "All Azure SQL databases (excluding system databases) must have Transparent Data Encryption enabled to protect database files, log files, and backups at rest.",
+        "csfFunction": "Protect"
       },
       "frameworks": {
         "cmmc": {
@@ -53764,7 +53790,8 @@
         "primaryControlId": "VUL-01",
         "domain": "Vulnerability & Patch Management",
         "controlName": "Vulnerability Management",
-        "controlDescription": "Microsoft Defender for Cloud paid plans (Servers, Databases, Storage, etc.) must be enabled to provide threat detection, vulnerability assessment, and security recommendations for CUI-handling workloads."
+        "controlDescription": "Microsoft Defender for Cloud paid plans (Servers, Databases, Storage, etc.) must be enabled to provide threat detection, vulnerability assessment, and security recommendations for CUI-handling workloads.",
+        "csfFunction": "Identify"
       },
       "frameworks": {
         "cmmc": {
@@ -53790,7 +53817,8 @@
         "primaryControlId": "VUL-01",
         "domain": "Vulnerability & Patch Management",
         "controlName": "Vulnerability Management",
-        "controlDescription": "The Defender for Cloud Secure Score must meet a minimum threshold (>=50%) to indicate that foundational security recommendations have been addressed across the subscription."
+        "controlDescription": "The Defender for Cloud Secure Score must meet a minimum threshold (>=50%) to indicate that foundational security recommendations have been addressed across the subscription.",
+        "csfFunction": "Identify"
       },
       "frameworks": {
         "cmmc": {
