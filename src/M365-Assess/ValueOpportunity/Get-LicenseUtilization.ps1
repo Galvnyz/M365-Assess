@@ -35,16 +35,13 @@ function Get-LicenseUtilization {
         [string]$OutputPath
     )
 
-    $categories = @{}
-    foreach ($cat in $FeatureMap.categories) {
-        $categories[$cat.id] = $cat.name
-    }
-
-    $results = foreach ($feature in $FeatureMap.features) {
+    $results = foreach ($entry in $FeatureMap.featureGroups.PSObject.Properties) {
+        $featureId = $entry.Name
+        $feature   = $entry.Value
         $isLicensed = $false
         $sourceSkus = @()
 
-        foreach ($plan in $feature.requiredServicePlans) {
+        foreach ($plan in $feature.servicePlans) {
             if ($TenantLicenses.ActiveServicePlans.Contains($plan)) {
                 $isLicensed = $true
                 $sourceSkus += $plan
@@ -52,9 +49,9 @@ function Get-LicenseUtilization {
         }
 
         [PSCustomObject]@{
-            FeatureId   = $feature.featureId
-            FeatureName = $feature.name
-            Category    = $categories[$feature.category]
+            FeatureId   = $featureId
+            FeatureName = $feature.displayName
+            Category    = $feature.category
             IsLicensed  = $isLicensed
             SourcePlans = ($sourceSkus -join ', ')
             EffortTier  = $feature.effortTier

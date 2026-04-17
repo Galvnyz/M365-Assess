@@ -36,9 +36,6 @@ function Get-FeatureReadiness {
         [string]$OutputPath
     )
 
-    $categories = @{}
-    foreach ($cat in $FeatureMap.categories) { $categories[$cat.id] = $cat.name }
-
     $licenseLookup = @{}
     foreach ($lic in $LicenseUtilization) { $licenseLookup[$lic.FeatureId] = $lic }
 
@@ -46,18 +43,22 @@ function Get-FeatureReadiness {
     foreach ($adp in $FeatureAdoption) { $adoptionLookup[$adp.FeatureId] = $adp }
 
     $featureNameLookup = @{}
-    foreach ($f in $FeatureMap.features) { $featureNameLookup[$f.featureId] = $f.name }
+    foreach ($entry in $FeatureMap.featureGroups.PSObject.Properties) {
+        $featureNameLookup[$entry.Name] = $entry.Value.displayName
+    }
 
-    $results = foreach ($feature in $FeatureMap.features) {
-        $lic = $licenseLookup[$feature.featureId]
+    $results = foreach ($entry in $FeatureMap.featureGroups.PSObject.Properties) {
+        $featureId = $entry.Name
+        $feature   = $entry.Value
+        $lic = $licenseLookup[$featureId]
         $blockers = @()
 
         if (-not $lic -or -not $lic.IsLicensed) {
-            $planNames = $feature.requiredServicePlans -join ', '
+            $planNames = $feature.servicePlans -join ', '
             [PSCustomObject]@{
-                FeatureId      = $feature.featureId
-                FeatureName    = $feature.name
-                Category       = $categories[$feature.category]
+                FeatureId      = $featureId
+                FeatureName    = $feature.displayName
+                Category       = $feature.category
                 ReadinessState = 'NotLicensed'
                 Blockers       = "Requires $planNames"
                 EffortTier     = $feature.effortTier
@@ -78,9 +79,9 @@ function Get-FeatureReadiness {
         $state = if ($blockers.Count -gt 0) { 'Blocked' } else { 'Ready' }
 
         [PSCustomObject]@{
-            FeatureId      = $feature.featureId
-            FeatureName    = $feature.name
-            Category       = $categories[$feature.category]
+            FeatureId      = $featureId
+            FeatureName    = $feature.displayName
+            Category       = $feature.category
             ReadinessState = $state
             Blockers       = ($blockers -join '; ')
             EffortTier     = $feature.effortTier
@@ -106,7 +107,6 @@ if ($ProjectRoot -and $AssessmentFolder) {
     }
     $featureMap = Get-Content -Path $featureMapPath -Raw | ConvertFrom-Json
 
-    # Read sibling CSVs
     $licCsvPath = Join-Path -Path $AssessmentFolder -ChildPath '40-License-Utilization.csv'
     $licenseData = @()
     if (Test-Path -Path $licCsvPath) {
