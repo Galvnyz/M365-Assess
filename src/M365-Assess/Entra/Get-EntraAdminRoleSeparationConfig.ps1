@@ -174,6 +174,14 @@ catch {
             Remediation      = 'Requires RoleManagement.Read.Directory and Directory.Read.All permissions. Grant via Entra admin center or reconnect with additional scopes.'
         }
         Add-Setting @settingParams
+        Write-Host ''
+        Write-Host "    $([char]0x26A0) Missing permission for Admin Role Separation check:" -ForegroundColor Yellow
+        Write-Host '      Identity: RoleManagement.Read.Directory' -ForegroundColor Yellow
+        Write-Host '    To fix: add the missing permission to your app registration, then grant admin consent.' -ForegroundColor DarkGray
+        Write-Host '    Entra ID > App registrations > [your app] > API permissions >' -ForegroundColor DarkGray
+        Write-Host '      Add a permission > Microsoft Graph > Application permissions' -ForegroundColor DarkGray
+        Write-Host "    Then click 'Grant admin consent for [tenant]' and re-run." -ForegroundColor DarkGray
+        Write-Host ''
     }
     elseif ($_.Exception.Message -match '404|ResourceNotFound') {
         Write-Verbose "Role assignment query returned 404 — no qualifying assignments found."
