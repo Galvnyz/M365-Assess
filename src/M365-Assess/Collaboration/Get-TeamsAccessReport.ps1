@@ -53,7 +53,12 @@ try {
     $isUserPersonalScopeResourceSpecificConsentEnabled = $teamsAppSettings.isUserPersonalScopeResourceSpecificConsentEnabled
 }
 catch {
-    Write-Warning "Teams app settings (beta) endpoint unavailable. Some settings will be reported as N/A. Error: $_"
+    if ("$_" -match '412|PreconditionFailed|not supported in application-only') {
+        Write-Verbose "Teams app settings beta endpoint unavailable in app-only auth — some settings will be N/A."
+    }
+    else {
+        Write-Warning "Teams app settings (beta) endpoint unavailable. Some settings will be reported as N/A. Error: $_"
+    }
 }
 
 # Retrieve group settings for guest access configuration
