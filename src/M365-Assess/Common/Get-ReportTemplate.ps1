@@ -1863,7 +1863,7 @@ $html = @"
         .fw-selector-label { font-weight: 600; font-size: 0.85em; color: var(--m365a-dark); margin-right: 4px; }
         .fw-checkbox { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; font-size: 0.82em; cursor: pointer; transition: all 0.15s; background: var(--m365a-card-bg); user-select: none; }
         .fw-checkbox:hover { background: var(--m365a-hover-bg); border-color: var(--m365a-accent); }
-        .fw-checkbox.active { background: var(--m365a-dark); color: #fff; border-color: var(--m365a-dark); }
+        .fw-checkbox.active { background: var(--m365a-primary); color: #fff; border-color: var(--m365a-primary); }
         .fw-checkbox input[type="checkbox"] { display: none; }
         .fw-selector-actions { margin-left: auto; display: flex; gap: 4px; }
         .fw-action-btn { padding: 3px 10px; border: 1px solid var(--m365a-border); border-radius: 3px; background: var(--m365a-card-bg); cursor: pointer; font-size: 0.78em; color: var(--m365a-medium-gray); }
@@ -1925,7 +1925,7 @@ $html = @"
         .co-profile-group { display: flex; gap: 4px; flex-wrap: wrap; }
         .co-profile-btn { padding: 3px 10px; border: 1px solid var(--m365a-border); border-radius: 4px; background: var(--m365a-card-bg); font-size: 0.82em; cursor: pointer; color: var(--m365a-dark); transition: all 0.15s; }
         .co-profile-btn:hover { background: var(--m365a-hover-bg); border-color: var(--m365a-accent); }
-        .co-profile-btn.active { background: var(--m365a-dark); color: #fff; border-color: var(--m365a-dark); }
+        .co-profile-btn.active { background: var(--m365a-primary); color: #fff; border-color: var(--m365a-primary); }
 
         /* Compact scan header (shown when exec summary is skipped) */
         .scan-header {
@@ -3410,6 +3410,7 @@ $html += @"
         var sectionFilter = document.getElementById('sectionFilter');
         var severityFilter = document.getElementById('severityFilter');
         var cisSubFilter = document.getElementById('cisSubFilter');
+        var cmmcSubFilter = document.getElementById('cmmcSubFilter');
         var coFilterBadge = document.getElementById('coFilterBadge');
         var coFilterReset = document.getElementById('coFilterReset');
         var compTable = document.getElementById('complianceTable');
@@ -3460,6 +3461,23 @@ $html += @"
                 }
             }
 
+            function getActiveCmmcLevel() {
+                if (!cmmcSubFilter || cmmcSubFilter.style.display === 'none') return 'all';
+                var activeBtn = cmmcSubFilter.querySelector('.co-profile-btn.active');
+                return activeBtn ? activeBtn.getAttribute('data-cmmc-level') : 'all';
+            }
+
+            function updateCmmcSubFilter(activeFw) {
+                if (!cmmcSubFilter) return;
+                var cmmcActive = activeFw.indexOf('cmmc') !== -1;
+                cmmcSubFilter.style.display = cmmcActive ? '' : 'none';
+                if (!cmmcActive) {
+                    cmmcSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                    var allBtn = cmmcSubFilter.querySelector('[data-cmmc-level="all"]');
+                    if (allBtn) allBtn.classList.add('active');
+                }
+            }
+
             function updateFilterBadge(activeFw, activeStatus, activeSv, activeSec, cisProfile) {
                 if (!coFilterBadge) return;
                 var deselected = (fwCbs.length - activeFw.length) + (statusCbs.length - activeStatus.length) +
@@ -3472,8 +3490,8 @@ $html += @"
                 }
             }
 
-            function saveFilters(activeFw, activeSt, activeSv, activeSec, cisProfile) {
-                try { localStorage.setItem(CO_LS_KEY, JSON.stringify({ fw: activeFw, st: activeSt, sv: activeSv, sec: activeSec, cis: cisProfile })); } catch(e) {}
+            function saveFilters(activeFw, activeSt, activeSv, activeSec, cisProfile, cmmcLevel) {
+                try { localStorage.setItem(CO_LS_KEY, JSON.stringify({ fw: activeFw, st: activeSt, sv: activeSv, sec: activeSec, cis: cisProfile, cmmc: cmmcLevel })); } catch(e) {}
             }
 
             function applyAllFilters() {
@@ -3484,10 +3502,12 @@ $html += @"
                     ? getActive(sectionCbs, '.section-checkbox')
                     : Array.from(new Set(Array.from(compRows).map(function(r) { return r.getAttribute('data-section') || ''; })));
                 var cisProfile = getActiveCisProfile();
+                var cmmcLevel = getActiveCmmcLevel();
 
                 updateCisSubFilter(activeFw);
+                updateCmmcSubFilter(activeFw);
                 updateFilterBadge(activeFw, activeStatus, activeSeverities, activeSections, cisProfile);
-                saveFilters(activeFw, activeStatus, activeSeverities, activeSections, cisProfile);
+                saveFilters(activeFw, activeStatus, activeSeverities, activeSections, cisProfile, cmmcLevel);
 
                 // 1. Toggle framework columns and cards
                 allFwCols.forEach(function(el) {
@@ -3518,7 +3538,8 @@ $html += @"
                     }
                     var svOk = activeSeverities.length === 0 || activeSeverities.indexOf((row.getAttribute('data-sv') || '').toLowerCase()) !== -1;
                     var cisOk = cisProfile === 'all' || (row.getAttribute('data-cis-profiles') || '').split(',').indexOf(cisProfile) !== -1;
-                    var show = sectionOk && statusOk && fwOk && svOk && cisOk;
+                    var cmmcOk = cmmcLevel === 'all' || (row.getAttribute('data-cmmc-level') || '').split(',').indexOf(cmmcLevel) !== -1;
+                    var show = sectionOk && statusOk && fwOk && svOk && cisOk && cmmcOk;
                     row.style.display = show ? '' : 'none';
                     if (show) visibleCount++;
                 });
@@ -3645,6 +3666,15 @@ $html += @"
                     });
                 });
             }
+            if (cmmcSubFilter) {
+                cmmcSubFilter.querySelectorAll('.co-profile-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        cmmcSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        btn.classList.add('active');
+                        applyAllFilters();
+                    });
+                });
+            }
 
             // All/None buttons -- severity
             var svAll = document.getElementById('svSelectAll');
@@ -3682,6 +3712,11 @@ $html += @"
                         var allBtn = cisSubFilter.querySelector('[data-profile="all"]');
                         if (allBtn) allBtn.classList.add('active');
                     }
+                    if (cmmcSubFilter) {
+                        cmmcSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        var cmmcAllBtn = cmmcSubFilter.querySelector('[data-cmmc-level="all"]');
+                        if (cmmcAllBtn) cmmcAllBtn.classList.add('active');
+                    }
                     try { localStorage.removeItem(CO_LS_KEY); } catch(e) {}
                     applyAllFilters();
                 });
@@ -3699,6 +3734,11 @@ $html += @"
                         cisSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
                         var savedBtn = cisSubFilter.querySelector('[data-profile="' + coSaved.cis + '"]');
                         if (savedBtn) savedBtn.classList.add('active');
+                    }
+                    if (coSaved.cmmc && cmmcSubFilter) {
+                        cmmcSubFilter.querySelectorAll('.co-profile-btn').forEach(function(b) { b.classList.remove('active'); });
+                        var savedCmmcBtn = cmmcSubFilter.querySelector('[data-cmmc-level="' + coSaved.cmmc + '"]');
+                        if (savedCmmcBtn) savedCmmcBtn.classList.add('active');
                     }
                 }
             } catch(e) {}
