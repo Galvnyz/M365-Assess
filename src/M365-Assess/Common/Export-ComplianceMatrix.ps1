@@ -255,6 +255,14 @@ foreach ($summaryRow in $summaryData) {
     if (-not $fwDef -or $fwDef.scoringMethod -notin @('profile-compliance', 'maturity-level')) { continue }
     $grpResult = Export-FrameworkCatalog -Findings $catalogFindings -Framework $fwDef -ControlRegistry $controlRegistry -Mode Grouped -WarningAction SilentlyContinue
     if (-not $grpResult -or -not $grpResult.Groups) { continue }
+
+    # Skip sub-rows when all non-gap groups have identical Mapped counts — indicates that
+    # findings lack profile/level tags in the registry so every finding fell through to
+    # "include in all groups," making the sub-rows useless and misleading.
+    $uniqueMappedCounts = @($grpResult.Groups | Where-Object { -not $_.IsGap } |
+        Select-Object -ExpandProperty Mapped | Sort-Object -Unique)
+    if ($uniqueMappedCounts.Count -le 1) { continue }
+
     $groupedByFwCache[$fwDef.frameworkId] = $grpResult
 
     if ($fwDef.scoringMethod -eq 'profile-compliance') {
@@ -363,7 +371,7 @@ $matrixParams = @{
     AutoSize      = $true
     AutoFilter    = $true
     FreezeTopRow  = $true
-    BoldTopRow    = $true
+    BoldTopRow    = (-not $preparedByHeader)
     TableStyle    = 'Medium2'
 }
 if ($preparedByHeader) {
@@ -412,7 +420,7 @@ if ($cisFw -and $null -ne $catalogFindings) {
             $groupedRows.Add([PSCustomObject][ordered]@{
                 Profile      = $group.Key
                 Label        = $group.Label
-                Total        = $group.Total
+                Total        = if ($group.Total -gt 0) { $group.Total } else { $group.Mapped }
                 Mapped       = $group.Mapped
                 Passed       = $group.Passed
                 Failed       = $group.Failed
@@ -438,10 +446,11 @@ if ($cisFw -and $null -ne $catalogFindings) {
                             $cReview   = @($tierFindings | Where-Object Status -eq 'Review').Count
                             $cRate     = [math]::Round(($cPass / $tierFindings.Count) * 100, 1)
                             $levelKeys = @($sortedTierLevels | ForEach-Object { ($_.Key -split '-')[-1] }) -join '+'
+                            $combinedTotal = ($sortedTierLevels | Measure-Object { $_.Total } -Sum).Sum
                             $groupedRows.Add([PSCustomObject][ordered]@{
                                 Profile      = "$tierKey Combined ($levelKeys)"
                                 Label        = "All $tierKey controls (L1 + L2)"
-                                Total        = ($sortedTierLevels | Measure-Object { $_.Total } -Sum).Sum
+                                Total        = if ($combinedTotal -gt 0) { $combinedTotal } else { $tierFindings.Count }
                                 Mapped       = $tierFindings.Count
                                 Passed       = $cPass
                                 Failed       = $cFail
