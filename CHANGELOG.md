@@ -4,6 +4,38 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-04-18
+
+### Added
+- `-CompactReport` switch replaces `-SkipCoverPage`, `-SkipComplianceOverview`, and `-SkipExecutiveSummary`; QuickScan auto-sets it unless explicitly overridden (#526)
+- Auth parameter sets enforced: `AppOnlyCert`, `AppOnlySecret`, `DeviceCode`, `ManagedIdentity`, `ConnectionProfile`, `SkipConnection`, `Interactive` (#526)
+- `-Section All` shorthand expands to all 13 sections (#526)
+- `-AutoBaseline` switch auto-saves a dated snapshot after each run and compares to the most recent previous snapshot (#526)
+- `-ListBaselines` switch displays saved baselines for a tenant and exits without running an assessment (#526)
+- `Compare-M365Baseline` public cmdlet generates a drift HTML report from two saved baselines without re-running an assessment (#526)
+- Baseline manifests now store `RegistryVersion` and `CheckCount`; cross-version comparisons restrict to shared CheckIDs and surface schema additions/removals separately (#526)
+- PDF export via browser `window.print()` button in report nav — replaces unreliable headless-browser generation (#526)
+- XLSX output includes a `Drift` sheet when a drift report is present (#526)
+- `WhiteLabel` auto-enabled when `-CustomBranding` is supplied without explicitly passing `-WhiteLabel` (#526)
+- `Get-RegistryVersion` helper in `AssessmentHelpers.ps1` reads `dataVersion` from `controls/registry.json` (#526)
+
+### Changed
+- Wizard Step 5 simplified from 6 options to 2: `CompactReport` and `QuickScan` (#526)
+- `-SkipDLP` renamed to `-SkipPurview` to accurately reflect that it skips all three Purview collectors (#526)
+
+### Removed
+- `-NoBranding` — superseded by `-WhiteLabel` (#526)
+- `-SkipCoverPage`, `-SkipComplianceOverview`, `-SkipExecutiveSummary` — replaced by `-CompactReport` (#526)
+- `-Package` — PDF generation moved to browser print button (#526)
+- `-FrameworkFilter`, `-FrameworkFilters`, `-FrameworkExport` — framework filtering is HTML-UI-only; all frameworks always rendered (#526)
+- `-CisBenchmarkVersion` — dead parameter; CIS version is determined by `controls/frameworks/cis-m365-v6.json` (#526)
+
+### Fixed
+- Admin role separation: per-role 404 (role definition absent from tenant) now silently skipped instead of aborting the entire collector (#527)
+- Admin role separation: per-principal 404 on `/licenseDetails` for service principals and deleted users now silently skipped (#527)
+- EXO Security Config: `Asc-2X1-*` auto-expanding archive auxiliary segment quota warnings suppressed via `-WarningAction SilentlyContinue` on `Get-OwaMailboxPolicy`, `Get-MailboxAuditBypassAssociation`, and `Get-EXOMailbox` (#526)
+- Error catch guards switched from `$_.Exception.Message` to `"$_"` for Graph SDK errors where HTTP body only appears in the full ErrorRecord string (#527)
+
 ## [1.15.0] - 2026-04-18
 
 ### Added

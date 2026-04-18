@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '1.15.0'
+    ModuleVersion     = '1.16.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -222,7 +222,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v1.15.0 - XLSX Combined sub-rows for CIS E3/E5 tiers, XLSX grouped-by-profile zero-data fix, catalog gap row visibility fix, appendix chip init fix, catalog group columns, admin role sep auth error handling + console warning, CheckID v2.8.0 sync'
+            ReleaseNotes = 'v1.16.0 - Parameter revamp: CompactReport replaces 3 Skip* flags, auth param sets enforced, Section All, AutoBaseline/ListBaselines/Compare-M365Baseline, PDF via print button, XLSX Drift sheet, baseline RegistryVersion metadata; remove NoBranding/Package/FrameworkFilter/FrameworkExport/CisBenchmarkVersion; fix admin role sep 404 for missing roles and service principals; suppress EXO aux-archive quota warnings'
         }
     }
 }
