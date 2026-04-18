@@ -161,6 +161,16 @@ function Export-ComplianceOverview {
     $null = $html.AppendLine("</div>")
     $null = $html.AppendLine("</div>")
 
+    # CMMC maturity level sub-filter (shown when cmmc is active)
+    $null = $html.AppendLine("<div class='co-filter-row' id='cmmcSubFilter' style='display:none'>")
+    $null = $html.AppendLine("<span class='co-filter-label'>CMMC Level:</span>")
+    $null = $html.AppendLine("<div class='co-profile-group'>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn active' data-cmmc-level='all'>All Levels</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-cmmc-level='L1'>L1</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-cmmc-level='L2'>L2</button>")
+    $null = $html.AppendLine("</div>")
+    $null = $html.AppendLine("</div>")
+
     # Section row
     if ($uniqueSections.Count -gt 1) {
         $null = $html.AppendLine("<div class='co-filter-row' id='sectionFilter'>")
@@ -311,7 +321,18 @@ function Export-ComplianceOverview {
                 $cisProfilesAttr = " data-cis-profiles='$($cisEntry.profiles -join ',')'"
             }
         }
-        $null = $html.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'$svAttr$cisProfilesAttr>")
+        $cmmcLevelAttr = ''
+        $cmmcFwId = 'cmmc'
+        if ($finding.Frameworks -and $finding.Frameworks.ContainsKey($cmmcFwId)) {
+            $cmmcEntry = $finding.Frameworks[$cmmcFwId]
+            if ($cmmcEntry -and $cmmcEntry.controlId) {
+                $cmmcLevels = ($cmmcEntry.controlId -split ';') |
+                    ForEach-Object { if ($_ -match '\.L(\d+)-') { "L$($Matches[1])" } } |
+                    Sort-Object -Unique
+                if ($cmmcLevels) { $cmmcLevelAttr = " data-cmmc-level='$($cmmcLevels -join ',')'" }
+            }
+        }
+        $null = $html.AppendLine("<tr class='cis-row-$($finding.Status.ToLower())' data-section='$(ConvertTo-HtmlSafe -Text $finding.Section)'$svAttr$cisProfilesAttr$cmmcLevelAttr>")
         $severityClass = switch ($finding.RiskSeverity) {
             'Critical' { 'badge-critical' }
             'High'     { 'badge-failed' }
