@@ -138,7 +138,17 @@ try {
             Uri         = "/v1.0/users/$userId/licenseDetails"
             ErrorAction = 'Stop'
         }
-        $licDetails = Invoke-MgGraphRequest @licParams
+        try {
+            $licDetails = Invoke-MgGraphRequest @licParams
+        }
+        catch {
+            # 404 = service principal or deleted user assigned to the role — skip
+            if ("$_" -match '404|ResourceNotFound|Not Found') {
+                Write-Verbose "Principal $userId not a user object or no longer exists — skipping license check."
+                continue
+            }
+            throw
+        }
         if (-not $licDetails -or -not $licDetails['value']) { continue }
 
         foreach ($sku in @($licDetails['value'])) {
