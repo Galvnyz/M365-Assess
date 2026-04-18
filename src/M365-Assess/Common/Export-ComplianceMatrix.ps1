@@ -250,7 +250,10 @@ if ($cisFw -and $findings.Count -gt 0) {
                 $baseId = $_.CheckId -replace '\.\d+$', ''
                 if ($controlRegistry.ContainsKey($baseId) -and $controlRegistry[$baseId].frameworks) {
                     $fwObj = $controlRegistry[$baseId].frameworks
-                    if ($fwObj.PSObject.Properties.Name -contains $fwDef.frameworkId) {
+                    if ($fwObj -is [hashtable] -and $fwObj.ContainsKey($fwDef.frameworkId)) {
+                        $fwHash[$fwDef.frameworkId] = $fwObj[$fwDef.frameworkId]
+                    }
+                    elseif ($fwObj -and $fwObj.PSObject.Properties.Name -contains $fwDef.frameworkId) {
                         $fwHash[$fwDef.frameworkId] = $fwObj.($fwDef.frameworkId)
                     }
                 }
@@ -269,6 +272,7 @@ if ($cisFw -and $findings.Count -gt 0) {
         if ($groupedResult -and $groupedResult.Groups) {
             $groupedRows = [System.Collections.Generic.List[PSCustomObject]]::new()
             foreach ($group in $groupedResult.Groups) {
+                if ($group.IsGap) { continue }
                 $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
                 $groupedRows.Add([PSCustomObject][ordered]@{
                     Profile      = $group.Key
