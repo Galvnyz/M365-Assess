@@ -183,9 +183,9 @@ Describe 'Build-ReportData' {
             $d.findings[0].domain | Should -Be 'Defender'
         }
 
-        It 'maps SPO-* to SharePoint' {
+        It 'maps SPO-* to SharePoint & OneDrive' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -CheckId 'SPO-SHARING-001.1'))
-            $d.findings[0].domain | Should -Be 'SharePoint'
+            $d.findings[0].domain | Should -Be 'SharePoint & OneDrive'
         }
 
         It 'maps TEAMS-* to Teams' {
@@ -193,19 +193,19 @@ Describe 'Build-ReportData' {
             $d.findings[0].domain | Should -Be 'Teams'
         }
 
-        It 'maps PURVIEW-* to Purview' {
+        It 'maps PURVIEW-* to Purview / Compliance' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -CheckId 'PURVIEW-AUD-001.1'))
-            $d.findings[0].domain | Should -Be 'Purview'
+            $d.findings[0].domain | Should -Be 'Purview / Compliance'
         }
 
-        It 'maps COMPLIANCE-* to Purview' {
+        It 'maps COMPLIANCE-* to Purview / Compliance' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -CheckId 'COMPLIANCE-DLP-001.1'))
-            $d.findings[0].domain | Should -Be 'Purview'
+            $d.findings[0].domain | Should -Be 'Purview / Compliance'
         }
 
-        It 'maps DLP-* to Purview' {
+        It 'maps DLP-* to Purview / Compliance' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -CheckId 'DLP-POLICY-001.1'))
-            $d.findings[0].domain | Should -Be 'Purview'
+            $d.findings[0].domain | Should -Be 'Purview / Compliance'
         }
 
         It 'maps POWERBI-* to Power BI' {
@@ -409,12 +409,34 @@ Describe 'Build-ReportData' {
             $keys | Should -Contain 'mfaStats'
             $keys | Should -Contain 'findings'
             $keys | Should -Contain 'domainStats'
+            $keys | Should -Contain 'frameworks'
             $keys | Should -Contain 'licenses'
             $keys | Should -Contain 'dns'
             $keys | Should -Contain 'ca'
             $keys | Should -Contain 'summary'
             $keys | Should -Contain 'whiteLabel'
             $keys | Should -Contain 'xlsxFileName'
+        }
+    }
+
+    # ------------------------------------------------------------------
+    Context 'frameworks passthrough' {
+        It 'should produce empty frameworks array when FrameworkDefs not supplied' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson)
+            @($d.frameworks).Count | Should -Be 0
+        }
+
+        It 'should map frameworkId to id and label to full' {
+            $defs = @(
+                @{ frameworkId = 'cis-m365-v6'; label = 'CIS Microsoft 365 v6.0.1' }
+                @{ frameworkId = 'cmmc';         label = 'CMMC 2.0' }
+            )
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -FrameworkDefs $defs)
+            @($d.frameworks).Count | Should -Be 2
+            $d.frameworks[0].id   | Should -Be 'cis-m365-v6'
+            $d.frameworks[0].full | Should -Be 'CIS Microsoft 365 v6.0.1'
+            $d.frameworks[1].id   | Should -Be 'cmmc'
+            $d.frameworks[1].full | Should -Be 'CMMC 2.0'
         }
     }
 

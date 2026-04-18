@@ -12,11 +12,11 @@ function Get-CheckDomain {
         'DNS-*'          { return 'Exchange Online' }
         'INTUNE-*'       { return 'Intune' }
         'DEFENDER-*'     { return 'Defender' }
-        'SPO-*'          { return 'SharePoint' }
+        'SPO-*'          { return 'SharePoint & OneDrive' }
         'TEAMS-*'        { return 'Teams' }
-        'PURVIEW-*'      { return 'Purview' }
-        'DLP-*'          { return 'Purview' }
-        'COMPLIANCE-*'   { return 'Purview' }
+        'PURVIEW-*'      { return 'Purview / Compliance' }
+        'DLP-*'          { return 'Purview / Compliance' }
+        'COMPLIANCE-*'   { return 'Purview / Compliance' }
         'POWERBI-*'      { return 'Power BI' }
         'PBI-*'          { return 'Power BI' }
         'FORMS-*'        { return 'Forms' }
@@ -50,12 +50,18 @@ function Build-ReportDataJson {
         riskSeverity and frameworks fallback when AllFindings rows lack those fields.
     .PARAMETER WhiteLabel
         When set, REPORT_DATA.whiteLabel is true — the React app hides Galvnyz attribution.
+    .PARAMETER FrameworkDefs
+        Array of framework definition hashtables from Import-FrameworkDefinitions.
+        Produces REPORT_DATA.frameworks as [{id, full}] for the React FrameworkQuilt
+        component. When omitted, frameworks is an empty array and the React app falls
+        back to its own hardcoded list.
     .PARAMETER XlsxFileName
         Relative filename of the companion XLSX (e.g., "MyClient_Assessment-Report.xlsx").
         Embedded as REPORT_DATA.xlsxFileName for the download anchor in the report.
     .EXAMPLE
         $json = Build-ReportDataJson -AllFindings $allCisFindings -SectionData $sectionData `
-            -RegistryData $controlRegistry -XlsxFileName 'Contoso_Assessment-Report.xlsx'
+            -RegistryData $controlRegistry -FrameworkDefs $allFrameworks `
+            -XlsxFileName 'Contoso_Assessment-Report.xlsx'
         Get-ReportTemplate -ReportDataJson $json -ReportTitle 'M365 Assessment'
     #>
     [CmdletBinding()]
@@ -73,6 +79,10 @@ function Build-ReportDataJson {
 
         [Parameter()]
         [switch]$WhiteLabel,
+
+        [Parameter()]
+        [AllowEmptyCollection()]
+        [hashtable[]]$FrameworkDefs = @(),
 
         [Parameter()]
         [string]$XlsxFileName = ''
@@ -175,6 +185,8 @@ function Build-ReportDataJson {
     $caRows        = & $get 'ca'
     $adminRoleRows = & $get 'admin-roles'
 
+    $frameworkList = @($FrameworkDefs | ForEach-Object { @{ id = $_['frameworkId']; full = $_['label'] } })
+
     $reportData = [ordered]@{
         tenant         = @($tenantRows | Select-Object OrgDisplayName, TenantId, DefaultDomain, CreatedDateTime)
         users          = @($usersRows  | Select-Object TotalUsers, Licensed, GuestUsers, SyncedFromOnPrem)
@@ -182,6 +194,7 @@ function Build-ReportDataJson {
         mfaStats       = $mfaStats
         findings       = @($findings)
         domainStats    = $domainStats
+        frameworks     = $frameworkList
         licenses       = @($licenseRows  | Select-Object License, Assigned, Total)
         dns            = @($dnsRows      | Select-Object Domain, SPF, DMARC, DMARCPolicy, DKIM, DKIMStatus)
         ca             = @($caRows       | Select-Object DisplayName, State)
