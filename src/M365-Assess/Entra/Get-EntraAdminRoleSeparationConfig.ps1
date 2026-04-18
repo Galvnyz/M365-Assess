@@ -89,7 +89,7 @@ try {
         Write-Verbose "Checking assignments for role $roleId..."
         $assignParams = @{
             Method      = 'GET'
-            Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$roleId'&`$top=999&`$expand=principal"
+            Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$roleId'&`$top=999"
             ErrorAction = 'Stop'
         }
         $assignments = Invoke-MgGraphRequest @assignParams
@@ -174,6 +174,9 @@ catch {
             Remediation      = 'Requires RoleManagement.Read.Directory and Directory.Read.All permissions.'
         }
         Add-Setting @settingParams
+    }
+    elseif ($_.Exception.Message -match '404|ResourceNotFound') {
+        Write-Verbose "Role assignment query returned 404 — no qualifying assignments found."
     }
     else {
         Write-Warning "Could not check admin role separation: $_"
