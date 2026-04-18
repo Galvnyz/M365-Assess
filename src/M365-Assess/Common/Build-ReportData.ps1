@@ -105,13 +105,14 @@ function Build-ReportDataJson {
             'medium'
         }
 
-        $frameworks = if ($f.PSObject.Properties['Frameworks'] -and $f.Frameworks) {
-            $f.Frameworks
-        } elseif ($regEntry -and $regEntry.frameworks) {
-            $regEntry.frameworks
-        } else {
-            @{}
-        }
+        # frameworks must be an array of ID strings for the React app (.forEach / filter)
+        # Source may be a hashtable (from Build-SectionHtml) or PSCustomObject (from ConvertFrom-Json)
+        $fwSource = if ($f.PSObject.Properties['Frameworks'] -and $f.Frameworks) { $f.Frameworks }
+                    elseif ($regEntry -and $regEntry.frameworks)                  { $regEntry.frameworks }
+                    else                                                           { $null }
+        $frameworks = if ($fwSource -is [hashtable])  { @($fwSource.Keys) }
+                      elseif ($fwSource)               { @($fwSource.PSObject.Properties.Name) }
+                      else                             { @() }
 
         $recommended = if ($f.PSObject.Properties['RecommendedValue']) { $f.RecommendedValue }
                        elseif ($f.PSObject.Properties['Recommended'])   { $f.Recommended }
