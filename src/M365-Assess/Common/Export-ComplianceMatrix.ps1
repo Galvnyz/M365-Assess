@@ -205,6 +205,128 @@ foreach ($fwDef in $allFrameworks) {
 }
 
 # ------------------------------------------------------------------
+# Load scoring engine + build catalog findings (shared by Summary sub-rows + Sheet 3)
+# ------------------------------------------------------------------
+$catalogPath = Join-Path -Path $PSScriptRoot -ChildPath 'Export-FrameworkCatalog.ps1'
+$catalogFindings = $null
+if ((Test-Path -Path $catalogPath) -and $findings.Count -gt 0) {
+    . $catalogPath
+    $catalogFindings = @($sortedFindings | ForEach-Object {
+        $fwHash = @{}
+        foreach ($fwDef in $allFrameworks) {
+            $baseId = $_.CheckId -replace '\.\d+$', ''
+            if ($controlRegistry.ContainsKey($baseId) -and $controlRegistry[$baseId].frameworks) {
+                $fwObj = $controlRegistry[$baseId].frameworks
+                if ($fwObj -is [hashtable] -and $fwObj.ContainsKey($fwDef.frameworkId)) {
+                    $fwHash[$fwDef.frameworkId] = $fwObj[$fwDef.frameworkId]
+                }
+                elseif ($fwObj -and $fwObj.PSObject.Properties.Name -contains $fwDef.frameworkId) {
+                    $fwHash[$fwDef.frameworkId] = $fwObj.($fwDef.frameworkId)
+                }
+            }
+        }
+        [PSCustomObject]@{
+            CheckId      = $_.CheckId
+            Setting      = $_.Setting
+            Status       = $_.Status
+            RiskSeverity = 'Medium'
+            Section      = $_.Source
+            Frameworks   = $fwHash
+        }
+    })
+}
+
+# Build expanded summary: parent framework row + sub-rows for profile/maturity frameworks
+# profile-compliance (CIS): individual profile rows + a Combined row per license tier
+# maturity-level (CMMC): individual level rows only (already cumulative per level)
+$summaryExpanded = [System.Collections.Generic.List[PSCustomObject]]::new()
+$groupedByFwCache = @{}
+foreach ($summaryRow in $summaryData) {
+    $summaryExpanded.Add($summaryRow)
+    if ($null -eq $catalogFindings) { continue }
+    $fwDef = $allFrameworks | Where-Object { $_.label -eq $summaryRow.Framework } | Select-Object -First 1
+    if (-not $fwDef -or $fwDef.scoringMethod -notin @('profile-compliance', 'maturity-level')) { continue }
+    $grpResult = Export-FrameworkCatalog -Findings $catalogFindings -Framework $fwDef -ControlRegistry $controlRegistry -Mode Grouped -WarningAction SilentlyContinue
+    if (-not $grpResult -or -not $grpResult.Groups) { continue }
+    $groupedByFwCache[$fwDef.frameworkId] = $grpResult
+
+    if ($fwDef.scoringMethod -eq 'profile-compliance') {
+        # Detect tier groups: keys like 'E3-L1','E3-L2' share tier prefix 'E3'
+        $tierMap = [ordered]@{}
+        foreach ($grp in $grpResult.Groups) {
+            if ($grp.IsGap) { continue }
+            if ($grp.Key -match '^(.+)-L\d+$') {
+                $tk = $Matches[1]
+                if (-not $tierMap.ContainsKey($tk)) { $tierMap[$tk] = [System.Collections.Generic.List[hashtable]]::new() }
+                $tierMap[$tk].Add($grp)
+            }
+        }
+        $emittedTiers = [System.Collections.Generic.HashSet[string]]::new()
+        foreach ($group in $grpResult.Groups) {
+            if ($group.IsGap) { continue }
+            $subRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
+            $summaryExpanded.Add([PSCustomObject][ordered]@{
+                Framework      = "    $($group.Key) — $($group.Label)"
+                'Total Mapped' = $group.Mapped
+                Pass           = $group.Passed
+                Fail           = $group.Failed
+                Warning        = $group.Warning
+                Review         = $group.Review
+                'Pass Rate %'  = $subRate
+            })
+            if ($group.Key -match '^(.+)-L\d+$') {
+                $tierKey = $Matches[1]
+                if ($tierMap.ContainsKey($tierKey) -and -not $emittedTiers.Contains($tierKey)) {
+                    $sortedTierLevels = @($tierMap[$tierKey] | Sort-Object { $_.Key })
+                    if ($group.Key -eq $sortedTierLevels[-1].Key) {
+                        [void]$emittedTiers.Add($tierKey)
+                        # Filter unique findings tagged with this tier; avoids L1/L2 double-counting
+                        $colLabel     = $fwDef.label
+                        $tierPattern  = "\[$tierKey-"
+                        $tierFindings = @($sortedFindings | Where-Object {
+                            $_.$colLabel -match $tierPattern -and $_.Status -ne 'Info'
+                        })
+                        if ($tierFindings.Count -gt 0) {
+                            $cPass     = @($tierFindings | Where-Object Status -eq 'Pass').Count
+                            $cFail     = @($tierFindings | Where-Object Status -eq 'Fail').Count
+                            $cWarn     = @($tierFindings | Where-Object Status -eq 'Warning').Count
+                            $cReview   = @($tierFindings | Where-Object Status -eq 'Review').Count
+                            $cRate     = [math]::Round(($cPass / $tierFindings.Count) * 100, 1)
+                            $levelKeys = @($sortedTierLevels | ForEach-Object { ($_.Key -split '-')[-1] }) -join '+'
+                            $summaryExpanded.Add([PSCustomObject][ordered]@{
+                                Framework      = "    $tierKey Combined ($levelKeys)"
+                                'Total Mapped' = $tierFindings.Count
+                                Pass           = $cPass
+                                Fail           = $cFail
+                                Warning        = $cWarn
+                                Review         = $cReview
+                                'Pass Rate %'  = $cRate
+                            })
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else {
+        # maturity-level: CMMC is already cumulative per level, emit groups as-is
+        foreach ($group in $grpResult.Groups) {
+            if ($group.IsGap) { continue }
+            $subRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
+            $summaryExpanded.Add([PSCustomObject][ordered]@{
+                Framework      = "    $($group.Key) — $($group.Label)"
+                'Total Mapped' = $group.Mapped
+                Pass           = $group.Passed
+                Fail           = $group.Failed
+                Warning        = $group.Warning
+                Review         = $group.Review
+                'Pass Rate %'  = $subRate
+            })
+        }
+    }
+}
+
+# ------------------------------------------------------------------
 # Export to XLSX
 # ------------------------------------------------------------------
 $outputFile = Join-Path -Path $AssessmentFolder -ChildPath "_Compliance-Matrix_$TenantName.xlsx"
@@ -226,7 +348,7 @@ $matrixParams = @{
 }
 $sortedFindings | Export-Excel @matrixParams
 
-# Sheet 2 - Summary
+# Sheet 2 - Summary (with profile/maturity sub-rows for CIS and CMMC)
 $summaryParams = @{
     Path          = $outputFile
     WorksheetName = 'Summary'
@@ -235,66 +357,86 @@ $summaryParams = @{
     BoldTopRow    = $true
     TableStyle    = 'Medium6'
 }
-$summaryData | Export-Excel @summaryParams
+$summaryExpanded | Export-Excel @summaryParams
 
-# Sheet 3 - Grouped by Framework (CIS M365 profile-compliance breakdown)
+# Sheet 3 - Grouped by Profile (CIS M365 profile-compliance breakdown)
 $cisFw = $allFrameworks | Where-Object { $_.frameworkId -like 'cis-m365-*' } | Select-Object -First 1
-if ($cisFw -and $findings.Count -gt 0) {
-    $catalogPath = Join-Path -Path $PSScriptRoot -ChildPath 'Export-FrameworkCatalog.ps1'
-    if (Test-Path -Path $catalogPath) {
-        . $catalogPath
-        # Build finding objects compatible with the scoring engine
-        $catalogFindings = @($sortedFindings | ForEach-Object {
-            $fwHash = @{}
-            foreach ($fwDef in $allFrameworks) {
-                $baseId = $_.CheckId -replace '\.\d+$', ''
-                if ($controlRegistry.ContainsKey($baseId) -and $controlRegistry[$baseId].frameworks) {
-                    $fwObj = $controlRegistry[$baseId].frameworks
-                    if ($fwObj -is [hashtable] -and $fwObj.ContainsKey($fwDef.frameworkId)) {
-                        $fwHash[$fwDef.frameworkId] = $fwObj[$fwDef.frameworkId]
-                    }
-                    elseif ($fwObj -and $fwObj.PSObject.Properties.Name -contains $fwDef.frameworkId) {
-                        $fwHash[$fwDef.frameworkId] = $fwObj.($fwDef.frameworkId)
+if ($cisFw -and $null -ne $catalogFindings) {
+    $groupedResult = if ($groupedByFwCache.ContainsKey($cisFw.frameworkId)) {
+        $groupedByFwCache[$cisFw.frameworkId]
+    }
+    else {
+        Export-FrameworkCatalog -Findings $catalogFindings -Framework $cisFw -ControlRegistry $controlRegistry -Mode Grouped -WarningAction SilentlyContinue
+    }
+    if ($groupedResult -and $groupedResult.Groups) {
+        $groupedRows = [System.Collections.Generic.List[PSCustomObject]]::new()
+        $sheet3TierMap = [ordered]@{}
+        foreach ($grp in $groupedResult.Groups) {
+            if ($grp.IsGap) { continue }
+            if ($grp.Key -match '^(.+)-L\d+$') {
+                $tk = $Matches[1]
+                if (-not $sheet3TierMap.ContainsKey($tk)) { $sheet3TierMap[$tk] = [System.Collections.Generic.List[hashtable]]::new() }
+                $sheet3TierMap[$tk].Add($grp)
+            }
+        }
+        $sheet3EmittedTiers = [System.Collections.Generic.HashSet[string]]::new()
+        foreach ($group in $groupedResult.Groups) {
+            if ($group.IsGap) { continue }
+            $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
+            $groupedRows.Add([PSCustomObject][ordered]@{
+                Profile      = $group.Key
+                Label        = $group.Label
+                Total        = $group.Total
+                Mapped       = $group.Mapped
+                Passed       = $group.Passed
+                Failed       = $group.Failed
+                Warning      = $group.Warning
+                Review       = $group.Review
+                'Pass Rate %' = $grpPassRate
+            })
+            if ($group.Key -match '^(.+)-L\d+$') {
+                $tierKey = $Matches[1]
+                if ($sheet3TierMap.ContainsKey($tierKey) -and -not $sheet3EmittedTiers.Contains($tierKey)) {
+                    $sortedTierLevels = @($sheet3TierMap[$tierKey] | Sort-Object { $_.Key })
+                    if ($group.Key -eq $sortedTierLevels[-1].Key) {
+                        [void]$sheet3EmittedTiers.Add($tierKey)
+                        $colLabel     = $cisFw.label
+                        $tierPattern  = "\[$tierKey-"
+                        $tierFindings = @($sortedFindings | Where-Object {
+                            $_.$colLabel -match $tierPattern -and $_.Status -ne 'Info'
+                        })
+                        if ($tierFindings.Count -gt 0) {
+                            $cPass     = @($tierFindings | Where-Object Status -eq 'Pass').Count
+                            $cFail     = @($tierFindings | Where-Object Status -eq 'Fail').Count
+                            $cWarn     = @($tierFindings | Where-Object Status -eq 'Warning').Count
+                            $cReview   = @($tierFindings | Where-Object Status -eq 'Review').Count
+                            $cRate     = [math]::Round(($cPass / $tierFindings.Count) * 100, 1)
+                            $levelKeys = @($sortedTierLevels | ForEach-Object { ($_.Key -split '-')[-1] }) -join '+'
+                            $groupedRows.Add([PSCustomObject][ordered]@{
+                                Profile      = "$tierKey Combined ($levelKeys)"
+                                Label        = "All $tierKey controls (L1 + L2)"
+                                Total        = ($sortedTierLevels | Measure-Object { $_.Total } -Sum).Sum
+                                Mapped       = $tierFindings.Count
+                                Passed       = $cPass
+                                Failed       = $cFail
+                                Warning      = $cWarn
+                                Review       = $cReview
+                                'Pass Rate %' = $cRate
+                            })
+                        }
                     }
                 }
             }
-            [PSCustomObject]@{
-                CheckId      = $_.CheckId
-                Setting      = $_.Setting
-                Status       = $_.Status
-                RiskSeverity = 'Medium'
-                Section      = $_.Source
-                Frameworks   = $fwHash
-            }
-        })
-
-        $groupedResult = Export-FrameworkCatalog -Findings $catalogFindings -Framework $cisFw -ControlRegistry $controlRegistry -Mode Grouped -WarningAction SilentlyContinue
-        if ($groupedResult -and $groupedResult.Groups) {
-            $groupedRows = [System.Collections.Generic.List[PSCustomObject]]::new()
-            foreach ($group in $groupedResult.Groups) {
-                if ($group.IsGap) { continue }
-                $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
-                $groupedRows.Add([PSCustomObject][ordered]@{
-                    Profile      = $group.Key
-                    Label        = $group.Label
-                    Total        = $group.Total
-                    Mapped       = $group.Mapped
-                    Passed       = $group.Passed
-                    Failed       = $group.Failed
-                    Other        = $group.Other
-                    'Pass Rate %' = $grpPassRate
-                })
-            }
-            $groupedParams = @{
-                Path          = $outputFile
-                WorksheetName = 'Grouped by Profile'
-                AutoSize      = $true
-                FreezeTopRow  = $true
-                BoldTopRow    = $true
-                TableStyle    = 'Medium9'
-            }
-            $groupedRows | Export-Excel @groupedParams
         }
+        $groupedParams = @{
+            Path          = $outputFile
+            WorksheetName = 'Grouped by Profile'
+            AutoSize      = $true
+            FreezeTopRow  = $true
+            BoldTopRow    = $true
+            TableStyle    = 'Medium9'
+        }
+        $groupedRows | Export-Excel @groupedParams
     }
 }
 
