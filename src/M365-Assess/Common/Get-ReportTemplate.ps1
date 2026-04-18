@@ -2628,6 +2628,9 @@ $html = @"
         /* CSV export button — in control bar, accent color */
         .csv-export-btn { padding: 4px 10px; border: 1px solid var(--m365a-accent); border-radius: 4px; background: var(--m365a-card-bg); color: var(--m365a-accent); cursor: pointer; font-size: 0.82em; font-weight: 500; white-space: nowrap; }
         .csv-export-btn:hover { background: var(--m365a-accent); color: #fff; }
+        /* Framework Catalog — gap rows for uncovered controls */
+        .fw-catalog-gap-row { opacity: 0.55; font-style: italic; }
+        .fw-catalog-gap-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78em; background: var(--m365a-hover-bg); color: var(--m365a-medium-gray); border: 1px solid var(--m365a-border); white-space: nowrap; }
         /* Intune Overview — category coverage grid */
         .intune-category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 12px 0 4px; }
         .intune-cat-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--m365a-card-bg); border: 1px solid var(--m365a-border); border-left: 3px solid var(--m365a-border); }
@@ -3393,6 +3396,145 @@ $html += @"
         var initialPage = getInitialPage();
         if (initialPage) navigateTo(initialPage, false);
     })();
+
+    // ---------------------------------------------------------------------------
+    // Shared catalog utilities: initCatalogColumnPicker, exportCatalogTableCsv
+    // ---------------------------------------------------------------------------
+    // columnDefs: [{id, label, defaultVisible}]; storageKey: localStorage key
+    function initCatalogColumnPicker(tableId, columnDefs, storageKey) {
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var stored = localStorage.getItem(storageKey);
+        var visible = stored ? JSON.parse(stored) : columnDefs.reduce(function(acc, c) {
+            acc[c.id] = c.defaultVisible !== false; return acc;
+        }, {});
+
+        function applyVisibility() {
+            columnDefs.forEach(function(c, i) {
+                var idx = i + 1;
+                table.querySelectorAll('tr > *:nth-child(' + idx + ')').forEach(function(cell) {
+                    cell.style.display = visible[c.id] ? '' : 'none';
+                });
+            });
+            localStorage.setItem(storageKey, JSON.stringify(visible));
+        }
+
+        var section = table.closest('.catalog-section');
+        var bar = section ? section.querySelector('.catalog-filter-bar, .status-filter') : null;
+        if (!bar) { applyVisibility(); return; }
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'col-picker-bar';
+
+        var toggle = document.createElement('button');
+        toggle.className = 'col-picker-toggle';
+        toggle.title = 'Show/hide columns';
+        toggle.textContent = '\u2699 Columns';
+        wrapper.appendChild(toggle);
+
+        var panel = document.createElement('div');
+        panel.className = 'col-picker-panel';
+        panel.style.display = 'none';
+        columnDefs.forEach(function(c) {
+            var lbl = document.createElement('label');
+            lbl.className = 'col-picker-item';
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.dataset.col = c.id;
+            cb.checked = !!visible[c.id];
+            var span = document.createElement('span');
+            span.textContent = ' ' + c.label;
+            lbl.appendChild(cb);
+            lbl.appendChild(span);
+            panel.appendChild(lbl);
+        });
+        wrapper.appendChild(panel);
+        bar.appendChild(wrapper);
+
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+        panel.querySelectorAll('input[data-col]').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                visible[cb.dataset.col] = cb.checked;
+                applyVisibility();
+            });
+        });
+        document.addEventListener('click', function() { panel.style.display = 'none'; });
+
+        applyVisibility();
+    }
+
+    function exportCatalogTableCsv(tableId, fileName) {
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var headers = [];
+        table.querySelectorAll('thead tr th').forEach(function(th) {
+            if (th.style.display !== 'none') {
+                headers.push('"' + th.textContent.trim().replace(/"/g, '""') + '"');
+            }
+        });
+        var rows = [headers.join(',')];
+        table.querySelectorAll('tbody tr').forEach(function(tr) {
+            if (tr.style.display === 'none') { return; }
+            var cells = [];
+            tr.querySelectorAll('td').forEach(function(td) {
+                if (td.style.display !== 'none') {
+                    cells.push('"' + td.textContent.trim().replace(/"/g, '""') + '"');
+                }
+            });
+            if (cells.length) { rows.push(cells.join(',')); }
+        });
+        var blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    var catalogColumnDefs = {
+        'cis-m365-v6': [
+            { id: 'ctrl-id',     label: 'Control ID',    defaultVisible: true  },
+            { id: 'ctrl-title',  label: 'Title',          defaultVisible: true  },
+            { id: 'profile',     label: 'Profile',        defaultVisible: true  },
+            { id: 'section',     label: 'Section',        defaultVisible: true  },
+            { id: 'ig',          label: 'IG Level',       defaultVisible: false },
+            { id: 'coverage',    label: 'Coverage %',     defaultVisible: true  },
+            { id: 'auto-checks', label: 'Auto Checks',    defaultVisible: true  },
+            { id: 'pass-rate',   label: 'Pass Rate',      defaultVisible: true  }
+        ],
+        'cmmc': [
+            { id: 'ctrl-id',     label: 'Practice ID',   defaultVisible: true  },
+            { id: 'ctrl-title',  label: 'Title',          defaultVisible: true  },
+            { id: 'domain',      label: 'Domain',         defaultVisible: true  },
+            { id: 'level',       label: 'Maturity Level', defaultVisible: true  },
+            { id: 'coverage',    label: 'Coverage %',     defaultVisible: true  },
+            { id: 'auto-checks', label: 'Auto Checks',    defaultVisible: true  },
+            { id: 'pass-rate',   label: 'Pass Rate',      defaultVisible: true  }
+        ]
+    };
+
+    document.querySelectorAll('[data-catalog-table]').forEach(function(table) {
+        var fwId = table.dataset.catalogTable;
+        var defs = catalogColumnDefs[fwId];
+        if (!defs) { return; }
+        if (!table.id) { table.id = 'catalog-tbl-' + fwId; }
+        initCatalogColumnPicker(table.id, defs, 'catalog-cols-' + fwId);
+        var section = table.closest('.catalog-section');
+        var csvBtn = section ? section.querySelector('.catalog-csv-btn') : null;
+        if (csvBtn) {
+            var tenantEl = document.querySelector('[data-tenant-name]');
+            var tenant = tenantEl ? tenantEl.dataset.tenantName : 'tenant';
+            var today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            csvBtn.addEventListener('click', function() {
+                exportCatalogTableCsv(table.id, 'Framework-Catalog_' + fwId + '_' + tenant + '_' + today + '.csv');
+            });
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.data-table').forEach(function(table) {

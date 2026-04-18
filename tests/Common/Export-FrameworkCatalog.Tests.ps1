@@ -297,3 +297,63 @@ Describe 'Export-FrameworkCatalog - Scoring Engine' {
         }
     }
 }
+
+Describe 'Export-FrameworkCatalog - gap rows for uncovered controls' {
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/Export-FrameworkCatalog.ps1"
+
+        # Minimal framework hashtable with 2 controls
+        $framework = @{
+            frameworkId   = 'cmmc'
+            label         = 'CMMC 2.0'
+            registryKey   = 'cmmc'
+            scoringMethod = 'maturity-level'
+            totalControls = 2
+            css           = 'fw-cmmc'
+            filterFamily  = 'CMMC'
+            profiles      = $null
+            description   = ''
+            displayOrder  = 7
+            scoringData   = @{
+                maturityLevels = @{
+                    'L1' = @{ label = 'Level 1'; practiceCount = 1 }
+                    'L2' = @{ label = 'Level 2'; practiceCount = 2 }
+                }
+            }
+            extraData     = @{
+                controls = @(
+                    [PSCustomObject]@{ controlId = 'AC.L1-3.1.1'; title = 'Authorized Access Control'; domain = 'Access Control'; level = 'L1' }
+                    [PSCustomObject]@{ controlId = 'AC.L2-3.1.3'; title = 'Control CUI Flow';           domain = 'Access Control'; level = 'L2' }
+                )
+            }
+        }
+
+        $findings = @(
+            [PSCustomObject]@{
+                CheckId    = 'CA-001.1'
+                Status     = 'Pass'
+                Setting    = 'Test Setting'
+                RiskSeverity = 'Medium'
+                Section    = 'Identity'
+                Frameworks = [PSCustomObject]@{
+                    cmmc = [PSCustomObject]@{ controlId = 'AC.L1-3.1.1'; maturityLevel = 'L1' }
+                }
+            }
+        )
+
+        $result = Invoke-FrameworkScoring -Findings $findings -Framework $framework -ControlRegistry @{}
+    }
+
+    It 'Gap row exists for AC.L2-3.1.3 which has no findings' {
+        $gap = $result.Groups | Where-Object { $_.ControlId -eq 'AC.L2-3.1.3' }
+        $gap | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Gap row has IsGap = true' {
+        ($result.Groups | Where-Object { $_.ControlId -eq 'AC.L2-3.1.3' }).IsGap | Should -Be $true
+    }
+
+    It 'Covered control is not marked as gap' {
+        ($result.Groups | Where-Object { $_.ControlId -eq 'AC.L1-3.1.1' }).IsGap | Should -Not -Be $true
+    }
+}

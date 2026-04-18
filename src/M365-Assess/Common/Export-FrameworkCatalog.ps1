@@ -150,6 +150,66 @@ function Invoke-FrameworkScoring {
     # Scoring data key order maps: numeric (1,2,3), alpha-numeric (L1,L2,ML1,ML2), Roman (CAT-I,CAT-II)
     $groups = @($groups | Sort-Object -Property { Get-GroupSortKey -Key $_.Key })
 
+    # Append stub rows for controls in the framework definition that have no results
+    # Controls array is stored under extraData (loaded via Import-FrameworkDefinitions)
+    # or directly on the framework object (passed as PSCustomObject or hashtable with 'controls' key)
+    $fwControls = $null
+    if ($Framework -is [hashtable]) {
+        if ($Framework.ContainsKey('extraData') -and $Framework.extraData -is [hashtable] -and
+            $Framework.extraData.ContainsKey('controls') -and $Framework.extraData['controls']) {
+            $fwControls = $Framework.extraData['controls']
+        }
+        elseif ($Framework.ContainsKey('controls') -and $Framework.controls) {
+            $fwControls = $Framework.controls
+        }
+    }
+    elseif ($Framework.PSObject.Properties.Name -contains 'controls' -and $Framework.controls) {
+        $fwControls = $Framework.controls
+    }
+
+    if ($fwControls -and @($fwControls).Count -gt 0) {
+        $coveredIds = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        # Add controlIds tracked by group objects (if any)
+        foreach ($grp in $groups) {
+            if ($grp.ControlId) { [void]$coveredIds.Add($grp.ControlId) }
+        }
+        # Also include controlIds from mappedFindings for accurate covered detection
+        foreach ($mf in $mappedFindings) {
+            if ($mf.ControlId) {
+                foreach ($cid in ($mf.ControlId -split ';')) {
+                    [void]$coveredIds.Add($cid.Trim())
+                }
+            }
+        }
+        foreach ($ctrl in @($fwControls)) {
+            $cid = if ($ctrl -is [hashtable]) { $ctrl['controlId'] } else { $ctrl.controlId }
+            if (-not $cid) { continue }
+            if ($coveredIds.Contains($cid)) { continue }
+            $ctrlTitle  = if ($ctrl -is [hashtable]) { $ctrl['title']  } else { $ctrl.title  }
+            $ctrlDomain = if ($ctrl -is [hashtable]) { $ctrl['domain'] } else { $ctrl.domain }
+            $ctrlLevel  = if ($ctrl -is [hashtable]) { $ctrl['level']  } else { $ctrl.level  }
+            $groups += @{
+                ControlId = $cid
+                Label     = if ($ctrlTitle)  { $ctrlTitle }  else { '' }
+                Domain    = if ($ctrlDomain) { $ctrlDomain } else { '' }
+                Level     = if ($ctrlLevel)  { $ctrlLevel }  else { '' }
+                IsGap     = $true
+                Key       = $cid
+                Total     = 0
+                Mapped    = 0
+                Covered   = 0
+                Passed    = 0
+                Failed    = 0
+                Warning   = 0
+                Review    = 0
+                Other     = 0
+                Findings  = @()
+            }
+        }
+    }
+
     # Build summary
     $scoredFindings = @($mappedFindings | Where-Object { $_.Finding.Status -ne 'Info' })
     $totalMapped = ($scoredFindings | ForEach-Object { $_.Finding.CheckId } | Select-Object -Unique).Count
@@ -247,18 +307,30 @@ function ConvertTo-CatalogInlineHtml {
     }
     $null = $html.AppendLine("</div>")
 
-    # Group breakdown table
-    $null = $html.AppendLine("<table class='catalog-groups'><thead><tr>")
+    # Group breakdown table with catalog CSV export button
+    $catalogTableId = "catalog-groups-$fwId"
+    $null = $html.AppendLine("<div class='catalog-filter-bar status-filter' style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;'>")
+    $null = $html.AppendLine("<button class='catalog-csv-btn csv-export-btn'>Export CSV</button>")
+    $null = $html.AppendLine("</div>")
+    $null = $html.AppendLine("<table id='$catalogTableId' class='catalog-groups' data-catalog-table='$fwId'><thead><tr>")
     $null = $html.AppendLine("<th>Group</th><th>Label</th><th>Coverage %</th><th>Automated Checks</th><th>Passed</th><th>Failed</th><th>Warning</th><th>Review</th><th>Pass Rate</th>")
     $null = $html.AppendLine("</tr></thead><tbody>")
 
     foreach ($group in $groups) {
+        # Gap row: control exists in framework definition but has no automated checks
+        if ($group.IsGap) {
+            $idEncoded    = [System.Web.HttpUtility]::HtmlEncode([string]$group.ControlId)
+            $labelEncoded = [System.Web.HttpUtility]::HtmlEncode([string]$group.Label)
+            $null = $html.AppendLine("<tr class='fw-catalog-gap-row'><td><span class='fw-tag $fwCss'>$idEncoded</span></td><td>$labelEncoded</td><td colspan='7'><span class='fw-catalog-gap-badge'>No automated check</span></td></tr>")
+            continue
+        }
+
         $grpPassRate = if ($group.Mapped -gt 0) { [math]::Round(($group.Passed / $group.Mapped) * 100, 1) } else { 0 }
         $grpClass = if ($group.Mapped -eq 0) { '' } elseif ($grpPassRate -ge 80) { 'success' } elseif ($grpPassRate -ge 60) { 'warning' } else { 'danger' }
 
         $null = $html.AppendLine("<tr>")
-        $null = $html.AppendLine("<td><span class='fw-tag $fwCss'>$($group.Key)</span></td>")
-        $null = $html.AppendLine("<td>$($group.Label)</td>")
+        $null = $html.AppendLine("<td><span class='fw-tag $fwCss'>$([System.Web.HttpUtility]::HtmlEncode([string]$group.Key))</span></td>")
+        $null = $html.AppendLine("<td>$([System.Web.HttpUtility]::HtmlEncode([string]$group.Label))</td>")
         $coveragePctVal = if ($group.Total -gt 0) { [math]::Round(($group.Covered / $group.Total) * 100, 0) } else { 0 }
         $coverageDisplay = if ($group.Total -gt 0) { "<span title='$($group.Covered) of $($group.Total) controls'>$coveragePctVal%</span>" } else { "$($group.Covered)" }
         $null = $html.AppendLine("<td>$coverageDisplay</td>")
@@ -392,8 +464,8 @@ function ConvertTo-CatalogStandaloneHtml {
         $grpClass = if ($group.Mapped -eq 0) { '' } elseif ($grpPassRate -ge 80) { 'success' } elseif ($grpPassRate -ge 60) { 'warning' } else { 'danger' }
 
         $null = $body.AppendLine("<tr>")
-        $null = $body.AppendLine("<td><span class='fw-tag $fwCss'>$($group.Key)</span></td>")
-        $null = $body.AppendLine("<td>$($group.Label)</td>")
+        $null = $body.AppendLine("<td><span class='fw-tag $fwCss'>$([System.Web.HttpUtility]::HtmlEncode([string]$group.Key))</span></td>")
+        $null = $body.AppendLine("<td>$([System.Web.HttpUtility]::HtmlEncode([string]$group.Label))</td>")
         $coveragePctVal = if ($group.Total -gt 0) { [math]::Round(($group.Covered / $group.Total) * 100, 0) } else { 0 }
         $coverageDisplay = if ($group.Total -gt 0) { "<span title='$($group.Covered) of $($group.Total) controls'>$coveragePctVal%</span>" } else { "$($group.Covered)" }
         $null = $body.AppendLine("<td>$coverageDisplay</td>")
@@ -620,7 +692,7 @@ function ConvertTo-CatalogStandaloneHtml {
 # ---------------------------------------------------------------------------
 # Private helper: build a group hashtable from a bucket of findings
 # ---------------------------------------------------------------------------
-function New-ScoringGroup {
+function Build-ScoringGroup {
     [CmdletBinding()]
     param(
         [string]$Key,
@@ -746,7 +818,7 @@ function Invoke-ProfileCompliance {
         $profileDefs = Get-ScoringSubObject -Framework $Framework -Key 'profiles'
     }
     if (-not $profileDefs -or $profileDefs.Count -eq 0) {
-        return @(New-ScoringGroup -Key 'All' -Label 'All Controls' -Total ([int]$Framework.totalControls) -GroupFindings ([System.Collections.Generic.List[PSCustomObject]]::new()))
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Controls' -Total ([int]$Framework.totalControls) -GroupFindings ([System.Collections.Generic.List[PSCustomObject]]::new()))
     }
 
     $groups = [System.Collections.Generic.List[hashtable]]::new()
@@ -779,7 +851,7 @@ function Invoke-ProfileCompliance {
             }
         }
 
-        $groups.Add((New-ScoringGroup -Key $profileKey -Label $label -Total $controlCount -GroupFindings $bucket -Covered $coveredControlIds.Count))
+        $groups.Add((Build-ScoringGroup -Key $profileKey -Label $label -Total $controlCount -GroupFindings $bucket -Covered $coveredControlIds.Count))
     }
     return @($groups)
 }
@@ -793,7 +865,7 @@ function Invoke-FunctionCoverage {
 
     $functions = Get-ScoringSubObject -Framework $Framework -Key 'functions'
     if (-not $functions) {
-        return @(New-ScoringGroup -Key 'All' -Label 'All Functions' -Total ([int]$Framework.totalControls) -GroupFindings ([System.Collections.Generic.List[PSCustomObject]]::new()))
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Functions' -Total ([int]$Framework.totalControls) -GroupFindings ([System.Collections.Generic.List[PSCustomObject]]::new()))
     }
 
     # Build buckets keyed by function code + track unique controlIds per group
@@ -823,7 +895,7 @@ function Invoke-FunctionCoverage {
         $funcInfo = $functions[$key]
         $label = if ($funcInfo.label) { $funcInfo.label } else { $key }
         $total = if ($funcInfo.subcategories) { [int]$funcInfo.subcategories } else { 0 }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
@@ -840,7 +912,7 @@ function Invoke-ControlCoverage {
         # Generic fallback: single group
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Controls' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Controls' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $buckets = @{}
@@ -871,7 +943,7 @@ function Invoke-ControlCoverage {
         $themeInfo = $themes[$key]
         $label = if ($themeInfo.label) { $themeInfo.label } else { $key }
         $total = if ($themeInfo.controlCount) { [int]$themeInfo.controlCount } else { 0 }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
@@ -903,7 +975,7 @@ function Invoke-TechniqueCoverage {
     if (-not $tactics) {
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Techniques' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Techniques' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $buckets = @{}
@@ -938,12 +1010,12 @@ function Invoke-TechniqueCoverage {
     foreach ($key in $tactics.Keys) {
         $tacticInfo = $tactics[$key]
         $label = if ($tacticInfo.label) { $tacticInfo.label } else { $key }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
 
     # Add Unmapped group only if it has findings
     if ($buckets['Unmapped'].Count -gt 0) {
-        $groups.Add((New-ScoringGroup -Key 'Unmapped' -Label 'Unmapped Techniques' -Total 0 -GroupFindings $buckets['Unmapped']))
+        $groups.Add((Build-ScoringGroup -Key 'Unmapped' -Label 'Unmapped Techniques' -Total 0 -GroupFindings $buckets['Unmapped']))
     }
 
     return @($groups)
@@ -960,7 +1032,7 @@ function Invoke-MaturityLevel {
     if (-not $levels) {
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Levels' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Levels' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $fwId = $Framework.frameworkId
@@ -1013,7 +1085,7 @@ function Invoke-MaturityLevel {
         $levelInfo = $levels[$key]
         $label = if ($levelInfo.label) { $levelInfo.label } else { $key }
         $total = if ($levelInfo.practiceCount) { [int]$levelInfo.practiceCount } else { 0 }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total $total -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
@@ -1030,7 +1102,7 @@ function Invoke-SeverityCoverage {
         # Single "All" group
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Findings' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Findings' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     # STIG V-numbers don't encode severity category, so distribute to all categories
@@ -1046,7 +1118,7 @@ function Invoke-SeverityCoverage {
     foreach ($key in $categories.Keys) {
         $catInfo = $categories[$key]
         $label = if ($catInfo.label) { $catInfo.label } else { $key }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key]))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key]))
     }
     return @($groups)
 }
@@ -1062,7 +1134,7 @@ function Invoke-RequirementCompliance {
     if (-not $requirements) {
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Requirements' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Requirements' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $buckets = @{}
@@ -1091,7 +1163,7 @@ function Invoke-RequirementCompliance {
     foreach ($key in $requirements.Keys) {
         $reqInfo = $requirements[$key]
         $label = if ($reqInfo.label) { $reqInfo.label } else { "Requirement $key" }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
@@ -1107,7 +1179,7 @@ function Invoke-CriteriaCoverage {
     if (-not $criteria) {
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Criteria' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Criteria' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $fwId = $Framework.frameworkId
@@ -1157,7 +1229,7 @@ function Invoke-CriteriaCoverage {
     foreach ($key in $criteria.Keys) {
         $critInfo = $criteria[$key]
         $label = if ($critInfo.label) { $critInfo.label } else { $key }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
@@ -1173,7 +1245,7 @@ function Invoke-PolicyCompliance {
     if (-not $products) {
         $bucket = [System.Collections.Generic.List[PSCustomObject]]::new()
         foreach ($mf in $MappedFindings) { $bucket.Add($mf.Finding) }
-        return @(New-ScoringGroup -Key 'All' -Label 'All Products' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
+        return @(Build-ScoringGroup -Key 'All' -Label 'All Products' -Total ([int]$Framework.totalControls) -GroupFindings $bucket)
     }
 
     $buckets = @{}
@@ -1202,7 +1274,7 @@ function Invoke-PolicyCompliance {
     foreach ($key in $products.Keys) {
         $prodInfo = $products[$key]
         $label = if ($prodInfo.label) { $prodInfo.label } else { $key }
-        $groups.Add((New-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
+        $groups.Add((Build-ScoringGroup -Key $key -Label $label -Total 0 -GroupFindings $buckets[$key] -Covered $coveredIds[$key].Count))
     }
     return @($groups)
 }
