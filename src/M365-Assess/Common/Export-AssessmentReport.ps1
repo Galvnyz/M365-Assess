@@ -129,6 +129,10 @@ param(
     [hashtable]$CustomBranding,
 
     [Parameter()]
+    [ValidateScript({ -not $_ -or (Test-Path -Path $_ -PathType Leaf) })]
+    [string]$CustomerProfile,
+
+    [Parameter()]
     [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8','All')]
     [string[]]$FrameworkExport,
 
@@ -288,6 +292,27 @@ $logoMime   = if ($logoAsset) { $logoAsset.Mime }   else { 'image/png' }
 $waveAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*wave*', '*bg*')
 $waveBase64 = if ($waveAsset) { $waveAsset.Base64 } else { '' }
 $waveMime   = if ($waveAsset) { $waveAsset.Mime }   else { 'image/png' }
+
+# ------------------------------------------------------------------
+# CustomerProfile: load .psd1 and merge into individual params
+# ------------------------------------------------------------------
+if ($CustomerProfile) {
+    if (-not (Get-Command -Name ConvertTo-FrameworkFilter -ErrorAction SilentlyContinue)) {
+        . (Join-Path -Path $PSScriptRoot -ChildPath 'ConvertTo-FrameworkFilter.ps1')
+    }
+    $cpData = Import-PowerShellDataFile -Path $CustomerProfile
+    if ($cpData.CustomBranding -and -not $CustomBranding) {
+        $CustomBranding = $cpData.CustomBranding
+    }
+    if ($cpData.FindingsNarrative -and -not $FindingsNarrative) {
+        $FindingsNarrative = $cpData.FindingsNarrative
+    }
+    if ($cpData.Frameworks -and $FrameworkFilters.Count -eq 0) {
+        $FrameworkFilters = @(ConvertTo-FrameworkFilter -Frameworks @($cpData.Frameworks))
+        $FrameworkFilter  = @($FrameworkFilters | Select-Object -ExpandProperty FilterFamily -Unique)
+    }
+    $WhiteLabel = $true
+}
 
 $brandName      = 'M365 Assess'
 $accentColor    = ''

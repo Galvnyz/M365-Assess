@@ -1061,12 +1061,23 @@ function Invoke-MaturityLevel {
         }
     }
     elseif ($fwId -eq 'cmmc') {
-        # Cumulative: all findings count toward each level
-        foreach ($key in $levels.Keys) {
-            foreach ($mf in $MappedFindings) {
-                $buckets[$key].Add($mf.Finding)
-                $parts = $mf.ControlId -split ';'
-                foreach ($part in $parts) { [void]$coveredIds[$key].Add($part.Trim()) }
+        # Cumulative upward: finding goes in its minimum level bucket and all higher buckets.
+        # Level is encoded in the controlId (e.g. AC.L1-, ACL2.-, RA.L3-).
+        # L3 compliance requires meeting L1+L2+L3, so a finding at minimum L1 appears in all.
+        foreach ($mf in $MappedFindings) {
+            $minLevelNum = 3  # default to L3 if no level marker found
+            $parts = $mf.ControlId -split ';'
+            foreach ($part in $parts) {
+                if ($part -match 'L([123])') {
+                    $lvl = [int]$Matches[1]
+                    if ($lvl -lt $minLevelNum) { $minLevelNum = $lvl }
+                }
+            }
+            foreach ($key in $levels.Keys) {
+                if ($key -match 'L(\d+)' -and [int]$Matches[1] -ge $minLevelNum) {
+                    $buckets[$key].Add($mf.Finding)
+                    foreach ($part in $parts) { [void]$coveredIds[$key].Add($part.Trim()) }
+                }
             }
         }
     }
