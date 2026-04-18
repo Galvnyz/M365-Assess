@@ -63,4 +63,42 @@ Describe 'Get-ReportTemplate.ps1 - structural validation' {
     It 'should include navigation or table of contents reference' {
         $script:content | Should -Match 'tocHtml|toc'
     }
+
+    It 'should pre-compute $navTitleHtml before the main here-string' {
+        $script:content | Should -Match '\$navTitleHtml\s*='
+    }
+
+    It 'should pre-compute $footerLineHtml before the main here-string' {
+        $script:content | Should -Match '\$footerLineHtml\s*='
+    }
+
+    It 'should use $navTitleHtml in the nav header area' {
+        $script:content | Should -Match '\$navTitleHtml'
+    }
+
+    It 'should use $footerLineHtml in the footer' {
+        $script:content | Should -Match '\$footerLineHtml'
+    }
+
+    It 'should contain narrative-card CSS class' {
+        $script:content | Should -Match 'narrative-card'
+    }
+
+    It 'should contain narrative-chip CSS class' {
+        $script:content | Should -Match 'narrative-chip'
+    }
+
+    It 'should contain white-label cover CSS classes' {
+        $script:content | Should -Match 'wl-cover|wl-client-logo|wl-prep-pill'
+    }
+
+    It 'should conditionally render narrative card when $findingsNarrativeHtml is set' {
+        $script:content | Should -Match 'findingsNarrativeHtml'
+    }
+
+    It 'should include severity chip classes for critical, high, and medium' {
+        $script:content | Should -Match 'chip-critical'
+        $script:content | Should -Match 'chip-high'
+        $script:content | Should -Match 'chip-medium'
+    }
 }

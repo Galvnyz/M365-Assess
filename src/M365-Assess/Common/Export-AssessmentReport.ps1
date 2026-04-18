@@ -26,8 +26,20 @@
 .PARAMETER NoBranding
     Suppress the open-source project branding on the cover page. Useful for
     white-labeling reports delivered to clients.
+.PARAMETER WhiteLabel
+    Strip all M365-Assess and GitHub identity from the report. With CustomBranding
+    keys produces Mode A (your brand). Without produces Mode C (neutral/clean).
+.PARAMETER Package
+    Generate HTML + PDF (headless browser) + XLSX delivery package.
+.PARAMETER FindingsNarrative
+    Path to a .txt or .md file, or an inline string, with consultant-authored
+    commentary. Rendered as a narrative card before the Executive Summary.
+.PARAMETER FrameworkFilters
+    Structured framework filter objects from ConvertTo-FrameworkFilter. Contains
+    sub-level profile/level arrays and display labels for the cover page and
+    compliance matrix heading. Passed from Invoke-M365Assessment.
 .PARAMETER SkipPdf
-    Skip PDF generation even if wkhtmltopdf is available on the system.
+    Skip PDF generation even if a headless browser is available on the system.
 .PARAMETER SkipComplianceOverview
     Omit the Compliance Overview section from the report. Useful when running
     a single section assessment where framework coverage cards are not relevant.
@@ -83,6 +95,19 @@ param(
 
     [Parameter()]
     [switch]$NoBranding,
+
+    [Parameter()]
+    [switch]$WhiteLabel,
+
+    [Parameter()]
+    [switch]$Package,
+
+    [Parameter()]
+    [string]$FindingsNarrative,
+
+    [Parameter()]
+    [AllowEmptyCollection()]
+    [PSCustomObject[]]$FrameworkFilters = @(),
 
     [Parameter()]
     [switch]$SkipPdf,
@@ -264,8 +289,18 @@ $waveAsset = Get-AssetBase64 -Directory $assetsDir -Patterns @('*wave*', '*bg*')
 $waveBase64 = if ($waveAsset) { $waveAsset.Base64 } else { '' }
 $waveMime   = if ($waveAsset) { $waveAsset.Mime }   else { 'image/png' }
 
-$brandName = 'M365 Assess'
-$accentColor = ''
+$brandName      = 'M365 Assess'
+$accentColor    = ''
+$clientLogoBase64 = ''
+$clientLogoMime   = 'image/png'
+$clientName     = ''
+$reportNote     = ''
+$disclaimer     = ''
+$sidebarSubtitle = ''
+$footerText     = ''
+$footerUrl      = ''
+$primaryColor   = ''
+$reportTitle    = ''
 if ($CustomBranding) {
     if ($CustomBranding.ContainsKey('LogoPath') -and (Test-Path -Path $CustomBranding.LogoPath)) {
         $customLogoBytes = [System.IO.File]::ReadAllBytes($CustomBranding.LogoPath)
@@ -273,12 +308,49 @@ if ($CustomBranding) {
         $ext = [System.IO.Path]::GetExtension($CustomBranding.LogoPath).TrimStart('.').ToLower()
         $logoMime = switch ($ext) { 'jpg' { 'image/jpeg' } 'jpeg' { 'image/jpeg' } 'svg' { 'image/svg+xml' } default { 'image/png' } }
     }
-    if ($CustomBranding.ContainsKey('CompanyName')) {
-        $brandName = $CustomBranding.CompanyName
+    if ($CustomBranding.ContainsKey('ClientLogoPath') -and (Test-Path -Path $CustomBranding.ClientLogoPath)) {
+        $clientLogoBytes  = [System.IO.File]::ReadAllBytes($CustomBranding.ClientLogoPath)
+        $clientLogoBase64 = [Convert]::ToBase64String($clientLogoBytes)
+        $ext = [System.IO.Path]::GetExtension($CustomBranding.ClientLogoPath).TrimStart('.').ToLower()
+        $clientLogoMime = switch ($ext) { 'jpg' { 'image/jpeg' } 'jpeg' { 'image/jpeg' } 'svg' { 'image/svg+xml' } default { 'image/png' } }
     }
-    if ($CustomBranding.ContainsKey('AccentColor')) {
-        $accentColor = $CustomBranding.AccentColor
+    if ($CustomBranding.ContainsKey('CompanyName'))    { $brandName       = $CustomBranding.CompanyName }
+    if ($CustomBranding.ContainsKey('ClientName'))     { $clientName      = $CustomBranding.ClientName }
+    if ($CustomBranding.ContainsKey('AccentColor'))    { $accentColor     = $CustomBranding.AccentColor }
+    if ($CustomBranding.ContainsKey('PrimaryColor'))   { $primaryColor    = $CustomBranding.PrimaryColor }
+    if ($CustomBranding.ContainsKey('ReportNote'))     { $reportNote      = $CustomBranding.ReportNote }
+    if ($CustomBranding.ContainsKey('Disclaimer'))     { $disclaimer      = $CustomBranding.Disclaimer }
+    if ($CustomBranding.ContainsKey('SidebarSubtitle')){ $sidebarSubtitle = $CustomBranding.SidebarSubtitle }
+    if ($CustomBranding.ContainsKey('FooterText'))     { $footerText      = $CustomBranding.FooterText }
+    if ($CustomBranding.ContainsKey('FooterUrl'))      { $footerUrl       = $CustomBranding.FooterUrl }
+    if ($CustomBranding.ContainsKey('ReportTitle'))    { $reportTitle     = $CustomBranding.ReportTitle }
+}
+# Defaults applied by -WhiteLabel when not explicitly set
+if ($WhiteLabel) {
+    if (-not $disclaimer) { $disclaimer = 'Confidential — Prepared exclusively for the named recipient. Do not distribute.' }
+    if (-not $footerText -and $brandName -ne 'M365 Assess') { $footerText = "Assessment by $brandName" }
+}
+# Resolve FindingsNarrative: file path → read content; inline string → use as-is
+$findingsNarrativeHtml = ''
+if ($FindingsNarrative) {
+    $narrativeText = if (Test-Path -Path $FindingsNarrative -ErrorAction SilentlyContinue) {
+        Get-Content -Path $FindingsNarrative -Raw
+    } else {
+        $FindingsNarrative
     }
+    # Render Markdown if ConvertFrom-Markdown is available and file is .md
+    $isMarkdown = ($FindingsNarrative -match '\.md$') -or ($narrativeText -match '^#{1,6}\s|^\*\*|^-\s')
+    if ($isMarkdown -and (Get-Command -Name ConvertFrom-Markdown -ErrorAction SilentlyContinue)) {
+        $findingsNarrativeHtml = (ConvertFrom-Markdown -InputObject $narrativeText).Html
+    } else {
+        $safeText = [System.Web.HttpUtility]::HtmlEncode($narrativeText)
+        $findingsNarrativeHtml = $safeText -replace "`r?`n", '<br>'
+    }
+}
+# Framework display labels for cover page (from FrameworkFilters sub-level objects)
+$frameworkDisplayLabels = @()
+if ($FrameworkFilters -and $FrameworkFilters.Count -gt 0) {
+    $frameworkDisplayLabels = $FrameworkFilters | ForEach-Object { $_.DisplayLabel }
 }
 
 # ------------------------------------------------------------------
@@ -389,24 +461,40 @@ if ($OpenReport) {
 }
 
 # ------------------------------------------------------------------
-# Generate PDF if wkhtmltopdf is available
+# Generate PDF via headless browser (Edge preferred, Chrome fallback)
 # ------------------------------------------------------------------
-if (-not $SkipPdf) {
-    $pdfPath = [System.IO.Path]::ChangeExtension($OutputPath, '.pdf')
-    $wkhtmltopdf = Get-Command -Name 'wkhtmltopdf' -ErrorAction SilentlyContinue
+$pdfPath = [System.IO.Path]::ChangeExtension($OutputPath, '.pdf')
+$generatePdf = (-not $SkipPdf) -and ($Package -or -not $SkipPdf)
 
-    if ($wkhtmltopdf) {
+if ($generatePdf) {
+    $browser = Get-Command -Name 'msedge' -ErrorAction SilentlyContinue
+    if (-not $browser) { $browser = Get-Command -Name 'chrome' -ErrorAction SilentlyContinue }
+
+    if ($browser) {
         try {
-            & wkhtmltopdf --page-size Letter --margin-top 15 --margin-bottom 15 --margin-left 15 --margin-right 15 --enable-local-file-access $OutputPath $pdfPath 2>$null
+            $htmlUri = 'file:///' + ($OutputPath -replace '\\', '/')
+            $tmpScript = [System.IO.Path]::GetTempFileName() + '.ps1'
+            Set-Content -Path $tmpScript -Value @"
+& '$($browser.Source)' --headless --print-to-pdf='$pdfPath' --no-pdf-header-footer --disable-gpu '$htmlUri' 2>`$null
+"@
+            pwsh -NoProfile -File $tmpScript 2>$null
+            Remove-Item -Path $tmpScript -ErrorAction SilentlyContinue
             if (Test-Path -Path $pdfPath) {
                 Write-Output "PDF report generated: $pdfPath"
             }
         }
         catch {
-            Write-Verbose "PDF generation failed: $_"
+            Write-Warning "PDF generation failed: $_"
         }
     }
+    elseif (Get-Command -Name 'wkhtmltopdf' -ErrorAction SilentlyContinue) {
+        try {
+            & wkhtmltopdf --page-size Letter --margin-top 15 --margin-bottom 15 --margin-left 15 --margin-right 15 --enable-local-file-access $OutputPath $pdfPath 2>$null
+            if (Test-Path -Path $pdfPath) { Write-Output "PDF report generated: $pdfPath" }
+        }
+        catch { Write-Verbose "PDF generation failed: $_" }
+    }
     else {
-        Write-Verbose "wkhtmltopdf not found. To generate PDF, open the HTML report in a browser and print to PDF."
+        Write-Warning "No headless browser found (msedge/chrome) and wkhtmltopdf not available. Open the HTML report in a browser and print to PDF."
     }
 }

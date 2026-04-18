@@ -1537,7 +1537,16 @@ if ($allCisFindings.Count -gt 0) {
 
 if ($allCisFindings.Count -gt 0 -and $controlRegistry.Count -gt 0 -and -not $SkipComplianceOverview) {
     . (Join-Path -Path $PSScriptRoot -ChildPath 'Export-ComplianceOverview.ps1')
-    $complianceHtml = Export-ComplianceOverview -Findings @($allCisFindings) -ControlRegistry $controlRegistry -Frameworks $allFrameworks -FrameworkFilter $FrameworkFilter -Sections @($summary | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    $coParams = @{
+        Findings         = @($allCisFindings)
+        ControlRegistry  = $controlRegistry
+        Frameworks       = $allFrameworks
+        FrameworkFilter  = $FrameworkFilter
+        Sections         = @($summary | Select-Object -ExpandProperty Section -ErrorAction SilentlyContinue | Where-Object { $_ } | Sort-Object -Unique)
+    }
+    if ($WhiteLabel) { $coParams['WhiteLabel'] = $true }
+    if ($FrameworkFilters -and $FrameworkFilters.Count -gt 0) { $coParams['FrameworkFilters'] = $FrameworkFilters }
+    $complianceHtml = Export-ComplianceOverview @coParams
 }
 
 # ------------------------------------------------------------------
@@ -1586,7 +1595,10 @@ if ($FrameworkExport -and $allCisFindings.Count -gt 0 -and $controlRegistry.Coun
 try {
     $xlsxScript = Join-Path -Path $PSScriptRoot -ChildPath 'Export-ComplianceMatrix.ps1'
     if (Test-Path -Path $xlsxScript) {
-        & $xlsxScript -AssessmentFolder $AssessmentFolder -TenantName $reportDomainPrefix
+        $xlsxParams = @{ AssessmentFolder = $AssessmentFolder; TenantName = $reportDomainPrefix }
+        if ($WhiteLabel -and $CustomBranding) { $xlsxParams['CustomBranding'] = $CustomBranding }
+        if ($FrameworkFilters -and $FrameworkFilters.Count -gt 0) { $xlsxParams['FrameworkFilters'] = $FrameworkFilters }
+        & $xlsxScript @xlsxParams
     }
 } catch {
     Write-Warning "XLSX compliance matrix export failed: $($_.Exception.Message)"

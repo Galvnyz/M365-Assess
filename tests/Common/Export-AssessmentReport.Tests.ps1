@@ -134,8 +134,8 @@ Describe 'Export-AssessmentReport HTML structure' {
             $html | Should -Match 'Import-FrameworkDefinitions\s+-FrameworksPath'
         }
 
-        It 'Should call Export-ComplianceOverview with required parameters' {
-            $html | Should -Match 'Export-ComplianceOverview\s+-Findings'
+        It 'Should call Export-ComplianceOverview (inline params or splatted)' {
+            $html | Should -Match 'Export-ComplianceOverview\s+(@\w+|-Findings)'
         }
 
         It 'Should include Frameworks hashtable in finding object' {

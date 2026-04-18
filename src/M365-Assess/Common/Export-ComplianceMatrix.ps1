@@ -28,7 +28,14 @@ param(
     [string]$AssessmentFolder,
 
     [Parameter()]
-    [string]$TenantName
+    [string]$TenantName,
+
+    [Parameter()]
+    [hashtable]$CustomBranding,
+
+    [Parameter()]
+    [AllowEmptyCollection()]
+    [PSCustomObject[]]$FrameworkFilters = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -336,6 +343,19 @@ if (Test-Path -Path $outputFile) {
     Remove-Item -Path $outputFile -Force
 }
 
+# Build Prepared By header value for white-label mode
+$preparedByHeader = ''
+if ($CustomBranding) {
+    $prepBy  = if ($CustomBranding.ContainsKey('CompanyName')) { $CustomBranding.CompanyName } else { '' }
+    $prepFor = if ($CustomBranding.ContainsKey('ClientName'))  { $CustomBranding.ClientName }  else { $TenantName }
+    $today   = Get-Date -Format 'MMMM d, yyyy'
+    $parts   = @()
+    if ($prepBy)  { $parts += "Prepared By: $prepBy" }
+    if ($prepFor) { $parts += "Prepared For: $prepFor" }
+    $parts += $today
+    $preparedByHeader = $parts -join ' | '
+}
+
 # Sheet 1 - Compliance Matrix
 $matrixParams = @{
     Path          = $outputFile
@@ -345,6 +365,13 @@ $matrixParams = @{
     FreezeTopRow  = $true
     BoldTopRow    = $true
     TableStyle    = 'Medium2'
+}
+if ($preparedByHeader) {
+    $matrixParams['Title']           = $preparedByHeader
+    $matrixParams['TitleBold']       = $true
+    $matrixParams['TitleSize']       = 11
+    $matrixParams['TitleBackgroundColor'] = [System.Drawing.Color]::FromArgb(30, 58, 95)
+    $matrixParams['TitleFontColor']  = [System.Drawing.Color]::White
 }
 $sortedFindings | Export-Excel @matrixParams
 

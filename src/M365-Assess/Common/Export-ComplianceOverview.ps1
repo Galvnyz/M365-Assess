@@ -40,7 +40,14 @@ function Export-ComplianceOverview {
         [string[]]$FrameworkFilter,
 
         [Parameter()]
-        [string[]]$Sections
+        [string[]]$Sections,
+
+        [Parameter()]
+        [switch]$WhiteLabel,
+
+        [Parameter()]
+        [AllowEmptyCollection()]
+        [PSCustomObject[]]$FrameworkFilters
     )
 
     # Apply FrameworkFilter to narrow displayed frameworks
@@ -55,9 +62,23 @@ function Export-ComplianceOverview {
 
     $html = [System.Text.StringBuilder]::new()
 
+    $sectionHeading = 'Compliance Overview'
+    $sectionDesc    = 'Security findings mapped across compliance frameworks. Use the selector below to choose which frameworks to display.'
+    if ($WhiteLabel -and $FrameworkFilters -and $FrameworkFilters.Count -gt 0) {
+        $subLevelFilters = @($FrameworkFilters | Where-Object { $_.HasSubLevel })
+        if ($subLevelFilters.Count -eq 1) {
+            $sectionHeading = "$($subLevelFilters[0].DisplayLabel) Compliance"
+            $sectionDesc    = "Security findings assessed against $($subLevelFilters[0].DisplayLabel) controls."
+        } elseif ($subLevelFilters.Count -gt 1) {
+            $labels = ($subLevelFilters | ForEach-Object { $_.DisplayLabel }) -join ' / '
+            $sectionHeading = "$labels Compliance"
+            $sectionDesc    = "Security findings assessed against $labels controls."
+        }
+    }
+
     $null = $html.AppendLine("<details class='section' open>")
-    $null = $html.AppendLine("<summary><h2>Compliance Overview</h2></summary>")
-    $null = $html.AppendLine("<p>Security findings mapped across compliance frameworks. Use the selector below to choose which frameworks to display.</p>")
+    $null = $html.AppendLine("<summary><h2>$(ConvertTo-HtmlSafe -Text $sectionHeading)</h2></summary>")
+    $null = $html.AppendLine("<p>$sectionDesc</p>")
 
     # Informational disclaimer
     $null = $html.AppendLine("<div class='cis-disclaimer'>")
@@ -140,14 +161,23 @@ function Export-ComplianceOverview {
     $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='statusSelectAll' class='fw-action-btn'>All</button><button type='button' id='statusSelectNone' class='fw-action-btn'>None</button></span>")
     $null = $html.AppendLine("</div>")
 
-    # Framework row
-    $null = $html.AppendLine("<div class='co-filter-row' id='fwSelector'>")
-    $null = $html.AppendLine("<span class='co-filter-label'>Frameworks:</span>")
-    foreach ($fw in $displayFrameworks) {
-        $null = $html.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fw.frameworkId)' checked> $($fw.label)</label>")
+    # Framework row — hidden in white-label mode (framework is pre-selected via FrameworkFilters)
+    if (-not $WhiteLabel) {
+        $null = $html.AppendLine("<div class='co-filter-row' id='fwSelector'>")
+        $null = $html.AppendLine("<span class='co-filter-label'>Frameworks:</span>")
+        foreach ($fw in $displayFrameworks) {
+            $null = $html.AppendLine("<label class='fw-checkbox'><input type='checkbox' value='$($fw.frameworkId)' checked> $($fw.label)</label>")
+        }
+        $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
+        $null = $html.AppendLine("</div>")
+    } else {
+        # Emit hidden inputs so JS framework-filtering logic still works
+        $null = $html.AppendLine("<div id='fwSelector' style='display:none'>")
+        foreach ($fw in $displayFrameworks) {
+            $null = $html.AppendLine("<input type='checkbox' value='$($fw.frameworkId)' checked style='display:none'>")
+        }
+        $null = $html.AppendLine("</div>")
     }
-    $null = $html.AppendLine("<span class='fw-selector-actions'><button type='button' id='fwSelectAll' class='fw-action-btn'>All</button><button type='button' id='fwSelectNone' class='fw-action-btn'>None</button></span>")
-    $null = $html.AppendLine("</div>")
 
     # CIS profile sub-filter (shown when cis-m365-v6 is active)
     $null = $html.AppendLine("<div class='co-filter-row' id='cisSubFilter' style='display:none'>")
@@ -168,6 +198,7 @@ function Export-ComplianceOverview {
     $null = $html.AppendLine("<button type='button' class='co-profile-btn active' data-cmmc-level='all'>All Levels</button>")
     $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-cmmc-level='L1'>L1</button>")
     $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-cmmc-level='L2'>L2</button>")
+    $null = $html.AppendLine("<button type='button' class='co-profile-btn' data-cmmc-level='L3'>L3</button>")
     $null = $html.AppendLine("</div>")
     $null = $html.AppendLine("</div>")
 

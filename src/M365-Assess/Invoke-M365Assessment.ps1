@@ -66,7 +66,24 @@
 .PARAMETER FrameworkFilter
     Limit the compliance overview to specific framework families.
 .PARAMETER CustomBranding
-    Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor.
+    Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor,
+    ClientLogoPath, ClientName, ReportNote, Disclaimer, SidebarSubtitle, FooterText,
+    FooterUrl, PrimaryColor, ReportTitle.
+.PARAMETER WhiteLabel
+    Strips all M365-Assess and GitHub identity from the report. Combined with
+    CustomBranding keys produces a fully branded consultant deliverable (Mode A).
+    Without CustomBranding produces a neutral, tool-agnostic report (Mode C).
+.PARAMETER Package
+    Generates a full delivery package: white-labeled HTML, auto-generated PDF
+    (via headless Edge or Chrome), and XLSX compliance matrix in one folder.
+.PARAMETER CustomerProfile
+    Path to a .psd1 configuration file with CustomBranding, FindingsNarrative,
+    and Frameworks keys. Merged into the equivalent parameters — direct params
+    win on conflict. Enables reusable per-customer configuration.
+.PARAMETER FindingsNarrative
+    Path to a .txt or .md file (or an inline string) containing consultant-authored
+    findings commentary. Rendered as a narrative card before the Executive Summary,
+    alongside auto-populated severity chip counts.
 .PARAMETER FrameworkExport
     Generate standalone per-framework HTML catalog exports. Specify framework
     families or 'All'. Output files are named _<Framework>-Catalog_<tenant>.html.
@@ -194,11 +211,31 @@ param(
     [switch]$OpenReport,
 
     [Parameter()]
-    [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8')]
+    [ValidateScript({
+        $validFamilies = @('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','CISv8')
+        foreach ($fw in $_) {
+            $family = ($fw -split ':')[0].ToUpper()
+            if ($family -notin $validFamilies) { throw "Invalid framework family '$family' in '$fw'. Valid: $($validFamilies -join ', ')" }
+        }
+        $true
+    })]
     [string[]]$FrameworkFilter,
 
     [Parameter()]
     [hashtable]$CustomBranding,
+
+    [Parameter()]
+    [switch]$WhiteLabel,
+
+    [Parameter()]
+    [switch]$Package,
+
+    [Parameter()]
+    [ValidateScript({ -not $_ -or (Test-Path -Path $_ -PathType Leaf) })]
+    [string]$CustomerProfile,
+
+    [Parameter()]
+    [string]$FindingsNarrative,
 
     [Parameter()]
     [ValidateSet('CIS','NIST','ISO','STIG','PCI','CMMC','HIPAA','CISA','SOC2','FedRAMP','Essential8','MITRE','All')]
@@ -255,6 +292,41 @@ $script:AssessmentVersion = (Import-PowerShellDataFile -Path "$projectRoot/M365-
 if (-not (Get-Command -Name Show-InteractiveWizard -ErrorAction SilentlyContinue)) {
     Get-ChildItem -Path (Join-Path $projectRoot 'Orchestrator') -Filter '*.ps1' |
         ForEach-Object { . $_.FullName }
+}
+if (-not (Get-Command -Name ConvertTo-FrameworkFilter -ErrorAction SilentlyContinue)) {
+    . (Join-Path $projectRoot 'Common\ConvertTo-FrameworkFilter.ps1')
+}
+
+# ------------------------------------------------------------------
+# CustomerProfile — merge .psd1 into params (direct params win)
+# ------------------------------------------------------------------
+$script:frameworkFilters = $null
+if ($CustomerProfile) {
+    $cpData = Import-PowerShellDataFile -Path $CustomerProfile
+    if ($cpData.ContainsKey('CustomBranding')) {
+        if (-not $PSBoundParameters.ContainsKey('CustomBranding')) {
+            $CustomBranding = $cpData['CustomBranding']
+        } else {
+            foreach ($key in $cpData['CustomBranding'].Keys) {
+                if (-not $CustomBranding.ContainsKey($key)) { $CustomBranding[$key] = $cpData['CustomBranding'][$key] }
+            }
+        }
+    }
+    if ($cpData.ContainsKey('FindingsNarrative') -and -not $PSBoundParameters.ContainsKey('FindingsNarrative')) {
+        $FindingsNarrative = $cpData['FindingsNarrative']
+    }
+    if ($cpData.ContainsKey('Frameworks') -and -not $PSBoundParameters.ContainsKey('FrameworkFilter')) {
+        $script:frameworkFilters = ConvertTo-FrameworkFilter -Frameworks $cpData['Frameworks']
+        $FrameworkFilter = $script:frameworkFilters | ForEach-Object { $_.FilterFamily } | Select-Object -Unique
+    }
+}
+# Parse any sub-level notation passed directly via -FrameworkFilter
+if ($FrameworkFilter -and -not $script:frameworkFilters) {
+    $hasSubLevel = $FrameworkFilter | Where-Object { $_ -match ':' }
+    if ($hasSubLevel) {
+        $script:frameworkFilters = ConvertTo-FrameworkFilter -Frameworks $FrameworkFilter
+        $FrameworkFilter = $script:frameworkFilters | ForEach-Object { $_.FilterFamily } | Select-Object -Unique
+    }
 }
 
 # Show-InteractiveWizard -- extracted to Orchestrator/Show-InteractiveWizard.ps1
@@ -1199,6 +1271,10 @@ if (Test-Path -Path $reportScriptPath) {
         if ($script:domainPrefix) { $reportParams['TenantName'] = $script:domainPrefix }
         elseif ($TenantId)        { $reportParams['TenantName'] = $TenantId }
         if ($NoBranding) { $reportParams['NoBranding'] = $true }
+        if ($WhiteLabel) { $reportParams['WhiteLabel'] = $true }
+        if ($Package) { $reportParams['Package'] = $true }
+        if ($FindingsNarrative) { $reportParams['FindingsNarrative'] = $FindingsNarrative }
+        if ($script:frameworkFilters) { $reportParams['FrameworkFilters'] = $script:frameworkFilters }
         if ($SkipComplianceOverview) { $reportParams['SkipComplianceOverview'] = $true }
         if ($SkipCoverPage) { $reportParams['SkipCoverPage'] = $true }
         if ($SkipExecutiveSummary) { $reportParams['SkipExecutiveSummary'] = $true }

@@ -6,6 +6,7 @@ Get-ChildItem -Path "$PSScriptRoot\Orchestrator\*.ps1" | ForEach-Object { . $_.F
 # Dot-source shared helpers needed by public cmdlets
 . "$PSScriptRoot\Common\SecurityConfigHelper.ps1"
 . "$PSScriptRoot\Common\Resolve-DnsRecord.ps1"
+. "$PSScriptRoot\Common\ConvertTo-FrameworkFilter.ps1"
 
 # Dot-source the main orchestrator to import Invoke-M365Assessment function
 . $PSScriptRoot\Invoke-M365Assessment.ps1

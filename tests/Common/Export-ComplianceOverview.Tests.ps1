@@ -87,6 +87,104 @@ Describe 'Export-ComplianceOverview' {
         }
     }
 
+    Context 'when WhiteLabel is set with FrameworkFilters (single sub-level)' {
+        BeforeAll {
+            $findings = @(
+                [PSCustomObject]@{ CheckId = 'ENTRA-001'; Setting = 'Test'; Status = 'Fail'; RiskSeverity = 'High'; Section = 'Identity'; Frameworks = @{ 'cis-m365-v6' = @{ controlId = '1.1' } } }
+            )
+            $controlRegistry = @{ 'ENTRA-001' = @{ checkId = 'ENTRA-001'; hasAutomatedCheck = $true; frameworks = @{} } }
+            $frameworks = @(
+                @{ frameworkId = 'cis-m365-v6'; name = 'CIS'; label = 'CIS M365'; filterFamily = 'CIS'; scoringMethod = 'pass-rate'; controls = @(); totalControls = 0 }
+            )
+            $frameworkFilters = @(
+                [PSCustomObject]@{ Family = 'CIS'; FilterFamily = 'CIS'; Profiles = @('E3-L1','E3-L2','E5-L1','E5-L2'); Levels = $null; DisplayLabel = 'CIS E5 Level 2'; HasSubLevel = $true }
+            )
+
+            $result = Export-ComplianceOverview -Findings $findings -ControlRegistry $controlRegistry -Frameworks $frameworks -WhiteLabel -FrameworkFilters $frameworkFilters -Sections @('Identity')
+        }
+
+        It 'should rename heading to "{DisplayLabel} Compliance"' {
+            $result | Should -Match 'CIS E5 Level 2 Compliance'
+        }
+
+        It 'should not show default Compliance Overview heading' {
+            $result | Should -Not -Match '>Compliance Overview<'
+        }
+
+        It 'should hide the framework selector row' {
+            $result | Should -Match "id='fwSelector'[^>]*display:none"
+        }
+    }
+
+    Context 'when WhiteLabel is set with multiple sub-level FrameworkFilters' {
+        BeforeAll {
+            $findings = @(
+                [PSCustomObject]@{ CheckId = 'ENTRA-001'; Setting = 'Test'; Status = 'Pass'; RiskSeverity = 'Low'; Section = 'Identity'; Frameworks = @{} }
+            )
+            $controlRegistry = @{ 'ENTRA-001' = @{ checkId = 'ENTRA-001'; hasAutomatedCheck = $true; frameworks = @{} } }
+            $frameworks = @(
+                @{ frameworkId = 'cis-m365-v6'; name = 'CIS'; label = 'CIS M365'; filterFamily = 'CIS'; scoringMethod = 'pass-rate'; controls = @(); totalControls = 0 }
+            )
+            $frameworkFilters = @(
+                [PSCustomObject]@{ Family = 'CIS';  FilterFamily = 'CIS';  Profiles = @('E3-L1','E5-L1'); Levels = $null; DisplayLabel = 'CIS E5 Level 1'; HasSubLevel = $true }
+                [PSCustomObject]@{ Family = 'CMMC'; FilterFamily = 'CMMC'; Profiles = $null; Levels = @('L1','L2','L3'); DisplayLabel = 'CMMC Level 3'; HasSubLevel = $true }
+            )
+
+            $result = Export-ComplianceOverview -Findings $findings -ControlRegistry $controlRegistry -Frameworks $frameworks -WhiteLabel -FrameworkFilters $frameworkFilters -Sections @('Identity')
+        }
+
+        It 'should combine labels in heading' {
+            $result | Should -Match 'CIS E5 Level 1 / CMMC Level 3 Compliance'
+        }
+    }
+
+    Context 'when WhiteLabel is not set (standard mode)' {
+        BeforeAll {
+            $findings = @(
+                [PSCustomObject]@{ CheckId = 'ENTRA-001'; Setting = 'Test'; Status = 'Pass'; RiskSeverity = 'Low'; Section = 'Identity'; Frameworks = @{ 'cis-m365-v6' = @{ controlId = '1.1' } } }
+            )
+            $controlRegistry = @{ 'ENTRA-001' = @{ checkId = 'ENTRA-001'; hasAutomatedCheck = $true; frameworks = @{} } }
+            $frameworks = @(
+                @{ frameworkId = 'cis-m365-v6'; name = 'CIS'; label = 'CIS M365'; filterFamily = 'CIS'; scoringMethod = 'pass-rate'; controls = @(); totalControls = 0 }
+            )
+
+            $result = Export-ComplianceOverview -Findings $findings -ControlRegistry $controlRegistry -Frameworks $frameworks -Sections @('Identity')
+        }
+
+        It 'should use default Compliance Overview heading' {
+            $result | Should -Match 'Compliance Overview'
+        }
+
+        It 'should show the visible framework selector' {
+            $result | Should -Match "id='fwSelector'"
+            $result | Should -Not -Match "id='fwSelector'[^>]*display:none"
+        }
+    }
+
+    Context 'CMMC sub-filter includes L3 button' {
+        BeforeAll {
+            $findings = @(
+                [PSCustomObject]@{ CheckId = 'ENTRA-001'; Setting = 'Test'; Status = 'Pass'; RiskSeverity = 'Low'; Section = 'Identity'; Frameworks = @{} }
+            )
+            $controlRegistry = @{ 'ENTRA-001' = @{ checkId = 'ENTRA-001'; hasAutomatedCheck = $true; frameworks = @{} } }
+            $frameworks = @(
+                @{ frameworkId = 'cmmc'; name = 'CMMC'; label = 'CMMC 2.0'; filterFamily = 'CMMC'; scoringMethod = 'pass-rate'; controls = @(); totalControls = 0 }
+            )
+
+            $result = Export-ComplianceOverview -Findings $findings -ControlRegistry $controlRegistry -Frameworks $frameworks -Sections @('Identity')
+        }
+
+        It 'should include CMMC L3 filter button' {
+            $result | Should -Match "data-cmmc-level='L3'"
+        }
+
+        It 'should include L1, L2, and L3 buttons' {
+            $result | Should -Match "data-cmmc-level='L1'"
+            $result | Should -Match "data-cmmc-level='L2'"
+            $result | Should -Match "data-cmmc-level='L3'"
+        }
+    }
+
     Context 'when no frameworks match filter' {
         BeforeAll {
             $findings = @(
