@@ -367,11 +367,10 @@ $matrixParams = @{
     TableStyle    = 'Medium2'
 }
 if ($preparedByHeader) {
-    $matrixParams['Title']           = $preparedByHeader
-    $matrixParams['TitleBold']       = $true
-    $matrixParams['TitleSize']       = 11
-    $matrixParams['TitleBackgroundColor'] = [System.Drawing.Color]::FromArgb(30, 58, 95)
-    $matrixParams['TitleFontColor']  = [System.Drawing.Color]::White
+    $matrixParams['Title']                = $preparedByHeader
+    $matrixParams['TitleBold']            = $true
+    $matrixParams['TitleSize']            = 11
+    $matrixParams['TitleBackgroundColor'] = [System.Drawing.Color]::FromArgb(219, 234, 254)
 }
 $sortedFindings | Export-Excel @matrixParams
 
