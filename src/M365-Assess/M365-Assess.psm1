@@ -7,8 +7,6 @@ Get-ChildItem -Path "$PSScriptRoot\Orchestrator\*.ps1" | ForEach-Object { . $_.F
 . "$PSScriptRoot\Common\SecurityConfigHelper.ps1"
 . "$PSScriptRoot\Common\Resolve-DnsRecord.ps1"
 . "$PSScriptRoot\Orchestrator\Compare-M365Baseline.ps1"
-. "$PSScriptRoot\Common\New-M365BrandingConfig.ps1"
-
 # Dot-source the main orchestrator to import Invoke-M365Assessment function
 . $PSScriptRoot\Invoke-M365Assessment.ps1
 
@@ -212,7 +210,6 @@ Export-ModuleMember -Function @(
     'Get-M365PowerBISecurityConfig'
     'Get-M365PurviewRetentionConfig'
     'Compare-M365Baseline'
-    'New-M365BrandingConfig'
     'Grant-M365AssessConsent'
     'New-M365ConnectionProfile'
     'Set-M365ConnectionProfile'

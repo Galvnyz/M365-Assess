@@ -57,22 +57,9 @@
 .PARAMETER OpenReport
     Automatically open the generated HTML report in the default browser after
     generation. Works on Windows, macOS, and Linux.
-.PARAMETER CustomBranding
-    Hashtable for white-label reports. Keys: CompanyName, LogoPath, AccentColor,
-    ClientLogoPath, ClientName, ReportNote, Disclaimer, SidebarSubtitle, FooterText,
-    FooterUrl, PrimaryColor, ReportTitle. Automatically enables -WhiteLabel.
 .PARAMETER WhiteLabel
-    Strips all M365-Assess and GitHub identity from the report. With -CustomBranding
-    produces a fully branded consultant deliverable (Mode A). Without -CustomBranding
-    produces a neutral, tool-agnostic report (Mode C).
-.PARAMETER CustomerProfile
-    Path to a .psd1 configuration file with CustomBranding and FindingsNarrative
-    keys. Merged into the equivalent parameters — direct params win on conflict.
-    Enables reusable per-customer configuration. Automatically enables -WhiteLabel.
-.PARAMETER FindingsNarrative
-    Path to a .txt or .md file (or an inline string) containing consultant-authored
-    findings commentary. Rendered as a narrative card before the Executive Summary,
-    alongside auto-populated severity chip counts.
+    Strips all M365-Assess and GitHub identity from the report (hides the GitHub
+    link and open-source attribution in the React app).
 .PARAMETER CompactReport
     Omit cover page, executive summary, and compliance overview from the HTML
     report. Produces a lean, findings-focused report. Automatically set by
@@ -213,17 +200,7 @@ param(
     [switch]$OpenReport,
 
     [Parameter()]
-    [hashtable]$CustomBranding,
-
-    [Parameter()]
     [switch]$WhiteLabel,
-
-    [Parameter()]
-    [ValidateScript({ -not $_ -or (Test-Path -Path $_ -PathType Leaf) })]
-    [string]$CustomerProfile,
-
-    [Parameter()]
-    [string]$FindingsNarrative,
 
     [Parameter()]
     [switch]$CompactReport,
@@ -282,31 +259,6 @@ if (-not (Get-Command -Name Show-InteractiveWizard -ErrorAction SilentlyContinue
     Get-ChildItem -Path (Join-Path $projectRoot 'Orchestrator') -Filter '*.ps1' |
         ForEach-Object { . $_.FullName }
 }
-# ------------------------------------------------------------------
-# CustomerProfile — merge .psd1 into params (direct params win)
-# ------------------------------------------------------------------
-if ($CustomerProfile) {
-    $cpData = Import-PowerShellDataFile -Path $CustomerProfile
-    if ($cpData.ContainsKey('CustomBranding')) {
-        if (-not $PSBoundParameters.ContainsKey('CustomBranding')) {
-            $CustomBranding = $cpData['CustomBranding']
-        } else {
-            foreach ($key in $cpData['CustomBranding'].Keys) {
-                if (-not $CustomBranding.ContainsKey($key)) { $CustomBranding[$key] = $cpData['CustomBranding'][$key] }
-            }
-        }
-    }
-    if ($cpData.ContainsKey('FindingsNarrative') -and -not $PSBoundParameters.ContainsKey('FindingsNarrative')) {
-        $FindingsNarrative = $cpData['FindingsNarrative']
-    }
-    $WhiteLabel = $true
-}
-
-# CustomBranding implicitly enables WhiteLabel
-if ($PSBoundParameters.ContainsKey('CustomBranding') -and -not $WhiteLabel) {
-    $WhiteLabel = $true
-}
-
 # Show-InteractiveWizard -- extracted to Orchestrator/Show-InteractiveWizard.ps1
 # Resolve-M365Environment -- extracted to Orchestrator/Resolve-M365Environment.ps1
 
@@ -1314,10 +1266,8 @@ if (Test-Path -Path $reportScriptPath) {
         if ($script:domainPrefix) { $reportParams['TenantName'] = $script:domainPrefix }
         elseif ($TenantId)        { $reportParams['TenantName'] = $TenantId }
         if ($WhiteLabel)        { $reportParams['WhiteLabel']        = $true }
-        if ($FindingsNarrative) { $reportParams['FindingsNarrative'] = $FindingsNarrative }
         if ($CompactReport)     { $reportParams['CompactReport']     = $true }
         if ($OpenReport)        { $reportParams['OpenReport']        = $true }
-        if ($CustomBranding)    { $reportParams['CustomBranding']    = $CustomBranding }
         if ($QuickScan)         { $reportParams['QuickScan']         = $true }
         if ($driftReport.Count -gt 0 -or $driftBaselineLabel) {
             $reportParams['DriftReport']            = $driftReport

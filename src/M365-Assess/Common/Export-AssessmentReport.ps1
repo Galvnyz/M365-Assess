@@ -18,14 +18,6 @@
     Tenant display name for the report title. Read from Tenant Information CSV if omitted.
 .PARAMETER WhiteLabel
     Hides M365-Assess GitHub link and Galvnyz attribution from the report footer.
-.PARAMETER FindingsNarrative
-    Deprecated — no longer rendered in the React report. Retained for backwards compatibility.
-.PARAMETER CompactReport
-    Retained for backwards compatibility. Has no effect in the React report engine.
-.PARAMETER CustomBranding
-    Passed through to the XLSX compliance matrix. No effect on the HTML report.
-.PARAMETER CustomerProfile
-    Path to a .psd1 profile that can supply CustomBranding values for the XLSX.
 .PARAMETER OpenReport
     Automatically opens the generated HTML report in the default browser.
 .PARAMETER QuickScan
@@ -58,17 +50,7 @@ param(
     [switch]$WhiteLabel,
 
     [Parameter()]
-    [string]$FindingsNarrative,
-
-    [Parameter()]
     [switch]$CompactReport,
-
-    [Parameter()]
-    [hashtable]$CustomBranding,
-
-    [Parameter()]
-    [ValidateScript({ -not $_ -or (Test-Path -Path $_ -PathType Leaf) })]
-    [string]$CustomerProfile,
 
     [Parameter()]
     [switch]$OpenReport,
@@ -152,16 +134,6 @@ if (-not $OutputPath) {
     $suffix  = if ($reportDomainPrefix) { "_$reportDomainPrefix" } else { '' }
     $OutputPath = Join-Path -Path $AssessmentFolder -ChildPath "_Assessment-Report$suffix.html"
 }
-
-# CustomerProfile: forward CustomBranding to XLSX if provided
-if ($CustomerProfile) {
-    $cpData = Import-PowerShellDataFile -Path $CustomerProfile
-    if ($cpData.CustomBranding -and -not $PSBoundParameters.ContainsKey('CustomBranding')) {
-        $CustomBranding = $cpData.CustomBranding
-    }
-    $WhiteLabel = $true
-}
-if ($PSBoundParameters.ContainsKey('CustomBranding') -and -not $WhiteLabel) { $WhiteLabel = $true }
 
 # ------------------------------------------------------------------
 # Load section data, build findings list, and export XLSX

@@ -51,7 +51,6 @@
         'Remove-M365ConnectionProfile'
         'Get-M365ConnectionProfile'
         'Compare-M365Baseline'
-        'New-M365BrandingConfig'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

@@ -126,7 +126,6 @@ contoso.com,Pass,Pass,reject,Pass,Pass
         $allFrameworks    = @()
         $cisFrameworkId   = 'cis-m365-v6'
         $WhiteLabel       = $false
-        $CustomBranding   = $null
         $DriftReport      = @()
         $reportDomainPrefix = 'test'
 
