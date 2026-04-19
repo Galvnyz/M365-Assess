@@ -255,6 +255,7 @@ function Sidebar({
   }, "Details"), details.map(it => /*#__PURE__*/React.createElement("a", {
     href: `#${it.id}`,
     key: it.id,
+    onClick: it.id === 'findings' ? () => onDomainJump(null) : undefined,
     className: 'nav-item' + (active === it.id ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label), it.count !== undefined && /*#__PURE__*/React.createElement("span", {
     className: "count"
@@ -1721,9 +1722,9 @@ function App() {
   const onDomainJump = d => {
     setFilters(f => ({
       ...f,
-      domain: [d]
+      domain: d ? [d] : []
     }));
-    document.getElementById('findings')?.scrollIntoView({
+    if (d) document.getElementById('findings')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
     });
