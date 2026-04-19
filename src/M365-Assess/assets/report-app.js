@@ -256,7 +256,7 @@ function Sidebar({
     href: `#${it.id}`,
     key: it.id,
     onClick: it.id === 'findings' ? () => onDomainJump(null) : undefined,
-    className: 'nav-item' + (active === it.id ? ' active' : '')
+    className: 'nav-item' + (active === it.id && !(it.id === 'findings' && activeDomain) ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label), it.count !== undefined && /*#__PURE__*/React.createElement("span", {
     className: "count"
   }, it.count)))), /*#__PURE__*/React.createElement("div", {
