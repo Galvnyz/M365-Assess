@@ -10,7 +10,7 @@
     Path to the module root (contains controls/). When provided, runs as
     a self-contained script.
 .PARAMETER AssessmentFolder
-    Path to the assessment output folder.
+    Path to the assessment output folder. Passed by the orchestrator via PassProjectContext.
 #>
 [CmdletBinding()]
 param(

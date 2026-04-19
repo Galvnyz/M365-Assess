@@ -53,6 +53,9 @@ coverage.xml
 # Module cache (local installs)
 Modules/
 
+# Bundled native DLLs (spike/experiment artifacts — never committed)
+src/M365-Assess/lib/
+
 # Node (report build tooling)
 node_modules/
 npm-debug.log*

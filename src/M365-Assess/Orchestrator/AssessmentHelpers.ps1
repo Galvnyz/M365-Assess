@@ -232,6 +232,12 @@ function Show-AssessmentHeader {
     if ($Version) {
         Write-Host "  Version  v$Version" -ForegroundColor DarkGray
     }
+    if ($OutputPath) {
+        Write-Host "  Output   $OutputPath" -ForegroundColor DarkGray
+    }
+    if ($LogPath) {
+        Write-Host "  Log      $LogPath" -ForegroundColor DarkGray
+    }
     Write-Host ''
 }
 
