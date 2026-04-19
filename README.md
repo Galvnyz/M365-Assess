@@ -334,27 +334,27 @@ M365-Assessment/
 
 ## Report Preview
 
-The self-contained HTML report opens in any browser with no dependencies. Click through from the cover page to the executive summary, drill into each security domain, and review compliance posture across 15 frameworks.
+The self-contained HTML report opens in any browser with no dependencies. Click through from the executive overview to individual security domains, drill into findings, and review compliance posture across 15 frameworks — all in a single offline file.
 
 <div align="center">
 
-<img src="docs/images/cover-page.png" alt="Report cover page showing v1.13.0 banner and tenant overview dashboard" width="700" />
+<img src="docs/images/cover-page.png" alt="v2.0.0 executive overview — Microsoft Secure Score, critical/fail/warning summary cards, MFA distribution, and domain posture breakdown" width="700" />
 
 <br /><br />
 
-<img src="docs/images/exec-summary.png" alt="Identity section with user summary dashboard and MFA report" width="700" />
+<img src="docs/images/exec-summary.png" alt="Entra ID findings table with severity chips, check IDs, framework mappings, and collector attribution" width="700" />
 
 <br /><br />
 
-<img src="docs/images/email-section.png" alt="Email section showing mailbox summary, EXO security controls, and DNS email authentication scorecard" width="700" />
+<img src="docs/images/email-section.png" alt="Exchange Online findings — mail flow rules, recipient settings, authentication policies, and audit configuration checks" width="700" />
 
 <br /><br />
 
-<img src="docs/images/intune-overview.png" alt="Intune Overview dashboard with device metrics, compliance %, category coverage grid, and filterable findings table" width="700" />
+<img src="docs/images/intune-overview.png" alt="Intune findings — device compliance, encryption, VPN, FIPS, and mobile security policy checks" width="700" />
 
 <br /><br />
 
-<img src="docs/images/compliance-overview.png" alt="Compliance Overview with framework filter chips, severity distribution bar, and per-framework pass rate cards" width="700" />
+<img src="docs/images/compliance-overview.png" alt="Framework coverage view showing CMMC controls mapped to automated findings with severity and check ID columns" width="700" />
 
 </div>
 

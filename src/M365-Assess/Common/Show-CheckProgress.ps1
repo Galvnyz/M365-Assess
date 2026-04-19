@@ -67,7 +67,7 @@ function global:Write-M365GradientBar {
     }
     $bar    = ($chars) -join ''
     $status = "$($State.Completed) / $($State.Total) checks complete"
-    [Console]::Write("  ${e}[38;2;180;180;210mM365 Security Assessment${reset} [${bar}${reset}] ${e}[38;2;120;130;150m${status}${reset}`n")
+    [Console]::Write("  ${e}[38;2;180;180;210mM365 Security Assessment${reset} [${bar}${reset}] ${e}[38;2;120;130;150m${status}${reset}`r")
     $State.BarActive = $true
 }
 
@@ -76,7 +76,7 @@ function global:Clear-M365GradientBar {
     param([hashtable]$State)
     if (-not $State -or -not $State.BarActive) { return }
     $e = [char]27
-    [Console]::Write("${e}[1A${e}[2K`r")
+    [Console]::Write("`r${e}[2K")
     $State.BarActive = $false
 }
 
