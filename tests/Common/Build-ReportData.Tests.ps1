@@ -143,6 +143,27 @@ Describe 'Build-ReportData' {
             $row.PSObject.Properties.Name | Should -Contain 'recommended'
             $row.PSObject.Properties.Name | Should -Contain 'remediation'
             $row.PSObject.Properties.Name | Should -Contain 'frameworks'
+            $row.PSObject.Properties.Name | Should -Contain 'effort'
+        }
+
+        It 'should default effort to medium when no registry entry' {
+            $f = New-Finding
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f))
+            $d.findings[0].effort | Should -Be 'medium'
+        }
+
+        It 'should read effort from the registry entry when present' {
+            $f = New-Finding -CheckId 'ENTRA-MFA-001.1'
+            $registry = @{ 'ENTRA-MFA-001' = @{ riskSeverity = 'Critical'; frameworks = @{}; effort = 'small' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].effort | Should -Be 'small'
+        }
+
+        It 'should default effort to medium when registry entry lacks the field' {
+            $f = New-Finding -CheckId 'ENTRA-MFA-001.1'
+            $registry = @{ 'ENTRA-MFA-001' = @{ riskSeverity = 'High'; frameworks = @{} } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].effort | Should -Be 'medium'
         }
     }
 

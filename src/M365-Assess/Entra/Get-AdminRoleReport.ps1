@@ -79,13 +79,27 @@ $report = foreach ($role in $allRoles) {
             default                             { $memberType }
         }
 
+        # OnPremisesSyncEnabled is a user-only property not returned by Get-MgDirectoryRoleMember;
+        # fetch it per-user via a targeted Graph call. Leave blank for service principals/groups.
+        $onPremSync = ''
+        if ($friendlyType -eq 'User') {
+            try {
+                $userDetail = Get-MgUser -UserId $member.Id -Property 'OnPremisesSyncEnabled' -ErrorAction Stop
+                $onPremSync = if ($userDetail.OnPremisesSyncEnabled -eq $true) { 'True' } else { 'False' }
+            }
+            catch {
+                Write-Verbose "Could not fetch OnPremisesSyncEnabled for $memberDisplayName: $_"
+            }
+        }
+
         [PSCustomObject]@{
-            RoleName          = $role.DisplayName
-            RoleId            = $role.Id
-            MemberDisplayName = $memberDisplayName
-            MemberUPN         = $memberUpn
-            MemberType        = $friendlyType
-            MemberId          = $member.Id
+            RoleName                = $role.DisplayName
+            RoleId                  = $role.Id
+            MemberDisplayName       = $memberDisplayName
+            MemberUPN               = $memberUpn
+            MemberType              = $friendlyType
+            MemberId                = $member.Id
+            OnPremisesSyncEnabled   = $onPremSync
         }
     }
 }

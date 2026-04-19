@@ -63,6 +63,16 @@ Describe 'Get-AdminRoleReport' {
             }
         }
 
+        # Mock Get-MgUser for per-user OnPremisesSyncEnabled fetch
+        Mock Get-MgUser {
+            param($UserId)
+            switch ($UserId) {
+                'user-1' { return [PSCustomObject]@{ OnPremisesSyncEnabled = $true } }
+                'user-2' { return [PSCustomObject]@{ OnPremisesSyncEnabled = $false } }
+                default  { return [PSCustomObject]@{ OnPremisesSyncEnabled = $null } }
+            }
+        }
+
         # Run the collector
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         $result = & "$PSScriptRoot/../../src/M365-Assess/Entra/Get-AdminRoleReport.ps1"
@@ -78,12 +88,28 @@ Describe 'Get-AdminRoleReport' {
         $first.PSObject.Properties.Name | Should -Contain 'MemberDisplayName'
         $first.PSObject.Properties.Name | Should -Contain 'MemberUPN'
         $first.PSObject.Properties.Name | Should -Contain 'MemberType'
+        $first.PSObject.Properties.Name | Should -Contain 'OnPremisesSyncEnabled'
     }
 
     It 'Maps service principals to friendly type' {
         $sp = $result | Where-Object { $_.MemberDisplayName -eq 'Automation App' }
         $sp | Should -Not -BeNullOrEmpty
         $sp.MemberType | Should -Be 'ServicePrincipal'
+    }
+
+    It 'Populates OnPremisesSyncEnabled True for synced users' {
+        $user = $result | Where-Object { $_.MemberId -eq 'user-1' }
+        $user.OnPremisesSyncEnabled | Should -Be 'True'
+    }
+
+    It 'Populates OnPremisesSyncEnabled False for cloud-only users' {
+        $user = $result | Where-Object { $_.MemberId -eq 'user-2' }
+        $user.OnPremisesSyncEnabled | Should -Be 'False'
+    }
+
+    It 'Leaves OnPremisesSyncEnabled blank for service principals' {
+        $sp = $result | Where-Object { $_.MemberType -eq 'ServicePrincipal' }
+        $sp.OnPremisesSyncEnabled | Should -Be ''
     }
 
     It 'Includes members from all roles' {

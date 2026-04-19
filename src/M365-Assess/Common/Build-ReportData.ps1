@@ -152,7 +152,7 @@ function Build-ReportDataJson {
             current     = $f.CurrentValue
             recommended = $recommended
             remediation = $f.Remediation
-            effort      = $null
+            effort      = if ($regEntry) { $e = if ($regEntry -is [hashtable]) { $regEntry['effort'] } else { $regEntry.effort }; if ($e) { $e } else { 'medium' } } else { 'medium' }
             frameworks  = $frameworks
             fwMeta      = $fwMeta
         })
