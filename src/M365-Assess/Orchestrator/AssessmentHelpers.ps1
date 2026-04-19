@@ -190,27 +190,34 @@ function Show-AssessmentHeader {
     param([string]$TenantName, [string]$OutputPath, [string]$LogPath, [string]$Version)
 
     Write-Host ''
-    Write-Host '      ███╗   ███╗ ██████╗  ██████╗ ███████╗' -ForegroundColor Cyan
-    Write-Host '      ████╗ ████║ ╚════██╗ ██╔════╝ ██╔════╝' -ForegroundColor Cyan
-    Write-Host '      ██╔████╔██║  █████╔╝ ██████╗  ███████╗' -ForegroundColor Cyan
-    Write-Host '      ██║╚██╔╝██║  ╚═══██╗ ██╔══██╗ ╚════██║' -ForegroundColor Cyan
-    Write-Host '      ██║ ╚═╝ ██║ ██████╔╝ ╚█████╔╝ ███████║' -ForegroundColor Cyan
-    Write-Host '      ╚═╝     ╚═╝ ╚═════╝   ╚════╝  ╚══════╝' -ForegroundColor Cyan
-    Write-Host '     ─────────────────────────────────────────' -ForegroundColor DarkCyan
-    Write-Host '       █████╗ ███████╗███████╗███████╗███████╗███████╗' -ForegroundColor DarkCyan
-    Write-Host '      ██╔══██╗██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝' -ForegroundColor DarkCyan
-    Write-Host '      ███████║███████╗███████╗█████╗  ███████╗███████╗' -ForegroundColor DarkCyan
-    Write-Host '      ██╔══██║╚════██║╚════██║██╔══╝  ╚════██║╚════██║' -ForegroundColor DarkCyan
-    Write-Host '      ██║  ██║███████║███████║███████╗███████║███████║' -ForegroundColor DarkCyan
-    Write-Host '      ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚══════╝' -ForegroundColor DarkCyan
+    Write-Host '  ▓▒░  M365-ASSESS // AUTOMATED SECURITY INTELLIGENCE  ░▒▓' -ForegroundColor DarkMagenta
+    Write-Host ''
+    # M365 — hot-pink neon at top, cooling to cyan at base
+    Write-Host '     ███╗   ███╗ ██████╗  ██████╗ ███████╗' -ForegroundColor Magenta
+    Write-Host '     ████╗ ████║ ╚════██╗ ██╔════╝ ██╔════╝' -ForegroundColor Magenta
+    Write-Host '     ██╔████╔██║  █████╔╝ ██████╗  ███████╗' -ForegroundColor DarkMagenta
+    Write-Host '     ██║╚██╔╝██║  ╚═══██╗ ██╔══██╗ ╚════██║' -ForegroundColor Cyan
+    Write-Host '     ██║ ╚═╝ ██║ ██████╔╝ ╚█████╔╝ ███████║' -ForegroundColor Cyan
+    Write-Host '     ╚═╝     ╚═╝ ╚═════╝   ╚════╝  ╚══════╝' -ForegroundColor DarkCyan
+    Write-Host '  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄' -ForegroundColor DarkGray
+    # ASSESS — cyan at top, deep blue at base
+    Write-Host '      █████╗ ███████╗███████╗███████╗███████╗███████╗' -ForegroundColor Cyan
+    Write-Host '     ██╔══██╗██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝' -ForegroundColor Cyan
+    Write-Host '     ███████║███████╗███████╗█████╗  ███████╗███████╗' -ForegroundColor DarkCyan
+    Write-Host '     ██╔══██║╚════██║╚════██║██╔══╝  ╚════██║╚════██║' -ForegroundColor Blue
+    Write-Host '     ██║  ██║███████║███████║███████╗███████║███████║' -ForegroundColor Blue
+    Write-Host '     ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚══════╝' -ForegroundColor DarkBlue
+    Write-Host ''
+    Write-Host '  ▲  SECURITY INTELLIGENCE FOR THE MODERN ENTERPRISE  ▲' -ForegroundColor DarkCyan
+    Write-Host '  ░▒▓████████████████████████████████████████████████▓▒░' -ForegroundColor DarkMagenta
     Write-Host ''
     if ($TenantName) {
         $tenantLine = $TenantName
-        if ($tenantLine.Length -gt 45) { $tenantLine = $tenantLine.Substring(0, 42) + '...' }
-        Write-Host "        ░▒▓█  $tenantLine" -ForegroundColor White
+        if ($tenantLine.Length -gt 50) { $tenantLine = $tenantLine.Substring(0, 47) + '...' }
+        Write-Host "  ▶ TARGET ◀  $tenantLine" -ForegroundColor White
     }
     if ($Version) {
-        Write-Host "        ░▒▓█  v$Version  █▓▒░" -ForegroundColor DarkGray
+        Write-Host "  [ v$Version ]  ◆  M365-ASSESS  ◆  GALVNYZ" -ForegroundColor DarkGray
     }
     Write-Host ''
 }
