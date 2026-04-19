@@ -83,8 +83,10 @@ function Invoke-SpectreRenderLoop {
     $script:BackgroundPs = [System.Management.Automation.PowerShell]::Create()
     $script:BackgroundPs.AddScript({
         param($state, $libPath)
+        try {
 
         # Load Spectre inside the runspace
+        if (-not (Test-Path -LiteralPath $libPath)) { throw "DLL not found: $libPath" }
         Add-Type -Path $libPath -ErrorAction Stop
 
         # ── Build-Dashboard: constructs the Spectre renderable each tick ──
@@ -212,6 +214,9 @@ function Invoke-SpectreRenderLoop {
             [Console]::ReadKey($true) | Out-Null
         })
 
+        } catch {
+            $state['SpectreStartError'] = $_.ToString()
+        }
     }) | Out-Null
 
     $script:BackgroundPs.AddParameter('state',   $capturedState) | Out-Null
@@ -444,6 +449,18 @@ function Start-CheckProgressDisplay {
     if ($state.Mode -eq 'Spectre') {
         [Console]::Clear()
         Invoke-SpectreRenderLoop
+        # Give the runspace ~400ms to either render or fail
+        Start-Sleep -Milliseconds 400
+        $crashed = $state['SpectreStartError'] -or ($script:BackgroundJob -and $script:BackgroundJob.IsCompleted)
+        if ($crashed) {
+            $err = if ($state['SpectreStartError']) { $state['SpectreStartError'] } else { 'Runspace exited immediately' }
+            if ($script:BackgroundPs) { try { $script:BackgroundPs.Dispose() } catch { } }
+            $script:BackgroundPs  = $null
+            $script:BackgroundJob = $null
+            $state.Mode = 'Fallback'
+            [Console]::Clear()
+            Write-Warning "Spectre TUI unavailable (text mode): $err"
+        }
     }
 }
 
