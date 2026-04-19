@@ -58,6 +58,64 @@ const FRAMEWORKS = D.frameworks && D.frameworks.length ? D.frameworks : [{
   id: 'stig',
   full: 'DISA STIG'
 }];
+const FW_BLURB = {
+  'cis-m365-v6': {
+    desc: 'Prescriptive configuration recommendations for Microsoft 365 services, organized into L1/L2 profiles and E3/E5 licensing tiers. Maintained by the Center for Internet Security.',
+    url: 'https://www.cisecurity.org/benchmark/microsoft_365'
+  },
+  'cis-controls-v8': {
+    desc: 'Prioritized set of 18 critical security controls defending against the most pervasive attacks, organized into three Implementation Groups (IG1–IG3) by organizational maturity.',
+    url: 'https://www.cisecurity.org/controls'
+  },
+  'cisa-scuba': {
+    desc: 'Federal cloud security baselines from CISA covering M365 configurations. Required for US federal agencies and widely adopted by state/local government.',
+    url: 'https://www.cisa.gov/resources-tools/services/secure-cloud-business-applications-scuba-project'
+  },
+  'cmmc': {
+    desc: 'DoD supply chain cybersecurity standard with three maturity levels. Required for contractors handling Federal Contract Information (FCI) or Controlled Unclassified Information (CUI).',
+    url: 'https://dodcio.defense.gov/CMMC/'
+  },
+  'essential-eight': {
+    desc: 'Eight foundational mitigation strategies from the Australian Signals Directorate, rated across four maturity levels. Mandatory for Australian government agencies.',
+    url: 'https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight'
+  },
+  'fedramp': {
+    desc: 'US government standardized authorization program for cloud services. FedRAMP Moderate covers the majority of federal workloads with 325 security controls.',
+    url: 'https://www.fedramp.gov/'
+  },
+  'hipaa': {
+    desc: 'US federal law establishing security and privacy standards for protected health information (PHI). Applies to covered entities and their business associates.',
+    url: 'https://www.hhs.gov/hipaa/index.html'
+  },
+  'iso-27001': {
+    desc: 'International standard for information security management systems (ISMS). Specifies requirements for establishing, maintaining, and continually improving an ISMS. Widely used for third-party certification.',
+    url: 'https://www.iso.org/standard/27001'
+  },
+  'mitre-attack': {
+    desc: 'Globally-accessible knowledge base of adversary tactics and techniques based on real-world threat intelligence. Used for threat modeling, detection engineering, and red team exercises.',
+    url: 'https://attack.mitre.org/'
+  },
+  'nist-800-53': {
+    desc: 'Comprehensive catalog of security and privacy controls for US federal information systems (FISMA). Widely adopted beyond government as a baseline security framework.',
+    url: 'https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final'
+  },
+  'nist-csf': {
+    desc: 'Voluntary framework for managing cybersecurity risk, organized around six core functions: Govern, Identify, Protect, Detect, Respond, Recover. Version 2.0 adds supply chain guidance.',
+    url: 'https://www.nist.gov/cyberframework'
+  },
+  'pci-dss': {
+    desc: 'Security requirements for organizations that store, process, or transmit cardholder data. v4.0.1 introduced customized implementation options and expanded multi-factor authentication requirements.',
+    url: 'https://www.pcisecuritystandards.org/'
+  },
+  'soc2': {
+    desc: 'AICPA attestation framework for service organizations covering five Trust Services Criteria: security, availability, processing integrity, confidentiality, and privacy.',
+    url: 'https://www.aicpa-cima.com/resources/landing/system-and-organization-controls-soc-suite-of-services'
+  },
+  'stig': {
+    desc: 'DISA Security Technical Implementation Guides provide prescriptive hardening requirements for information systems. The M365 STIG covers configurations required for DoD cloud deployments.',
+    url: 'https://public.cyber.mil/stigs/'
+  }
+};
 const DOMAIN_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity', 'Other'];
 
 // --------------------- SVG icons ---------------------
@@ -924,7 +982,13 @@ function FrameworkQuilt({
       lineHeight: 1,
       padding: '0 4px'
     }
-  }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+  }, "\xD7")), FW_BLURB[expandedFw] && /*#__PURE__*/React.createElement("div", {
+    className: "fw-blurb"
+  }, FW_BLURB[expandedFw].desc, ' ', /*#__PURE__*/React.createElement("a", {
+    href: FW_BLURB[expandedFw].url,
+    target: "_blank",
+    rel: "noopener noreferrer"
+  }, "Official site \u2197")), /*#__PURE__*/React.createElement("div", {
     className: "fw-detail-summary"
   }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, expandedData.total), " controls"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
     style: {
