@@ -975,7 +975,7 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
 /* Framework quilt */
 .quilt {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 340px));
   gap: 12px;
 }
 @media (max-width: 900px) { .quilt { grid-template-columns: repeat(2, 1fr); } }
@@ -1000,22 +1000,18 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.quilt-cell .fw-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 2px;
-  margin-bottom: 10px;
-}
-.quilt-cell .fw-grid i {
-  aspect-ratio: 1;
-  border-radius: 2px;
+.quilt-cell .fw-bar {
+  display: flex; height: 8px; border-radius: 4px;
+  overflow: hidden; margin-bottom: 12px;
   background: var(--border);
 }
-.quilt-cell .fw-grid i.pass { background: var(--success); }
-.quilt-cell .fw-grid i.warn { background: var(--warn); }
-.quilt-cell .fw-grid i.fail { background: var(--danger); }
-.quilt-cell .fw-grid i.review { background: var(--accent); }
-.quilt-cell .fw-grid i.info { background: var(--muted); opacity: 0.3; }
+.quilt-cell .fw-seg { min-width: 1px; }
+.quilt-cell .fw-seg.pass   { background: var(--success); }
+.quilt-cell .fw-seg.warn   { background: var(--warn); }
+.quilt-cell .fw-seg.fail   { background: var(--danger); }
+.quilt-cell .fw-seg.review { background: var(--accent); opacity: 0.7; }
+.quilt-cell .fw-seg.info   { background: var(--muted); opacity: 0.4; }
+.quilt-cell .fw-seg.empty  { background: var(--border); }
 .quilt-cell .fw-stat {
   display: flex; gap: 10px;
   font-size: 11px; color: var(--muted);

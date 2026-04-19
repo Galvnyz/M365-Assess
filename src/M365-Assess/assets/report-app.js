@@ -650,6 +650,25 @@ function FrameworkQuilt({
   onSelect,
   selected
 }) {
+  const [visibleFws, setVisibleFws] = useState(['cis-m365-v6']);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef(null);
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setPickerOpen(false);
+    };
+    const onOut = e => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOut);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOut);
+    };
+  }, [pickerOpen]);
+  const toggleFw = fw => setVisibleFws(v => v.includes(fw) ? v.length > 1 ? v.filter(x => x !== fw) : v : [...v, fw]);
   const byFw = useMemo(() => {
     const out = {};
     FRAMEWORKS.forEach(f => out[f.id] = {
@@ -668,6 +687,8 @@ function FrameworkQuilt({
     }));
     return out;
   }, []);
+  const displayFws = FRAMEWORKS.filter(f => visibleFws.includes(f.id));
+  const pickerLabel = visibleFws.length === 1 ? visibleFws[0] : `${visibleFws.length} frameworks`;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "frameworks"
@@ -676,22 +697,55 @@ function FrameworkQuilt({
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
   }, "02 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("div", {
+    ref: pickerRef,
+    style: {
+      position: 'relative',
+      marginLeft: 12,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (visibleFws.length > 1 ? ' selected' : ''),
+    onClick: () => setPickerOpen(o => !o)
+  }, pickerLabel, /*#__PURE__*/React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 10 10",
+    style: {
+      marginLeft: 4,
+      opacity: .6
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3l3 3 3-3",
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    fill: "none"
+  }))), pickerOpen && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu",
+    style: {
+      right: 0,
+      left: 'auto',
+      minWidth: 240
+    }
+  }, FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("label", {
+    key: f.id,
+    className: 'domain-opt' + (visibleFws.includes(f.id) ? ' sel' : '')
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: visibleFws.includes(f.id),
+    onChange: () => toggleFw(f.id)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--font-mono)',
+      fontSize: 12
+    }
+  }, f.id), /*#__PURE__*/React.createElement("span", {
+    className: "ct"
+  }, byFw[f.id]?.total || 0))))), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
     className: "quilt"
-  }, FRAMEWORKS.map(f => {
+  }, displayFws.map(f => {
     const d = byFw[f.id];
-    // Build 30 cells showing a sample of statuses
-    const cells = Array(30).fill(null);
-    let idx = 0;
-    ['fail', 'warn', 'review', 'pass', 'info'].forEach(k => {
-      const count = Math.round(d[k] / Math.max(1, d.total) * 30);
-      for (let i = 0; i < count && idx < 30; i++, idx++) cells[idx] = k;
-    });
-    while (idx < 30) {
-      cells[idx] = 'pass';
-      idx++;
-    }
     const score = pct(d.pass + Math.round(d.info * 0.5), d.total);
     return /*#__PURE__*/React.createElement("div", {
       key: f.id,
@@ -702,11 +756,38 @@ function FrameworkQuilt({
     }, f.id), /*#__PURE__*/React.createElement("div", {
       className: "fw-long"
     }, f.full), /*#__PURE__*/React.createElement("div", {
-      className: "fw-grid"
-    }, cells.map((c, i) => /*#__PURE__*/React.createElement("i", {
-      key: i,
-      className: c || ''
-    }))), /*#__PURE__*/React.createElement("div", {
+      className: "fw-bar"
+    }, d.pass > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg pass",
+      style: {
+        flex: d.pass
+      }
+    }), d.warn > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg warn",
+      style: {
+        flex: d.warn
+      }
+    }), d.fail > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg fail",
+      style: {
+        flex: d.fail
+      }
+    }), d.review > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg review",
+      style: {
+        flex: d.review
+      }
+    }), d.info > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg info",
+      style: {
+        flex: d.info
+      }
+    }), d.total === 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg empty",
+      style: {
+        flex: 1
+      }
+    })), /*#__PURE__*/React.createElement("div", {
       className: "fw-stat"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, score, "%"), " covered"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " gaps"), /*#__PURE__*/React.createElement("span", null, d.total, " checks")));
   })));
@@ -722,7 +803,9 @@ function FilterBar({
   setSearch
 }) {
   const [domainOpen, setDomainOpen] = useState(false);
+  const [fwOpen, setFwOpen] = useState(false);
   const domainRef = useRef(null);
+  const fwRef = useRef(null);
   useEffect(() => {
     if (!domainOpen) return;
     const onKey = e => {
@@ -738,6 +821,21 @@ function FilterBar({
       document.removeEventListener('mousedown', onOutside);
     };
   }, [domainOpen]);
+  useEffect(() => {
+    if (!fwOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setFwOpen(false);
+    };
+    const onOutside = e => {
+      if (fwRef.current && !fwRef.current.contains(e.target)) setFwOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOutside);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [fwOpen]);
   const update = (k, v) => {
     setFilters(f => {
       const cur = new Set(f[k]);
@@ -809,16 +907,43 @@ function FilterBar({
   }, counts.severity[v] || 0)))), /*#__PURE__*/React.createElement("div", {
     className: "filter-divider"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "filter-group"
+    className: "filter-group",
+    ref: fwRef
   }, /*#__PURE__*/React.createElement("span", {
     className: "filter-group-label"
-  }, "Framework"), FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("button", {
+  }, "Framework"), /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (filters.framework.length ? ' selected' : ''),
+    onClick: () => setFwOpen(o => !o)
+  }, filters.framework.length ? `${filters.framework.length} selected` : 'All frameworks', /*#__PURE__*/React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 10 10",
+    style: {
+      marginLeft: 4,
+      opacity: .6
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3l3 3 3-3",
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    fill: "none"
+  }))), fwOpen && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu"
+  }, FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("label", {
     key: f.id,
-    className: 'chip' + (filters.framework.includes(f.id) ? ' selected' : ''),
-    onClick: () => update('framework', f.id)
-  }, f.id, /*#__PURE__*/React.createElement("span", {
+    className: 'domain-opt' + (filters.framework.includes(f.id) ? ' sel' : '')
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: filters.framework.includes(f.id),
+    onChange: () => update('framework', f.id)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--font-mono)',
+      fontSize: 12
+    }
+  }, f.id), /*#__PURE__*/React.createElement("span", {
     className: "ct"
-  }, counts.framework[f.id] || 0)))), /*#__PURE__*/React.createElement("div", {
+  }, counts.framework[f.id] || 0))))), /*#__PURE__*/React.createElement("div", {
     className: "filter-divider"
   }), /*#__PURE__*/React.createElement("div", {
     className: "filter-group",
