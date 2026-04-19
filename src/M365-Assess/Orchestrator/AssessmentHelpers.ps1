@@ -190,12 +190,18 @@ function Show-AssessmentHeader {
     param([string]$TenantName, [string]$OutputPath, [string]$LogPath, [string]$Version)
 
     Write-Host ''
-    Write-Host '  ┌─────────────────────────────────────────────────────────────┐' -ForegroundColor DarkCyan
-    Write-Host '  │                                                             │' -ForegroundColor DarkCyan
-    Write-Host '  │   M365-ASSESS   ◆   Microsoft 365 Security Assessment      │' -ForegroundColor Cyan
-    Write-Host '  │   Automated  ·  Read-Only  ·  Galvnyz                      │' -ForegroundColor Gray
-    Write-Host '  │                                                             │' -ForegroundColor DarkCyan
-    Write-Host '  └─────────────────────────────────────────────────────────────┘' -ForegroundColor DarkCyan
+    Write-Host '  ╔══════════════════════════════════════════════════════════╗' -ForegroundColor DarkCyan
+    Write-Host '  ║                                                          ║' -ForegroundColor DarkCyan
+    Write-Host '  ║  ███╗   ███╗ ██████╗  ██████╗ ███████╗                  ║' -ForegroundColor Cyan
+    Write-Host '  ║  ████╗ ████║╚════██╗ ██╔════╝ ██╔════╝                  ║' -ForegroundColor Cyan
+    Write-Host '  ║  ██╔████╔██║ █████╔╝ ██████╗  ███████╗                  ║' -ForegroundColor Cyan
+    Write-Host '  ║  ██║╚██╔╝██║ ╚═══██╗ ██╔══██╗ ╚════██║                  ║' -ForegroundColor Cyan
+    Write-Host '  ║  ██║ ╚═╝ ██║ ██████╔╝╚█████╔╝ ███████║                  ║' -ForegroundColor Cyan
+    Write-Host '  ║  ╚═╝     ╚═╝ ╚═════╝  ╚════╝  ╚══════╝                  ║' -ForegroundColor Cyan
+    Write-Host '  ║                                                          ║' -ForegroundColor DarkCyan
+    Write-Host '  ║  A S S E S S  ·  Microsoft 365 Security Assessment       ║' -ForegroundColor Cyan
+    Write-Host '  ║  Automated  ·  Read-Only  ·  Galvnyz                     ║' -ForegroundColor DarkCyan
+    Write-Host '  ╚══════════════════════════════════════════════════════════╝' -ForegroundColor DarkCyan
     Write-Host ''
     if ($TenantName) {
         $tenantLine = $TenantName
