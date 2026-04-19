@@ -4,6 +4,27 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-04-18
+
+### Added
+- React 18 UMD report engine — single self-contained HTML file; all CSS/JS inlined via `Get-ReportTemplate.ps1` StringBuilder pipeline (#538–#541)
+- `Build-ReportData.ps1` data bridge — PowerShell → `window.REPORT_DATA` JSON; powers the React app with live tenant data (#539)
+- Real Secure Score sparkline — collector now fetches 180-day history; label adapts dynamically (2 WK / 2 MO / 6 MO TREND) (#556)
+- Framework blurbs and official site links in the framework detail panel (JSX `FW_BLURB` lookup)
+- Tenant · Live and MFA · Coverage status cards pinned to sidebar bottom
+- Synthwave ASCII banner in `Show-AssessmentHeader` (#555)
+- Dark high-contrast mode brand-mark legibility fix (theme-scoped CSS override)
+
+### Changed
+- Remediation roadmap changed from 3-column grid to single full-width column list for easier reading
+- Findings expand panel no longer shows duplicate Remediation block — remediation guidance lives exclusively in the Actions tab
+- `-WhiteLabel` switch hides GitHub/Galvnyz attribution in the React report footer
+- `-CompactReport` is the v2 replacement for the removed Skip* flags
+
+### Removed
+- `-CustomBranding`, `-FindingsNarrative`, `-CustomerProfile` parameters removed (#541)
+- `New-M365BrandingConfig` removed from `FunctionsToExport` and module loader (#541)
+
 ## [1.16.0] - 2026-04-18
 
 ### Added

@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '1.16.0'
+    ModuleVersion     = '2.0.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -230,7 +230,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v1.16.0 - Parameter revamp: CompactReport replaces 3 Skip* flags, auth param sets enforced, Section All, AutoBaseline/ListBaselines/Compare-M365Baseline, PDF via print button, XLSX Drift sheet, baseline RegistryVersion metadata; remove NoBranding/Package/FrameworkFilter/FrameworkExport/CisBenchmarkVersion; fix admin role sep 404 for missing roles and service principals; suppress EXO aux-archive quota warnings'
+            ReleaseNotes = 'v2.0.0 - React 18 report engine: single-file HTML with inline CSS/JS, window.REPORT_DATA JSON bridge, real Secure Score sparkline, framework blurbs and links, tenant + MFA sidebar cards, single-column remediation roadmap, findings panel without duplicate remediation block; synthwave ASCII banner; dark h/c mode brand-mark fix; removed -CustomBranding, -FindingsNarrative, -CustomerProfile, New-M365BrandingConfig'
         }
     }
 }
