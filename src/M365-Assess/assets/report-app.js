@@ -316,7 +316,9 @@ function Topbar({
   }, "Console"), /*#__PURE__*/React.createElement("button", {
     className: theme === 'high-contrast' ? 'active' : '',
     onClick: () => setTheme('high-contrast')
-  }, "High Contrast")), /*#__PURE__*/React.createElement("button", {
+  }, "High Contrast")), /*#__PURE__*/React.createElement("div", {
+    className: "icon-btn-group"
+  }, /*#__PURE__*/React.createElement("button", {
     className: "icon-btn",
     title: mode === 'dark' ? 'Light mode' : 'Dark mode',
     onClick: () => setMode(mode === 'dark' ? 'light' : 'dark')
@@ -333,7 +335,7 @@ function Topbar({
     className: "icon-btn",
     title: "Tweaks",
     onClick: onTweaks
-  }, /*#__PURE__*/React.createElement(Icon.sliders, null)));
+  }, /*#__PURE__*/React.createElement(Icon.sliders, null))));
 }
 
 // ======================== Posture hero ========================
@@ -1217,7 +1219,11 @@ const ALL_COLS = [{
 }, {
   id: 'controlId',
   label: 'Control #',
-  width: '130px'
+  width: '100px'
+}, {
+  id: 'checkId',
+  label: 'CheckID',
+  width: '160px'
 }, {
   id: 'severity',
   label: 'Severity',
@@ -1227,7 +1233,7 @@ const ALL_COLS = [{
   label: 'Frameworks',
   width: '120px'
 }];
-const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'severity'];
+const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'severity'];
 function FindingsTable({
   filters,
   search
@@ -1301,8 +1307,16 @@ function FindingsTable({
         {
           const activeFw = filters.framework.length === 1 ? filters.framework[0] : null;
           const meta = activeFw ? f.fwMeta?.[activeFw] : null;
-          const cid = meta?.controlId || f.checkId;
-          const profiles = meta?.profiles || [];
+          const FW_PREF = ['cis-m365-v6', 'nist-800-53', 'cmmc', 'nist-csf', 'iso-27001'];
+          const cid = meta?.controlId || (() => {
+            if (!f.fwMeta) return null;
+            for (const fw of FW_PREF) {
+              if (f.fwMeta[fw]?.controlId) return f.fwMeta[fw].controlId;
+            }
+            const first = Object.values(f.fwMeta).find(v => v?.controlId);
+            return first?.controlId || null;
+          })();
+          const profiles = activeFw ? [].concat(meta?.profiles || []) : [];
           const lvl = [...new Set(profiles.map(p => p.split('-')[1]).filter(Boolean))].join('+');
           const lic = profiles.some(p => p.startsWith('E3')) && profiles.some(p => p.startsWith('E5')) ? 'E3+E5' : profiles.some(p => p.startsWith('E5')) ? 'E5' : profiles.some(p => p.startsWith('E3')) ? 'E3' : '';
           return /*#__PURE__*/React.createElement("div", {
@@ -1313,8 +1327,12 @@ function FindingsTable({
               gap: 2
             }
           }, /*#__PURE__*/React.createElement("span", {
-            className: "check-id"
-          }, cid), (lvl || lic) && /*#__PURE__*/React.createElement("span", {
+            className: "check-id",
+            style: cid ? undefined : {
+              color: 'var(--muted)',
+              fontStyle: 'italic'
+            }
+          }, cid || '—'), (lvl || lic) && /*#__PURE__*/React.createElement("span", {
             style: {
               display: 'inline-flex',
               gap: 3
@@ -1325,6 +1343,11 @@ function FindingsTable({
             className: 'fw-profile-chip ' + (lic === 'E5' ? 'lic5' : 'lic')
           }, lic)));
         }
+      case 'checkId':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "checkId",
+          className: "check-id"
+        }, f.checkId);
       case 'severity':
         return /*#__PURE__*/React.createElement("div", {
           key: "severity"

@@ -146,6 +146,10 @@ a:hover { text-decoration: underline; }
 }
 .icon-btn:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
 .icon-btn svg { width: 16px; height: 16px; }
+.icon-btn-group {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
 
 /* Palette switcher */
 .palette-switch {
@@ -1103,7 +1107,7 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
 
 /* Print-optimized */
 @media print {
-  .sidebar, .topbar .search, .topbar .palette-switch, .topbar .icon-btn, .filter-bar { display: none !important; }
+  .sidebar, .topbar .search, .topbar .palette-switch, .topbar .icon-btn-group, .filter-bar { display: none !important; }
   .app { display: block !important; }
   .main { padding: 16px 0 !important; max-width: 100% !important; }
   .finding-detail { display: grid !important; }
