@@ -1,4 +1,4 @@
-function Get-CheckDomain {
+﻿function Get-CheckDomain {
     <#
     .SYNOPSIS
         Maps a base CheckId prefix to the React report domain label.
@@ -180,8 +180,6 @@ function Build-ReportDataJson {
     # 3. Compute mfaStats
     # ------------------------------------------------------------------
     $mfaRows = if ($SectionData.ContainsKey('mfa')) { @($SectionData['mfa']) } else { @() }
-    $isAdminTrue = { param($r) $r.IsAdmin -eq 'True' -or $r.IsAdmin -eq $true }
-    $isNoMfa     = { param($r) $r.MfaStrength -eq 'None' -or -not $r.MfaStrength }
 
     $mfaStats = [ordered]@{
         phishResistant   = @($mfaRows | Where-Object { $_.MfaStrength -eq 'Phishing-Resistant' }).Count
