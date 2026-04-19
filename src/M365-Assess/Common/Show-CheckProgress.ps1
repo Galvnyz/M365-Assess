@@ -632,7 +632,7 @@ function Close-CheckProgress {
 
     $state.OutputFiles = $OutputFiles
 
-    if ($state.Mode -eq 'Spectre' -and $script:BackgroundPs) {
+    if ($state.Mode -eq 'Spectre' -and $script:BackgroundPs -and $script:BackgroundJob) {
         try {
             # Blocks here until the background runspace's ReadKey returns (user presses a key)
             $script:BackgroundPs.EndInvoke($script:BackgroundJob)
@@ -660,6 +660,7 @@ function Close-CheckProgress {
     }
 
     # Tear down global functions and state
+    $state.Closed = $true
     Remove-Item -Path 'Function:\Update-CheckProgress'  -ErrorAction SilentlyContinue
     Remove-Item -Path 'Function:\Update-ProgressStatus' -ErrorAction SilentlyContinue
     Remove-Variable -Name CheckProgressState -Scope Global -ErrorAction SilentlyContinue
