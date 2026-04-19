@@ -88,7 +88,7 @@ $report = foreach ($role in $allRoles) {
                 $onPremSync = if ($userDetail.OnPremisesSyncEnabled -eq $true) { 'True' } else { 'False' }
             }
             catch {
-                Write-Verbose "Could not fetch OnPremisesSyncEnabled for $memberDisplayName: $_"
+                Write-Verbose "Could not fetch OnPremisesSyncEnabled for ${memberDisplayName}: $_"
             }
         }
 
