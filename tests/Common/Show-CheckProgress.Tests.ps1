@@ -36,6 +36,27 @@ Describe 'Initialize-CheckProgress' {
             $global:CheckProgressState.CollectorCounts['Entra'] | Should -Be 2
             $global:CheckProgressState.CollectorCounts['DNS'] | Should -Be 1
         }
+
+        It 'should set Mode to Fallback in CI' {
+            $global:CheckProgressState.Mode | Should -Be 'Fallback'
+        }
+
+        It 'should initialize Pass/Fail/Warn/Skip counters to zero' {
+            $global:CheckProgressState.Pass | Should -Be 0
+            $global:CheckProgressState.Fail | Should -Be 0
+            $global:CheckProgressState.Warn | Should -Be 0
+            $global:CheckProgressState.Skip | Should -Be 0
+        }
+
+        It 'should initialize Checks as an empty list' {
+            $checks = $global:CheckProgressState.Checks
+            $checks -is [System.Collections.Generic.List[hashtable]] | Should -Be $true
+            $checks.Count | Should -Be 0
+        }
+
+        It 'should set Complete to false' {
+            $global:CheckProgressState.Complete | Should -Be $false
+        }
     }
 
     Context 'when no sections match any checks' {

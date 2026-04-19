@@ -16,6 +16,10 @@
     Author:  Daren9m
 #>
 
+$script:BackgroundPs  = $null
+$script:BackgroundJob = $null
+$script:State         = $null
+
 # ── Map registry collector names to section names and display labels ──
 $script:CollectorSectionMap = @{
     'Entra'          = 'Identity'
@@ -81,7 +85,13 @@ function Initialize-CheckProgress {
         [string[]]$SeverityFilter,
 
         [Parameter()]
-        [switch]$Silent
+        [switch]$Silent,
+
+        [Parameter()]
+        [string]$TenantDomain = '',
+
+        [Parameter()]
+        [string]$Version = ''
     )
 
     # Build ordered list of automated checks for active sections
@@ -141,80 +151,109 @@ function Initialize-CheckProgress {
     if (-not $totalChecks) { $totalChecks = 0 }
 
     # Build state
-    $state = @{
-        Completed         = 0
-        Total             = $totalChecks
-        CheckIds          = @{}      # checkId -> collector name (for validation)
-        CountedIds        = @{}      # checkId -> $true (track first occurrence for counter)
-        CurrentCollector  = ''
-        CollectorCounts   = @{}      # collector -> total count
-        CollectorDone     = @{}      # collector -> completed count
-        PrintedHeaders    = @{}      # collector -> $true (header printed)
-        LabelMap          = $script:CollectorLabelMap  # accessible from any scope via global state
-        LicenseSkipped    = $licenseSkipped  # checkId -> required plans (for compliance overview)
-    }
+    $script:State = [hashtable]::Synchronized(@{
+        # Existing keys (preserved for backward compat + test coverage)
+        Completed        = 0
+        Total            = $totalChecks
+        CheckIds         = @{}      # checkId -> collector name (for validation)
+        CountedIds       = @{}      # checkId -> $true (track first occurrence for counter)
+        CurrentCollector = ''
+        CollectorCounts  = @{}      # collector -> total count
+        CollectorDone    = @{}      # collector -> completed count
+        PrintedHeaders   = @{}      # collector -> $true (header printed)
+        LabelMap         = $script:CollectorLabelMap  # accessible from any scope via global state
+        LicenseSkipped   = $licenseSkipped  # checkId -> required plans (for compliance overview)
+
+        # New keys for Spectre mode
+        Mode             = if ([Console]::IsOutputRedirected -or $env:CI) { 'Fallback' } else { 'Spectre' }
+        Complete         = $false
+        Closed           = $false
+        StartTime        = [datetime]::Now
+        TenantDomain     = $TenantDomain
+        Version          = $Version
+        Pass             = 0
+        Fail             = 0
+        Warn             = 0
+        Skip             = 0
+        Sections         = [System.Collections.Generic.List[hashtable]]::new()
+        Checks           = [System.Collections.Generic.List[hashtable]]::new()
+        OutputFiles      = @()
+    })
+    $global:CheckProgressState = $script:State
 
     # Populate check IDs and collector counts
     foreach ($collectorName in $checksByCollector.Keys) {
-        $state.CollectorCounts[$collectorName] = $checksByCollector[$collectorName].Count
-        $state.CollectorDone[$collectorName] = 0
+        $script:State.CollectorCounts[$collectorName] = $checksByCollector[$collectorName].Count
+        $script:State.CollectorDone[$collectorName] = 0
         foreach ($c in $checksByCollector[$collectorName]) {
-            $state.CheckIds[$c.checkId] = $collectorName
+            $script:State.CheckIds[$c.checkId] = $collectorName
         }
     }
 
-    $global:CheckProgressState = $state
+    # Build ordered section list for the dashboard sidebar
+    $sectionOrder = @('Identity', 'Email', 'Security', 'Intune', 'Collaboration', 'PowerBI', 'DNS')
+    foreach ($sec in $sectionOrder) {
+        if ($sec -in $ActiveSections) {
+            $script:State.Sections.Add(@{ Name = $sec; Status = 'Pending' }) | Out-Null
+        }
+    }
 
     if ($Silent) { return }
 
-    if ($totalChecks -eq 0) {
-        Write-Host ''
-        Write-Host '  No automated security checks queued for the selected sections.' -ForegroundColor DarkGray
-        Write-Host ''
-        return
-    }
-
-    # Print status legend so users know what the symbols mean
-    Write-Host ''
-    Write-Host '  Status Legend:' -ForegroundColor White
-    Write-Host '    ' -NoNewline
-    Write-Host "$([char]0x2713) Pass  " -ForegroundColor Green -NoNewline
-    Write-Host "$([char]0x2717) Fail  " -ForegroundColor Red -NoNewline
-    Write-Host '! Warning  ' -ForegroundColor Yellow -NoNewline
-    Write-Host '? Review  ' -ForegroundColor Cyan -NoNewline
-    Write-Host 'i Info' -ForegroundColor DarkGray
-
-    # Print a compact summary of what's queued
-    Write-Host ''
-    Write-Host "  Security Checks: $totalChecks queued across $($checksByCollector.Count) collectors" -ForegroundColor Cyan
-    foreach ($collectorName in $checksByCollector.Keys) {
-        $label = $script:CollectorLabelMap[$collectorName]
-        $count = $checksByCollector[$collectorName].Count
-        Write-Host "    $([char]0x25B8) $label — $count checks" -ForegroundColor DarkGray
-    }
-    if ($licenseSkipped.Count -gt 0) {
-        # Friendly names for common service plan IDs
-        $planFriendlyNames = @{
-            'AAD_PREMIUM_P2'                    = 'Entra ID P2 (Azure AD Premium P2)'
-            'ATP_ENTERPRISE'                    = 'Microsoft Defender for Office 365'
-            'LOCKBOX_ENTERPRISE'                = 'Customer Lockbox'
-            'INTUNE_A'                          = 'Microsoft Intune'
-            'INFORMATION_PROTECTION_COMPLIANCE' = 'Microsoft 365 compliance (requires Teams license)'
+    if ($script:State.Mode -eq 'Fallback') {
+        if ($totalChecks -eq 0) {
+            Write-Host ''
+            Write-Host '  No automated security checks queued for the selected sections.' -ForegroundColor DarkGray
+            Write-Host ''
+            return
         }
-        Write-Host "  $($licenseSkipped.Count) checks skipped (tenant lacks required license):" -ForegroundColor DarkYellow
-        foreach ($skipEntry in $licenseSkipped.GetEnumerator()) {
-            $skipInfo = $skipEntry.Value
-            $planList = ($skipInfo.RequiredPlans | ForEach-Object {
-                if ($planFriendlyNames.ContainsKey($_)) { $planFriendlyNames[$_] } else { $_ }
-            }) -join ' or '
-            Write-Host "    $([char]0x25B8) $($skipEntry.Key): $($skipInfo.Name)" -ForegroundColor DarkYellow
-            Write-Host "      Requires: $planList" -ForegroundColor DarkGray
-        }
-    }
-    Write-Host ''
 
-    # Start the Write-Progress bar
-    Write-Progress -Activity 'M365 Security Assessment' -Status "0 / $totalChecks checks complete" -PercentComplete 0 -Id 1
+        # Print status legend so users know what the symbols mean
+        Write-Host ''
+        Write-Host '  Status Legend:' -ForegroundColor White
+        Write-Host '    ' -NoNewline
+        Write-Host "$([char]0x2713) Pass  " -ForegroundColor Green -NoNewline
+        Write-Host "$([char]0x2717) Fail  " -ForegroundColor Red -NoNewline
+        Write-Host '! Warning  ' -ForegroundColor Yellow -NoNewline
+        Write-Host '? Review  ' -ForegroundColor Cyan -NoNewline
+        Write-Host 'i Info' -ForegroundColor DarkGray
+
+        # Print a compact summary of what's queued
+        Write-Host ''
+        Write-Host "  Security Checks: $totalChecks queued across $($checksByCollector.Count) collectors" -ForegroundColor Cyan
+        foreach ($collectorName in $checksByCollector.Keys) {
+            $label = $script:CollectorLabelMap[$collectorName]
+            $count = $checksByCollector[$collectorName].Count
+            Write-Host "    $([char]0x25B8) $label — $count checks" -ForegroundColor DarkGray
+        }
+        if ($licenseSkipped.Count -gt 0) {
+            # Friendly names for common service plan IDs
+            $planFriendlyNames = @{
+                'AAD_PREMIUM_P2'                    = 'Entra ID P2 (Azure AD Premium P2)'
+                'ATP_ENTERPRISE'                    = 'Microsoft Defender for Office 365'
+                'LOCKBOX_ENTERPRISE'                = 'Customer Lockbox'
+                'INTUNE_A'                          = 'Microsoft Intune'
+                'INFORMATION_PROTECTION_COMPLIANCE' = 'Microsoft 365 compliance (requires Teams license)'
+            }
+            Write-Host "  $($licenseSkipped.Count) checks skipped (tenant lacks required license):" -ForegroundColor DarkYellow
+            foreach ($skipEntry in $licenseSkipped.GetEnumerator()) {
+                $skipInfo = $skipEntry.Value
+                $planList = ($skipInfo.RequiredPlans | ForEach-Object {
+                    if ($planFriendlyNames.ContainsKey($_)) { $planFriendlyNames[$_] } else { $_ }
+                }) -join ' or '
+                Write-Host "    $([char]0x25B8) $($skipEntry.Key): $($skipInfo.Name)" -ForegroundColor DarkYellow
+                Write-Host "      Requires: $planList" -ForegroundColor DarkGray
+            }
+        }
+        Write-Host ''
+
+        # Start the Write-Progress bar
+        Write-Progress -Activity 'M365 Security Assessment' -Status "0 / $totalChecks checks complete" -PercentComplete 0 -Id 1
+    } else {
+        # Spectre mode: clear screen and start background render loop
+        # (Invoke-SpectreRenderLoop is added in Task 4 — stub only)
+        [Console]::Clear()
+    }
 }
 
 
