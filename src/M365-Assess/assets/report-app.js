@@ -156,6 +156,22 @@ const Icon = {
     strokeWidth: "1.5"
   }, /*#__PURE__*/React.createElement("path", {
     d: "M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"
+  })),
+  menu: () => /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.5"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 4h12M2 8h12M2 12h12"
+  })),
+  close: () => /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.5"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M3 3l10 10M13 3L3 13"
   }))
 };
 const STATUS_COLORS = {
@@ -184,7 +200,9 @@ function Sidebar({
   counts,
   domainCounts,
   activeDomain,
-  onDomainJump
+  onDomainJump,
+  navOpen,
+  onClose
 }) {
   const DOM_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity'];
   const domains = DOM_ORDER.filter(d => domainCounts.total[d]).concat(Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort());
@@ -212,8 +230,15 @@ function Sidebar({
     id: 'appendix',
     label: 'Appendix · tenant'
   }];
-  return /*#__PURE__*/React.createElement("aside", {
-    className: "sidebar"
+  const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
+  const closeIfMobile = () => {
+    if (isMobile()) onClose();
+  };
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: 'sidebar-overlay' + (navOpen ? ' open' : ''),
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("aside", {
+    className: 'sidebar' + (navOpen ? ' open' : '')
   }, /*#__PURE__*/React.createElement("div", {
     className: "brand"
   }, /*#__PURE__*/React.createElement("div", {
@@ -222,11 +247,16 @@ function Sidebar({
     className: "brand-name"
   }, "M365 Assess"), /*#__PURE__*/React.createElement("div", {
     className: "brand-sub"
-  }, "Security Report"))), /*#__PURE__*/React.createElement("nav", null, /*#__PURE__*/React.createElement("div", {
+  }, "Security Report")), /*#__PURE__*/React.createElement("button", {
+    className: "sidebar-close",
+    onClick: onClose,
+    "aria-label": "Close navigation"
+  }, /*#__PURE__*/React.createElement(Icon.close, null))), /*#__PURE__*/React.createElement("nav", null, /*#__PURE__*/React.createElement("div", {
     className: "nav-label"
   }, "Executive"), exec.map(it => /*#__PURE__*/React.createElement("a", {
     href: `#${it.id}`,
     key: it.id,
+    onClick: closeIfMobile,
     className: 'nav-item' + (active === it.id ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label))), /*#__PURE__*/React.createElement("div", {
     className: "nav-label",
@@ -242,6 +272,7 @@ function Sidebar({
       onClick: e => {
         e.preventDefault();
         onDomainJump(d);
+        closeIfMobile();
       },
       className: 'nav-item' + (activeDomain === d ? ' active' : '')
     }, /*#__PURE__*/React.createElement("span", null, d), /*#__PURE__*/React.createElement("span", {
@@ -255,7 +286,11 @@ function Sidebar({
   }, "Details"), details.map(it => /*#__PURE__*/React.createElement("a", {
     href: `#${it.id}`,
     key: it.id,
-    className: 'nav-item' + (active === it.id ? ' active' : '')
+    onClick: e => {
+      if (it.id === 'findings') onDomainJump(null);
+      closeIfMobile();
+    },
+    className: 'nav-item' + (active === it.id && !(it.id === 'findings' && activeDomain) ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label), it.count !== undefined && /*#__PURE__*/React.createElement("span", {
     className: "count"
   }, it.count)))), /*#__PURE__*/React.createElement("div", {
@@ -276,7 +311,7 @@ function Sidebar({
       marginTop: 2,
       opacity: .7
     }
-  }, "Run \xB7 ", new Date(SCORE.CreatedDateTime || Date.now()).toLocaleDateString())));
+  }, "Run \xB7 ", new Date(SCORE.CreatedDateTime || Date.now()).toLocaleDateString()))));
 }
 
 // ======================== Topbar ========================
@@ -288,11 +323,16 @@ function Topbar({
   theme,
   setTheme,
   onPrint,
-  onTweaks
+  onTweaks,
+  onHamburger
 }) {
   return /*#__PURE__*/React.createElement("div", {
     className: "topbar"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "hamburger-btn",
+    onClick: onHamburger,
+    "aria-label": "Open navigation"
+  }, /*#__PURE__*/React.createElement(Icon.menu, null)), /*#__PURE__*/React.createElement("div", {
     className: "title"
   }, "Security posture report", /*#__PURE__*/React.createElement("span", {
     className: "title-sub"
@@ -313,9 +353,11 @@ function Topbar({
     className: theme === 'console' ? 'active' : '',
     onClick: () => setTheme('console')
   }, "Console"), /*#__PURE__*/React.createElement("button", {
-    className: theme === 'saas' ? 'active' : '',
-    onClick: () => setTheme('saas')
-  }, "SaaS")), /*#__PURE__*/React.createElement("button", {
+    className: theme === 'high-contrast' ? 'active' : '',
+    onClick: () => setTheme('high-contrast')
+  }, "High Contrast")), /*#__PURE__*/React.createElement("div", {
+    className: "icon-btn-group"
+  }, /*#__PURE__*/React.createElement("button", {
     className: "icon-btn",
     title: mode === 'dark' ? 'Light mode' : 'Dark mode',
     onClick: () => setMode(mode === 'dark' ? 'light' : 'dark')
@@ -323,7 +365,7 @@ function Topbar({
     className: "icon-btn",
     href: D.xlsxFileName,
     download: true,
-    title: "Download XLSX"
+    title: `Download compliance matrix — ${D.xlsxFileName}`
   }, /*#__PURE__*/React.createElement(Icon.xlsx, null)), /*#__PURE__*/React.createElement("button", {
     className: "icon-btn",
     title: "Print / PDF",
@@ -332,7 +374,7 @@ function Topbar({
     className: "icon-btn",
     title: "Tweaks",
     onClick: onTweaks
-  }, /*#__PURE__*/React.createElement(Icon.sliders, null)));
+  }, /*#__PURE__*/React.createElement(Icon.sliders, null))));
 }
 
 // ======================== Posture hero ========================
@@ -453,9 +495,16 @@ function Posture() {
     className: "banner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "banner-icon"
-  }, "!"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, critical, " critical exposure", critical === 1 ? '' : 's'), " in privileged identity.", ' ', "Break-glass accounts lack MFA, 3 admins excluded from Conditional Access,", ' ', "and ", MFA_STATS.adminsWithoutMfa, " administrator", MFA_STATS.adminsWithoutMfa === 1 ? '' : 's', " are not MFA-enrolled. Start with ", /*#__PURE__*/React.createElement("a", {
-    href: "#stryker"
-  }, "Stryker readiness \u2192"))));
+  }, "!"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, critical, " critical finding", critical === 1 ? '' : 's'), " require immediate remediation.", MFA_STATS.adminsWithoutMfa > 0 && ` ${MFA_STATS.adminsWithoutMfa} admin${MFA_STATS.adminsWithoutMfa === 1 ? ' is' : ' are'} not MFA-enrolled.`, ' ', "Prioritized using CISA KEV and CIS Critical Controls guidance.", ' ', /*#__PURE__*/React.createElement("a", {
+    href: "#findings",
+    onClick: e => {
+      e.preventDefault();
+      document.getElementById('findings')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, "Review in findings table \u2192"))));
 }
 function Sparkline({
   score,
@@ -649,6 +698,26 @@ function FrameworkQuilt({
   onSelect,
   selected
 }) {
+  const [visibleFws, setVisibleFws] = useState(['cis-m365-v6']);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [expandedFw, setExpandedFw] = useState(null);
+  const pickerRef = useRef(null);
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setPickerOpen(false);
+    };
+    const onOut = e => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOut);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOut);
+    };
+  }, [pickerOpen]);
+  const toggleFw = fw => setVisibleFws(v => v.includes(fw) ? v.length > 1 ? v.filter(x => x !== fw) : v : [...v, fw]);
   const byFw = useMemo(() => {
     const out = {};
     FRAMEWORKS.forEach(f => out[f.id] = {
@@ -663,10 +732,57 @@ function FrameworkQuilt({
       if (!out[fw]) return;
       out[fw].total++;
       const k = STATUS_COLORS[f.status];
-      out[fw][k]++;
+      if (k) out[fw][k]++;
     }));
     return out;
   }, []);
+  const fwDomainBreakdown = useMemo(() => {
+    if (!expandedFw) return {};
+    const out = {};
+    FINDINGS.forEach(f => {
+      if (!f.frameworks.includes(expandedFw)) return;
+      if (!out[f.domain]) out[f.domain] = {
+        pass: 0,
+        warn: 0,
+        fail: 0,
+        review: 0,
+        info: 0,
+        total: 0
+      };
+      out[f.domain].total++;
+      const k = STATUS_COLORS[f.status];
+      if (k) out[f.domain][k]++;
+    });
+    return out;
+  }, [expandedFw]);
+  const fwProfileStats = useMemo(() => {
+    if (!expandedFw) return null;
+    const l1 = new Set(),
+      l2 = new Set(),
+      e3 = new Set(),
+      e5only = new Set();
+    FINDINGS.forEach((f, idx) => {
+      const profiles = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
+      if (profiles.length === 0) return;
+      const hasE3 = profiles.some(p => p.startsWith('E3'));
+      profiles.forEach(p => {
+        if (p.includes('L1')) l1.add(idx);
+        if (p.includes('L2')) l2.add(idx);
+      });
+      if (hasE3) e3.add(idx);else e5only.add(idx);
+    });
+    return {
+      l1: l1.size,
+      l2: l2.size,
+      e3: e3.size,
+      e5only: e5only.size
+    };
+  }, [expandedFw]);
+  const displayFws = FRAMEWORKS.filter(f => visibleFws.includes(f.id));
+  const pickerLabel = visibleFws.length === 1 ? FRAMEWORKS.find(f => f.id === visibleFws[0])?.full || visibleFws[0] : `${visibleFws.length} frameworks`;
+  const handleCardClick = fwId => setExpandedFw(e => e === fwId ? null : fwId);
+  const expandedMeta = expandedFw ? FRAMEWORKS.find(f => f.id === expandedFw) : null;
+  const expandedData = expandedFw ? byFw[expandedFw] : null;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "frameworks"
@@ -675,40 +791,258 @@ function FrameworkQuilt({
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
   }, "02 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("div", {
+    ref: pickerRef,
+    style: {
+      position: 'relative',
+      marginLeft: 12,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (visibleFws.length > 1 ? ' selected' : ''),
+    onClick: () => setPickerOpen(o => !o)
+  }, pickerLabel, /*#__PURE__*/React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 10 10",
+    style: {
+      marginLeft: 4,
+      opacity: .6
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3l3 3 3-3",
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    fill: "none"
+  }))), pickerOpen && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu",
+    style: {
+      right: 0,
+      left: 'auto',
+      minWidth: 280
+    }
+  }, FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("label", {
+    key: f.id,
+    className: 'domain-opt' + (visibleFws.includes(f.id) ? ' sel' : '')
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: visibleFws.includes(f.id),
+    onChange: () => toggleFw(f.id)
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      lineHeight: 1.3
+    }
+  }, f.full || f.id), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'var(--font-mono)',
+      fontSize: 10,
+      color: 'var(--muted)',
+      marginTop: 1
+    }
+  }, f.id)), /*#__PURE__*/React.createElement("span", {
+    className: "ct"
+  }, byFw[f.id]?.total || 0))))), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
     className: "quilt"
-  }, FRAMEWORKS.map(f => {
+  }, displayFws.map(f => {
     const d = byFw[f.id];
-    // Build 30 cells showing a sample of statuses
-    const cells = Array(30).fill(null);
-    let idx = 0;
-    ['fail', 'warn', 'review', 'pass', 'info'].forEach(k => {
-      const count = Math.round(d[k] / Math.max(1, d.total) * 30);
-      for (let i = 0; i < count && idx < 30; i++, idx++) cells[idx] = k;
-    });
-    while (idx < 30) {
-      cells[idx] = 'pass';
-      idx++;
-    }
     const score = pct(d.pass + Math.round(d.info * 0.5), d.total);
+    const isExpanded = expandedFw === f.id;
     return /*#__PURE__*/React.createElement("div", {
       key: f.id,
-      className: 'quilt-cell' + (selected === f.id ? ' selected' : ''),
-      onClick: () => onSelect(selected === f.id ? null : f.id)
+      className: 'quilt-cell' + (isExpanded ? ' expanded' : '') + (selected === f.id ? ' selected' : ''),
+      onClick: () => handleCardClick(f.id)
     }, /*#__PURE__*/React.createElement("div", {
       className: "fw-name"
     }, f.id), /*#__PURE__*/React.createElement("div", {
       className: "fw-long"
     }, f.full), /*#__PURE__*/React.createElement("div", {
-      className: "fw-grid"
-    }, cells.map((c, i) => /*#__PURE__*/React.createElement("i", {
-      key: i,
-      className: c || ''
-    }))), /*#__PURE__*/React.createElement("div", {
+      className: "fw-bar"
+    }, d.pass > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg pass",
+      style: {
+        flex: d.pass
+      }
+    }), d.warn > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg warn",
+      style: {
+        flex: d.warn
+      }
+    }), d.fail > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg fail",
+      style: {
+        flex: d.fail
+      }
+    }), d.review > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg review",
+      style: {
+        flex: d.review
+      }
+    }), d.info > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg info",
+      style: {
+        flex: d.info
+      }
+    }), d.total === 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg empty",
+      style: {
+        flex: 1
+      }
+    })), /*#__PURE__*/React.createElement("div", {
       className: "fw-stat"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, score, "%"), " covered"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " gaps"), /*#__PURE__*/React.createElement("span", null, d.total, " checks")));
-  })));
+  })), expandedFw && expandedMeta && expandedData && /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-panel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-header"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-name"
+  }, expandedMeta.full), /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-id"
+  }, expandedFw)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setExpandedFw(null),
+    style: {
+      background: 'none',
+      border: 0,
+      color: 'var(--muted)',
+      cursor: 'pointer',
+      fontSize: 18,
+      lineHeight: 1,
+      padding: '0 4px'
+    }
+  }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-summary"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, expandedData.total), " controls"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--success-text)'
+    }
+  }, expandedData.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--warn-text)'
+    }
+  }, expandedData.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--danger-text)'
+    }
+  }, expandedData.fail), " fail"), expandedData.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, expandedData.review), " review")), fwProfileStats && fwProfileStats.l1 + fwProfileStats.l2 + fwProfileStats.e3 + fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-profile-stats"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip level"
+  }, "L1 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l1)), fwProfileStats.l2 > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip level2"
+  }, "L2 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l2)), /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-sep"
+  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip lic"
+  }, "E3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e3)), fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip lic5"
+  }, "E5 only ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e5only))), /*#__PURE__*/React.createElement("div", {
+    className: "fw-bar",
+    style: {
+      marginBottom: 16,
+      height: 10,
+      borderRadius: 5
+    }
+  }, expandedData.pass > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg pass",
+    style: {
+      flex: expandedData.pass
+    }
+  }), expandedData.warn > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg warn",
+    style: {
+      flex: expandedData.warn
+    }
+  }), expandedData.fail > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg fail",
+    style: {
+      flex: expandedData.fail
+    }
+  }), expandedData.review > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg review",
+    style: {
+      flex: expandedData.review
+    }
+  }), expandedData.info > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg info",
+    style: {
+      flex: expandedData.info
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.1em',
+      color: 'var(--muted)',
+      marginBottom: 8
+    }
+  }, "Coverage by domain"), /*#__PURE__*/React.createElement("div", {
+    className: "fw-detail-domains"
+  }, Object.entries(fwDomainBreakdown).sort((a, b) => b[1].fail - a[1].fail || b[1].total - a[1].total).map(([domain, s]) => /*#__PURE__*/React.createElement("div", {
+    key: domain,
+    className: "fw-domain-row"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-domain-name"
+  }, domain), /*#__PURE__*/React.createElement("div", {
+    className: "fw-domain-bar"
+  }, s.pass > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg pass",
+    style: {
+      flex: s.pass
+    }
+  }), s.warn > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg warn",
+    style: {
+      flex: s.warn
+    }
+  }), s.fail > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg fail",
+    style: {
+      flex: s.fail
+    }
+  }), s.review > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg review",
+    style: {
+      flex: s.review
+    }
+  }), s.info > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg info",
+    style: {
+      flex: s.info
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fw-domain-stat"
+  }, s.fail > 0 ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--danger-text)'
+    }
+  }, s.fail, " gap", s.fail !== 1 ? 's' : '') : /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--success-text)'
+    }
+  }, s.pass, " pass"))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      paddingTop: 12,
+      borderTop: '1px solid var(--border)'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "chip chip-more selected",
+    onClick: () => {
+      onSelect(expandedFw);
+      document.getElementById('findings')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, "View all ", expandedData.total, " findings in this framework \u2192"))));
 }
 
 // ======================== Filter bar ========================
@@ -721,6 +1055,39 @@ function FilterBar({
   setSearch
 }) {
   const [domainOpen, setDomainOpen] = useState(false);
+  const [fwOpen, setFwOpen] = useState(false);
+  const domainRef = useRef(null);
+  const fwRef = useRef(null);
+  useEffect(() => {
+    if (!domainOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setDomainOpen(false);
+    };
+    const onOutside = e => {
+      if (domainRef.current && !domainRef.current.contains(e.target)) setDomainOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOutside);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [domainOpen]);
+  useEffect(() => {
+    if (!fwOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setFwOpen(false);
+    };
+    const onOutside = e => {
+      if (fwRef.current && !fwRef.current.contains(e.target)) setFwOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOutside);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [fwOpen]);
   const update = (k, v) => {
     setFilters(f => {
       const cur = new Set(f[k]);
@@ -792,19 +1159,47 @@ function FilterBar({
   }, counts.severity[v] || 0)))), /*#__PURE__*/React.createElement("div", {
     className: "filter-divider"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "filter-group"
+    className: "filter-group",
+    ref: fwRef
   }, /*#__PURE__*/React.createElement("span", {
     className: "filter-group-label"
-  }, "Framework"), FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("button", {
+  }, "Framework"), /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (filters.framework.length ? ' selected' : ''),
+    onClick: () => setFwOpen(o => !o)
+  }, filters.framework.length ? `${filters.framework.length} selected` : 'All frameworks', /*#__PURE__*/React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 10 10",
+    style: {
+      marginLeft: 4,
+      opacity: .6
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3l3 3 3-3",
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    fill: "none"
+  }))), fwOpen && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu"
+  }, FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("label", {
     key: f.id,
-    className: 'chip' + (filters.framework.includes(f.id) ? ' selected' : ''),
-    onClick: () => update('framework', f.id)
-  }, f.id, /*#__PURE__*/React.createElement("span", {
+    className: 'domain-opt' + (filters.framework.includes(f.id) ? ' sel' : '')
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: filters.framework.includes(f.id),
+    onChange: () => update('framework', f.id)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--font-mono)',
+      fontSize: 12
+    }
+  }, f.id), /*#__PURE__*/React.createElement("span", {
     className: "ct"
-  }, counts.framework[f.id] || 0)))), /*#__PURE__*/React.createElement("div", {
+  }, counts.framework[f.id] || 0))))), /*#__PURE__*/React.createElement("div", {
     className: "filter-divider"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "filter-group"
+    className: "filter-group",
+    ref: domainRef
   }, /*#__PURE__*/React.createElement("span", {
     className: "filter-group-label"
   }, "Domain"), /*#__PURE__*/React.createElement("button", {
@@ -848,11 +1243,62 @@ function FilterBar({
 }
 
 // ======================== Findings table ========================
+const ALL_COLS = [{
+  id: 'status',
+  label: 'Status',
+  width: '80px'
+}, {
+  id: 'finding',
+  label: 'Finding',
+  width: '1.5fr'
+}, {
+  id: 'domain',
+  label: 'Domain',
+  width: '140px'
+}, {
+  id: 'controlId',
+  label: 'Control #',
+  width: '100px'
+}, {
+  id: 'checkId',
+  label: 'CheckID',
+  width: '160px'
+}, {
+  id: 'severity',
+  label: 'Severity',
+  width: '100px'
+}, {
+  id: 'frameworks',
+  label: 'Frameworks',
+  width: '120px'
+}];
+const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'severity'];
 function FindingsTable({
   filters,
   search
 }) {
   const [open, setOpen] = useState(new Set());
+  const [visibleCols, setVisibleCols] = useState(DEFAULT_COLS);
+  const [colPickerOpen, setColPickerOpen] = useState(false);
+  const colPickerRef = useRef(null);
+  useEffect(() => {
+    if (!colPickerOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setColPickerOpen(false);
+    };
+    const onOut = e => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target)) setColPickerOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOut);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOut);
+    };
+  }, [colPickerOpen]);
+  const toggleCol = id => setVisibleCols(v => v.includes(id) ? v.length > 1 ? v.filter(c => c !== id) : v : [...v, id]);
+  const cols = ALL_COLS.filter(c => visibleCols.includes(c.id));
+  const gridTpl = cols.map(c => c.width).join(' ') + ' 28px';
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
     return FINDINGS.filter(f => {
@@ -872,6 +1318,95 @@ function FindingsTable({
     if (n.has(i)) n.delete(i);else n.add(i);
     return n;
   });
+  const renderCell = (colId, f) => {
+    switch (colId) {
+      case 'status':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "status"
+        }, /*#__PURE__*/React.createElement("span", {
+          className: 'status-badge ' + STATUS_COLORS[f.status]
+        }, /*#__PURE__*/React.createElement("span", {
+          className: "dot"
+        }), f.status));
+      case 'finding':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "finding",
+          className: "finding-title"
+        }, /*#__PURE__*/React.createElement("div", {
+          className: "t"
+        }, f.setting), /*#__PURE__*/React.createElement("div", {
+          className: "sub"
+        }, f.section));
+      case 'domain':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "domain",
+          className: "finding-dom"
+        }, f.domain);
+      case 'controlId':
+        {
+          const activeFw = filters.framework.length === 1 ? filters.framework[0] : null;
+          const meta = activeFw ? f.fwMeta?.[activeFw] : null;
+          const FW_PREF = ['cis-m365-v6', 'nist-800-53', 'cmmc', 'nist-csf', 'iso-27001'];
+          const cid = meta?.controlId || (() => {
+            if (!f.fwMeta) return null;
+            for (const fw of FW_PREF) {
+              if (f.fwMeta[fw]?.controlId) return f.fwMeta[fw].controlId;
+            }
+            const first = Object.values(f.fwMeta).find(v => v?.controlId);
+            return first?.controlId || null;
+          })();
+          const profiles = activeFw ? [].concat(meta?.profiles || []) : [];
+          const lvl = [...new Set(profiles.map(p => p.split('-')[1]).filter(Boolean))].join('+');
+          const lic = profiles.some(p => p.startsWith('E3')) && profiles.some(p => p.startsWith('E5')) ? 'E3+E5' : profiles.some(p => p.startsWith('E5')) ? 'E5' : profiles.some(p => p.startsWith('E3')) ? 'E3' : '';
+          return /*#__PURE__*/React.createElement("div", {
+            key: "controlId",
+            style: {
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2
+            }
+          }, /*#__PURE__*/React.createElement("span", {
+            className: "check-id",
+            style: cid ? undefined : {
+              color: 'var(--muted)',
+              fontStyle: 'italic'
+            }
+          }, cid || '—'), (lvl || lic) && /*#__PURE__*/React.createElement("span", {
+            style: {
+              display: 'inline-flex',
+              gap: 3
+            }
+          }, lvl && /*#__PURE__*/React.createElement("span", {
+            className: 'fw-profile-chip level' + (lvl.includes('L2') ? lvl.includes('L1') ? '' : '2' : '')
+          }, lvl), lic && /*#__PURE__*/React.createElement("span", {
+            className: 'fw-profile-chip ' + (lic === 'E5' ? 'lic5' : 'lic')
+          }, lic)));
+        }
+      case 'checkId':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "checkId",
+          className: "check-id"
+        }, f.checkId);
+      case 'severity':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "severity"
+        }, /*#__PURE__*/React.createElement("span", {
+          className: 'sev-badge ' + f.severity
+        }, /*#__PURE__*/React.createElement("span", {
+          className: "bar"
+        }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity])));
+      case 'frameworks':
+        return /*#__PURE__*/React.createElement("div", {
+          key: "frameworks",
+          className: "fw-list"
+        }, f.frameworks.map(fw => /*#__PURE__*/React.createElement("span", {
+          key: fw,
+          className: "fw-pill"
+        }, fw)));
+      default:
+        return null;
+    }
+  };
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "findings"
@@ -886,12 +1421,66 @@ function FindingsTable({
       fontSize: 13
     }
   }, "\xB7 ", filtered.length, " of ", FINDINGS.length)), /*#__PURE__*/React.createElement("div", {
+    ref: colPickerRef,
+    style: {
+      position: 'relative',
+      marginLeft: 12,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (visibleCols.length !== DEFAULT_COLS.length ? ' selected' : ''),
+    onClick: () => setColPickerOpen(o => !o),
+    title: "Choose columns"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.6",
+    style: {
+      marginRight: 4
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M3 5h10M3 11h10"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "6",
+    cy: "5",
+    r: "1.5",
+    fill: "currentColor",
+    stroke: "none"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "10",
+    cy: "11",
+    r: "1.5",
+    fill: "currentColor",
+    stroke: "none"
+  })), "Columns"), colPickerOpen && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu",
+    style: {
+      right: 0,
+      left: 'auto',
+      minWidth: 180
+    }
+  }, ALL_COLS.map(c => /*#__PURE__*/React.createElement("label", {
+    key: c.id,
+    className: 'domain-opt' + (visibleCols.includes(c.id) ? ' sel' : '')
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: visibleCols.includes(c.id),
+    onChange: () => toggleCol(c.id)
+  }), /*#__PURE__*/React.createElement("span", null, c.label))))), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
     className: "findings"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "findings-head"
-  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Finding"), /*#__PURE__*/React.createElement("div", null, "Domain"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null, "Frameworks"), /*#__PURE__*/React.createElement("div", null)), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "findings-head",
+    style: {
+      gridTemplateColumns: gridTpl
+    }
+  }, cols.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id
+  }, c.label)), /*#__PURE__*/React.createElement("div", null)), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "empty"
   }, "No findings match your filters."), filtered.map((f, i) => {
     const isOpen = open.has(i);
@@ -899,37 +1488,21 @@ function FindingsTable({
       key: i
     }, /*#__PURE__*/React.createElement("div", {
       className: 'finding-row' + (isOpen ? ' open' : ''),
-      onClick: () => toggle(i)
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
-      className: 'status-badge ' + STATUS_COLORS[f.status]
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "dot"
-    }), f.status)), /*#__PURE__*/React.createElement("div", {
-      className: "finding-title"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "t"
-    }, f.setting), /*#__PURE__*/React.createElement("div", {
-      className: "sub"
-    }, f.section)), /*#__PURE__*/React.createElement("div", {
-      className: "finding-dom"
-    }, f.domain), /*#__PURE__*/React.createElement("div", {
-      className: "check-id"
-    }, f.checkId), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
-      className: 'sev-badge ' + f.severity
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "bar"
-    }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity]))), /*#__PURE__*/React.createElement("div", {
-      className: "fw-list"
-    }, f.frameworks.map(fw => /*#__PURE__*/React.createElement("span", {
-      key: fw,
-      className: "fw-pill"
-    }, fw))), /*#__PURE__*/React.createElement("div", {
+      onClick: () => toggle(i),
+      style: {
+        gridTemplateColumns: gridTpl
+      }
+    }, cols.map(c => renderCell(c.id, f)), /*#__PURE__*/React.createElement("div", {
       className: "caret"
     }, /*#__PURE__*/React.createElement(Icon.chevron, null))), isOpen && /*#__PURE__*/React.createElement("div", {
       className: "finding-detail"
     }, /*#__PURE__*/React.createElement("div", {
       className: "why"
-    }, "Why it matters \u2014 ", whyItMatters(f)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "why-label"
+    }, "Why it matters"), /*#__PURE__*/React.createElement("div", {
+      className: "why-text"
+    }, whyItMatters(f))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       className: "block-title"
     }, "Current value"), /*#__PURE__*/React.createElement("div", {
       className: "value-box current"
@@ -1057,7 +1630,7 @@ function Roadmap() {
       className: "task-tags"
     }, /*#__PURE__*/React.createElement("span", {
       className: "task-tag"
-    }, SEV_LABEL[t.severity]), /*#__PURE__*/React.createElement("span", {
+    }, SEV_LABEL[t.severity]), t.effort && /*#__PURE__*/React.createElement("span", {
       className: "task-tag"
     }, t.effort, " effort"), t.frameworks.slice(0, 3).map(fw => /*#__PURE__*/React.createElement("span", {
       key: fw,
@@ -1112,7 +1685,7 @@ function Roadmap() {
       className: "task-field-value"
     }, t.rationale)), /*#__PURE__*/React.createElement("div", {
       className: "task-meta-row"
-    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Section:"), " ", t.section), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Severity:"), " ", SEV_LABEL[t.severity]), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Effort:"), " ", t.effort), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Frameworks:"), " ", t.frameworks.join(', ') || '—')), /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Section:"), " ", t.section), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Severity:"), " ", SEV_LABEL[t.severity]), t.effort && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Effort:"), " ", t.effort), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Frameworks:"), " ", t.frameworks.join(', ') || '—')), /*#__PURE__*/React.createElement("div", {
       className: "task-actions"
     }, /*#__PURE__*/React.createElement("a", {
       href: "#findings",
@@ -1194,7 +1767,7 @@ function Roadmap() {
   }, "1 \u2013 3 months")), later.map(t => renderTask(t, 'later')))));
 }
 
-// ======================== Stryker section ========================
+// ======================== Critical Exposure section ========================
 function StrykerBlock() {
   const stryker = FINDINGS.filter(f => f.domain === 'Stryker Readiness');
   if (!stryker.length) return null;
@@ -1207,7 +1780,7 @@ function StrykerBlock() {
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01b \xB7 Targeted"), /*#__PURE__*/React.createElement("h2", null, "Stryker incident readiness"), /*#__PURE__*/React.createElement("div", {
+  }, "01b \xB7 Targeted"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
     className: "card",
@@ -1226,7 +1799,7 @@ function StrykerBlock() {
       letterSpacing: '.1em',
       fontWeight: 600
     }
-  }, "Readiness"), /*#__PURE__*/React.createElement("div", {
+  }, "Coverage"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 34,
       fontWeight: 700,
@@ -1246,7 +1819,7 @@ function StrykerBlock() {
       color: 'var(--text-soft)',
       lineHeight: 1.55
     }
-  }, "Based on CISA guidance issued after the March 2026 Stryker Corp. cyberattack. Covers privileged account exposure, CA exclusions, dangerous Graph permissions, and mass-wipe audit trails."), /*#__PURE__*/React.createElement("div", {
+  }, "Mapped to MITRE ATT&CK Enterprise techniques and CISA Known Exploited Vulnerabilities (KEV). Prioritized by CIS Critical Security Controls v8 \u2014 covers privileged account exposure, CA exclusions, dangerous Graph permissions, and audit trail gaps."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 18,
@@ -1581,10 +2154,10 @@ function TweaksPanel({
       background: 'linear-gradient(135deg, #4c8bff, #2563eb)'
     }
   }), /*#__PURE__*/React.createElement("div", {
-    className: 'swatch' + (theme === 'saas' ? ' active' : ''),
-    onClick: () => setTheme('saas'),
+    className: 'swatch' + (theme === 'high-contrast' ? ' active' : ''),
+    onClick: () => setTheme('high-contrast'),
     style: {
-      background: 'linear-gradient(135deg, #38bdf8, #0ea5e9)'
+      background: 'linear-gradient(135deg, #005da8, #003d7a)'
     }
   }))), /*#__PURE__*/React.createElement("div", {
     className: "tw-row"
@@ -1640,6 +2213,7 @@ function App() {
   });
   const [active, setActive] = useState('overview');
   const [showTweaks, setShowTweaks] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.mode = mode;
@@ -1721,9 +2295,9 @@ function App() {
   const onDomainJump = d => {
     setFilters(f => ({
       ...f,
-      domain: [d]
+      domain: d ? [d] : []
     }));
-    document.getElementById('findings')?.scrollIntoView({
+    if (d) document.getElementById('findings')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
     });
@@ -1735,7 +2309,9 @@ function App() {
     counts: navCounts,
     domainCounts: domainCounts,
     activeDomain: filters.domain.length === 1 ? filters.domain[0] : null,
-    onDomainJump: onDomainJump
+    onDomainJump: onDomainJump,
+    navOpen: navOpen,
+    onClose: () => setNavOpen(false)
   }), /*#__PURE__*/React.createElement("main", {
     className: "main"
   }, /*#__PURE__*/React.createElement(Topbar, {
@@ -1746,7 +2322,8 @@ function App() {
     theme: theme,
     setTheme: setTheme,
     onPrint: () => window.print(),
-    onTweaks: () => setShowTweaks(s => !s)
+    onTweaks: () => setShowTweaks(s => !s),
+    onHamburger: () => setNavOpen(o => !o)
   }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(DomainRollup, {
     onJump: onDomainJump
   }), /*#__PURE__*/React.createElement(FrameworkQuilt, {
@@ -1756,7 +2333,7 @@ function App() {
     id: "findings-anchor"
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      marginTop: -24
+      marginTop: 20
     }
   }), /*#__PURE__*/React.createElement(FilterBar, {
     filters: filters,
@@ -1777,8 +2354,17 @@ function App() {
       fontFamily: 'var(--font-mono)',
       letterSpacing: '.06em'
     }
-  }, "M365 ASSESS \xB7 READ-ONLY SECURITY ASSESSMENT \xB7", ' ', /*#__PURE__*/React.createElement("a", {
+  }, /*#__PURE__*/React.createElement("a", {
     href: "https://github.com/Galvnyz/M365-Assess",
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      color: 'inherit',
+      textDecoration: 'underline',
+      textUnderlineOffset: 3
+    }
+  }, "M365 ASSESS"), ' · READ-ONLY SECURITY ASSESSMENT · ', /*#__PURE__*/React.createElement("a", {
+    href: "https://galvnyz.com",
     target: "_blank",
     rel: "noreferrer",
     style: {

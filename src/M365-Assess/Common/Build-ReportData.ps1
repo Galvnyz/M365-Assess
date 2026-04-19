@@ -1,4 +1,4 @@
-function Get-CheckDomain {
+﻿function Get-CheckDomain {
     <#
     .SYNOPSIS
         Maps a base CheckId prefix to the React report domain label.
@@ -105,12 +105,35 @@ function Build-ReportDataJson {
             'medium'
         }
 
-        $frameworks = if ($f.PSObject.Properties['Frameworks'] -and $f.Frameworks) {
-            $f.Frameworks
-        } elseif ($regEntry -and $regEntry.frameworks) {
-            $regEntry.frameworks
-        } else {
-            @{}
+        # frameworks — array of IDs for React filtering/display
+        # Source may be a hashtable (from Build-SectionHtml) or PSCustomObject (from ConvertFrom-Json)
+        $fwSource = if ($f.PSObject.Properties['Frameworks'] -and $f.Frameworks) { $f.Frameworks }
+                    elseif ($regEntry -and $regEntry.frameworks)                  { $regEntry.frameworks }
+                    else                                                           { $null }
+        $frameworks = if ($fwSource -is [hashtable])  { [string[]]($fwSource.Keys) }
+                      elseif ($fwSource)               { [string[]]($fwSource.PSObject.Properties.Name) }
+                      else                             { [string[]]@() }
+
+        # fwMeta — per-framework { controlId, profiles } for Control # column and L1/L2/E3/E5 breakdown
+        $fwMeta = [ordered]@{}
+        if ($fwSource -is [hashtable]) {
+            foreach ($fwId in $fwSource.Keys) {
+                $ent = $fwSource[$fwId]
+                $cid = if ($ent -is [hashtable] -and $ent.ContainsKey('controlId')) { [string]$ent['controlId'] }
+                       elseif ($ent -and $ent.PSObject.Properties['controlId'])      { [string]$ent.controlId }
+                       else                                                            { '' }
+                $prf = if ($ent -is [hashtable] -and $ent.ContainsKey('profiles'))  { @($ent['profiles']) }
+                       elseif ($ent -and $ent.PSObject.Properties['profiles'])       { @($ent.profiles) }
+                       else                                                            { @() }
+                $fwMeta[$fwId] = [ordered]@{ controlId = $cid; profiles = $prf }
+            }
+        } elseif ($fwSource) {
+            foreach ($prop in $fwSource.PSObject.Properties) {
+                $ent = $prop.Value
+                $cid = if ($ent -and $ent.PSObject.Properties['controlId']) { [string]$ent.controlId } else { '' }
+                $prf = if ($ent -and $ent.PSObject.Properties['profiles'])  { @($ent.profiles) } else { @() }
+                $fwMeta[$prop.Name] = [ordered]@{ controlId = $cid; profiles = $prf }
+            }
         }
 
         $recommended = if ($f.PSObject.Properties['RecommendedValue']) { $f.RecommendedValue }
@@ -130,6 +153,7 @@ function Build-ReportDataJson {
             remediation = $f.Remediation
             effort      = $null
             frameworks  = $frameworks
+            fwMeta      = $fwMeta
         })
     }
 
@@ -156,8 +180,6 @@ function Build-ReportDataJson {
     # 3. Compute mfaStats
     # ------------------------------------------------------------------
     $mfaRows = if ($SectionData.ContainsKey('mfa')) { @($SectionData['mfa']) } else { @() }
-    $isAdminTrue = { param($r) $r.IsAdmin -eq 'True' -or $r.IsAdmin -eq $true }
-    $isNoMfa     = { param($r) $r.MfaStrength -eq 'None' -or -not $r.MfaStrength }
 
     $mfaStats = [ordered]@{
         phishResistant   = @($mfaRows | Where-Object { $_.MfaStrength -eq 'Phishing-Resistant' }).Count
@@ -208,6 +230,10 @@ function Build-ReportDataJson {
     # 5. Serialize + escape </script> in string values
     # ------------------------------------------------------------------
     $json = $reportData | ConvertTo-Json -Depth 10
+    # ConvertTo-Json serializes [string[]]@() as null and single-element arrays as bare strings.
+    $json = $json -replace '"frameworks":\s*null',      '"frameworks": []'
+    $json = $json -replace '"profiles":\s*null',        '"profiles": []'
+    $json = $json -replace '"profiles":\s*"([^"]*)"',   '"profiles": ["$1"]'
     $json = $json -replace '</script>', '<\/script>'
     return "window.REPORT_DATA = $json;"
 }

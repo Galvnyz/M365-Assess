@@ -214,6 +214,11 @@
         'assets\m365-assess-logo-white.png'
         'assets\m365-assess-logo.png'
         'assets\sku-friendly-names.csv'
+        'assets\report-app.js'
+        'assets\react.production.min.js'
+        'assets\react-dom.production.min.js'
+        'assets\report-themes.css'
+        'assets\report-shell.css'
     )
 
     # Private data / PSData for PowerShell Gallery
