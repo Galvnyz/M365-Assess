@@ -2354,8 +2354,17 @@ function App() {
       fontFamily: 'var(--font-mono)',
       letterSpacing: '.06em'
     }
-  }, "M365 ASSESS \xB7 READ-ONLY SECURITY ASSESSMENT \xB7", ' ', /*#__PURE__*/React.createElement("a", {
+  }, /*#__PURE__*/React.createElement("a", {
     href: "https://github.com/Galvnyz/M365-Assess",
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      color: 'inherit',
+      textDecoration: 'underline',
+      textUnderlineOffset: 3
+    }
+  }, "M365 ASSESS"), ' · READ-ONLY SECURITY ASSESSMENT · ', /*#__PURE__*/React.createElement("a", {
+    href: "https://galvnyz.com",
     target: "_blank",
     rel: "noreferrer",
     style: {

@@ -1348,8 +1348,9 @@ function App() {
         <Appendix/>
         {!D.whiteLabel && (
           <div style={{textAlign:'center',padding:'30px 0 10px',fontSize:11,color:'var(--muted)',fontFamily:'var(--font-mono)',letterSpacing:'.06em'}}>
-            M365 ASSESS · READ-ONLY SECURITY ASSESSMENT ·{' '}
-            <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'underline',textUnderlineOffset:3}}>GALVNYZ</a>
+            <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'underline',textUnderlineOffset:3}}>M365 ASSESS</a>
+            {' · READ-ONLY SECURITY ASSESSMENT · '}
+            <a href="https://galvnyz.com" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'underline',textUnderlineOffset:3}}>GALVNYZ</a>
           </div>
         )}
       </main>
