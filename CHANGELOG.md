@@ -13,7 +13,6 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 - Framework blurbs and official site links in the framework detail panel (JSX `FW_BLURB` lookup)
 - Tenant · Live and MFA · Coverage status cards pinned to sidebar bottom
 - Doom-font neon gradient ASCII banner in `Show-AssessmentHeader` — magenta-to-teal 24-bit ANSI gradient across 18 art rows (#569)
-- Custom ANSI gradient progress bar replaces `Write-Progress` — sticky bar using cursor-up/clear-line with indigo-to-cyan gradient and Unicode block characters (#570)
 - `OnPremisesSyncEnabled` column added to admin role report (`Get-AdminRoleReport.ps1`) — fetched per-user via targeted Graph call; blank for service principals and groups (#573)
 - `effort` field wired from control registry into `REPORT_DATA.findings[].effort` — defaults to `'medium'` until upstream registry populates the field (#573)
 - Dark high-contrast mode brand-mark legibility fix (theme-scoped CSS override)
@@ -24,6 +23,11 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 - `-WhiteLabel` switch hides GitHub/Galvnyz attribution in the React report footer
 - `-CompactReport` is the v2 replacement for the removed Skip* flags
 - Remediation roadmap "How we prioritized" copy updated to accurately reflect severity-based bucketing; effort-weighted quick-win lane noted as pending upstream registry data (#547)
+- Progress display reverted to `Write-Progress` — ANSI gradient bar (#570) removed before release due to fragility across console environments (#579)
+
+### Fixed
+- `Test-ModuleCompatibility`: `-SkipPurview` now correctly suppresses false EXO downgrade warning when no ExchangeOnline-dependent sections are selected (#580)
+- `Show-AssessmentHeader`: output folder and log file paths now displayed in startup banner (#580)
 
 ### Removed
 - `-CustomBranding`, `-FindingsNarrative`, `-CustomerProfile` parameters removed (#541)
