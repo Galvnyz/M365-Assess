@@ -722,6 +722,22 @@ function FilterBar({
   setSearch
 }) {
   const [domainOpen, setDomainOpen] = useState(false);
+  const domainRef = useRef(null);
+  useEffect(() => {
+    if (!domainOpen) return;
+    const onKey = e => {
+      if (e.key === 'Escape') setDomainOpen(false);
+    };
+    const onOutside = e => {
+      if (domainRef.current && !domainRef.current.contains(e.target)) setDomainOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOutside);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [domainOpen]);
   const update = (k, v) => {
     setFilters(f => {
       const cur = new Set(f[k]);
@@ -805,7 +821,8 @@ function FilterBar({
   }, counts.framework[f.id] || 0)))), /*#__PURE__*/React.createElement("div", {
     className: "filter-divider"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "filter-group"
+    className: "filter-group",
+    ref: domainRef
   }, /*#__PURE__*/React.createElement("span", {
     className: "filter-group-label"
   }, "Domain"), /*#__PURE__*/React.createElement("button", {

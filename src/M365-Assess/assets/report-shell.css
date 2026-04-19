@@ -41,7 +41,7 @@ a:hover { text-decoration: underline; }
 .main {
   min-width: 0;
   padding: 28px 40px 80px 40px;
-  max-width: 1400px;
+  max-width: 1800px;
 }
 
 /* ---------- Sidebar ---------- */
@@ -477,8 +477,25 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
   cursor: pointer;
 }
 .domain-opt:hover { background: var(--hover); }
-.domain-opt.sel { background: rgba(139, 92, 246, 0.12); color: var(--accent); font-weight: 500; }
-.domain-opt input { margin: 0; accent-color: var(--accent); }
+.domain-opt.sel { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+.domain-opt input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  margin: 0; width: 15px; height: 15px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--input-bg);
+  cursor: pointer; position: relative; flex-shrink: 0;
+  transition: background .12s, border-color .12s;
+}
+.domain-opt input[type="checkbox"]:checked {
+  background: var(--accent); border-color: var(--accent);
+}
+.domain-opt input[type="checkbox"]:checked::after {
+  content: ''; position: absolute;
+  left: 4px; top: 1px; width: 5px; height: 9px;
+  border: 2px solid #fff; border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
 .domain-opt .ct { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .status-badge {
@@ -1082,12 +1099,24 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* =========================================================
-   DENSITY — comfort adds breathing room over compact default
+   DENSITY — base CSS is the neutral midpoint.
+   Compact reduces padding; Comfort increases it significantly.
    ========================================================= */
-[data-density="comfort"] .nav-item           { padding: 9px 10px; }
+[data-density="compact"] .nav-item           { padding: 3px 8px; font-size: 12px; }
+[data-density="compact"] .findings-head,
+[data-density="compact"] .finding-row        { padding: 5px 12px; }
+[data-density="compact"] .card               { padding: 12px 14px; }
+[data-density="compact"] .kpi                { padding: 9px 12px; }
+[data-density="compact"] .domain-card        { padding: 9px 12px; }
+[data-density="compact"] .domain-card .dc-head { margin-bottom: 6px; }
+[data-density="compact"] section.block       { margin-bottom: 24px; }
+
+[data-density="comfort"] .nav-item           { padding: 11px 12px; }
 [data-density="comfort"] .findings-head,
-[data-density="comfort"] .finding-row        { padding: 14px 16px; }
-[data-density="comfort"] .card               { padding: 22px 24px; }
-[data-density="comfort"] .kpi                { padding: 18px 20px; }
-[data-density="comfort"] .domain-card        { padding: 18px 20px; }
-[data-density="comfort"] .domain-card .dc-head { margin-bottom: 14px; }
+[data-density="comfort"] .finding-row        { padding: 18px 22px; }
+[data-density="comfort"] .card               { padding: 28px 32px; }
+[data-density="comfort"] .kpi                { padding: 22px 26px; }
+[data-density="comfort"] .domain-card        { padding: 22px 26px; }
+[data-density="comfort"] .domain-card .dc-head { margin-bottom: 16px; }
+[data-density="comfort"] section.block       { margin-bottom: 56px; }
+[data-density="comfort"] .main               { padding: 40px 60px 100px 60px; max-width: 2000px; }
