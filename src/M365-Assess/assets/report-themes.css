@@ -410,6 +410,11 @@
   --hero-glow:     none;
 }
 
+/* high-contrast dark: white/silver gradient needs dark letter for legibility */
+[data-theme="high-contrast"][data-mode="dark"] .brand-mark {
+  color: #000000;
+}
+
 /* =========================================================
    NEON DARK — CYBER GLOW LAYER
    Amplified glows applied on top of base shell styles.
