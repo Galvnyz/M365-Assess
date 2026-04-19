@@ -47,9 +47,9 @@ if (-not (Assert-GraphConnection)) { return }
 Import-Module -Name Microsoft.Graph.Security -ErrorAction Stop
 
 # Retrieve the most recent Secure Score
-Write-Verbose "Retrieving the latest Secure Score..."
+Write-Verbose "Retrieving Secure Score history (up to 180 days)..."
 try {
-    $secureScores = Get-MgSecuritySecureScore -Top 1 -Sort 'createdDateTime desc'
+    $secureScores = Get-MgSecuritySecureScore -Top 180 -Sort 'createdDateTime desc'
 }
 catch {
     Write-Error "Failed to retrieve Secure Score. Ensure SecurityEvents.Read.All permission is granted: $_"
@@ -94,16 +94,26 @@ if ($latestScore.AverageComparativeScores) {
     }
 }
 
-# Build the score summary object
-$scoreSummary = [PSCustomObject]@{
-    CurrentScore           = $currentScore
-    MaxScore               = $maxScore
-    Percentage             = $percentage
-    CreatedDateTime        = $latestScore.CreatedDateTime
-    AverageComparativeScore = $averageComparative
-}
-
 Write-Verbose "Secure Score: $currentScore / $maxScore ($percentage%) as of $($latestScore.CreatedDateTime)"
+
+# Build one row per historical snapshot (newest-first from Graph).
+# AverageComparativeScore is only populated for the latest entry — the API returns
+# it only on the most recent snapshot and it would be stale/wrong for older dates.
+$allScoreRows = [System.Collections.Generic.List[PSCustomObject]]::new()
+$isLatest = $true
+foreach ($snapshot in $secureScores) {
+    $snapshotMax = if ($snapshot.MaxScore -gt 0) { $snapshot.MaxScore } else { 1 }
+    $snapshotPct = [math]::Round(($snapshot.CurrentScore / $snapshotMax) * 100, 2)
+    $allScoreRows.Add([PSCustomObject]@{
+        CurrentScore            = $snapshot.CurrentScore
+        MaxScore                = $snapshot.MaxScore
+        Percentage              = $snapshotPct
+        CreatedDateTime         = $snapshot.CreatedDateTime
+        AverageComparativeScore = if ($isLatest) { $averageComparative } else { 0 }
+    })
+    $isLatest = $false
+}
+$scoreSummary = $allScoreRows[0]
 
 # Process improvement actions from ControlScores
 $improvementActions = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -197,7 +207,7 @@ if ($ImprovementActionsPath -and $improvementActions.Count -gt 0) {
 
 # Output the score summary
 if ($OutputPath) {
-    @($scoreSummary) | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding UTF8
+    $allScoreRows | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding UTF8
     Write-Output "Exported Secure Score summary to $OutputPath"
     if ($ImprovementActionsPath -and $improvementActions.Count -gt 0) {
         Write-Output "Exported $($improvementActions.Count) improvement actions to $ImprovementActionsPath"

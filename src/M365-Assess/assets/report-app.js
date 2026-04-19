@@ -422,7 +422,7 @@ function Posture() {
   })), /*#__PURE__*/React.createElement("div", {
     className: "score-footnote"
   }, /*#__PURE__*/React.createElement("span", null, "0"), /*#__PURE__*/React.createElement("span", null, "Peer avg \xB7 ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
-    score: score,
+    scores: D.score,
     avg: avg
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "kpi-strip",
@@ -507,11 +507,19 @@ function Posture() {
   }, "Review in findings table \u2192"))));
 }
 function Sparkline({
-  score,
+  scores,
   avg
 }) {
-  // fake trend: 6 months climbing to current
-  const pts = [score - 8, score - 6.5, score - 5, score - 3.2, score - 1.1, score];
+  // Graph returns newest-first; reverse to chronological for left→right chart
+  const raw = (scores || []).map(s => parseFloat(s.Percentage) || 0).filter(v => v > 0).reverse();
+  if (raw.length < 2) return null;
+
+  // Sample down to ≤12 evenly-spaced points to keep the SVG uncluttered
+  const n = Math.min(raw.length, 12);
+  const pts = n === raw.length ? raw : Array.from({
+    length: n
+  }, (_, i) => raw[Math.round(i * (raw.length - 1) / (n - 1))]);
+  const label = raw.length >= 150 ? '6 MO TREND' : raw.length >= 60 ? '2 MO TREND' : raw.length >= 14 ? '2 WK TREND' : 'RECENT TREND';
   const W = 260,
     H = 50,
     pad = 4;
@@ -575,7 +583,7 @@ function Sparkline({
     fontSize: "9",
     fill: "var(--muted)",
     fontFamily: "var(--font-mono)"
-  }, "6 MO TREND")));
+  }, label)));
 }
 function MFABreakdown() {
   const s = MFA_STATS;

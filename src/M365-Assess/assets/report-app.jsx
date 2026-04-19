@@ -208,7 +208,7 @@ function Posture() {
             <span>Peer avg · {avg.toFixed(1)}%</span>
             <span>100</span>
           </div>
-          <Sparkline score={score} avg={avg} />
+          <Sparkline scores={D.score} avg={avg} />
         </div>
 
         <div>
@@ -258,15 +258,25 @@ function Posture() {
   );
 }
 
-function Sparkline({ score, avg }) {
-  // fake trend: 6 months climbing to current
-  const pts = [score-8, score-6.5, score-5, score-3.2, score-1.1, score];
+function Sparkline({ scores, avg }) {
+  // Graph returns newest-first; reverse to chronological for left→right chart
+  const raw = (scores || []).map(s => parseFloat(s.Percentage) || 0).filter(v => v > 0).reverse();
+  if (raw.length < 2) return null;
+
+  // Sample down to ≤12 evenly-spaced points to keep the SVG uncluttered
+  const n = Math.min(raw.length, 12);
+  const pts = n === raw.length ? raw :
+    Array.from({length: n}, (_, i) => raw[Math.round(i * (raw.length - 1) / (n - 1))]);
+
+  const label = raw.length >= 150 ? '6 MO TREND' : raw.length >= 60 ? '2 MO TREND' :
+                raw.length >= 14  ? '2 WK TREND' : 'RECENT TREND';
+
   const W = 260, H = 50, pad = 4;
   const min = Math.min(...pts, avg) - 2, max = Math.max(...pts, avg) + 2;
-  const sx = i => pad + (i/(pts.length-1)) * (W - pad*2);
-  const sy = v => pad + (1 - (v-min)/(max-min)) * (H - pad*2);
-  const d = pts.map((p,i)=>`${i?'L':'M'}${sx(i).toFixed(1)},${sy(p).toFixed(1)}`).join(' ');
-  const area = d + ` L ${sx(pts.length-1)},${H-pad} L ${sx(0)},${H-pad} Z`;
+  const sx = i => pad + (i / (pts.length - 1)) * (W - pad * 2);
+  const sy = v => pad + (1 - (v - min) / (max - min)) * (H - pad * 2);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(p).toFixed(1)}`).join(' ');
+  const area = d + ` L ${sx(pts.length - 1)},${H - pad} L ${sx(0)},${H - pad} Z`;
   return (
     <div className="score-sparkline">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none">
@@ -279,12 +289,12 @@ function Sparkline({ score, avg }) {
         <line x1={pad} x2={W-pad} y1={sy(avg)} y2={sy(avg)} stroke="var(--muted)" strokeDasharray="2 3" opacity=".5"/>
         <path d={area} fill="url(#sparkfill)" />
         <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-        {pts.map((p,i)=>(
-          <circle key={i} cx={sx(i)} cy={sy(p)} r={i===pts.length-1?3:1.5}
-            fill={i===pts.length-1?'var(--accent)':'var(--surface)'}
+        {pts.map((p, i) => (
+          <circle key={i} cx={sx(i)} cy={sy(p)} r={i === pts.length - 1 ? 3 : 1.5}
+            fill={i === pts.length - 1 ? 'var(--accent)' : 'var(--surface)'}
             stroke="var(--accent)" strokeWidth="1.5"/>
         ))}
-        <text x={W-pad} y={H-pad} textAnchor="end" fontSize="9" fill="var(--muted)" fontFamily="var(--font-mono)">6 MO TREND</text>
+        <text x={W-pad} y={H-pad} textAnchor="end" fontSize="9" fill="var(--muted)" fontFamily="var(--font-mono)">{label}</text>
       </svg>
     </div>
   );
