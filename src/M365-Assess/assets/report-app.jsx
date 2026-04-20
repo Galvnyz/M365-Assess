@@ -398,6 +398,232 @@ function MFABreakdown() {
   );
 }
 
+// ======================== DNS auth panel (replaces flat Appendix table) ========================
+function DnsAuthPanel() {
+  const dns = D.dns || [];
+  if (!dns.length) return null;
+  const spfPass    = dns.filter(r => r.SPF && !r.SPF.includes('Not')).length;
+  const dkimPass   = dns.filter(r => r.DKIMStatus === 'OK').length;
+  const dmarcEnf   = dns.filter(r => r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine').length;
+  const dmarcNone  = dns.filter(r => r.DMARCPolicy && r.DMARCPolicy.includes('none')).length;
+  const dmarcMiss  = dns.filter(r => !r.DMARC || r.DMARC.includes('Not') || !r.DMARCPolicy).length;
+  const n = dns.length;
+  const statCards = [
+    { label: 'SPF',           pass: spfPass,  total: n },
+    { label: 'DKIM',          pass: dkimPass, total: n },
+    { label: 'DMARC enforced',pass: dmarcEnf, total: n },
+  ];
+  const policyClass = p => p === 'reject' || p === 'quarantine' ? 'pass' : p && p.includes('none') ? 'warn' : 'fail';
+  const risks = [
+    n - spfPass   > 0 && { cls:'fail', msg:`${n-spfPass} domain${n-spfPass!==1?'s':''} missing SPF`         },
+    dmarcNone     > 0 && { cls:'warn', msg:`${dmarcNone} domain${dmarcNone!==1?'s':''} with DMARC p=none`    },
+    dmarcMiss     > 0 && { cls:'fail', msg:`${dmarcMiss} domain${dmarcMiss!==1?'s':''} missing DMARC`        },
+    n - dkimPass  > 0 && { cls:'warn', msg:`${n-dkimPass} domain${n-dkimPass!==1?'s':''} missing DKIM`      },
+  ].filter(Boolean);
+  return (
+    <div className="card dns-auth-panel" style={{gridColumn:'1 / -1', marginTop:14}}>
+      <div className="dns-panel-label">Email authentication posture</div>
+      <div className="dns-stat-row">
+        {statCards.map(s => (
+          <div key={s.label} className="dns-stat-card">
+            <div className="dns-stat-label">{s.label}</div>
+            <div className="dns-stat-val">{s.pass}<span>/{s.total}</span></div>
+            <div className="dns-stat-bar"><span style={{width: pct(s.pass, s.total)+'%', background: s.pass===s.total ? 'var(--success)' : 'var(--danger)'}}/></div>
+          </div>
+        ))}
+        <div className="dns-stat-card">
+          <div className="dns-stat-label">DMARC policy mix</div>
+          <div className="dns-policy-chips">
+            {dmarcEnf > 0  && <span className="dns-policy-chip pass">{dmarcEnf} enforced</span>}
+            {dmarcNone > 0 && <span className="dns-policy-chip warn">{dmarcNone} monitor</span>}
+            {dmarcMiss > 0 && <span className="dns-policy-chip fail">{dmarcMiss} missing</span>}
+          </div>
+        </div>
+      </div>
+      <table className="dns-domain-table">
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th style={{textAlign:'center'}}>SPF</th>
+            <th style={{textAlign:'center'}}>DMARC</th>
+            <th style={{textAlign:'center'}}>Policy</th>
+            <th style={{textAlign:'center'}}>DKIM</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dns.map((r, i) => (
+            <tr key={i}>
+              <td className="dns-domain-name">{r.Domain}</td>
+              <td style={{textAlign:'center'}}><StatusDot ok={r.SPF && !r.SPF.includes('Not')}/></td>
+              <td style={{textAlign:'center'}}><StatusDot ok={r.DMARC && !r.DMARC.includes('Not')}/></td>
+              <td style={{textAlign:'center'}}>
+                <span className={'dns-policy-chip ' + policyClass(r.DMARCPolicy)}>{r.DMARCPolicy || 'missing'}</span>
+              </td>
+              <td style={{textAlign:'center'}}><StatusDot ok={r.DKIMStatus === 'OK'}/></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {risks.length > 0 && (
+        <div className="dns-risks">
+          {risks.map((r, i) => <span key={i} className={'dns-risk-chip ' + r.cls}>⚠ {r.msg}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ======================== Intune category grid ========================
+function IntuneCategoryGrid() {
+  const intune = FINDINGS.filter(f => f.domain === 'Intune');
+  if (!intune.length) return null;
+  const CATS = [
+    { id: 'COMPLIANCE',     label: 'Device Compliance',      re: /^INTUNE-COMPLIANCE/ },
+    { id: 'DEVICE',         label: 'Device Config',          re: /^INTUNE-DEVICE/     },
+    { id: 'CONFIG',         label: 'Config Profiles',        re: /^INTUNE-CONFIG/     },
+    { id: 'APP',            label: 'App Protection',         re: /^INTUNE-APP/        },
+    { id: 'SECURITY',       label: 'Security Baselines',     re: /^INTUNE-SECURITY/   },
+    { id: 'VPN',            label: 'VPN / Network',          re: /^INTUNE-(VPN|WIFI|REMOTE)/ },
+    { id: 'MEDIA',          label: 'Removable Media',        re: /^INTUNE-REMOVABLEMEDIA/ },
+  ];
+  const buckets = CATS.map(cat => {
+    const fs = intune.filter(f => cat.re.test(f.checkId));
+    if (!fs.length) return null;
+    const pass = fs.filter(f => f.status==='Pass').length;
+    const fail = fs.filter(f => f.status==='Fail').length;
+    const warn = fs.filter(f => f.status==='Warning').length;
+    return { ...cat, fs, pass, fail, warn, score: pct(pass, fs.length) };
+  }).filter(Boolean);
+  const seen = new Set(buckets.flatMap(b => b.fs.map(f => f.checkId)));
+  const other = intune.filter(f => !seen.has(f.checkId));
+  if (other.length) {
+    const pass = other.filter(f => f.status==='Pass').length;
+    buckets.push({ id:'OTHER', label:'Other', fs:other, pass, fail:other.filter(f=>f.status==='Fail').length, warn:other.filter(f=>f.status==='Warning').length, score:pct(pass, other.length) });
+  }
+  return (
+    <div className="intune-cat-section">
+      <div className="panel-sublabel">Intune coverage by category</div>
+      <div className="intune-category-grid">
+        {buckets.map(b => (
+          <div key={b.id} className={'intune-cat-card' + (b.fail>0?' has-fail':b.warn>0?' has-warn':' all-pass')}>
+            <div className="icat-label">{b.label}</div>
+            <div className="icat-score">{b.score}<span className="icat-pct">%</span></div>
+            <div className="icat-meta">{b.pass}P · {b.fail}F · {b.fs.length}</div>
+            <div className="dc-bar" style={{height:4, marginTop:6}}>
+              {b.pass>0 && <i className="pass-seg" style={{flex:b.pass}}/>}
+              {b.warn>0 && <i className="warn-seg" style={{flex:b.warn}}/>}
+              {b.fail>0 && <i className="fail-seg" style={{flex:b.fail}}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ======================== Mailbox summary panel ========================
+function MailboxSummaryPanel() {
+  const mb = D.mailboxSummary || {};
+  const mf = D.mailflowStats  || {};
+  if (!mb.TotalMailboxes) return null;
+  const total = mb.TotalMailboxes || 0;
+  return (
+    <div className="domain-sub-panel">
+      <div className="panel-sublabel">Exchange Online · mailbox estate</div>
+      <div className="kpi-strip" style={{flexWrap:'wrap'}}>
+        <div className="kpi">
+          <div className="kpi-label">Total mailboxes</div>
+          <div className="kpi-value">{fmt(total)}</div>
+          <div className="kpi-hint">{fmt(mb.UserMailboxes||0)} user · {fmt(mb.SharedMailboxes||0)} shared</div>
+          <div className="tiny-bar"><span style={{width:'100%', background:'var(--accent-muted,var(--accent))'}}/></div>
+        </div>
+        {mb.SharedMailboxes > 0 && (
+          <div className="kpi">
+            <div className="kpi-label">Shared mailboxes</div>
+            <div className="kpi-value">{fmt(mb.SharedMailboxes)}</div>
+            <div className="kpi-hint">{pct(mb.SharedMailboxes, total)}% of estate</div>
+            <div className="tiny-bar"><span style={{width: pct(mb.SharedMailboxes, total)+'%'}}/></div>
+          </div>
+        )}
+        {mf.transportRules != null && (
+          <div className={'kpi' + (mf.transportRules > 10 ? ' warn' : '')}>
+            <div className="kpi-label">Transport rules</div>
+            <div className="kpi-value">{fmt(mf.transportRules)}</div>
+            <div className="kpi-hint">active rules</div>
+            <div className="tiny-bar"><span style={{width: Math.min(100, mf.transportRules*8)+'%', background: mf.transportRules>10?'var(--warn)':'var(--success)'}}/></div>
+          </div>
+        )}
+        {mf.inboundConnectors != null && (
+          <div className="kpi">
+            <div className="kpi-label">Mail connectors</div>
+            <div className="kpi-value">{fmt((mf.inboundConnectors||0)+(mf.outboundConnectors||0))}</div>
+            <div className="kpi-hint">{mf.inboundConnectors||0} in · {mf.outboundConnectors||0} out</div>
+            <div className="tiny-bar"><span style={{width: Math.min(100, ((mf.inboundConnectors||0)+(mf.outboundConnectors||0))*20)+'%'}}/></div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ======================== SharePoint summary panel ========================
+function SharePointSummaryPanel() {
+  const spo = FINDINGS.filter(f => f.domain === 'SharePoint & OneDrive');
+  if (!spo.length) return null;
+  const pass = spo.filter(f => f.status==='Pass').length;
+  const fail = spo.filter(f => f.status==='Fail').length;
+  const warn = spo.filter(f => f.status==='Warning').length;
+  const cfg  = D.sharepointConfig || {};
+  const sharingLevel = cfg.SharingLevel;
+  const sharingColor = sharingLevel === 'Disabled' ? 'var(--success-text)' :
+    sharingLevel?.includes('ExternalUserAndGuestSharing') || sharingLevel === 'Anyone' ? 'var(--danger-text)' :
+    sharingLevel ? 'var(--warn-text,var(--warn))' : 'var(--muted)';
+  const SEV_ORDER = { critical:4, high:3, medium:2, low:1 };
+  const topFails = spo.filter(f=>f.status==='Fail').sort((a,b)=>(SEV_ORDER[b.severity]||0)-(SEV_ORDER[a.severity]||0)).slice(0,3);
+  return (
+    <div className="domain-sub-panel">
+      <div className="panel-sublabel">SharePoint &amp; OneDrive posture</div>
+      <div className="spo-summary-row">
+        <div className="spo-stat-card">
+          <div className="kpi-label">Pass rate</div>
+          <div className="kpi-value">{pct(pass, spo.length)}<span style={{fontSize:14}}>%</span></div>
+          <div className="kpi-hint">{pass} of {spo.length} checks</div>
+          <div className="tiny-bar"><span style={{width: pct(pass, spo.length)+'%', background:'var(--success)'}}/></div>
+        </div>
+        <div className={'spo-stat-card' + (fail>0?' spo-stat-bad':'')}>
+          <div className="kpi-label">Failures</div>
+          <div className="kpi-value">{fail}</div>
+          <div className="kpi-hint">{warn} warnings</div>
+          <div className="tiny-bar"><span style={{width: pct(fail, spo.length)+'%', background:'var(--danger)'}}/></div>
+        </div>
+        {sharingLevel && (
+          <div className="spo-stat-card">
+            <div className="kpi-label">External sharing</div>
+            <div style={{fontSize:12, fontWeight:600, color: sharingColor, marginTop:6, lineHeight:1.3}}>{sharingLevel}</div>
+          </div>
+        )}
+        {cfg.OneDriveSharingLevel && (
+          <div className="spo-stat-card">
+            <div className="kpi-label">OneDrive sharing</div>
+            <div style={{fontSize:12, fontWeight:600, color:'var(--text-soft)', marginTop:6, lineHeight:1.3}}>{cfg.OneDriveSharingLevel}</div>
+          </div>
+        )}
+      </div>
+      {topFails.length > 0 && (
+        <div className="spo-top-fails">
+          <div className="spo-top-fails-label">Top gaps</div>
+          {topFails.map((f, i) => (
+            <div key={i} className="spo-fail-row">
+              <span className={'sev-badge ' + f.severity}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[f.severity]}</span></span>
+              <span className="spo-fail-name">{f.setting}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ======================== Domain rollup ========================
 function DomainRollup({ onJump }) {
   return (
@@ -436,6 +662,9 @@ function DomainRollup({ onJump }) {
           );
         })}
       </div>
+      <IntuneCategoryGrid />
+      <MailboxSummaryPanel />
+      <SharePointSummaryPanel />
     </section>
   );
 }
@@ -1246,22 +1475,7 @@ function Appendix() {
             </tbody>
           </table>
         </div>
-        <div className="card">
-          <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Email authentication posture</div>
-          <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
-            <thead><tr style={{textAlign:'left',color:'var(--muted)'}}><th style={{padding:'6px 0'}}>Domain</th><th>SPF</th><th>DMARC</th><th>DKIM</th></tr></thead>
-            <tbody>
-              {D.dns.map((r,i)=>(
-                <tr key={i} style={{borderTop:'1px solid var(--border)'}}>
-                  <td style={{padding:'6px 0',fontFamily:'var(--font-mono)',fontSize:12}}>{r.Domain}</td>
-                  <td><StatusDot ok={r.SPF && !r.SPF.includes('Not')}/></td>
-                  <td><StatusDot ok={r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine'} warn={r.DMARCPolicy?.includes('none')}/></td>
-                  <td><StatusDot ok={r.DKIMStatus === 'OK'}/></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DnsAuthPanel />
         <div className="card">
           <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Conditional Access policies</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>

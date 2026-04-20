@@ -1317,3 +1317,57 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
 [data-density="comfort"] .domain-card .dc-head { margin-bottom: 16px; }
 [data-density="comfort"] section.block       { margin-bottom: 56px; }
 [data-density="comfort"] .main               { padding: 40px 60px 100px 60px; max-width: 2000px; }
+
+/* =========================================================
+   DASHBOARD PANELS — DNS auth, Intune categories,
+   Mailbox summary, SharePoint posture
+   ========================================================= */
+
+/* Shared sub-panel chrome */
+.domain-sub-panel { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.panel-sublabel { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+
+/* DNS auth panel */
+.dns-auth-panel { padding: 16px 20px; }
+.dns-panel-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+.dns-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.dns-stat-card { background: var(--hover); border-radius: 6px; padding: 10px 12px; }
+.dns-stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+.dns-stat-val { font-size: 20px; font-weight: 700; font-family: var(--font-display); margin-bottom: 6px; }
+.dns-stat-val span { font-size: 13px; color: var(--muted); font-weight: 400; }
+.dns-stat-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.dns-stat-bar span { display: block; height: 100%; border-radius: 2px; transition: width .4s; }
+.dns-policy-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.dns-policy-chip { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); letter-spacing: .04em; }
+.dns-policy-chip.pass { background: var(--success-soft, color-mix(in srgb, var(--success) 15%, transparent)); color: var(--success-text, var(--success)); }
+.dns-policy-chip.warn { background: var(--warn-soft,    color-mix(in srgb, var(--warn)    15%, transparent)); color: var(--warn-text,    var(--warn));    }
+.dns-policy-chip.fail { background: var(--danger-soft,  color-mix(in srgb, var(--danger)  15%, transparent)); color: var(--danger-text,  var(--danger));  }
+.dns-domain-table { width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 12px; }
+.dns-domain-table th { padding: 4px 0; text-align: left; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 600; letter-spacing: .06em; font-size: 11px; text-transform: uppercase; }
+.dns-domain-table td { padding: 5px 0; border-bottom: 1px solid var(--border); }
+.dns-domain-name { font-family: var(--font-mono); font-size: 11px; }
+.dns-risks { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border); }
+.dns-risk-chip { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 4px; }
+.dns-risk-chip.fail { background: var(--danger-soft,  color-mix(in srgb, var(--danger)  12%, transparent)); color: var(--danger-text,  var(--danger)); }
+.dns-risk-chip.warn { background: var(--warn-soft,    color-mix(in srgb, var(--warn)    12%, transparent)); color: var(--warn-text,    var(--warn)); }
+
+/* Intune category grid */
+.intune-cat-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.intune-category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.intune-cat-card { background: var(--hover); border-radius: 8px; padding: 12px 14px; border-left: 3px solid var(--border); }
+.intune-cat-card.has-fail { border-left-color: var(--danger); }
+.intune-cat-card.has-warn { border-left-color: var(--warn); }
+.intune-cat-card.all-pass { border-left-color: var(--success); }
+.icat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+.icat-score { font-size: 24px; font-weight: 700; font-family: var(--font-display); line-height: 1; }
+.icat-pct { font-size: 14px; color: var(--muted); font-weight: 400; }
+.icat-meta { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+
+/* SPO summary panel */
+.spo-summary-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.spo-stat-card { background: var(--hover); border-radius: 8px; padding: 12px 16px; min-width: 130px; flex: 1; }
+.spo-stat-card.spo-stat-bad { border: 1px solid var(--danger); }
+.spo-top-fails { margin-top: 4px; }
+.spo-top-fails-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+.spo-fail-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.spo-fail-name { color: var(--text-soft, var(--muted)); }

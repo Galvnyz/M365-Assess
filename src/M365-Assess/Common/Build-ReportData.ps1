@@ -211,6 +211,29 @@ function Build-ReportDataJson {
 
     $frameworkList = @($FrameworkDefs | ForEach-Object { @{ id = $_['frameworkId']; full = $_['label'] } })
 
+    # ------------------------------------------------------------------
+    # Mailbox summary — pivot Metric/Count rows into a single object
+    # ------------------------------------------------------------------
+    $mbxRows = & $get 'mailbox-summary'
+    $mbxMap  = [ordered]@{}
+    foreach ($r in $mbxRows) { if ($r.Metric) { $mbxMap[$r.Metric] = [int]($r.Count -replace '[^\d]', '0') } }
+
+    # Mail flow — count items by type (only enabled connectors/rules)
+    $mfRows = & $get 'mailflow'
+    $mailflowStats = [ordered]@{
+        transportRules     = @($mfRows | Where-Object { $_.ItemType -eq 'TransportRule' -and $_.Status -eq 'Enabled'  }).Count
+        inboundConnectors  = @($mfRows | Where-Object { $_.ItemType -eq 'InboundConnector'  }).Count
+        outboundConnectors = @($mfRows | Where-Object { $_.ItemType -eq 'OutboundConnector' }).Count
+    }
+
+    # SharePoint config — extract sharing level from the security-config collector CSV
+    $spoRows = & $get 'sharepoint-config'
+    $spoConfig = [ordered]@{}
+    $spoShareRow = @($spoRows | Where-Object { $_.CheckId -match 'SPO-SHARING' } | Select-Object -First 1)
+    if ($spoShareRow) { $spoConfig['SharingLevel'] = $spoShareRow[0].CurrentValue }
+    $spoODRow    = @($spoRows | Where-Object { $_.CheckId -match 'SPO-ONEDRIVE|SPO-OD' } | Select-Object -First 1)
+    if ($spoODRow) { $spoConfig['OneDriveSharingLevel'] = $spoODRow[0].CurrentValue }
+
     $tenantRows = @($tenantRows | ForEach-Object {
         $ageYears = $null
         if ($_.CreatedDateTime) {
@@ -236,6 +259,9 @@ function Build-ReportDataJson {
         summary        = @(@{ Items = $findings.Count })
         whiteLabel     = [bool]$WhiteLabel
         xlsxFileName   = $XlsxFileName
+        mailboxSummary = if ($mbxMap.Count) { $mbxMap } else { $null }
+        mailflowStats  = if ($mfRows.Count) { $mailflowStats } else { $null }
+        sharepointConfig = if ($spoConfig.Count) { $spoConfig } else { $null }
     }
 
     # ------------------------------------------------------------------
