@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.0.0'
+    ModuleVersion     = '2.1.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -230,7 +230,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.0.0 - React 18 report engine: single-file HTML with inline CSS/JS, window.REPORT_DATA JSON bridge, real Secure Score sparkline, framework blurbs and links, tenant + MFA sidebar cards, single-column remediation roadmap, findings panel without duplicate remediation block; synthwave ASCII banner; dark h/c mode brand-mark fix; removed -CustomBranding, -FindingsNarrative, -CustomerProfile, New-M365BrandingConfig'
+            ReleaseNotes = 'v2.1.0 - New dashboard panels (DNS auth, Intune categories, mailbox summary, SPO config); UX quick wins (score split, roadmap deep-link, sidebar sub-nav); collector schema additions (intentDesign, user staleness, DMARC staged rollout, tenantAgeYears); framework description and homepage URL surfaced from registry; report theme FOUC fix; CheckID v2.14.0 sync'
         }
     }
 }
