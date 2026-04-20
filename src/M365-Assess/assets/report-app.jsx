@@ -1557,9 +1557,10 @@ function App() {
     "density": "compact"
   }/*EDITMODE-END*/;
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('m365-theme') || DEFAULTS.theme);
-  const [mode, setMode] = useState(() => localStorage.getItem('m365-mode') || DEFAULTS.mode);
-  const [density, setDensity] = useState(() => localStorage.getItem('m365-density') || DEFAULTS.density);
+  const lsGet = (k, def) => { try { return localStorage.getItem(k) || def; } catch(e) { return def; } };
+  const [theme, setTheme] = useState(() => lsGet('m365-theme', DEFAULTS.theme));
+  const [mode, setMode] = useState(() => lsGet('m365-mode', DEFAULTS.mode));
+  const [density, setDensity] = useState(() => lsGet('m365-density', DEFAULTS.density));
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ status:[], severity:[], framework:[], domain:[] });
   const [active, setActive] = useState('overview');

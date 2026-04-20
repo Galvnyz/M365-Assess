@@ -37,11 +37,12 @@ function Get-ReportTemplate {
     $sb = [System.Text.StringBuilder]::new(2097152) # 2 MB initial capacity
 
     $null = $sb.AppendLine('<!DOCTYPE html>')
-    $null = $sb.AppendLine('<html data-theme="dark" data-mode="comfort">')
+    $null = $sb.AppendLine('<html data-theme="neon" data-mode="dark" data-density="compact">')
     $null = $sb.AppendLine('<head>')
     $null = $sb.AppendLine('<meta charset="UTF-8">')
     $null = $sb.AppendLine('<meta name="viewport" content="width=device-width,initial-scale=1.0">')
     $null = $sb.AppendLine("<title>$([System.Web.HttpUtility]::HtmlEncode($ReportTitle))</title>")
+    $null = $sb.AppendLine('<script>(function(){try{var e=document.documentElement,t=localStorage.getItem("m365-theme")||"neon",m=localStorage.getItem("m365-mode")||"dark",d=localStorage.getItem("m365-density")||"compact";e.dataset.theme=t;e.dataset.mode=m;e.dataset.density=d;}catch(e){}})();</script>')
     $null = $sb.AppendLine('<style>')
     $null = $sb.Append($themesCss)
     $null = $sb.AppendLine()

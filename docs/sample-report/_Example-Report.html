@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html data-theme="dark" data-mode="comfort">
+<html data-theme="neon" data-mode="dark" data-density="compact">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Contoso — M365 Security Assessment</title>
+<script>(function(){try{var e=document.documentElement,t=localStorage.getItem("m365-theme")||"neon",m=localStorage.getItem("m365-mode")||"dark",d=localStorage.getItem("m365-density")||"compact";e.dataset.theme=t;e.dataset.mode=m;e.dataset.density=d;}catch(e){}})();</script>
 <style>
 /* =========================================================
    Three color directions + light/dark within each.
@@ -23356,9 +23357,10 @@ function App() {
     "mode": "dark",
     "density": "compact"
   } /*EDITMODE-END*/;
-  const [theme, setTheme] = useState(() => localStorage.getItem('m365-theme') || DEFAULTS.theme);
-  const [mode, setMode] = useState(() => localStorage.getItem('m365-mode') || DEFAULTS.mode);
-  const [density, setDensity] = useState(() => localStorage.getItem('m365-density') || DEFAULTS.density);
+  const lsGet = (k, def) => { try { return localStorage.getItem(k) || def; } catch(e) { return def; } };
+  const [theme, setTheme] = useState(() => lsGet('m365-theme', DEFAULTS.theme));
+  const [mode, setMode] = useState(() => lsGet('m365-mode', DEFAULTS.mode));
+  const [density, setDensity] = useState(() => lsGet('m365-density', DEFAULTS.density));
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
     status: [],
