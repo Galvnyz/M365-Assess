@@ -2,6 +2,8 @@
   "frameworkId": "cmmc",
   "label": "CMMC 2.0",
   "version": "2.0",
+  "description": "Cybersecurity Maturity Model Certification — DoD framework protecting Controlled Unclassified Information (CUI) across the Defense Industrial Base supply chain. Three maturity levels: L1, L2, L3.",
+  "homepageUrl": "https://dodcio.defense.gov/CMMC/",
   "css": "fw-cmmc",
   "totalControls": 110,
   "registryKey": "cmmc",

@@ -2,6 +2,8 @@
   "frameworkId": "mitre-attack",
   "label": "MITRE ATT&CK",
   "version": "v10",
+  "description": "Globally accessible knowledge base of adversary tactics and techniques based on real-world observations. Foundation for threat modeling, detection engineering, and adversary emulation.",
+  "homepageUrl": "https://attack.mitre.org/",
   "css": "fw-mitre",
   "totalControls": 201,
   "registryKey": "mitre-attack",

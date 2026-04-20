@@ -1,7 +1,9 @@
 {
   "frameworkId": "cisa-scuba",
-  "label": "CISA SCuBA",
+  "label": "CISA Secure Cloud Business Applications (SCuBA)",
   "version": "Baselines",
+  "description": "CISA Secure Cloud Business Applications (SCuBA) project — configuration baselines and assessment tooling for cloud services used by US federal civilian agencies, including Microsoft 365.",
+  "homepageUrl": "https://www.cisa.gov/resources-tools/services/secure-cloud-business-applications-scuba-project",
   "css": "fw-scuba",
   "totalControls": 134,
   "registryKey": "cisa-scuba",

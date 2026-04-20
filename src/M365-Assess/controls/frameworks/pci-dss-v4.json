@@ -2,6 +2,8 @@
   "frameworkId": "pci-dss",
   "label": "PCI DSS v4.0.1",
   "version": "4.0.1",
+  "description": "Payment Card Industry Data Security Standard — global security standard for organizations handling branded payment cards. Maintained by the PCI Security Standards Council.",
+  "homepageUrl": "https://www.pcisecuritystandards.org/",
   "css": "fw-pci",
   "totalControls": 63,
   "registryKey": "pci-dss",

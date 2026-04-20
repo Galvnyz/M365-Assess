@@ -2,8 +2,8 @@
   "frameworkId": "essential-eight",
   "label": "ASD Essential Eight",
   "version": "2023",
-  "publisher": "Australian Signals Directorate (ASD)",
-  "url": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight",
+  "description": "Eight prioritized mitigation strategies from the Australian Signals Directorate to protect against the most common cyber threats. Organized into three maturity levels (ML1–ML3).",
+  "homepageUrl": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight",
   "css": "fw-e8",
   "totalControls": 24,
   "registryKey": "essential-eight",
@@ -63,11 +63,27 @@
   "controlIdFormat": "ML{level}-P{strategy}",
   "m365Coverage": {
     "note": "Essential Eight coverage through M365 configuration assessment focuses on strategies assessable via cloud settings. P8 (Regular Backups) is not mapped because backup validation requires infrastructure-level assessment beyond M365 configuration export.",
-    "mappedStrategies": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
-    "unmappedStrategies": ["P8"]
+    "mappedStrategies": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7"
+    ],
+    "unmappedStrategies": [
+      "P8"
+    ]
   },
   "colors": {
-    "light": { "background": "#fefce8", "color": "#854d0e" },
-    "dark": { "background": "#713F12", "color": "#FDE047" }
+    "light": {
+      "background": "#fefce8",
+      "color": "#854d0e"
+    },
+    "dark": {
+      "background": "#713F12",
+      "color": "#FDE047"
+    }
   }
 }

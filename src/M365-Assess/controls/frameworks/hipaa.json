@@ -2,6 +2,8 @@
   "frameworkId": "hipaa",
   "label": "HIPAA",
   "version": "Security Rule",
+  "description": "Health Insurance Portability and Accountability Act — US law governing the protection of protected health information (PHI) across healthcare entities and their business associates.",
+  "homepageUrl": "https://www.hhs.gov/hipaa/index.html",
   "css": "fw-hipaa",
   "totalControls": 59,
   "registryKey": "hipaa",

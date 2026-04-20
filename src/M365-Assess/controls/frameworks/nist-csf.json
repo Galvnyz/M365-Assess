@@ -1,7 +1,9 @@
 {
   "frameworkId": "nist-csf",
-  "label": "NIST CSF 2.0",
+  "label": "NIST Cybersecurity Framework 2.0",
   "version": "2.0",
+  "description": "NIST Cybersecurity Framework — voluntary framework for managing and reducing cybersecurity risk, organized into six functions: Govern, Identify, Protect, Detect, Respond, and Recover.",
+  "homepageUrl": "https://www.nist.gov/cyberframework",
   "css": "fw-csf",
   "totalControls": 106,
   "registryKey": "nist-csf",

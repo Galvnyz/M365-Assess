@@ -2,6 +2,8 @@
   "frameworkId": "stig",
   "label": "DISA STIG",
   "version": "M365",
+  "description": "Security Technical Implementation Guides — prescriptive DoD hardening configuration requirements for software, hardware, and operating systems used in US defense and federal environments.",
+  "homepageUrl": "https://public.cyber.mil/stigs/",
   "css": "fw-stig",
   "totalControls": 148,
   "registryKey": "stig",

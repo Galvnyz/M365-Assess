@@ -2,6 +2,8 @@
   "frameworkId": "cis-controls-v8",
   "label": "CIS Controls v8.1",
   "version": "8.1",
+  "description": "A prioritized set of 18 safeguards defending against the most prevalent cyber attacks, organized into Implementation Groups (IG1–IG3) based on organizational risk profile.",
+  "homepageUrl": "https://www.cisecurity.org/controls",
   "css": "fw-cis-ctrl",
   "totalControls": 153,
   "registryKey": "cis-controls-v8",

@@ -2,6 +2,8 @@
   "frameworkId": "fedramp",
   "label": "FedRAMP Rev 5",
   "version": "Rev 5",
+  "description": "Federal Risk and Authorization Management Program — US government-wide program standardizing cloud service security assessment and authorization. Based on NIST SP 800-53.",
+  "homepageUrl": "https://www.fedramp.gov/",
   "css": "fw-fedramp",
   "totalControls": 325,
   "registryKey": "fedramp",
