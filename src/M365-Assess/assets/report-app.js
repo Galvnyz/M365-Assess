@@ -1184,6 +1184,110 @@ function SharePointSummaryPanel() {
   }, f.setting)))));
 }
 
+// ======================== AD / Hybrid panel ========================
+function AdHybridPanel() {
+  const ad = D.adHybrid;
+  if (!ad) return null;
+  const adFindings = FINDINGS.filter(f => f.domain === 'Active Directory');
+  const pass = adFindings.filter(f => f.status === 'Pass').length;
+  const fail = adFindings.filter(f => f.status === 'Fail').length;
+  const syncOk = ad.syncEnabled;
+  const syncColor = syncOk ? 'var(--success-text)' : 'var(--danger-text)';
+  const fmtDate = d => {
+    if (!d) return 'Unknown';
+    try {
+      return new Date(d).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return d;
+    }
+  };
+  const SEV_ORDER = {
+    critical: 4,
+    high: 3,
+    medium: 2,
+    low: 1
+  };
+  const topFails = adFindings.filter(f => f.status === 'Fail').sort((a, b) => (SEV_ORDER[b.severity] || 0) - (SEV_ORDER[a.severity] || 0)).slice(0, 3);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "domain-sub-panel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "panel-sublabel"
+  }, "Active Directory \xB7 hybrid posture"), /*#__PURE__*/React.createElement("div", {
+    className: "spo-summary-row"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "spo-stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Directory sync"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: syncColor,
+      marginTop: 6
+    }
+  }, syncOk ? 'Enabled' : 'Disabled'), ad.syncType && /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, ad.syncType)), /*#__PURE__*/React.createElement("div", {
+    className: "spo-stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Last sync"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 600,
+      color: 'var(--text-soft)',
+      marginTop: 6,
+      lineHeight: 1.3
+    }
+  }, fmtDate(ad.lastSyncTime)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, "Password hash: ", ad.pwHashSync ? 'Yes' : 'No')), adFindings.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: 'spo-stat-card' + (fail > 0 ? ' spo-stat-bad' : '')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "AD checks"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-value"
+  }, pct(pass, adFindings.length), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, pass, " pass \xB7 ", fail, " fail"), /*#__PURE__*/React.createElement("div", {
+    className: "tiny-bar"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: pct(pass, adFindings.length) + '%',
+      background: 'var(--success)'
+    }
+  }))), ad.highRiskFindings > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "spo-stat-card spo-stat-bad"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "High/Critical risks"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-value"
+  }, ad.highRiskFindings), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, "security findings"))), topFails.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "spo-top-fails"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "spo-top-fails-label"
+  }, "Top gaps"), topFails.map((f, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "spo-fail-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'sev-badge ' + f.severity
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "bar"
+  }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity])), /*#__PURE__*/React.createElement("span", {
+    className: "spo-fail-name"
+  }, f.setting)))));
+}
+
 // ======================== Domain rollup ========================
 function DomainRollup({
   onJump
@@ -1244,7 +1348,7 @@ function DomainRollup({
     })), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.review), " review")));
-  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null));
+  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null), /*#__PURE__*/React.createElement(AdHybridPanel, null));
 }
 
 // ======================== Framework quilt ========================

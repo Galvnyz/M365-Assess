@@ -47,6 +47,8 @@ $sectionData = @{
     'mailbox-summary'  = & $loadCsv 'Get-MailboxSummary.csv'
     'mailflow'         = & $loadCsv 'Get-MailFlowReport.csv'
     'sharepoint-config'= & $loadCsv 'Get-SharePointSecurityConfig.csv'
+    'ad-hybrid'        = & $loadCsv '23-Hybrid-Sync.csv'
+    'ad-security'      = & $loadCsv '26-AD-Security.csv'
 }
 
 # ------------------------------------------------------------------

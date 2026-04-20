@@ -624,6 +624,68 @@ function SharePointSummaryPanel() {
   );
 }
 
+// ======================== AD / Hybrid panel ========================
+function AdHybridPanel() {
+  const ad = D.adHybrid;
+  if (!ad) return null;
+  const adFindings = FINDINGS.filter(f => f.domain === 'Active Directory');
+  const pass = adFindings.filter(f => f.status==='Pass').length;
+  const fail = adFindings.filter(f => f.status==='Fail').length;
+  const syncOk   = ad.syncEnabled;
+  const syncColor = syncOk ? 'var(--success-text)' : 'var(--danger-text)';
+  const fmtDate  = d => {
+    if (!d) return 'Unknown';
+    try { return new Date(d).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }
+    catch { return d; }
+  };
+  const SEV_ORDER = { critical:4, high:3, medium:2, low:1 };
+  const topFails = adFindings.filter(f=>f.status==='Fail')
+    .sort((a,b)=>(SEV_ORDER[b.severity]||0)-(SEV_ORDER[a.severity]||0)).slice(0,3);
+  return (
+    <div className="domain-sub-panel">
+      <div className="panel-sublabel">Active Directory · hybrid posture</div>
+      <div className="spo-summary-row">
+        <div className="spo-stat-card">
+          <div className="kpi-label">Directory sync</div>
+          <div style={{fontSize:13, fontWeight:700, color: syncColor, marginTop:6}}>{syncOk ? 'Enabled' : 'Disabled'}</div>
+          {ad.syncType && <div className="kpi-hint">{ad.syncType}</div>}
+        </div>
+        <div className="spo-stat-card">
+          <div className="kpi-label">Last sync</div>
+          <div style={{fontSize:12, fontWeight:600, color:'var(--text-soft)', marginTop:6, lineHeight:1.3}}>{fmtDate(ad.lastSyncTime)}</div>
+          <div className="kpi-hint">Password hash: {ad.pwHashSync ? 'Yes' : 'No'}</div>
+        </div>
+        {adFindings.length > 0 && (
+          <div className={'spo-stat-card' + (fail>0?' spo-stat-bad':'')}>
+            <div className="kpi-label">AD checks</div>
+            <div className="kpi-value">{pct(pass, adFindings.length)}<span style={{fontSize:14}}>%</span></div>
+            <div className="kpi-hint">{pass} pass · {fail} fail</div>
+            <div className="tiny-bar"><span style={{width: pct(pass, adFindings.length)+'%', background:'var(--success)'}}/></div>
+          </div>
+        )}
+        {ad.highRiskFindings > 0 && (
+          <div className="spo-stat-card spo-stat-bad">
+            <div className="kpi-label">High/Critical risks</div>
+            <div className="kpi-value">{ad.highRiskFindings}</div>
+            <div className="kpi-hint">security findings</div>
+          </div>
+        )}
+      </div>
+      {topFails.length > 0 && (
+        <div className="spo-top-fails">
+          <div className="spo-top-fails-label">Top gaps</div>
+          {topFails.map((f, i) => (
+            <div key={i} className="spo-fail-row">
+              <span className={'sev-badge ' + f.severity}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[f.severity]}</span></span>
+              <span className="spo-fail-name">{f.setting}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ======================== Domain rollup ========================
 function DomainRollup({ onJump }) {
   return (
@@ -665,6 +727,7 @@ function DomainRollup({ onJump }) {
       <IntuneCategoryGrid />
       <MailboxSummaryPanel />
       <SharePointSummaryPanel />
+      <AdHybridPanel />
     </section>
   );
 }

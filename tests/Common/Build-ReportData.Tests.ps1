@@ -546,4 +546,32 @@ Describe 'Build-ReportData' {
             $ev.PolicyCount | Should -Be 3
         }
     }
+
+    Context 'adHybrid shaping' {
+        It 'should set adHybrid to null when ad-hybrid section data is absent' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson)
+            $d.adHybrid | Should -BeNullOrEmpty
+        }
+
+        It 'should populate adHybrid when hybrid sync row is present' {
+            $hybrid = [PSCustomObject]@{
+                OnPremisesSyncEnabled   = 'True'
+                LastDirSyncTime         = '2026-04-01T00:00:00Z'
+                SyncType                = 'AADConnect'
+                PasswordHashSyncEnabled = 'True'
+            }
+            $sec1 = [PSCustomObject]@{ RiskLevel = 'High'; FindingName = 'Kerberoastable account' }
+            $sec2 = [PSCustomObject]@{ RiskLevel = 'Low';  FindingName = 'Stale user' }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -SectionData @{
+                'ad-hybrid'   = @($hybrid)
+                'ad-security' = @($sec1, $sec2)
+            })
+            $d.adHybrid              | Should -Not -BeNullOrEmpty
+            $d.adHybrid.syncEnabled  | Should -Be $true
+            $d.adHybrid.syncType     | Should -Be 'AADConnect'
+            $d.adHybrid.pwHashSync   | Should -Be $true
+            $d.adHybrid.securityFindings | Should -Be 2
+            $d.adHybrid.highRiskFindings | Should -Be 1
+        }
+    }
 }
