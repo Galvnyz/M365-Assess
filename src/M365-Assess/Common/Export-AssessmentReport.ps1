@@ -51,7 +51,7 @@ param(
     [string]$TenantName,
 
     [Parameter()]
-    [ValidateSet('Neon', 'Console', 'Saas', 'HighContrast')]
+    [ValidateSet('Neon', 'Console', 'HighContrast')]
     [string]$ReportTheme = 'Neon',
 
     [Parameter()]
@@ -170,10 +170,9 @@ $reportJson = Build-ReportDataJson `
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Get-ReportTemplate.ps1')
 
 $themeDefaults = @{
-    'Neon'          = @{ Theme = 'neon';         Mode = 'dark'  }
-    'Console'       = @{ Theme = 'console';      Mode = 'dark'  }
-    'Saas'          = @{ Theme = 'saas';         Mode = 'light' }
-    'HighContrast'  = @{ Theme = 'high-contrast'; Mode = 'dark' }
+    'Neon'         = @{ Theme = 'neon';          Mode = 'dark' }
+    'Console'      = @{ Theme = 'console';       Mode = 'dark' }
+    'HighContrast' = @{ Theme = 'high-contrast'; Mode = 'dark' }
 }
 $htmlTheme = $themeDefaults[$ReportTheme]
 $html = Get-ReportTemplate `

@@ -25,7 +25,7 @@ function Get-ReportTemplate {
         [string]$ReportTitle = 'M365 Security Assessment',
 
         [Parameter()]
-        [ValidateSet('neon', 'console', 'saas', 'high-contrast')]
+        [ValidateSet('neon', 'console', 'high-contrast')]
         [string]$DefaultTheme = 'neon',
 
         [Parameter()]
@@ -43,7 +43,7 @@ function Get-ReportTemplate {
 
     # Anti-FOUC inline script: reads localStorage, validates against known values,
     # falls back to the baked-in default. Runs synchronously before first paint.
-    $antiFouc = "(function(){try{var v=['neon','console','saas','high-contrast'];" +
+    $antiFouc = "(function(){try{var v=['neon','console','high-contrast'];" +
                 "var e=document.documentElement;" +
                 "var t=localStorage.getItem('m365-theme');" +
                 "var m=localStorage.getItem('m365-mode');" +
