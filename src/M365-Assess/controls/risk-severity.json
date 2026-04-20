@@ -9,6 +9,9 @@
     "Info"
   ],
   "checks": {
+    "CA-FALLBACK-001": "Medium",
+    "CA-NAMEDLOC-002": "High",
+    "CA-STALEREF-001": "High",
     "CA-DEVICE-001": "High",
     "CA-DEVICE-002": "Info",
     "CA-DEVICECODE-001": "High",

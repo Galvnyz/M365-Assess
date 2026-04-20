@@ -936,6 +936,193 @@ catch {
 }
 
 # ------------------------------------------------------------------
+# 18. Empty-Target Policies (Fallback Catch-All)
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking CA: Empty-target policies..."
+    $emptyTargetPolicies = @($enabledPolicies | Where-Object {
+        $users         = $_['conditions']['users']
+        $includeUsers  = $users['includeUsers']
+        $includeGroups = $users['includeGroups']
+        $includeRoles  = $users['includeRoles']
+        $noUsers  = (-not $includeUsers)  -or ($includeUsers.Count  -eq 0) -or ($includeUsers  -contains 'None')
+        $noGroups = (-not $includeGroups) -or ($includeGroups.Count -eq 0)
+        $noRoles  = (-not $includeRoles)  -or ($includeRoles.Count  -eq 0)
+        $noUsers -and $noGroups -and $noRoles
+    })
+
+    if ($emptyTargetPolicies.Count -eq 0) {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'CA Policies with Empty Include Targets'
+            CurrentValue     = 'None'
+            RecommendedValue = 'All enabled CA policies should target at least one user, group, or role'
+            Status           = 'Pass'
+            CheckId          = 'CA-FALLBACK-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
+    }
+    else {
+        $names = ($emptyTargetPolicies | ForEach-Object { $_['displayName'] }) -join '; '
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'CA Policies with Empty Include Targets'
+            CurrentValue     = "$($emptyTargetPolicies.Count) enabled policies have no include targets: $names"
+            RecommendedValue = 'All enabled CA policies should target at least one user, group, or role'
+            Status           = 'Warning'
+            CheckId          = 'CA-FALLBACK-001'
+            Remediation      = 'Enabled CA policies with no include targets apply to no users and create operational noise. Configure meaningful include targets or disable the policy. Entra admin center > Protection > Conditional Access.'
+        }
+        Add-Setting @settingParams
+    }
+}
+catch {
+    Write-Warning "Could not check CA empty-target policies: $_"
+}
+
+# ------------------------------------------------------------------
+# 19. Stale Named Location References
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking CA: Stale named location references..."
+    # System placeholder values are not real location IDs -- skip them
+    $systemLocationIds = [System.Collections.Generic.HashSet[string]]::new(
+        [string[]]@('All', 'AllTrusted', 'MFA'),
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    # $namedLocations populated by check 14 (IP named locations); may be $null if that check threw
+    $knownLocationIds = [System.Collections.Generic.HashSet[string]]::new()
+    if ($namedLocations) {
+        foreach ($loc in $namedLocations) {
+            if ($loc['id']) { [void]$knownLocationIds.Add($loc['id']) }
+        }
+    }
+
+    # Only evaluate when we have authoritative location data
+    if ($knownLocationIds.Count -gt 0) {
+        $staleLocPolicies = @($enabledPolicies | Where-Object {
+            $locations = $_['conditions']['locations']
+            if (-not $locations) { return $false }
+            $allRefs = @()
+            if ($locations['includeLocations']) { $allRefs += @($locations['includeLocations']) }
+            if ($locations['excludeLocations']) { $allRefs += @($locations['excludeLocations']) }
+            $staleRefs = @($allRefs | Where-Object { -not $systemLocationIds.Contains($_) -and -not $knownLocationIds.Contains($_) })
+            $staleRefs.Count -gt 0
+        })
+
+        if ($staleLocPolicies.Count -eq 0) {
+            $settingParams = @{
+                Category         = 'Conditional Access'
+                Setting          = 'Stale Named Location References in CA Policies'
+                CurrentValue     = 'None'
+                RecommendedValue = 'All referenced named locations should exist'
+                Status           = 'Pass'
+                CheckId          = 'CA-NAMEDLOC-002'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
+        }
+        else {
+            $names = ($staleLocPolicies | ForEach-Object { $_['displayName'] }) -join '; '
+            $settingParams = @{
+                Category         = 'Conditional Access'
+                Setting          = 'Stale Named Location References in CA Policies'
+                CurrentValue     = "$($staleLocPolicies.Count) policies reference deleted named locations: $names"
+                RecommendedValue = 'All referenced named locations should exist'
+                Status           = 'Fail'
+                CheckId          = 'CA-NAMEDLOC-002'
+                Remediation      = 'The referenced named locations have been deleted. These policies may not evaluate correctly, creating unpredictable enforcement. Update or remove the stale location references. Entra admin center > Protection > Conditional Access > Named locations.'
+            }
+            Add-Setting @settingParams
+        }
+    }
+}
+catch {
+    Write-Warning "Could not check CA stale named location references: $_"
+}
+
+# ------------------------------------------------------------------
+# 20. Stale Group References in CA Policies
+# ------------------------------------------------------------------
+try {
+    Write-Verbose "Checking CA: Stale group references..."
+    # Collect all unique group IDs referenced across enabled policies
+    $groupIdSet = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($policy in $enabledPolicies) {
+        $users = $policy['conditions']['users']
+        if ($users['includeGroups']) { foreach ($g in $users['includeGroups']) { [void]$groupIdSet.Add($g) } }
+        if ($users['excludeGroups']) { foreach ($g in $users['excludeGroups']) { [void]$groupIdSet.Add($g) } }
+    }
+
+    if ($groupIdSet.Count -gt 0) {
+        # Cap lookups to 50 IDs to prevent slow runs on tenants with many group-targeted policies
+        $groupIdsToCheck = @($groupIdSet)[0..([Math]::Min($groupIdSet.Count, 50) - 1)]
+        $staleGroupIds = [System.Collections.Generic.HashSet[string]]::new()
+        foreach ($gid in $groupIdsToCheck) {
+            try {
+                $null = Invoke-MgGraphRequest -Method GET -Uri ('/v1.0/groups/' + $gid + '?$select=id') -ErrorAction Stop
+            }
+            catch {
+                if ("$_" -match '404|ResourceNotFound|Request_ResourceNotFound') {
+                    [void]$staleGroupIds.Add($gid)
+                }
+            }
+        }
+
+        # Map stale group IDs back to affected policy names
+        $stalePolicies = @($enabledPolicies | Where-Object {
+            $users = $_['conditions']['users']
+            $allGroupRefs = @()
+            if ($users['includeGroups']) { $allGroupRefs += @($users['includeGroups']) }
+            if ($users['excludeGroups']) { $allGroupRefs += @($users['excludeGroups']) }
+            (@($allGroupRefs | Where-Object { $staleGroupIds.Contains($_) })).Count -gt 0
+        })
+
+        if ($stalePolicies.Count -eq 0) {
+            $settingParams = @{
+                Category         = 'Conditional Access'
+                Setting          = 'Stale Group References in CA Policies'
+                CurrentValue     = 'None'
+                RecommendedValue = 'All referenced groups should exist'
+                Status           = 'Pass'
+                CheckId          = 'CA-STALEREF-001'
+                Remediation      = 'No action needed.'
+            }
+            Add-Setting @settingParams
+        }
+        else {
+            $names = ($stalePolicies | ForEach-Object { $_['displayName'] }) -join '; '
+            $settingParams = @{
+                Category         = 'Conditional Access'
+                Setting          = 'Stale Group References in CA Policies'
+                CurrentValue     = "$($stalePolicies.Count) policies reference deleted groups: $names"
+                RecommendedValue = 'All referenced groups should exist'
+                Status           = 'Fail'
+                CheckId          = 'CA-STALEREF-001'
+                Remediation      = 'CA policies with deleted group references may not enforce correctly, creating silent security gaps. Remove or replace the stale group references. Entra admin center > Protection > Conditional Access.'
+            }
+            Add-Setting @settingParams
+        }
+    }
+    else {
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'Stale Group References in CA Policies'
+            CurrentValue     = 'No group-targeted policies'
+            RecommendedValue = 'All referenced groups should exist'
+            Status           = 'Pass'
+            CheckId          = 'CA-STALEREF-001'
+            Remediation      = 'No action needed.'
+        }
+        Add-Setting @settingParams
+    }
+}
+catch {
+    Write-Warning "Could not check CA stale group references: $_"
+}
+
+# ------------------------------------------------------------------
 # Output
 # ------------------------------------------------------------------
 Export-SecurityConfigReport -Settings $settings -OutputPath $OutputPath -ServiceLabel 'Conditional Access'
