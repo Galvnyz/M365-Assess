@@ -1300,7 +1300,35 @@ function whyItMatters(f) {
 
 // ======================== Roadmap ========================
 function Roadmap({ onViewFinding }) {
+  const OVERRIDE_KEY = 'm365-roadmap-overrides';
   const [open, setOpen] = useState(null);
+  const [overrides, setOverrides] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}'); }
+    catch { return {}; }
+  });
+
+  const saveOverrides = next => {
+    setOverrides(next);
+    try { localStorage.setItem(OVERRIDE_KEY, JSON.stringify(next)); } catch {}
+  };
+
+  const moveTo = (checkId, lane) => {
+    saveOverrides({ ...overrides, [checkId]: lane });
+    if (open === checkId) setOpen(null);
+  };
+
+  const resetCard = checkId => {
+    const next = { ...overrides };
+    delete next[checkId];
+    saveOverrides(next);
+  };
+
+  const resetLane = laneItems => {
+    const next = { ...overrides };
+    laneItems.forEach(t => { delete next[t.checkId]; });
+    saveOverrides(next);
+  };
+
   const tasks = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info').map(f => ({ ...f }));
   const score = f => {
     const sev = { critical:100, high:60, medium:30, low:10, none:0, info:5 }[f.severity];
@@ -1309,11 +1337,24 @@ function Roadmap({ onViewFinding }) {
   };
   tasks.sort((a,b) => score(b) - score(a));
 
-  const now = tasks.filter(t => t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small'));
-  const soon = tasks.filter(t => !now.includes(t) && (t.severity === 'high' || (t.severity === 'medium' && t.effort !== 'large')));
-  const later = tasks.filter(t => !now.includes(t) && !soon.includes(t));
+  const getNaturalLane = t => {
+    if (t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small')) return 'now';
+    if (t.severity === 'high' || (t.severity === 'medium' && t.effort !== 'large')) return 'soon';
+    return 'later';
+  };
+
+  const getEffectiveLane = t => overrides[t.checkId] || getNaturalLane(t);
+  const LANE_LABEL = { now: 'Now', soon: 'Next', later: 'Later' };
+
+  const now   = tasks.filter(t => getEffectiveLane(t) === 'now');
+  const soon  = tasks.filter(t => getEffectiveLane(t) === 'soon');
+  const later = tasks.filter(t => getEffectiveLane(t) === 'later');
 
   const priorityReason = (t, lane) => {
+    if (overrides[t.checkId]) {
+      const natural = LANE_LABEL[getNaturalLane(t)];
+      return `Manually moved to ${LANE_LABEL[lane]}. Default lane was ${natural}. Click Reset to restore.`;
+    }
     if (lane === 'now') {
       if (t.severity === 'critical') return `Critical severity — exposes the tenant to identity takeover, data exfiltration, or privilege escalation. Fix immediately regardless of effort.`;
       return `High severity with small remediation effort — a config toggle or policy tweak that removes material risk in minutes. Low-hanging fruit; do it first.`;
@@ -1329,11 +1370,12 @@ function Roadmap({ onViewFinding }) {
   const renderTask = (t, lane) => {
     const key = t.checkId;
     const isOpen = open === key;
+    const isCustom = !!overrides[key];
     return (
-      <div className={'task'+(isOpen?' task-open':'')} key={key}>
+      <div className={'task'+(isOpen?' task-open':'')+(isCustom?' task-custom':'')} key={key}>
         <button className="task-head-btn" onClick={()=>setOpen(isOpen?null:key)} aria-expanded={isOpen}>
           <div className="task-head">
-            <span>{t.setting}</span>
+            <span>{t.setting}{isCustom && <span className="task-custom-badge">custom</span>}</span>
             <span className={'status-badge ' + STATUS_COLORS[t.status]}><span className="dot"/>{t.status}</span>
           </div>
           <div className="task-id">{t.checkId} · {t.domain}</div>
@@ -1344,10 +1386,17 @@ function Roadmap({ onViewFinding }) {
             <span className="task-chev" aria-hidden="true">{isOpen ? '−' : '+'}</span>
           </div>
         </button>
+        <div className="task-move-row">
+          {lane === 'now'   && <button className="task-move-btn" onClick={e=>{e.stopPropagation();moveTo(key,'soon');}}>Next →</button>}
+          {lane === 'soon'  && <button className="task-move-btn" onClick={e=>{e.stopPropagation();moveTo(key,'now');}}>← Now</button>}
+          {lane === 'soon'  && <button className="task-move-btn" onClick={e=>{e.stopPropagation();moveTo(key,'later');}}>Later →</button>}
+          {lane === 'later' && <button className="task-move-btn" onClick={e=>{e.stopPropagation();moveTo(key,'soon');}}>← Next</button>}
+          {isCustom && <button className="task-move-btn task-move-reset" onClick={e=>{e.stopPropagation();resetCard(key);}}>Reset</button>}
+        </div>
         {isOpen && (
           <div className="task-body">
             <div className="task-why">
-              <div className="task-why-label">Why this is in {lane==='now'?'“Now”':lane==='soon'?'“Next”':'“Later”'}</div>
+              <div className="task-why-label">Why this is in {lane==='now'?'"Now"':lane==='soon'?'"Next"':'"Later"'}</div>
               <div className="task-why-text">{priorityReason(t, lane)}</div>
             </div>
             <div className="task-grid">
@@ -1393,6 +1442,14 @@ function Roadmap({ onViewFinding }) {
     );
   };
 
+  const LaneReset = ({ laneItems }) => {
+    const hasCustom = laneItems.some(t => overrides[t.checkId]);
+    if (!hasCustom) return null;
+    return (
+      <button className="lane-reset-btn" onClick={() => resetLane(laneItems)}>Reset lane</button>
+    );
+  };
+
   return (
     <section className="block" id="roadmap">
       <div className="section-head">
@@ -1403,29 +1460,38 @@ function Roadmap({ onViewFinding }) {
       <div className="roadmap-intro">
         <div className="roadmap-intro-head">How we prioritized</div>
         <div className="roadmap-intro-body">
-          Findings are bucketed by severity. Critical findings — identity takeover, data exfiltration, privilege escalation paths — always go in <b>Now</b>. High-severity findings land in <b>Next</b>: risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join <b>Next</b> when tractable, or <b>Later</b> for larger hardening work. Once remediation effort data is available from the upstream registry, <b>Now</b> will additionally surface high-severity quick wins — config toggles, policy tweaks — via a <code>severity × (1/effort)</code> score. <br/>
-          <span style={{color:'var(--muted)'}}>Click any task to see why it's in this lane, the current vs recommended state, and exact remediation steps. Customers with a different risk appetite (regulatory deadline, incident response, M&amp;A freeze) may reorder — the lanes are a starting point, not a mandate.</span>
+          Findings are bucketed by severity. Critical findings — identity takeover, data exfiltration, privilege escalation paths — always go in <b>Now</b>. High-severity findings land in <b>Next</b>: risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join <b>Next</b> when tractable, or <b>Later</b> for larger hardening work. <br/>
+          <span style={{color:'var(--muted)'}}>Click any task to expand it, or use the move buttons on each card to reprioritize. Overrides persist across page refreshes.</span>
         </div>
       </div>
       <div className="roadmap">
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-now"><span className="lane-dot crit"/>Now <span style={{color:'var(--muted)', fontWeight:400}}>· {now.length}</span></div>
-            <div className="lane-eta">&lt; 1 week</div>
+            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+              <LaneReset laneItems={now}/>
+              <div className="lane-eta">&lt; 1 week</div>
+            </div>
           </div>
           {now.map(t => renderTask(t, 'now'))}
         </div>
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-next"><span className="lane-dot soon"/>Next <span style={{color:'var(--muted)', fontWeight:400}}>· {soon.length}</span></div>
-            <div className="lane-eta">1 – 4 weeks</div>
+            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+              <LaneReset laneItems={soon}/>
+              <div className="lane-eta">1 – 4 weeks</div>
+            </div>
           </div>
           {soon.map(t => renderTask(t, 'soon'))}
         </div>
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-later"><span className="lane-dot later"/>Later <span style={{color:'var(--muted)', fontWeight:400}}>· {later.length}</span></div>
-            <div className="lane-eta">1 – 3 months</div>
+            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+              <LaneReset laneItems={later}/>
+              <div className="lane-eta">1 – 3 months</div>
+            </div>
           </div>
           {later.map(t => renderTask(t, 'later'))}
         </div>

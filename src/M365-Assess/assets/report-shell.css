@@ -890,6 +890,38 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
   font-weight: 500; text-decoration: none;
 }
 .task-actions a:hover { text-decoration: underline; }
+.task-move-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px 6px;
+  opacity: 0; transition: opacity .15s;
+  pointer-events: none;
+}
+.task:hover .task-move-row,
+.task.task-custom .task-move-row { opacity: 1; pointer-events: auto; }
+.task-move-btn {
+  font-size: 11px; padding: 2px 7px; border-radius: 3px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-soft); cursor: pointer; line-height: 1.5;
+  transition: background .1s, border-color .1s;
+}
+.task-move-btn:hover { background: var(--hover); border-color: var(--accent); color: var(--accent-text); }
+.task-move-btn.task-move-reset { color: var(--muted); border-color: transparent; }
+.task-move-btn.task-move-reset:hover { color: var(--danger-text); border-color: var(--danger); background: var(--danger-soft); }
+.task-custom-badge {
+  display: inline-block; margin-left: 6px;
+  font-size: 10px; padding: 1px 5px; border-radius: 3px;
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-border); vertical-align: middle;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.task.task-custom { border-left: 2px solid var(--accent); }
+.lane-reset-btn {
+  font-size: 11px; padding: 2px 8px; border-radius: 3px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer;
+  transition: color .1s, border-color .1s;
+}
+.lane-reset-btn:hover { color: var(--danger-text); border-color: var(--danger); background: var(--danger-soft); }
 
 .roadmap-intro {
   margin-bottom: 14px;
