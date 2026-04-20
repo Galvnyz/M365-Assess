@@ -462,5 +462,5 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ---
 
 <div align="center">
-<sub>Built by <a href="https://github.com/Daren9m">Daren9m</a> and contributors</sub>
+<sub>Built by <a href="https://github.com/Daren9m">Daren9m</a> and contributors &nbsp;·&nbsp; Developed with <a href="https://claude.ai/code">Claude Code</a> (Anthropic)</sub>
 </div>
