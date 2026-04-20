@@ -749,15 +749,15 @@ Add-Setting @settingParams
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Counting disabled member accounts..."
-    $countHeaders = @{ 'ConsistencyLevel' = 'eventual' }
-    $totalCount    = Invoke-MgGraphRequest -Method GET `
+    $countHeaders  = @{ 'ConsistencyLevel' = 'eventual' }
+    $totalCount    = [int](Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/users/`$count?`$filter=userType eq 'Member'" `
-        -Headers $countHeaders -ErrorAction Stop
-    $disabledCount = Invoke-MgGraphRequest -Method GET `
+        -Headers $countHeaders -ErrorAction Stop)
+    $disabledCount = [int](Invoke-MgGraphRequest -Method GET `
         -Uri "/v1.0/users/`$count?`$filter=accountEnabled eq false and userType eq 'Member'" `
-        -Headers $countHeaders -ErrorAction Stop
+        -Headers $countHeaders -ErrorAction Stop)
     $pct = if ($totalCount -gt 0) { [math]::Round($disabledCount / $totalCount * 100, 1) } else { 0 }
-    Add-Setting @{
+    $settingParams = @{
         CheckId          = 'ENTRA-DISABLED-001'
         Category         = 'Directory Health'
         Setting          = 'Disabled Member Accounts'
@@ -766,10 +766,11 @@ try {
         Status           = 'Info'
         Remediation      = 'Review disabled accounts and remove any that are no longer needed. Entra admin center > Users > All users > filter by Account status: Disabled.'
     }
+    Add-Setting @settingParams
 }
 catch {
     Write-Warning "Could not count disabled member accounts: $_"
-    Add-Setting @{
+    $settingParams = @{
         CheckId          = 'ENTRA-DISABLED-001'
         Category         = 'Directory Health'
         Setting          = 'Disabled Member Accounts'
@@ -778,4 +779,5 @@ catch {
         Status           = 'Skipped'
         Remediation      = 'Check Graph API permissions (User.Read.All) and retry.'
     }
+    Add-Setting @settingParams
 }
