@@ -75,8 +75,15 @@ Describe 'Import-ControlRegistry' {
             $withImpact = @($registry.Keys | Where-Object { $_ -ne '__cisReverseLookup' } |
                 ForEach-Object { $registry[$_] } | Where-Object { $null -ne $_.impactRating })
             $withImpact.Count | Should -BeGreaterThan 0 -Because 'CheckID v2.0.0 entries carry impactRating objects'
-            $withImpact[0].impactRating.severity | Should -BeIn @('Critical', 'High', 'Medium', 'Low')
-            $withImpact[0].impactRating.rationale | Should -Not -BeNullOrEmpty
+            # Hashtable iteration order is non-deterministic; validate all entries, not just [0]
+            # 'Informational' is valid per CheckID v2.0.0 schema (e.g. SPO-SITE-003, TEAMS-INFO-001)
+            $validSeverities = @('Critical', 'High', 'Medium', 'Low', 'Informational')
+            foreach ($entry in $withImpact) {
+                $entry.impactRating.severity | Should -BeIn $validSeverities `
+                    -Because "impactRating.severity for '$($entry.checkId)' must be a known severity"
+                $entry.impactRating.rationale | Should -Not -BeNullOrEmpty `
+                    -Because "impactRating.rationale for '$($entry.checkId)' must be present"
+            }
         }
 
         It 'scf and impactRating are null for local extension entries without upstream data' {
