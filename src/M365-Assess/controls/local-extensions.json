@@ -83,5 +83,37 @@
       "rationale": "Failure to route email through Exchange Online mail flow exposes the tenant to: Security control bypass; mail not traversing Exchange Online skips ATP scanning, DLP policies, mail flow rules, and anti-phishing defenses.",
       "scfWeighting": 7
     }
+  },
+  {
+    "checkId": "ENTRA-DISABLED-001",
+    "name": "Disabled Member Account Count",
+    "category": "DIRECTORY",
+    "collector": "Entra",
+    "hasAutomatedCheck": true,
+    "licensing": {
+      "minimum": "E3"
+    },
+    "frameworks": {
+      "nist-800-53": {
+        "controlId": "AC-2;AC-02(03)"
+      },
+      "cis-controls-v8": {
+        "controlId": "5.3;6.1"
+      },
+      "iso-27001": {
+        "controlId": "5.15;5.18"
+      },
+      "nist-csf": {
+        "controlId": "PR.AA-01"
+      },
+      "soc2": {
+        "controlId": "CC6.2;CC6.3"
+      }
+    },
+    "impactRating": {
+      "severity": "Info",
+      "rationale": "Informational: surfaces the total count of disabled member accounts alongside total directory size. High ratios may indicate accounts pending removal or an offboarding gap.",
+      "scfWeighting": 3
+    }
   }
 ]
