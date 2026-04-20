@@ -49,7 +49,8 @@ function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
         [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -61,6 +62,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }
@@ -151,6 +153,10 @@ try {
         Status           = $sharingStatus
         CheckId          = 'SPO-SHARING-001'
         Remediation      = 'Run: Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly. SharePoint admin center > Policies > Sharing.'
+        Evidence         = [PSCustomObject]@{
+            SharingCapability            = $sharingCapability
+            SharingDomainRestrictionMode = $spoSettings['sharingDomainRestrictionMode']
+        }
     }
     Add-Setting @settingParams
 }

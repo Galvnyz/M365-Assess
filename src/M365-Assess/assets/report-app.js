@@ -2152,7 +2152,9 @@ function FindingsTable({
       href: f.learnMore,
       target: "_blank",
       rel: "noreferrer noopener"
-    }, "Learn more on Microsoft Docs \u2197"))));
+    }, "Learn more on Microsoft Docs \u2197")), f.evidence && /*#__PURE__*/React.createElement("details", {
+      className: "finding-evidence"
+    }, /*#__PURE__*/React.createElement("summary", null, "Evidence"), /*#__PURE__*/React.createElement("pre", null, JSON.stringify(JSON.parse(f.evidence), null, 2)))));
   })));
 }
 function renderRemediation(text) {

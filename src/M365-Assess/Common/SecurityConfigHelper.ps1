@@ -62,6 +62,8 @@ function Add-SecuritySetting {
         Registry check identifier (e.g., 'EXO-AUTH-001'). Sub-numbered automatically.
     .PARAMETER Remediation
         Guidance for fixing a non-passing result.
+    .PARAMETER Evidence
+        Optional structured evidence object attached to the finding (serialized to JSON in the report).
     #>
     [CmdletBinding()]
     param(
@@ -98,7 +100,10 @@ function Add-SecuritySetting {
         [string]$Remediation = '',
 
         [Parameter()]
-        [switch]$IntentDesign
+        [switch]$IntentDesign,
+
+        [Parameter()]
+        [PSCustomObject]$Evidence = $null
     )
 
     # Auto-generate sub-numbered CheckId for individual setting traceability
@@ -127,6 +132,7 @@ function Add-SecuritySetting {
         CheckId          = $subCheckId
         Remediation      = $Remediation
         IntentDesign     = [bool]$IntentDesign
+        Evidence         = $Evidence
     })
 
     # Accumulate adoption signal for Value Opportunity analysis

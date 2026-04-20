@@ -696,6 +696,19 @@ section.block { margin-bottom: 40px; scroll-margin-top: 20px; }
   font-size: 12px; color: var(--accent-text); text-decoration: none;
 }
 .finding-learn-more a:hover { text-decoration: underline; }
+.finding-evidence {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+.finding-evidence summary {
+  cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-soft);
+  user-select: none;
+}
+.finding-evidence pre {
+  margin: 6px 0 0; padding: 10px; background: var(--surface2);
+  border-radius: 6px; font-size: 11px; overflow-x: auto;
+  color: var(--text); line-height: 1.5;
+}
 
 /* ---------- Domain grid ---------- */
 .domain-grid {

@@ -35,6 +35,7 @@ try {
 
         # Phishing threshold
         $threshold = $policy.PhishThresholdLevel
+        $mailboxIntelligence = [bool]$policy.EnableMailboxIntelligence
         $settingParams = @{
             Category         = 'Anti-Phishing'
             Setting          = "Phishing Threshold ($policyLabel)"
@@ -43,6 +44,11 @@ try {
             Status           = if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }
             CheckId          = 'DEFENDER-ANTIPHISH-001'
             Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
+            Evidence         = [PSCustomObject]@{
+                PolicyName                = $policy.Name
+                PhishThresholdLevel       = [int]$threshold
+                EnableMailboxIntelligence = $mailboxIntelligence
+            }
         }
         Add-Setting @settingParams
 

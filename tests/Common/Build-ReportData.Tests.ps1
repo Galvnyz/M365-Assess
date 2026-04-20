@@ -515,4 +515,35 @@ Describe 'Build-ReportData' {
             $d.ca[0].State       | Should -Be 'enabled'
         }
     }
+
+    Context 'Evidence field passthrough' {
+        It 'serializes evidence object to JSON string in findings output' {
+            $finding = New-Finding
+            $finding | Add-Member -NotePropertyName Evidence -NotePropertyValue ([PSCustomObject]@{ IsSecurityDefaultsEnabled = $true })
+            $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'Critical'; effort = 'small' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
+            $d.findings[0].evidence | Should -Not -BeNullOrEmpty
+            $parsed = $d.findings[0].evidence | ConvertFrom-Json
+            $parsed.IsSecurityDefaultsEnabled | Should -Be $true
+        }
+
+        It 'evidence field is null when not set on finding' {
+            $finding = New-Finding
+            $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'Critical'; effort = 'small' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
+            $d.findings[0].evidence | Should -BeNullOrEmpty
+        }
+
+        It 'evidence JSON string is parseable when present' {
+            $finding = New-Finding
+            $finding | Add-Member -NotePropertyName Evidence -NotePropertyValue ([PSCustomObject]@{
+                PolicyCount = 3; PolicyNames = @('Policy A', 'Policy B', 'Policy C')
+            })
+            $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'High'; effort = 'medium' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
+            { $d.findings[0].evidence | ConvertFrom-Json } | Should -Not -Throw
+            $ev = $d.findings[0].evidence | ConvertFrom-Json
+            $ev.PolicyCount | Should -Be 3
+        }
+    }
 }

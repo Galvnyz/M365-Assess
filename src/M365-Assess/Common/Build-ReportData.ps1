@@ -142,6 +142,9 @@ function Build-ReportDataJson {
                        else                                              { '' }
 
         $learnMore = if ($regEntry -and $regEntry.learnMore) { [string]$regEntry.learnMore } else { $null }
+        $evidence  = if ($f.PSObject.Properties['Evidence'] -and $null -ne $f.Evidence) {
+                         $f.Evidence | ConvertTo-Json -Depth 5 -Compress
+                     } else { $null }
 
         $findings.Add([PSCustomObject]@{
             checkId      = $f.CheckId
@@ -159,6 +162,7 @@ function Build-ReportDataJson {
             fwMeta       = $fwMeta
             intentDesign = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
             learnMore    = $learnMore
+            evidence     = $evidence
         })
     }
 

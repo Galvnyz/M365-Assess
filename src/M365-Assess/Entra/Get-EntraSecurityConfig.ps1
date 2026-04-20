@@ -58,7 +58,8 @@ function Add-Setting {
         [string]$RecommendedValue,
         [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown')]
         [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -70,6 +71,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }

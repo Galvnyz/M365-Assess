@@ -55,7 +55,8 @@ function Add-Setting {
         [string]$RecommendedValue,
         [string]$Status,
         [string]$CheckId = '',
-        [string]$Remediation = ''
+        [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -67,6 +68,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }

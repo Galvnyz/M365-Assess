@@ -45,7 +45,8 @@ function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
         [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -57,6 +58,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }
@@ -149,6 +151,10 @@ try {
         ($_['grantControls']['builtInControls'] -contains 'mfa')
     })
 
+    $mfaAdminEvidence = [PSCustomObject]@{
+        PolicyCount = $mfaAdminPolicies.Count
+        PolicyNames = @($mfaAdminPolicies | ForEach-Object { $_['displayName'] })
+    }
     if ($mfaAdminPolicies.Count -gt 0) {
         $names = ($mfaAdminPolicies | ForEach-Object { $_['displayName'] }) -join '; '
         $settingParams = @{
@@ -159,6 +165,7 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-MFA-ADMIN-001'
             Remediation      = 'No action needed.'
+            Evidence         = $mfaAdminEvidence
         }
         Add-Setting @settingParams
     }
@@ -171,6 +178,7 @@ try {
             Status           = 'Info'
             CheckId          = 'CA-MFA-ADMIN-001'
             Remediation      = 'Security Defaults enforces MFA for all admin roles. For granular control, disable Security Defaults and create Conditional Access policies.'
+            Evidence         = $mfaAdminEvidence
         }
         Add-Setting @settingParams
     }
@@ -183,6 +191,7 @@ try {
             Status           = 'Fail'
             CheckId          = 'CA-MFA-ADMIN-001'
             Remediation      = 'Create a CA policy: Target admin directory roles > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+            Evidence         = $mfaAdminEvidence
         }
         Add-Setting @settingParams
     }

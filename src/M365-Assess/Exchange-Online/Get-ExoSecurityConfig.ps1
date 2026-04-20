@@ -44,7 +44,8 @@ function Add-Setting {
         [string]$RecommendedValue,
         [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown')]
         [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -56,6 +57,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }
@@ -77,6 +79,9 @@ try {
         Status           = if ($modernAuth) { 'Pass' } else { 'Fail' }
         CheckId          = 'EXO-AUTH-001'
         Remediation      = 'Exchange admin center > Settings > Modern authentication > Enable. Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true'
+        Evidence         = [PSCustomObject]@{
+            OAuth2ClientProfileEnabled = [bool]$modernAuth
+        }
     }
     Add-Setting @settingParams
 

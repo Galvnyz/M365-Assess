@@ -23,6 +23,7 @@ try {
         Status           = $(if ($isEnabled) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-SECDEFAULT-001'
         Remediation      = 'Run: Update-MgPolicyIdentitySecurityDefaultsEnforcementPolicy -IsEnabled $true. Entra admin center > Properties > Manage security defaults.'
+        Evidence         = [PSCustomObject]@{ IsSecurityDefaultsEnabled = [bool]$isEnabled }
     }
     Add-Setting @settingParams
 }

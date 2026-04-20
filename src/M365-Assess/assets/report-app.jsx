@@ -1245,6 +1245,12 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
                       <a href={f.learnMore} target="_blank" rel="noreferrer noopener">Learn more on Microsoft Docs ↗</a>
                     </div>
                   )}
+                  {f.evidence && (
+                    <details className="finding-evidence">
+                      <summary>Evidence</summary>
+                      <pre>{JSON.stringify(JSON.parse(f.evidence), null, 2)}</pre>
+                    </details>
+                  )}
                 </div>
               )}
             </React.Fragment>
