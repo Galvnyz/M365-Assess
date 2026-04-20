@@ -4,10 +4,19 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-04-20
+
 ### Added
 - Roadmap CSV export — "Download CSV" button in the Remediation Roadmap exports the current roadmap table (reflecting any localStorage lane overrides) with columns: Lane, Setting, CheckID, Severity, Effort, Domain, Section, CurrentValue, RecommendedValue, Remediation, LearnMore, ControlRef (#549)
 - Evidence field Phase 1 — 5 collectors (CA-MFA-ADMIN-001, ENTRA-SECDEFAULT-001, DEFENDER-ANTIPHISH-001, EXO-AUTH-001, SPO-SHARING-001) emit structured evidence data wired through `REPORT_DATA.findings[].evidence`; React finding detail panel shows a collapsible `<details>` Evidence block (#546)
 - AD/Hybrid dashboard panel — `AdHybridPanel` React component in the report home view surfaces hybrid sync status, last sync time, sync type, password hash sync, and AD security finding counts when ActiveDirectory section is in scope (#562)
+
+### Changed
+- ISO/IEC 27001 framework label updated to "ISO/IEC 27001 + 27002:2022"; description clarifies that Pass/Fail reflects ISO 27002 implementation guidance mapped to ISO 27001 Annex A control IDs — not the risk-based certification requirement (#618)
+- README footer now discloses Claude Code (Anthropic) co-development
+
+### Changed (infrastructure)
+- CheckID registry synced to v2.17.0 — 1096 total control entries; BACKUP-ENABLED-001 marked hasAutomatedCheck=false (no collector implemented) (#619)
 
 ## [2.1.0] - 2026-04-20
 
