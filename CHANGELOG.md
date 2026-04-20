@@ -4,6 +4,28 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-20
+
+### Added
+- Dashboard panels: DNS authentication summary, Intune device categories, mailbox summary, and SharePoint config panels in the report home view (#601)
+- Sidebar sub-navigation for long section lists — collapses into a scrollable sub-menu (#599)
+- Roadmap deep-link: clicking a finding in the Findings panel now deep-links to its entry in the Remediation Roadmap (#599)
+- `intentDesign` flag on findings — collector sets this to suppress false-positive guidance for intentional configurations (#597)
+- User staleness metrics (`NeverSignedIn`, `StaleMember` columns) added to user summary data (#597)
+- DMARC staged-rollout detection — policy `none` with active reporting now emits a `Review` instead of `Fail` (#597)
+- `tenantAgeYears` computed field added to tenant data (derived from `CreatedDateTime`) (#597)
+- Framework description and official homepage URL now sourced from registry JSON and surfaced in the framework detail panel; `FW_BLURB` constants serve as fallback (#606, closes #592)
+
+### Changed
+- Secure Score card splits `CurrentScore / MaxScore` into two separate stat values — easier to read at a glance (#599)
+
+### Fixed
+- Report theme and mode were not applied on initial load — `data-theme="dark"` and `data-mode="comfort"` were invalid CSS selector values; replaced with correct defaults (`neon`/`dark`) and added anti-flash inline script in `<head>` (#604)
+- `localStorage` access wrapped in `try/catch` to prevent `SecurityError` when report is opened from `file://` URLs in strict browser environments (#604)
+
+### Changed (infrastructure)
+- CheckID registry synced to v2.14.0 — 14 new upstream checks across EXO, Entra, Intune, and Teams domains (#603)
+
 ## [2.0.0] - 2026-04-18
 
 ### Added
