@@ -10,17 +10,50 @@ param()
 # ------------------------------------------------------------------
 # 1. Security Defaults
 # ------------------------------------------------------------------
+$secDefaultsCaPolicies = $null  # pre-fetched here, reused in check 1b
 try {
     Write-Verbose "Checking security defaults..."
     $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
     if (-not $secDefaults) { throw "API returned null response" }
     $isEnabled = $secDefaults['isEnabled']
+
+    # When SD is disabled, check whether CA policies provide equivalent coverage.
+    # SD disabled is the correct state for any tenant using Conditional Access — Microsoft
+    # blocks enabling SD when CA policies are active. Only flag as Fail when there is
+    # no MFA control at all (no CA and no SD).
+    if (-not $isEnabled) {
+        try {
+            $caResp = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+            $secDefaultsCaPolicies = if ($caResp -and $caResp['value']) { @($caResp['value']) } else { @() }
+        }
+        catch {
+            Write-Verbose "Could not pre-fetch CA policies for security defaults check: $_"
+            $secDefaultsCaPolicies = @()
+        }
+    }
+
+    $caEnabledCount = if ($secDefaultsCaPolicies) {
+        @($secDefaultsCaPolicies | Where-Object { $_['state'] -eq 'enabled' }).Count
+    } else { 0 }
+
+    $sdStatus = if ($isEnabled) { 'Pass' }
+                elseif ($caEnabledCount -gt 0) { 'Pass' }
+                else { 'Fail' }
+
+    $sdCurrentValue = if ($isEnabled) {
+        'True'
+    } elseif ($caEnabledCount -gt 0) {
+        "False (Conditional Access active: $caEnabledCount enabled policies)"
+    } else {
+        'False'
+    }
+
     $settingParams = @{
         Category         = 'Security Defaults'
         Setting          = 'Security Defaults Enabled'
-        CurrentValue     = "$isEnabled"
+        CurrentValue     = $sdCurrentValue
         RecommendedValue = 'True (if no Conditional Access)'
-        Status           = $(if ($isEnabled) { 'Pass' } else { 'Fail' })
+        Status           = $sdStatus
         CheckId          = 'ENTRA-SECDEFAULT-001'
         Remediation      = 'Run: Update-MgPolicyIdentitySecurityDefaultsEnforcementPolicy -IsEnabled $true. Entra admin center > Properties > Manage security defaults.'
         Evidence         = [PSCustomObject]@{ IsSecurityDefaultsEnabled = [bool]$isEnabled }
@@ -47,8 +80,13 @@ catch {
 if ($isEnabled -eq $false) {
     try {
         Write-Verbose "Security Defaults OFF -- evaluating CA policy coverage..."
-        $caResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-        $caPolicies = if ($caResponse -and $caResponse['value']) { @($caResponse['value']) } else { @() }
+        # Reuse policies pre-fetched in check 1; fall back to a fresh call if unavailable.
+        $caPolicies = if ($null -ne $secDefaultsCaPolicies) {
+            $secDefaultsCaPolicies
+        } else {
+            $caResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+            if ($caResponse -and $caResponse['value']) { @($caResponse['value']) } else { @() }
+        }
         $caEnabled = @($caPolicies | Where-Object { $_['state'] -eq 'enabled' })
 
         $coverageAreas = [ordered]@{

@@ -223,6 +223,13 @@ Describe 'EntraPasswordAuthChecks' {
         $check.Status | Should -Be 'Pass'
     }
 
+    It 'Security defaults enabled check passes when SD is off but CA policies are active' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Enabled' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass' -Because 'CA policies provide equivalent coverage'
+        $check.CurrentValue | Should -Match 'Conditional Access active'
+    }
+
     It 'Security defaults gap analysis passes when all areas covered by CA' {
         $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Gap Analysis' }
         $check | Should -Not -BeNullOrEmpty
@@ -322,6 +329,97 @@ Describe 'EntraPasswordAuthChecks - Security Defaults ON' {
         $check = $settings | Where-Object { $_.Setting -like 'Password Expiration:*' }
         $check | Should -Not -BeNullOrEmpty
         $check[0].Status | Should -Be 'Fail'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'EntraPasswordAuthChecks - Security Defaults OFF no CA' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id' }
+        }
+
+        Mock Import-Module { }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri, $Headers, $ErrorAction)
+            switch -Wildcard ($Uri) {
+                '*/identitySecurityDefaultsEnforcementPolicy' {
+                    return @{ isEnabled = $false }
+                }
+                '*/identity/conditionalAccess/policies' {
+                    return @{ value = @() }
+                }
+                '*/policies/authenticationMethodsPolicy' {
+                    return @{
+                        authenticationMethodConfigurations = @()
+                        registrationEnforcement            = @{
+                            authenticationMethodsRegistrationCampaign = @{
+                                state          = 'disabled'
+                                includeTargets = @()
+                            }
+                        }
+                    }
+                }
+                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/domains' {
+                    return @{ value = @(
+                        @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }
+                    )}
+                }
+                '*/v1.0/organization' {
+                    return @{ value = @(
+                        @{ onPremisesSyncEnabled = $false; onPremisesLastPasswordSyncDateTime = $null }
+                    )}
+                }
+                default { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        $ctx            = Initialize-SecurityConfig
+        $settings       = $ctx.Settings
+        $checkIdCounter = $ctx.CheckIdCounter
+
+        function Add-Setting {
+            param([string]$Category, [string]$Setting, [string]$CurrentValue,
+                  [string]$RecommendedValue, [string]$Status,
+                  [string]$CheckId = '', [string]$Remediation = '')
+            Add-SecuritySetting -Settings $settings -CheckIdCounter $checkIdCounter `
+                -Category $Category -Setting $Setting -CurrentValue $CurrentValue `
+                -RecommendedValue $RecommendedValue -Status $Status `
+                -CheckId $CheckId -Remediation $Remediation
+        }
+
+        $sspr       = $null
+        $orgSettings = $null
+        $pwSettings  = $null
+
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraPasswordAuthChecks.ps1"
+    }
+
+    It 'Security defaults enabled check fails when SD is off and no CA policies exist' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Enabled' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail' -Because 'no MFA control is active'
+        $check.CurrentValue | Should -Be 'False'
+    }
+
+    It 'Security defaults gap analysis fails when no CA areas are covered' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Gap Analysis' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail'
     }
 
     AfterAll {

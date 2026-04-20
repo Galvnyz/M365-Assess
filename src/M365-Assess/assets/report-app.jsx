@@ -480,13 +480,16 @@ function IntuneCategoryGrid() {
   const intune = FINDINGS.filter(f => f.domain === 'Intune');
   if (!intune.length) return null;
   const CATS = [
-    { id: 'COMPLIANCE',     label: 'Device Compliance',      re: /^INTUNE-COMPLIANCE/ },
-    { id: 'DEVICE',         label: 'Device Config',          re: /^INTUNE-DEVICE/     },
-    { id: 'CONFIG',         label: 'Config Profiles',        re: /^INTUNE-CONFIG/     },
-    { id: 'APP',            label: 'App Protection',         re: /^INTUNE-APP/        },
-    { id: 'SECURITY',       label: 'Security Baselines',     re: /^INTUNE-SECURITY/   },
-    { id: 'VPN',            label: 'VPN / Network',          re: /^INTUNE-(VPN|WIFI|REMOTE)/ },
-    { id: 'MEDIA',          label: 'Removable Media',        re: /^INTUNE-REMOVABLEMEDIA/ },
+    { id: 'COMPLIANCE',  label: 'Device Compliance',  re: /^INTUNE-COMPLIANCE/ },
+    { id: 'DEVICE',      label: 'Device Config',       re: /^INTUNE-DEVICE/     },
+    { id: 'CONFIG',      label: 'Config Profiles',     re: /^INTUNE-CONFIG/     },
+    { id: 'APP',         label: 'App Protection',      re: /^INTUNE-APP/        },
+    { id: 'SECURITY',    label: 'Security Baselines',  re: /^INTUNE-SECURITY/   },
+    { id: 'VPN',         label: 'VPN / Network',       re: /^INTUNE-(VPN|WIFI|REMOTE)/ },
+    { id: 'MEDIA',       label: 'Removable Media',     re: /^INTUNE-REMOVABLEMEDIA/ },
+    { id: 'ENROLLMENT',  label: 'Enrollment',          re: /^INTUNE-(ENROLLMENT|ENROLL|INVENTORY|AUTODISC)/ },
+    { id: 'ENCRYPTION',  label: 'Encryption',          re: /^INTUNE-(ENCRYPTION|MOBILEENCRYPT|FIPS)/ },
+    { id: 'ADMINOPS',    label: 'Admin & Updates',     re: /^INTUNE-(RBAC|MAA|WIPEAUDIT|UPDATE|MOBILECODE|PORTSTORAGE)/ },
   ];
   const buckets = CATS.map(cat => {
     const fs = intune.filter(f => cat.re.test(f.checkId));

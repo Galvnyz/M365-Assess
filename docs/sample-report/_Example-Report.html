@@ -22142,6 +22142,18 @@ function IntuneCategoryGrid() {
     id: 'MEDIA',
     label: 'Removable Media',
     re: /^INTUNE-REMOVABLEMEDIA/
+  }, {
+    id: 'ENROLLMENT',
+    label: 'Enrollment',
+    re: /^INTUNE-(ENROLLMENT|ENROLL|INVENTORY|AUTODISC)/
+  }, {
+    id: 'ENCRYPTION',
+    label: 'Encryption',
+    re: /^INTUNE-(ENCRYPTION|MOBILEENCRYPT|FIPS)/
+  }, {
+    id: 'ADMINOPS',
+    label: 'Admin & Updates',
+    re: /^INTUNE-(RBAC|MAA|WIPEAUDIT|UPDATE|MOBILECODE|PORTSTORAGE)/
   }];
   const buckets = CATS.map(cat => {
     const fs = intune.filter(f => cat.re.test(f.checkId));
