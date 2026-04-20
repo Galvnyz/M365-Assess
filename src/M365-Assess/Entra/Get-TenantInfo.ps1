@@ -82,13 +82,18 @@ $defaultDomain = $domains |
 
 # Handle multiple organizations (typically just one)
 $report = foreach ($org in $organization) {
+    $provisioningErrorCount = if ($org.OnPremisesProvisioningErrors) { @($org.OnPremisesProvisioningErrors).Count } else { 0 }
     [PSCustomObject]@{
-        OrgDisplayName          = $org.DisplayName
-        TenantId                = $org.Id
-        VerifiedDomains         = $verifiedDomainsJoined
-        DefaultDomain           = $defaultDomain
-        SecurityDefaultsEnabled = if ($null -ne $securityDefaults) { $securityDefaults['isEnabled'] } else { 'N/A' }
-        CreatedDateTime         = $org.CreatedDateTime
+        OrgDisplayName                     = $org.DisplayName
+        TenantId                           = $org.Id
+        VerifiedDomains                    = $verifiedDomainsJoined
+        DefaultDomain                      = $defaultDomain
+        SecurityDefaultsEnabled            = if ($null -ne $securityDefaults) { $securityDefaults['isEnabled'] } else { 'N/A' }
+        CreatedDateTime                    = $org.CreatedDateTime
+        OnPremisesSyncEnabled              = $org.OnPremisesSyncEnabled
+        OnPremisesLastSyncDateTime         = $org.OnPremisesLastSyncDateTime
+        OnPremisesLastPasswordSyncDateTime = $org.OnPremisesLastPasswordSyncDateTime
+        OnPremisesProvisioningErrorCount   = $provisioningErrorCount
     }
 }
 
