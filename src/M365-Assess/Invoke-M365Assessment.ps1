@@ -156,11 +156,17 @@ param(
                  'PowerBI', 'Hybrid', 'Inventory', 'ActiveDirectory', 'SOC2', 'ValueOpportunity', 'All')]
     [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'PowerBI', 'Hybrid'),
 
-    # TenantId: optional in Interactive/DeviceCode/ManagedIdentity/SkipConnection sets;
-    # mandatory in app-only sets where the tenant cannot be inferred interactively.
-    [Parameter(ParameterSetName = 'AppOnlyCert',   Mandatory)]
-    [Parameter(ParameterSetName = 'AppOnlySecret', Mandatory)]
-    [Parameter()]
+    # TenantId: optional in interactive sets; mandatory in app-only sets where the
+    # tenant cannot be inferred interactively. Must be listed explicitly in every
+    # set — mixing named-set attributes with a bare [Parameter()] (__AllParameterSets)
+    # causes parameter-set resolution failures in PowerShell 7.6+.
+    [Parameter(ParameterSetName = 'AppOnlyCert',      Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlySecret',    Mandatory)]
+    [Parameter(ParameterSetName = 'Interactive')]
+    [Parameter(ParameterSetName = 'DeviceCode')]
+    [Parameter(ParameterSetName = 'ManagedIdentity')]
+    [Parameter(ParameterSetName = 'SkipConnection')]
+    [Parameter(ParameterSetName = 'ConnectionProfile')]
     [string]$TenantId,
 
     [Parameter()]
