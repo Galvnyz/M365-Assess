@@ -566,12 +566,53 @@ Describe 'Build-ReportData' {
                 'ad-hybrid'   = @($hybrid)
                 'ad-security' = @($sec1, $sec2)
             })
-            $d.adHybrid              | Should -Not -BeNullOrEmpty
-            $d.adHybrid.syncEnabled  | Should -Be $true
-            $d.adHybrid.syncType     | Should -Be 'AADConnect'
-            $d.adHybrid.pwHashSync   | Should -Be $true
+            $d.adHybrid                  | Should -Not -BeNullOrEmpty
+            $d.adHybrid.syncEnabled      | Should -Be $true
+            $d.adHybrid.syncType         | Should -Be 'AADConnect'
+            $d.adHybrid.pwHashSync       | Should -Be $true
             $d.adHybrid.securityFindings | Should -Be 2
             $d.adHybrid.highRiskFindings | Should -Be 1
+            $d.adHybrid.entraOnly        | Should -Be $false
+        }
+
+        It 'should fall back to Entra tenant data when ad-hybrid absent and sync is enabled' {
+            $tenant = [PSCustomObject]@{
+                OrgDisplayName                     = 'Contoso'
+                TenantId                           = 'test-tenant-id'
+                OnPremisesSyncEnabled              = 'True'
+                OnPremisesLastSyncDateTime         = '2026-04-15T12:00:00Z'
+                OnPremisesLastPasswordSyncDateTime = '2026-04-15T12:05:00Z'
+                OnPremisesProvisioningErrorCount   = '2'
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -SectionData @{ 'tenant' = @($tenant) })
+            $d.adHybrid             | Should -Not -BeNullOrEmpty
+            $d.adHybrid.syncEnabled | Should -Be $true
+            $d.adHybrid.pwHashSync  | Should -Be $true
+            $d.adHybrid.syncErrorCount | Should -Be 2
+            $d.adHybrid.entraOnly   | Should -Be $true
+        }
+
+        It 'should not create Entra fallback when sync is disabled in tenant data' {
+            $tenant = [PSCustomObject]@{
+                OrgDisplayName            = 'Contoso'
+                TenantId                  = 'test-tenant-id'
+                OnPremisesSyncEnabled     = 'False'
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -SectionData @{ 'tenant' = @($tenant) })
+            $d.adHybrid | Should -BeNullOrEmpty
+        }
+
+        It 'should detect PHS disabled when LastPasswordSyncDateTime is absent' {
+            $tenant = [PSCustomObject]@{
+                OrgDisplayName                     = 'Contoso'
+                TenantId                           = 'test-tenant-id'
+                OnPremisesSyncEnabled              = 'True'
+                OnPremisesLastSyncDateTime         = '2026-04-15T12:00:00Z'
+                OnPremisesLastPasswordSyncDateTime = ''
+                OnPremisesProvisioningErrorCount   = '0'
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -SectionData @{ 'tenant' = @($tenant) })
+            $d.adHybrid.pwHashSync | Should -Be $false
         }
     }
 }

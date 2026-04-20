@@ -631,9 +631,11 @@ function AdHybridPanel() {
   const adFindings = FINDINGS.filter(f => f.domain === 'Active Directory');
   const pass = adFindings.filter(f => f.status==='Pass').length;
   const fail = adFindings.filter(f => f.status==='Fail').length;
-  const syncOk   = ad.syncEnabled;
+  const syncOk    = ad.syncEnabled;
+  const phsOk     = ad.pwHashSync;
   const syncColor = syncOk ? 'var(--success-text)' : 'var(--danger-text)';
-  const fmtDate  = d => {
+  const phsColor  = phsOk  ? 'var(--success-text)' : 'var(--danger-text)';
+  const fmtDate   = d => {
     if (!d) return 'Unknown';
     try { return new Date(d).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }
     catch { return d; }
@@ -643,7 +645,10 @@ function AdHybridPanel() {
     .sort((a,b)=>(SEV_ORDER[b.severity]||0)-(SEV_ORDER[a.severity]||0)).slice(0,3);
   return (
     <div className="domain-sub-panel">
-      <div className="panel-sublabel">Active Directory · hybrid posture</div>
+      <div className="panel-sublabel">
+        Active Directory · hybrid posture
+        {ad.entraOnly && <span className="kpi-hint" style={{marginLeft:8, fontWeight:400}}>(Entra data — AD collectors not run)</span>}
+      </div>
       <div className="spo-summary-row">
         <div className="spo-stat-card">
           <div className="kpi-label">Directory sync</div>
@@ -653,9 +658,20 @@ function AdHybridPanel() {
         <div className="spo-stat-card">
           <div className="kpi-label">Last sync</div>
           <div style={{fontSize:12, fontWeight:600, color:'var(--text-soft)', marginTop:6, lineHeight:1.3}}>{fmtDate(ad.lastSyncTime)}</div>
-          <div className="kpi-hint">Password hash: {ad.pwHashSync ? 'Yes' : 'No'}</div>
         </div>
-        {adFindings.length > 0 && (
+        <div className={'spo-stat-card' + (!phsOk ? ' spo-stat-bad' : '')}>
+          <div className="kpi-label">Password hash sync</div>
+          <div style={{fontSize:13, fontWeight:700, color: phsColor, marginTop:6}}>{phsOk ? 'Enabled' : 'Disabled'}</div>
+          {!phsOk && <div className="kpi-hint" style={{color:'var(--danger-text)'}}>Users cannot reset passwords from Entra</div>}
+        </div>
+        {ad.syncErrorCount > 0 && (
+          <div className="spo-stat-card spo-stat-bad">
+            <div className="kpi-label">Sync errors</div>
+            <div className="kpi-value">{ad.syncErrorCount}</div>
+            <div className="kpi-hint">provisioning errors</div>
+          </div>
+        )}
+        {!ad.entraOnly && adFindings.length > 0 && (
           <div className={'spo-stat-card' + (fail>0?' spo-stat-bad':'')}>
             <div className="kpi-label">AD checks</div>
             <div className="kpi-value">{pct(pass, adFindings.length)}<span style={{fontSize:14}}>%</span></div>
@@ -663,7 +679,7 @@ function AdHybridPanel() {
             <div className="tiny-bar"><span style={{width: pct(pass, adFindings.length)+'%', background:'var(--success)'}}/></div>
           </div>
         )}
-        {ad.highRiskFindings > 0 && (
+        {!ad.entraOnly && ad.highRiskFindings > 0 && (
           <div className="spo-stat-card spo-stat-bad">
             <div className="kpi-label">High/Critical risks</div>
             <div className="kpi-value">{ad.highRiskFindings}</div>
@@ -728,6 +744,7 @@ function DomainRollup({ onJump }) {
       <MailboxSummaryPanel />
       <SharePointSummaryPanel />
       <AdHybridPanel />
+      <DnsAuthPanel />
     </section>
   );
 }
@@ -1696,7 +1713,6 @@ function Appendix() {
             </tbody>
           </table>
         </div>
-        <DnsAuthPanel />
         <div className="card">
           <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Conditional Access policies</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>

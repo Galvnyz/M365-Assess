@@ -243,8 +243,21 @@ Describe 'Get-CASecurityConfig' {
 
     It 'Produces at least 9 settings covering CA checks' {
         # Some checks may produce warnings depending on mock data depth;
-        # 12 checks exist but 3 require deeply nested hashtable access
+        # 15 checks exist (inc. FALLBACK-001, NAMEDLOC-002, STALEREF-001) but
+        # NAMEDLOC-002 is skipped when named locations mock returns empty
         $settings.Count | Should -BeGreaterOrEqual 9
+    }
+
+    It 'CA-FALLBACK-001 passes when all enabled policies have include targets' {
+        $check = $settings | Where-Object { $_.Setting -eq 'CA Policies with Empty Include Targets' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass'
+    }
+
+    It 'CA-STALEREF-001 passes when no referenced groups are deleted' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Stale Group References in CA Policies' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass'
     }
 
     AfterAll {
@@ -281,7 +294,9 @@ Describe 'Get-CASecurityConfig - No Policies' {
         # Checks that correctly Pass when no policies exist (absence is the desired state)
         $passOnAbsence = @('Report-Only Policies', 'Persistent Browser Without Device Compliance',
             'Combined Risk Policy Anti-Pattern', 'Trusted IP Named Locations',
-            'Tier-0 Role Coverage in CA Policies')
+            'Tier-0 Role Coverage in CA Policies',
+            'CA Policies with Empty Include Targets',
+            'Stale Group References in CA Policies')
         foreach ($s in $settings) {
             if ($s.Setting -in $passOnAbsence) {
                 $s.Status | Should -BeIn @('Pass', 'Review') -Because "Setting '$($s.Setting)' should pass or review when no problematic policies exist"
@@ -506,6 +521,190 @@ Describe 'Get-CASecurityConfig - CA-SESSION-001 Warning path' {
     It 'CA-SESSION-001 Warning CurrentValue includes policy name' {
         $check = $settings | Where-Object { $_.Setting -eq 'Persistent Browser Without Device Compliance' }
         $check.CurrentValue | Should -Match 'Persistent Session Policy'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - CA-FALLBACK-001 Warning path' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # One enabled policy with no include targets at all
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $false }
+            }
+            if ($Uri -like '*namedLocations*') {
+                return @{ value = @() }
+            }
+            if ($Uri -like '*roleAssignments*') {
+                return @{ value = @() }
+            }
+            return @{
+                value = @(
+                    @{
+                        id              = 'ca-empty-1'
+                        displayName     = 'Orphaned Policy'
+                        state           = 'enabled'
+                        conditions      = @{
+                            users           = @{ includeUsers = @('None'); includeGroups = @(); includeRoles = @() }
+                            clientAppTypes  = @('browser')
+                        }
+                        grantControls   = @{ builtInControls = @('mfa') }
+                        sessionControls = @{}
+                    }
+                )
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'CA-FALLBACK-001 returns Warning when enabled policies have no include targets' {
+        $check = $settings | Where-Object { $_.Setting -eq 'CA Policies with Empty Include Targets' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Warning'
+    }
+
+    It 'CA-FALLBACK-001 Warning CurrentValue includes the policy name' {
+        $check = $settings | Where-Object { $_.Setting -eq 'CA Policies with Empty Include Targets' }
+        $check.CurrentValue | Should -Match 'Orphaned Policy'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - CA-NAMEDLOC-002 Fail path' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # Policy references a location ID not in the named locations list
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $false }
+            }
+            if ($Uri -like '*namedLocations*') {
+                return @{ value = @(
+                    @{ id = 'loc-existing-001'; '@odata.type' = '#microsoft.graph.countryNamedLocation'; displayName = 'US Offices'; isTrusted = $false }
+                )}
+            }
+            if ($Uri -like '*roleAssignments*') {
+                return @{ value = @() }
+            }
+            return @{
+                value = @(
+                    @{
+                        id              = 'ca-stale-loc-1'
+                        displayName     = 'Policy With Deleted Location'
+                        state           = 'enabled'
+                        conditions      = @{
+                            users     = @{ includeUsers = @('All') }
+                            locations = @{
+                                includeLocations = @('loc-deleted-999')
+                                excludeLocations = @()
+                            }
+                        }
+                        grantControls   = @{ builtInControls = @('mfa') }
+                        sessionControls = @{}
+                    }
+                )
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'CA-NAMEDLOC-002 returns Fail when policies reference deleted named locations' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Stale Named Location References in CA Policies' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail'
+    }
+
+    It 'CA-NAMEDLOC-002 Fail CurrentValue includes the affected policy name' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Stale Named Location References in CA Policies' }
+        $check.CurrentValue | Should -Match 'Policy With Deleted Location'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - CA-STALEREF-001 Fail path' {
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        $staleGroupId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+
+        # Policy references a group that returns 404
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') {
+                return @{ isEnabled = $false }
+            }
+            if ($Uri -like '*namedLocations*') {
+                return @{ value = @() }
+            }
+            if ($Uri -like '*roleAssignments*') {
+                return @{ value = @() }
+            }
+            if ($Uri -like "*groups/$staleGroupId*") {
+                throw "Request_ResourceNotFound: Resource '$staleGroupId' does not exist."
+            }
+            return @{
+                value = @(
+                    @{
+                        id              = 'ca-stale-grp-1'
+                        displayName     = 'Policy With Deleted Group'
+                        state           = 'enabled'
+                        conditions      = @{
+                            users = @{
+                                includeUsers  = @()
+                                includeGroups = @($staleGroupId)
+                                excludeGroups = @()
+                            }
+                        }
+                        grantControls   = @{ builtInControls = @('mfa') }
+                        sessionControls = @{}
+                    }
+                )
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'CA-STALEREF-001 returns Fail when policies reference deleted groups' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Stale Group References in CA Policies' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail'
+    }
+
+    It 'CA-STALEREF-001 Fail CurrentValue includes the affected policy name' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Stale Group References in CA Policies' }
+        $check.CurrentValue | Should -Match 'Policy With Deleted Group'
     }
 
     AfterAll {

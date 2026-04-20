@@ -1192,7 +1192,9 @@ function AdHybridPanel() {
   const pass = adFindings.filter(f => f.status === 'Pass').length;
   const fail = adFindings.filter(f => f.status === 'Fail').length;
   const syncOk = ad.syncEnabled;
+  const phsOk = ad.pwHashSync;
   const syncColor = syncOk ? 'var(--success-text)' : 'var(--danger-text)';
+  const phsColor = phsOk ? 'var(--success-text)' : 'var(--danger-text)';
   const fmtDate = d => {
     if (!d) return 'Unknown';
     try {
@@ -1216,7 +1218,13 @@ function AdHybridPanel() {
     className: "domain-sub-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-sublabel"
-  }, "Active Directory \xB7 hybrid posture"), /*#__PURE__*/React.createElement("div", {
+  }, "Active Directory \xB7 hybrid posture", ad.entraOnly && /*#__PURE__*/React.createElement("span", {
+    className: "kpi-hint",
+    style: {
+      marginLeft: 8,
+      fontWeight: 400
+    }
+  }, "(Entra data \u2014 AD collectors not run)")), /*#__PURE__*/React.createElement("div", {
     className: "spo-summary-row"
   }, /*#__PURE__*/React.createElement("div", {
     className: "spo-stat-card"
@@ -1243,9 +1251,31 @@ function AdHybridPanel() {
       marginTop: 6,
       lineHeight: 1.3
     }
-  }, fmtDate(ad.lastSyncTime)), /*#__PURE__*/React.createElement("div", {
+  }, fmtDate(ad.lastSyncTime))), /*#__PURE__*/React.createElement("div", {
+    className: 'spo-stat-card' + (!phsOk ? ' spo-stat-bad' : '')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Password hash sync"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: phsColor,
+      marginTop: 6
+    }
+  }, phsOk ? 'Enabled' : 'Disabled'), !phsOk && /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint",
+    style: {
+      color: 'var(--danger-text)'
+    }
+  }, "Users cannot reset passwords from Entra")), ad.syncErrorCount > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "spo-stat-card spo-stat-bad"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Sync errors"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-value"
+  }, ad.syncErrorCount), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, "Password hash: ", ad.pwHashSync ? 'Yes' : 'No')), adFindings.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "provisioning errors")), !ad.entraOnly && adFindings.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: 'spo-stat-card' + (fail > 0 ? ' spo-stat-bad' : '')
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -1264,7 +1294,7 @@ function AdHybridPanel() {
       width: pct(pass, adFindings.length) + '%',
       background: 'var(--success)'
     }
-  }))), ad.highRiskFindings > 0 && /*#__PURE__*/React.createElement("div", {
+  }))), !ad.entraOnly && ad.highRiskFindings > 0 && /*#__PURE__*/React.createElement("div", {
     className: "spo-stat-card spo-stat-bad"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -1348,7 +1378,7 @@ function DomainRollup({
     })), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.review), " review")));
-  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null), /*#__PURE__*/React.createElement(AdHybridPanel, null));
+  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null), /*#__PURE__*/React.createElement(AdHybridPanel, null), /*#__PURE__*/React.createElement(DnsAuthPanel, null));
 }
 
 // ======================== Framework quilt ========================
@@ -2882,7 +2912,7 @@ function Appendix() {
       fontVariantNumeric: 'tabular-nums',
       color: 'var(--muted)'
     }
-  }, l.Total)))))), /*#__PURE__*/React.createElement(DnsAuthPanel, null), /*#__PURE__*/React.createElement("div", {
+  }, l.Total)))))), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: {

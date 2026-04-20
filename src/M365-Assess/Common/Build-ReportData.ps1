@@ -247,6 +247,30 @@ function Build-ReportDataJson {
             pwHashSync       = [bool]($row.PasswordHashSyncEnabled -eq 'True')
             securityFindings = $adSecurityRows.Count
             highRiskFindings = $highRiskCount
+            syncErrorCount   = 0
+            entraOnly        = $false
+        }
+    }
+
+    # Entra-side fallback: populate adHybridData from tenant info when AD section was not run.
+    # Get-TenantInfo writes OnPremisesSyncEnabled + PHS datetime fields to 01-Tenant-Info.csv.
+    if ($null -eq $adHybridData -and $tenantRows.Count -gt 0) {
+        $t = $tenantRows[0]
+        $hasSyncField = $t.PSObject.Properties['OnPremisesSyncEnabled']
+        if ($hasSyncField -and $t.OnPremisesSyncEnabled -eq 'True') {
+            $lastSync = if ($t.PSObject.Properties['OnPremisesLastSyncDateTime']) { $t.OnPremisesLastSyncDateTime } else { $null }
+            $phsDate  = if ($t.PSObject.Properties['OnPremisesLastPasswordSyncDateTime']) { $t.OnPremisesLastPasswordSyncDateTime } else { $null }
+            $errCount = if ($t.PSObject.Properties['OnPremisesProvisioningErrorCount']) { [int]$t.OnPremisesProvisioningErrorCount } else { 0 }
+            $adHybridData = [ordered]@{
+                syncEnabled      = $true
+                lastSyncTime     = if ($lastSync) { [string]$lastSync } else { $null }
+                syncType         = $null
+                pwHashSync       = ($null -ne $phsDate -and $phsDate -ne '')
+                securityFindings = 0
+                highRiskFindings = 0
+                syncErrorCount   = $errCount
+                entraOnly        = $true
+            }
         }
     }
 
