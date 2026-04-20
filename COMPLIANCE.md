@@ -73,7 +73,7 @@ The assessment suite includes **293 security checks** across 16 security config 
 
 ## Control Registry
 
-Framework mappings are defined in `controls/registry.json`, which contains **307 control entries**. Each entry specifies the check ID, description, and mappings to all applicable frameworks.
+Framework mappings are defined in `controls/registry.json`, which contains **1,079 control entries** (CheckID v2.9.0 upstream). Each entry specifies the check ID, description, and mappings to all applicable frameworks.
 
 To view or edit mappings:
 
