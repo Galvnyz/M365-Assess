@@ -130,7 +130,6 @@ const FW_BLURB = {
 const DOMAIN_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity', 'Other'];
 
 // --------------------- SVG icons ---------------------
-const _logoSrc = k => typeof window !== 'undefined' && window[k] ? window[k] : '';
 const Icon = {
   search: () => /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 16 16",
@@ -144,30 +143,24 @@ const Icon = {
   }), /*#__PURE__*/React.createElement("path", {
     d: "M11 11l3 3"
   })),
-  modeDark: () => /*#__PURE__*/React.createElement("img", {
-    src: _logoSrc('LOGO_DARK'),
-    style: {
-      height: 18,
-      width: 'auto',
-      maxWidth: 54,
-      objectFit: 'contain',
-      display: 'block',
-      borderRadius: 2
-    },
-    alt: "dark mode"
-  }),
-  modeLight: () => /*#__PURE__*/React.createElement("img", {
-    src: _logoSrc('LOGO_LIGHT'),
-    style: {
-      height: 18,
-      width: 'auto',
-      maxWidth: 54,
-      objectFit: 'contain',
-      display: 'block',
-      borderRadius: 2
-    },
-    alt: "light mode"
-  }),
+  moon: () => /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    fill: "currentColor"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M13 9.4A6 6 0 1 1 6.6 3 5 5 0 0 0 13 9.4z"
+  })),
+  sun: () => /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.5"
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: "8",
+    cy: "8",
+    r: "3"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M13 3l-1.4 1.4M4.4 11.6L3 13"
+  })),
   print: () => /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 16 16",
     fill: "none",
@@ -509,7 +502,7 @@ function Topbar({
     className: "icon-btn",
     title: mode === 'dark' ? 'Light mode' : 'Dark mode',
     onClick: () => setMode(mode === 'dark' ? 'light' : 'dark')
-  }, mode === 'dark' ? /*#__PURE__*/React.createElement(Icon.modeDark, null) : /*#__PURE__*/React.createElement(Icon.modeLight, null)), D.xlsxFileName && /*#__PURE__*/React.createElement("a", {
+  }, mode === 'dark' ? /*#__PURE__*/React.createElement(Icon.sun, null) : /*#__PURE__*/React.createElement(Icon.moon, null)), D.xlsxFileName && /*#__PURE__*/React.createElement("a", {
     className: "icon-btn",
     href: D.xlsxFileName,
     download: true,

@@ -41,10 +41,6 @@ function Get-ReportTemplate {
     $reactDomJs = (Get-Content -Path (Join-Path $assetsDir 'react-dom.production.min.js')   -Raw -ErrorAction Stop) -replace '</script>', '<\/script>'
     $appJs      = (Get-Content -Path (Join-Path $assetsDir 'report-app.js')                 -Raw -ErrorAction Stop) -replace '</script>', '<\/script>'
 
-    $logoDarkB64  = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $assetsDir 'icons/mode-dark.png')))
-    $logoLightB64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $assetsDir 'icons/mode-light.png')))
-    $logoScript   = "window.LOGO_DARK='data:image/png;base64,$logoDarkB64';window.LOGO_LIGHT='data:image/png;base64,$logoLightB64';"
-
     # Anti-FOUC inline script: reads localStorage, validates against known values,
     # falls back to the baked-in default. Runs synchronously before first paint.
     $antiFouc = "(function(){try{var v=['neon','console','saas','high-contrast'];" +
@@ -81,7 +77,6 @@ function Get-ReportTemplate {
     $null = $sb.Append($ReportDataJson)
     $null = $sb.AppendLine()
     $null = $sb.AppendLine('</script>')
-    $null = $sb.AppendLine("<script>$logoScript</script>")
     $null = $sb.AppendLine('<script>')
     $null = $sb.Append($reactJs)
     $null = $sb.AppendLine()
