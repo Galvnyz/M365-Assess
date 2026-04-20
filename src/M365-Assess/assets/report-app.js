@@ -2209,7 +2209,44 @@ function whyItMatters(f) {
 function Roadmap({
   onViewFinding
 }) {
+  const OVERRIDE_KEY = 'm365-roadmap-overrides';
   const [open, setOpen] = useState(null);
+  const [overrides, setOverrides] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const saveOverrides = next => {
+    setOverrides(next);
+    try {
+      localStorage.setItem(OVERRIDE_KEY, JSON.stringify(next));
+    } catch {}
+  };
+  const moveTo = (checkId, lane) => {
+    saveOverrides({
+      ...overrides,
+      [checkId]: lane
+    });
+    if (open === checkId) setOpen(null);
+  };
+  const resetCard = checkId => {
+    const next = {
+      ...overrides
+    };
+    delete next[checkId];
+    saveOverrides(next);
+  };
+  const resetLane = laneItems => {
+    const next = {
+      ...overrides
+    };
+    laneItems.forEach(t => {
+      delete next[t.checkId];
+    });
+    saveOverrides(next);
+  };
   const tasks = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info').map(f => ({
     ...f
   }));
@@ -2230,10 +2267,51 @@ function Roadmap({
     return sev * eff;
   };
   tasks.sort((a, b) => score(b) - score(a));
-  const now = tasks.filter(t => t.severity === 'critical' || t.severity === 'high' && t.effort === 'small');
-  const soon = tasks.filter(t => !now.includes(t) && (t.severity === 'high' || t.severity === 'medium' && t.effort !== 'large'));
-  const later = tasks.filter(t => !now.includes(t) && !soon.includes(t));
+  const FW_PREF_RM = ['cis-m365-v6', 'nist-800-53', 'cmmc', 'nist-csf', 'iso-27001'];
+  const buildRoadmapCsv = (n, s, l) => {
+    const cols = ['Lane', 'Setting', 'CheckID', 'Severity', 'Effort', 'Domain', 'Section', 'CurrentValue', 'RecommendedValue', 'Remediation', 'LearnMore', 'ControlRef'];
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [cols.join(',')];
+    [['Do Now', n], ['Do Next', s], ['Later', l]].forEach(([label, items]) => {
+      items.forEach(t => {
+        const fw = FW_PREF_RM.find(k => t.fwMeta?.[k]?.controlId);
+        const ref = fw ? `${fw}: ${t.fwMeta[fw].controlId}` : '';
+        rows.push([label, t.setting, t.checkId, t.severity, t.effort ?? 'medium', t.category, t.section, t.currentValue, t.recommendedValue, t.remediation, t.learnMore ?? '', ref].map(esc).join(','));
+      });
+    });
+    return rows.join('\r\n');
+  };
+  const downloadCsv = () => {
+    const csv = buildRoadmapCsv(now, soon, later);
+    const blob = new Blob([csv], {
+      type: 'text/csv'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Assessment-Roadmap.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const getNaturalLane = t => {
+    if (t.severity === 'critical' || t.severity === 'high' && t.effort === 'small') return 'now';
+    if (t.severity === 'high' || t.severity === 'medium' && t.effort !== 'large') return 'soon';
+    return 'later';
+  };
+  const getEffectiveLane = t => overrides[t.checkId] || getNaturalLane(t);
+  const LANE_LABEL = {
+    now: 'Now',
+    soon: 'Next',
+    later: 'Later'
+  };
+  const now = tasks.filter(t => getEffectiveLane(t) === 'now');
+  const soon = tasks.filter(t => getEffectiveLane(t) === 'soon');
+  const later = tasks.filter(t => getEffectiveLane(t) === 'later');
   const priorityReason = (t, lane) => {
+    if (overrides[t.checkId]) {
+      const natural = LANE_LABEL[getNaturalLane(t)];
+      return `Manually moved to ${LANE_LABEL[lane]}. Default lane was ${natural}. Click Reset to restore.`;
+    }
     if (lane === 'now') {
       if (t.severity === 'critical') return `Critical severity — exposes the tenant to identity takeover, data exfiltration, or privilege escalation. Fix immediately regardless of effort.`;
       return `High severity with small remediation effort — a config toggle or policy tweak that removes material risk in minutes. Low-hanging fruit; do it first.`;
@@ -2248,8 +2326,9 @@ function Roadmap({
   const renderTask = (t, lane) => {
     const key = t.checkId;
     const isOpen = open === key;
+    const isCustom = !!overrides[key];
     return /*#__PURE__*/React.createElement("div", {
-      className: 'task' + (isOpen ? ' task-open' : ''),
+      className: 'task' + (isOpen ? ' task-open' : '') + (isCustom ? ' task-custom' : ''),
       key: key
     }, /*#__PURE__*/React.createElement("button", {
       className: "task-head-btn",
@@ -2257,7 +2336,9 @@ function Roadmap({
       "aria-expanded": isOpen
     }, /*#__PURE__*/React.createElement("div", {
       className: "task-head"
-    }, /*#__PURE__*/React.createElement("span", null, t.setting), /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", null, t.setting, isCustom && /*#__PURE__*/React.createElement("span", {
+      className: "task-custom-badge"
+    }, "custom")), /*#__PURE__*/React.createElement("span", {
       className: 'status-badge ' + STATUS_COLORS[t.status]
     }, /*#__PURE__*/React.createElement("span", {
       className: "dot"
@@ -2278,13 +2359,45 @@ function Roadmap({
     }, fw)), /*#__PURE__*/React.createElement("span", {
       className: "task-chev",
       "aria-hidden": "true"
-    }, isOpen ? '−' : '+'))), isOpen && /*#__PURE__*/React.createElement("div", {
+    }, isOpen ? '−' : '+'))), /*#__PURE__*/React.createElement("div", {
+      className: "task-move-row"
+    }, lane === 'now' && /*#__PURE__*/React.createElement("button", {
+      className: "task-move-btn",
+      onClick: e => {
+        e.stopPropagation();
+        moveTo(key, 'soon');
+      }
+    }, "Next \u2192"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
+      className: "task-move-btn",
+      onClick: e => {
+        e.stopPropagation();
+        moveTo(key, 'now');
+      }
+    }, "\u2190 Now"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
+      className: "task-move-btn",
+      onClick: e => {
+        e.stopPropagation();
+        moveTo(key, 'later');
+      }
+    }, "Later \u2192"), lane === 'later' && /*#__PURE__*/React.createElement("button", {
+      className: "task-move-btn",
+      onClick: e => {
+        e.stopPropagation();
+        moveTo(key, 'soon');
+      }
+    }, "\u2190 Next"), isCustom && /*#__PURE__*/React.createElement("button", {
+      className: "task-move-btn task-move-reset",
+      onClick: e => {
+        e.stopPropagation();
+        resetCard(key);
+      }
+    }, "Reset")), isOpen && /*#__PURE__*/React.createElement("div", {
       className: "task-body"
     }, /*#__PURE__*/React.createElement("div", {
       className: "task-why"
     }, /*#__PURE__*/React.createElement("div", {
       className: "task-why-label"
-    }, "Why this is in ", lane === 'now' ? '“Now”' : lane === 'soon' ? '“Next”' : '“Later”'), /*#__PURE__*/React.createElement("div", {
+    }, "Why this is in ", lane === 'now' ? '"Now"' : lane === 'soon' ? '"Next"' : '"Later"'), /*#__PURE__*/React.createElement("div", {
       className: "task-why-text"
     }, priorityReason(t, lane))), /*#__PURE__*/React.createElement("div", {
       className: "task-grid"
@@ -2336,6 +2449,16 @@ function Roadmap({
       rel: "noreferrer noopener"
     }, "Learn more on Microsoft Docs \u2197"))));
   };
+  const LaneReset = ({
+    laneItems
+  }) => {
+    const hasCustom = laneItems.some(t => overrides[t.checkId]);
+    if (!hasCustom) return null;
+    return /*#__PURE__*/React.createElement("button", {
+      className: "lane-reset-btn",
+      onClick: () => resetLane(laneItems)
+    }, "Reset lane");
+  };
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "roadmap"
@@ -2345,17 +2468,23 @@ function Roadmap({
     className: "eyebrow"
   }, "04 \xB7 Action plan"), /*#__PURE__*/React.createElement("h2", null, "Remediation roadmap"), /*#__PURE__*/React.createElement("div", {
     className: "hr"
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "lane-reset-btn",
+    style: {
+      marginTop: '8px'
+    },
+    onClick: downloadCsv
+  }, "Download CSV")), /*#__PURE__*/React.createElement("div", {
     className: "roadmap-intro"
   }, /*#__PURE__*/React.createElement("div", {
     className: "roadmap-intro-head"
   }, "How we prioritized"), /*#__PURE__*/React.createElement("div", {
     className: "roadmap-intro-body"
-  }, "Findings are bucketed by severity. Critical findings \u2014 identity takeover, data exfiltration, privilege escalation paths \u2014 always go in ", /*#__PURE__*/React.createElement("b", null, "Now"), ". High-severity findings land in ", /*#__PURE__*/React.createElement("b", null, "Next"), ": risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join ", /*#__PURE__*/React.createElement("b", null, "Next"), " when tractable, or ", /*#__PURE__*/React.createElement("b", null, "Later"), " for larger hardening work. Once remediation effort data is available from the upstream registry, ", /*#__PURE__*/React.createElement("b", null, "Now"), " will additionally surface high-severity quick wins \u2014 config toggles, policy tweaks \u2014 via a ", /*#__PURE__*/React.createElement("code", null, "severity \xD7 (1/effort)"), " score. ", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+  }, "Findings are bucketed by severity. Critical findings \u2014 identity takeover, data exfiltration, privilege escalation paths \u2014 always go in ", /*#__PURE__*/React.createElement("b", null, "Now"), ". High-severity findings land in ", /*#__PURE__*/React.createElement("b", null, "Next"), ": risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join ", /*#__PURE__*/React.createElement("b", null, "Next"), " when tractable, or ", /*#__PURE__*/React.createElement("b", null, "Later"), " for larger hardening work. ", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
     style: {
       color: 'var(--muted)'
     }
-  }, "Click any task to see why it's in this lane, the current vs recommended state, and exact remediation steps. Customers with a different risk appetite (regulatory deadline, incident response, M&A freeze) may reorder \u2014 the lanes are a starting point, not a mandate."))), /*#__PURE__*/React.createElement("div", {
+  }, "Click any task to expand it, or use the move buttons on each card to reprioritize. Overrides persist across page refreshes."))), /*#__PURE__*/React.createElement("div", {
     className: "roadmap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane"
@@ -2372,8 +2501,16 @@ function Roadmap({
       fontWeight: 400
     }
   }, "\xB7 ", now.length)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px'
+    }
+  }, /*#__PURE__*/React.createElement(LaneReset, {
+    laneItems: now
+  }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "< 1 week")), now.map(t => renderTask(t, 'now'))), /*#__PURE__*/React.createElement("div", {
+  }, "< 1 week"))), now.map(t => renderTask(t, 'now'))), /*#__PURE__*/React.createElement("div", {
     className: "lane"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane-head"
@@ -2388,8 +2525,16 @@ function Roadmap({
       fontWeight: 400
     }
   }, "\xB7 ", soon.length)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px'
+    }
+  }, /*#__PURE__*/React.createElement(LaneReset, {
+    laneItems: soon
+  }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 4 weeks")), soon.map(t => renderTask(t, 'soon'))), /*#__PURE__*/React.createElement("div", {
+  }, "1 \u2013 4 weeks"))), soon.map(t => renderTask(t, 'soon'))), /*#__PURE__*/React.createElement("div", {
     className: "lane"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane-head"
@@ -2404,8 +2549,16 @@ function Roadmap({
       fontWeight: 400
     }
   }, "\xB7 ", later.length)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px'
+    }
+  }, /*#__PURE__*/React.createElement(LaneReset, {
+    laneItems: later
+  }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 3 months")), later.map(t => renderTask(t, 'later')))));
+  }, "1 \u2013 3 months"))), later.map(t => renderTask(t, 'later')))));
 }
 
 // ======================== Critical Exposure section ========================

@@ -1337,6 +1337,33 @@ function Roadmap({ onViewFinding }) {
   };
   tasks.sort((a,b) => score(b) - score(a));
 
+  const FW_PREF_RM = ['cis-m365-v6','nist-800-53','cmmc','nist-csf','iso-27001'];
+  const buildRoadmapCsv = (n, s, l) => {
+    const cols = ['Lane','Setting','CheckID','Severity','Effort','Domain','Section',
+                  'CurrentValue','RecommendedValue','Remediation','LearnMore','ControlRef'];
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [cols.join(',')];
+    [['Do Now', n], ['Do Next', s], ['Later', l]].forEach(([label, items]) => {
+      items.forEach(t => {
+        const fw = FW_PREF_RM.find(k => t.fwMeta?.[k]?.controlId);
+        const ref = fw ? `${fw}: ${t.fwMeta[fw].controlId}` : '';
+        rows.push([label, t.setting, t.checkId, t.severity, t.effort ?? 'medium',
+                   t.category, t.section, t.currentValue, t.recommendedValue,
+                   t.remediation, t.learnMore ?? '', ref].map(esc).join(','));
+      });
+    });
+    return rows.join('\r\n');
+  };
+
+  const downloadCsv = () => {
+    const csv = buildRoadmapCsv(now, soon, later);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = 'Assessment-Roadmap.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getNaturalLane = t => {
     if (t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small')) return 'now';
     if (t.severity === 'high' || (t.severity === 'medium' && t.effort !== 'large')) return 'soon';
@@ -1456,6 +1483,7 @@ function Roadmap({ onViewFinding }) {
         <span className="eyebrow">04 · Action plan</span>
         <h2>Remediation roadmap</h2>
         <div className="hr"/>
+        <button className="lane-reset-btn" style={{marginTop:'8px'}} onClick={downloadCsv}>Download CSV</button>
       </div>
       <div className="roadmap-intro">
         <div className="roadmap-intro-head">How we prioritized</div>
