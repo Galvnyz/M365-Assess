@@ -48,37 +48,7 @@ $script:CollectorLabelMap = @{
 # Ordered list for consistent display
 $script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'StrykerReadiness', 'Intune', 'SharePoint', 'Teams', 'PowerBI')
 
-function global:Write-M365GradientBar {
-    [CmdletBinding()]
-    param([hashtable]$State)
-    $e     = [char]27
-    $reset = "${e}[0m"
-    $width = 44
-    $filled = if ($State.Total -gt 0) {
-        [math]::Min($width, [math]::Round($width * $State.Completed / $State.Total))
-    } else { 0 }
-    $chars = for ($i = 0; $i -lt $width; $i++) {
-        $t = if ($width -gt 1) { $i / ($width - 1) } else { 0 }
-        $r = [int]([math]::Round(255 * (1 - $t)))
-        $g = [int]([math]::Round(200 * $t))
-        $b = [int]([math]::Round(220 - 20 * $t))
-        if ($i -lt $filled) { "${e}[38;2;${r};${g};${b}m$([char]0x2588)" }
-        else { "${e}[38;2;35;40;55m$([char]0x2591)" }
-    }
-    $bar    = ($chars) -join ''
-    $status = "$($State.Completed) / $($State.Total) checks complete"
-    [Console]::Write("  ${e}[38;2;180;180;210mM365 Security Assessment${reset} [${bar}${reset}] ${e}[38;2;120;130;150m${status}${reset}`r")
-    $State.BarActive = $true
-}
 
-function global:Clear-M365GradientBar {
-    [CmdletBinding()]
-    param([hashtable]$State)
-    if (-not $State -or -not $State.BarActive) { return }
-    $e = [char]27
-    [Console]::Write("`r${e}[2K")
-    $State.BarActive = $false
-}
 
 function Initialize-CheckProgress {
     <#
@@ -184,7 +154,6 @@ function Initialize-CheckProgress {
         PrintedHeaders    = @{}      # collector -> $true (header printed)
         LabelMap          = $script:CollectorLabelMap  # accessible from any scope via global state
         LicenseSkipped    = $licenseSkipped  # checkId -> required plans (for compliance overview)
-        BarActive         = $false
     }
 
     # Populate check IDs and collector counts
@@ -246,7 +215,8 @@ function Initialize-CheckProgress {
     }
     Write-Host ''
 
-    global:Write-M365GradientBar -State $global:CheckProgressState
+    $pct = [math]::Round($global:CheckProgressState.Completed / [math]::Max(1, $global:CheckProgressState.Total) * 100)
+    Write-Progress -Activity 'M365 Security Assessment' -Status "$($global:CheckProgressState.Completed) / $($global:CheckProgressState.Total) checks complete" -PercentComplete $pct
 }
 
 
@@ -283,7 +253,6 @@ function global:Update-CheckProgress {
         $state.CollectorDone[$collectorName]++
     }
 
-    global:Clear-M365GradientBar -State $state
 
     # Print collector sub-header on first check from this collector
     if (-not $state.PrintedHeaders[$collectorName]) {
@@ -328,7 +297,8 @@ function global:Update-CheckProgress {
         Write-Host "    $([char]0x2514) $done/$total complete" -ForegroundColor DarkGray
     }
 
-    global:Write-M365GradientBar -State $state
+    $pct = [math]::Round($state.Completed / [math]::Max(1, $state.Total) * 100)
+    Write-Progress -Activity 'M365 Security Assessment' -Status "$($state.Completed) / $($state.Total) checks complete" -PercentComplete $pct
 }
 
 
@@ -342,7 +312,6 @@ function global:Update-ProgressStatus {
     $state = $global:CheckProgressState
     if (-not $state -or $state.Total -eq 0) { return }
 
-    global:Clear-M365GradientBar -State $state
 }
 
 
@@ -356,7 +325,7 @@ function Complete-CheckProgress {
 
     $state = $global:CheckProgressState
     if ($state -and $state.Total -gt 0) {
-        global:Clear-M365GradientBar -State $state
+        Write-Progress -Activity 'M365 Security Assessment' -Completed
         Write-Host ''
         Write-Host "  $([char]0x2713) All $($state.Total) security checks complete" -ForegroundColor Green
         Write-Host ''
@@ -365,7 +334,5 @@ function Complete-CheckProgress {
     # Clean up globals
     Remove-Item -Path 'Function:\Update-CheckProgress'    -ErrorAction SilentlyContinue
     Remove-Item -Path 'Function:\Update-ProgressStatus'   -ErrorAction SilentlyContinue
-    Remove-Item -Path 'Function:\Write-M365GradientBar'   -ErrorAction SilentlyContinue
-    Remove-Item -Path 'Function:\Clear-M365GradientBar'   -ErrorAction SilentlyContinue
     Remove-Variable -Name CheckProgressState -Scope Global -ErrorAction SilentlyContinue
 }
