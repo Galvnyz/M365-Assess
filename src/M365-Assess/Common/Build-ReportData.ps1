@@ -141,6 +141,8 @@ function Build-ReportDataJson {
                        elseif ($f.PSObject.Properties['Recommended'])   { $f.Recommended }
                        else                                              { '' }
 
+        $learnMore = if ($regEntry -and $regEntry.learnMore) { [string]$regEntry.learnMore } else { $null }
+
         $findings.Add([PSCustomObject]@{
             checkId      = $f.CheckId
             status       = $f.Status
@@ -156,6 +158,7 @@ function Build-ReportDataJson {
             frameworks   = $frameworks
             fwMeta       = $fwMeta
             intentDesign = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
+            learnMore    = $learnMore
         })
     }
 

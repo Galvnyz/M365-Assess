@@ -37,6 +37,14 @@ Describe 'Import-ControlRegistry' {
         $severities.Count | Should -BeGreaterThan 1 -Because 'risk-severity.json should override some defaults'
     }
 
+    It 'Applies learnMore overlay from learn-more.json' {
+        $registry = Import-ControlRegistry -ControlsPath $testRoot
+        $withUrl = @($registry.Keys | Where-Object { $_ -ne '__cisReverseLookup' } |
+            Where-Object { $registry[$_].learnMore })
+        $withUrl.Count | Should -BeGreaterThan 0 -Because 'learn-more.json should populate learnMore on at least one check'
+        $registry['CA-LEGACYAUTH-001'].learnMore | Should -Match '^https://learn\.microsoft\.com'
+    }
+
     It 'Accepts CisFrameworkId parameter for reverse lookup' {
         $registry = Import-ControlRegistry -ControlsPath $testRoot -CisFrameworkId 'cis-m365-v6'
         $reverseLookup = $registry['__cisReverseLookup']

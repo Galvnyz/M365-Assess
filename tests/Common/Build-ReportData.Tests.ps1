@@ -165,6 +165,21 @@ Describe 'Build-ReportData' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
             $d.findings[0].effort | Should -Be 'medium'
         }
+
+        It 'should propagate learnMore URL from registry entry' {
+            $f = New-Finding -CheckId 'CA-LEGACYAUTH-001.1'
+            $url = 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/block-legacy-authentication'
+            $registry = @{ 'CA-LEGACYAUTH-001' = @{ riskSeverity = 'Critical'; frameworks = @{}; learnMore = $url } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].learnMore | Should -Be $url
+        }
+
+        It 'should set learnMore to null when not in registry' {
+            $f = New-Finding -CheckId 'CA-LEGACYAUTH-001.1'
+            $registry = @{ 'CA-LEGACYAUTH-001' = @{ riskSeverity = 'Critical'; frameworks = @{} } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].PSObject.Properties['learnMore'] | Should -Not -BeNullOrEmpty -Because 'field must exist even when null'
+        }
     }
 
     # ------------------------------------------------------------------

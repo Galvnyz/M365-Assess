@@ -115,5 +115,16 @@ function Import-ControlRegistry {
         }
     }
 
+    # Load learnMore overlay (local to M365-Assess, not in CheckID)
+    $learnMorePath = Join-Path -Path $ControlsPath -ChildPath 'learn-more.json'
+    if (Test-Path -Path $learnMorePath) {
+        $learnMoreData = Get-Content -Path $learnMorePath -Raw | ConvertFrom-Json
+        foreach ($prop in $learnMoreData.checks.PSObject.Properties) {
+            if ($lookup.ContainsKey($prop.Name)) {
+                $lookup[$prop.Name].learnMore = $prop.Value
+            }
+        }
+    }
+
     return $lookup
 }

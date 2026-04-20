@@ -191,6 +191,7 @@
         'controls\registry.json'
         'controls\licensing-overlay.json'
         'controls\risk-severity.json'
+        'controls\learn-more.json'
         'controls\mitre-technique-map.json'
         'controls\frameworks\cis-controls-v8.json'
         'controls\frameworks\cis-m365-v6.json'

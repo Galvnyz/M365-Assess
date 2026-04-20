@@ -1240,6 +1240,11 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
                     <div className="block-title">Recommended value</div>
                     <div className="value-box recommended">{f.recommended || '—'}</div>
                   </div>
+                  {f.learnMore && (
+                    <div className="finding-learn-more">
+                      <a href={f.learnMore} target="_blank" rel="noreferrer noopener">Learn more on Microsoft Docs ↗</a>
+                    </div>
+                  )}
                 </div>
               )}
             </React.Fragment>
@@ -1378,6 +1383,9 @@ function Roadmap({ onViewFinding }) {
                 e.preventDefault();
                 onViewFinding?.(t.checkId);
               }}>View in findings table →</a>
+              {t.learnMore && (
+                <a href={t.learnMore} target="_blank" rel="noreferrer noopener">Learn more on Microsoft Docs ↗</a>
+              )}
             </div>
           </div>
         )}

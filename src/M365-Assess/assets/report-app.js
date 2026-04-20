@@ -2146,7 +2146,13 @@ function FindingsTable({
       className: "block-title"
     }, "Recommended value"), /*#__PURE__*/React.createElement("div", {
       className: "value-box recommended"
-    }, f.recommended || '—'))));
+    }, f.recommended || '—')), f.learnMore && /*#__PURE__*/React.createElement("div", {
+      className: "finding-learn-more"
+    }, /*#__PURE__*/React.createElement("a", {
+      href: f.learnMore,
+      target: "_blank",
+      rel: "noreferrer noopener"
+    }, "Learn more on Microsoft Docs \u2197"))));
   })));
 }
 function renderRemediation(text) {
@@ -2324,7 +2330,11 @@ function Roadmap({
         e.preventDefault();
         onViewFinding?.(t.checkId);
       }
-    }, "View in findings table \u2192"))));
+    }, "View in findings table \u2192"), t.learnMore && /*#__PURE__*/React.createElement("a", {
+      href: t.learnMore,
+      target: "_blank",
+      rel: "noreferrer noopener"
+    }, "Learn more on Microsoft Docs \u2197"))));
   };
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
