@@ -209,7 +209,7 @@ function Build-ReportDataJson {
     $caRows        = & $get 'ca'
     $adminRoleRows = & $get 'admin-roles'
 
-    $frameworkList = @($FrameworkDefs | ForEach-Object { @{ id = $_['frameworkId']; full = $_['label'] } })
+    $frameworkList = @($FrameworkDefs | ForEach-Object { @{ id = $_['frameworkId']; full = $_['label']; desc = $_['description']; url = $_['homepageUrl'] } })
 
     # ------------------------------------------------------------------
     # Mailbox summary — pivot Metric/Count rows into a single object

@@ -133,6 +133,7 @@ function Import-FrameworkDefinitions {
             frameworkId   = $fwId
             label         = [string]$def.label
             description   = if ($def.description) { [string]$def.description } else { '' }
+            homepageUrl   = if ($def.homepageUrl)  { [string]$def.homepageUrl  } else { '' }
             css           = if ($def.css) { [string]$def.css } else { 'fw-default' }
             totalControls = if ($def.totalControls) { [int]$def.totalControls } else { 0 }
             displayOrder  = if ($null -ne $def.displayOrder) { [int]$def.displayOrder } else { 999 }
