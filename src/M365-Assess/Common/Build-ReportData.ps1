@@ -224,7 +224,7 @@ function Build-ReportDataJson {
     $reportData = [ordered]@{
         tenant         = @($tenantRows)
         users          = @($usersRows  | Select-Object TotalUsers, Licensed, GuestUsers, SyncedFromOnPrem, DisabledUsers, NeverSignedIn, StaleMember)
-        score          = @($scoreRows  | Select-Object Percentage, AverageComparativeScore, CurrentScore, MaxScore, CreatedDateTime)
+        score          = @($scoreRows  | Select-Object Percentage, AverageComparativeScore, CurrentScore, MaxScore, CreatedDateTime, MicrosoftScore, CustomerScore)
         mfaStats       = $mfaStats
         findings       = @($findings)
         domainStats    = $domainStats

@@ -10,6 +10,13 @@ const MFA_STATS = D.mfaStats;
 const FINDINGS = D.findings;
 const DOMAIN_STATS = D.domainStats;
 
+// Pre-compute roadmap lane counts for sidebar sub-nav (mirrors Roadmap bucketing logic)
+const _RM = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info');
+const _RM_NOW   = _RM.filter(t => t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small'));
+const _RM_SOON  = _RM.filter(t => !_RM_NOW.includes(t) && (t.severity === 'high' || (t.severity === 'medium' && t.effort !== 'large')));
+const _RM_LATER = _RM.filter(t => !_RM_NOW.includes(t) && !_RM_SOON.includes(t));
+const ROADMAP_COUNTS = { now: _RM_NOW.length, soon: _RM_SOON.length, later: _RM_LATER.length };
+
 const FRAMEWORKS = (D.frameworks && D.frameworks.length) ? D.frameworks : [
   { id: 'cis-m365-v6',     full: 'CIS Microsoft 365 v6.0.1' },
   { id: 'nist-800-53',     full: 'NIST SP 800-53 Rev 5' },
@@ -136,12 +143,21 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, nav
           })}
           <div className="nav-label" style={{marginTop:14}}>Details</div>
           {details.map(it => (
-            <a href={`#${it.id}`} key={it.id}
-               onClick={e => { if (it.id === 'findings') onDomainJump(null); closeIfMobile(); }}
-               className={'nav-item' + (active===it.id && !(it.id==='findings' && activeDomain)?' active':'')}>
-              <span>{it.label}</span>
-              {it.count !== undefined && <span className="count">{it.count}</span>}
-            </a>
+            <React.Fragment key={it.id}>
+              <a href={`#${it.id}`}
+                 onClick={e => { if (it.id === 'findings') onDomainJump(null); closeIfMobile(); }}
+                 className={'nav-item' + (active===it.id && !(it.id==='findings' && activeDomain)?' active':'')}>
+                <span>{it.label}</span>
+                {it.count !== undefined && <span className="count">{it.count}</span>}
+              </a>
+              {it.id === 'roadmap' && active === 'roadmap' && (
+                <div className="nav-subitems">
+                  <a href="#roadmap-now"   className="nav-subitem">Now   <span className="count">{ROADMAP_COUNTS.now}</span></a>
+                  <a href="#roadmap-next"  className="nav-subitem">Next  <span className="count">{ROADMAP_COUNTS.soon}</span></a>
+                  <a href="#roadmap-later" className="nav-subitem">Later <span className="count">{ROADMAP_COUNTS.later}</span></a>
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </nav>
         <div className="sidebar-cards">
@@ -249,6 +265,18 @@ function Posture() {
             <span>100</span>
           </div>
           <Sparkline scores={D.score} avg={avg} />
+          {(SCORE.MicrosoftScore != null && SCORE.CustomerScore != null) && (
+            <div className="score-split">
+              <div className="score-split-item">
+                <div className="score-split-label">Microsoft-managed</div>
+                <div className="score-split-value">{fmt(SCORE.MicrosoftScore)} pts</div>
+              </div>
+              <div className="score-split-item">
+                <div className="score-split-label">Customer-earned</div>
+                <div className="score-split-value">{fmt(SCORE.CustomerScore)} pts</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -755,7 +783,7 @@ const ALL_COLS = [
 ];
 const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'severity'];
 
-function FindingsTable({ filters, search }) {
+function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
   const [open, setOpen] = useState(new Set());
   const [visibleCols, setVisibleCols] = useState(DEFAULT_COLS);
   const [colPickerOpen, setColPickerOpen] = useState(false);
@@ -772,6 +800,20 @@ function FindingsTable({ filters, search }) {
       document.removeEventListener('mousedown', onOut);
     };
   }, [colPickerOpen]);
+
+  useEffect(() => {
+    if (!focusFinding) return;
+    const timer = setTimeout(() => {
+      const rowId = 'finding-row-' + focusFinding.replace(/\./g, '-');
+      const el = document.getElementById(rowId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-focus');
+        setTimeout(() => { el.classList.remove('highlight-focus'); onFocusClear?.(); }, 2500);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [focusFinding]);
 
   const toggleCol = id => setVisibleCols(v =>
     v.includes(id) ? (v.length > 1 ? v.filter(c => c !== id) : v) : [...v, id]
@@ -899,7 +941,8 @@ function FindingsTable({ filters, search }) {
           const isOpen = open.has(i);
           return (
             <React.Fragment key={i}>
-              <div className={'finding-row' + (isOpen?' open':'')} onClick={() => toggle(i)}
+              <div id={'finding-row-'+(f.checkId||'').replace(/\./g,'-')}
+                   className={'finding-row' + (isOpen?' open':'')} onClick={() => toggle(i)}
                    style={{gridTemplateColumns: gridTpl}}>
                 {cols.map(c => renderCell(c.id, f))}
                 <div className="caret"><Icon.chevron/></div>
@@ -972,7 +1015,7 @@ function whyItMatters(f) {
 }
 
 // ======================== Roadmap ========================
-function Roadmap() {
+function Roadmap({ onViewFinding }) {
   const [open, setOpen] = useState(null);
   const tasks = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info').map(f => ({ ...f }));
   const score = f => {
@@ -1054,7 +1097,7 @@ function Roadmap() {
             <div className="task-actions">
               <a href="#findings-anchor" onClick={(e)=>{
                 e.preventDefault();
-                document.getElementById('findings-anchor')?.scrollIntoView({behavior:'smooth', block:'start'});
+                onViewFinding?.(t.checkId);
               }}>View in findings table →</a>
             </div>
           </div>
@@ -1080,21 +1123,21 @@ function Roadmap() {
       <div className="roadmap">
         <div className="lane">
           <div className="lane-head">
-            <div className="lane-title"><span className="lane-dot crit"/>Now <span style={{color:'var(--muted)', fontWeight:400}}>· {now.length}</span></div>
+            <div className="lane-title" id="roadmap-now"><span className="lane-dot crit"/>Now <span style={{color:'var(--muted)', fontWeight:400}}>· {now.length}</span></div>
             <div className="lane-eta">&lt; 1 week</div>
           </div>
           {now.map(t => renderTask(t, 'now'))}
         </div>
         <div className="lane">
           <div className="lane-head">
-            <div className="lane-title"><span className="lane-dot soon"/>Next <span style={{color:'var(--muted)', fontWeight:400}}>· {soon.length}</span></div>
+            <div className="lane-title" id="roadmap-next"><span className="lane-dot soon"/>Next <span style={{color:'var(--muted)', fontWeight:400}}>· {soon.length}</span></div>
             <div className="lane-eta">1 – 4 weeks</div>
           </div>
           {soon.map(t => renderTask(t, 'soon'))}
         </div>
         <div className="lane">
           <div className="lane-head">
-            <div className="lane-title"><span className="lane-dot later"/>Later <span style={{color:'var(--muted)', fontWeight:400}}>· {later.length}</span></div>
+            <div className="lane-title" id="roadmap-later"><span className="lane-dot later"/>Later <span style={{color:'var(--muted)', fontWeight:400}}>· {later.length}</span></div>
             <div className="lane-eta">1 – 3 months</div>
           </div>
           {later.map(t => renderTask(t, 'later'))}
@@ -1308,6 +1351,7 @@ function App() {
   const [active, setActive] = useState('overview');
   const [showTweaks, setShowTweaks] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [focusFinding, setFocusFinding] = useState(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1375,6 +1419,12 @@ function App() {
     setFilters(f => ({ ...f, domain: d ? [d] : [] }));
     if (d) document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  const onViewFinding = useCallback((checkId) => {
+    setFilters({ status:[], severity:[], framework:[], domain:[] });
+    setSearch('');
+    setFocusFinding(checkId);
+    document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <div className="app">
@@ -1395,8 +1445,8 @@ function App() {
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch}/>
-        <FindingsTable filters={filters} search={search}/>
-        <Roadmap/>
+        <FindingsTable filters={filters} search={search} focusFinding={focusFinding} onFocusClear={() => setFocusFinding(null)}/>
+        <Roadmap onViewFinding={onViewFinding}/>
         <Appendix/>
         {!D.whiteLabel && (
           <div style={{textAlign:'center',padding:'30px 0 10px',fontSize:12,color:'var(--muted)',fontFamily:'var(--font-mono)',letterSpacing:'.06em'}}>

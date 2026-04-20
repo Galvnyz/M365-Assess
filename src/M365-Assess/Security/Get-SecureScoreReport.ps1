@@ -96,6 +96,30 @@ if ($latestScore.AverageComparativeScores) {
 
 Write-Verbose "Secure Score: $currentScore / $maxScore ($percentage%) as of $($latestScore.CreatedDateTime)"
 
+# Compute Microsoft-managed vs customer-earned score split via control profiles
+$microsoftScore = 0.0
+$customerScore  = 0.0
+try {
+    $profilesResp = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/security/secureScoreControlProfiles' -ErrorAction Stop
+    $profileMap = @{}
+    foreach ($prof in $profilesResp.value) {
+        $profileMap[$prof.id] = $prof.actionType
+    }
+    foreach ($ctrl in $latestScore.ControlScores) {
+        $earned = if ($null -ne $ctrl.Score) { [double]$ctrl.Score } else { 0.0 }
+        if ($profileMap[$ctrl.ControlName] -eq 'Provider') {
+            $microsoftScore += $earned
+        } else {
+            $customerScore += $earned
+        }
+    }
+    $microsoftScore = [math]::Round($microsoftScore, 2)
+    $customerScore  = [math]::Round($customerScore, 2)
+}
+catch {
+    Write-Verbose "Could not compute score split from control profiles: $_"
+}
+
 # Build one row per historical snapshot (newest-first from Graph).
 # AverageComparativeScore is only populated for the latest entry — the API returns
 # it only on the most recent snapshot and it would be stale/wrong for older dates.
@@ -110,6 +134,8 @@ foreach ($snapshot in $secureScores) {
         Percentage              = $snapshotPct
         CreatedDateTime         = $snapshot.CreatedDateTime
         AverageComparativeScore = if ($isLatest) { $averageComparative } else { 0 }
+        MicrosoftScore          = if ($isLatest) { $microsoftScore } else { $null }
+        CustomerScore           = if ($isLatest) { $customerScore } else { $null }
     })
     $isLatest = $false
 }
