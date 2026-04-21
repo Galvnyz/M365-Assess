@@ -2098,6 +2098,7 @@ function FindingsTable({
       return true;
     });
   }, [filters, search]);
+  const isFiltered = search.length > 0 || filters.status.length > 0 || filters.severity.length > 0 || filters.framework.length > 0 || filters.domain.length > 0 || (filters.profile || []).length > 0;
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i);else n.add(i);
@@ -2207,13 +2208,25 @@ function FindingsTable({
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings ", /*#__PURE__*/React.createElement("span", {
+  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings", isFiltered ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 8,
+      fontSize: 12,
+      fontWeight: 500,
+      background: 'var(--accent-soft)',
+      border: '1px solid var(--accent-border)',
+      color: 'var(--accent-text)',
+      borderRadius: 20,
+      padding: '2px 10px',
+      verticalAlign: 'middle'
+    }
+  }, "Showing ", filtered.length, " of ", FINDINGS.length) : /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 400,
       color: 'var(--muted)',
       fontSize: 13
     }
-  }, "\xB7 ", filtered.length, " of ", FINDINGS.length)), /*#__PURE__*/React.createElement("div", {
+  }, " \xB7 ", FINDINGS.length, " total")), /*#__PURE__*/React.createElement("div", {
     ref: colPickerRef,
     style: {
       position: 'relative',

@@ -1200,6 +1200,13 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
     });
   }, [filters, search]);
 
+  const isFiltered = search.length > 0
+    || filters.status.length > 0
+    || filters.severity.length > 0
+    || filters.framework.length > 0
+    || filters.domain.length > 0
+    || (filters.profile || []).length > 0;
+
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i); else n.add(i);
@@ -1278,7 +1285,10 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
     <section className="block" id="findings">
       <div className="section-head">
         <span className="eyebrow">03 · Detail</span>
-        <h2>All findings <span style={{fontWeight:400, color:'var(--muted)', fontSize:13}}>· {filtered.length} of {FINDINGS.length}</span></h2>
+        <h2>All findings{isFiltered
+          ? <span style={{marginLeft:8,fontSize:12,fontWeight:500,background:'var(--accent-soft)',border:'1px solid var(--accent-border)',color:'var(--accent-text)',borderRadius:20,padding:'2px 10px',verticalAlign:'middle'}}>Showing {filtered.length} of {FINDINGS.length}</span>
+          : <span style={{fontWeight:400,color:'var(--muted)',fontSize:13}}> · {FINDINGS.length} total</span>
+        }</h2>
         <div ref={colPickerRef} style={{position:'relative', marginLeft:12, flexShrink:0}}>
           <button className={'chip chip-more' + (visibleCols.length !== DEFAULT_COLS.length ? ' selected' : '')}
                   onClick={() => setColPickerOpen(o => !o)} title="Choose columns">
