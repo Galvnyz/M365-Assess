@@ -10,6 +10,31 @@ const MFA_STATS = D.mfaStats;
 const FINDINGS = D.findings;
 const DOMAIN_STATS = D.domainStats;
 
+const LS = key => `${key}-${TENANT.TenantId || 'anon'}`;
+const RO = window.REPORT_OVERRIDES || null;
+
+function finalizeReport({ hiddenFindings, roadmapOverrides }) {
+  const overridesEl = document.getElementById('report-overrides');
+  if (!overridesEl) {
+    alert('This report is missing the overrides injection point. Regenerate it with the latest template.');
+    return;
+  }
+  const overrides = {
+    hiddenFindings:   [...(hiddenFindings || [])],
+    roadmapOverrides: roadmapOverrides || {},
+  };
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelector('#report-overrides').textContent = `window.REPORT_OVERRIDES = ${JSON.stringify(overrides)};`;
+  clone.querySelector('#root').replaceChildren();
+  const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (TENANT.OrgDisplayName || 'Assessment').replace(/[^a-z0-9 ]/gi, '').trim().replace(/\s+/g, '-') + '-M365-Report.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Pre-compute roadmap lane counts for sidebar sub-nav (mirrors Roadmap bucketing logic)
 const _RM = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info');
 const _RM_NOW   = _RM.filter(t => t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small'));
@@ -198,37 +223,49 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
 }
 
 // ======================== Topbar ========================
-function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, onTweaks, onHamburger }) {
+function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, onTweaks, onHamburger, editMode, onEditToggle, onFinalize, hiddenCount }) {
   return (
-    <div className="topbar">
-      <button className="hamburger-btn" onClick={onHamburger} aria-label="Open navigation"><Icon.menu/></button>
-      <div className="title">
-        Security posture report
-        <span className="title-sub">· {TENANT.OrgDisplayName}</span>
+    <>
+      <div className="topbar">
+        <button className="hamburger-btn" onClick={onHamburger} aria-label="Open navigation"><Icon.menu/></button>
+        <div className="title">
+          Security posture report
+          <span className="title-sub">· {TENANT.OrgDisplayName}</span>
+        </div>
+        <div className="spacer" />
+        <div className="search">
+          <Icon.search />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search findings, check IDs, remediation…" />
+          <kbd>/</kbd>
+        </div>
+        <div className="palette-switch">
+          <button className={theme==='neon'?'active':''} onClick={()=>setTheme('neon')}>Neon</button>
+          <button className={theme==='console'?'active':''} onClick={()=>setTheme('console')}>Console</button>
+          <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Light</button>
+          <button className={theme==='high-contrast'?'active':''} onClick={()=>setTheme('high-contrast')}>High Contrast</button>
+        </div>
+        <div className="icon-btn-group">
+          <button className="icon-btn" title={mode==='dark'?'Light mode':'Dark mode'} onClick={()=>setMode(mode==='dark'?'light':'dark')}>
+            {mode==='dark' ? <Icon.sun/> : <Icon.moon/>}
+          </button>
+          {D.xlsxFileName && (
+            <a className="icon-btn" href={D.xlsxFileName} download title={`Download compliance matrix — ${D.xlsxFileName}`}><Icon.xlsx/></a>
+          )}
+          <button className="icon-btn" title="Print / PDF" onClick={onPrint}><Icon.print/></button>
+          <button className="icon-btn" title="Tweaks" onClick={onTweaks}><Icon.sliders/></button>
+        </div>
       </div>
-      <div className="spacer" />
-      <div className="search">
-        <Icon.search />
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search findings, check IDs, remediation…" />
-        <kbd>/</kbd>
-      </div>
-      <div className="palette-switch">
-        <button className={theme==='neon'?'active':''} onClick={()=>setTheme('neon')}>Neon</button>
-        <button className={theme==='console'?'active':''} onClick={()=>setTheme('console')}>Console</button>
-        <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Light</button>
-        <button className={theme==='high-contrast'?'active':''} onClick={()=>setTheme('high-contrast')}>High Contrast</button>
-      </div>
-      <div className="icon-btn-group">
-        <button className="icon-btn" title={mode==='dark'?'Light mode':'Dark mode'} onClick={()=>setMode(mode==='dark'?'light':'dark')}>
-          {mode==='dark' ? <Icon.sun/> : <Icon.moon/>}
-        </button>
-        {D.xlsxFileName && (
-          <a className="icon-btn" href={D.xlsxFileName} download title={`Download compliance matrix — ${D.xlsxFileName}`}><Icon.xlsx/></a>
-        )}
-        <button className="icon-btn" title="Print / PDF" onClick={onPrint}><Icon.print/></button>
-        <button className="icon-btn" title="Tweaks" onClick={onTweaks}><Icon.sliders/></button>
-      </div>
-    </div>
+      {editMode && (
+        <div className="edit-toolbar">
+          <span className="edit-toolbar-badge">✎ Edit Mode</span>
+          {hiddenCount > 0 && (
+            <span className="edit-toolbar-info">{hiddenCount} finding{hiddenCount===1?'':'s'} hidden</span>
+          )}
+          <button className="edit-toolbar-finalize" onClick={onFinalize}>↓ Finalize report</button>
+          <button className="edit-toolbar-exit" onClick={onEditToggle}>✕ Exit edit mode</button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1141,7 +1178,7 @@ const ALL_COLS = [
 ];
 const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'severity'];
 
-function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
+function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, hiddenFindings, onHide, onHideBulk, onRestoreAll }) {
   const [open, setOpen] = useState(new Set());
   const [visibleCols, setVisibleCols] = useState(DEFAULT_COLS);
   const [colPickerOpen, setColPickerOpen] = useState(false);
@@ -1183,6 +1220,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
     return FINDINGS.filter(f => {
+      if (!editMode && hiddenFindings?.has(f.checkId)) return false;
       if (filters.status.length && !filters.status.includes(f.status)) return false;
       if (filters.severity.length && !filters.severity.includes(f.severity)) return false;
       if (filters.framework.length && !f.frameworks.some(fw => filters.framework.includes(fw))) return false;
@@ -1198,7 +1236,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
       }
       return true;
     });
-  }, [filters, search]);
+  }, [filters, search, editMode, hiddenFindings]);
 
   const toggle = i => setOpen(o => {
     const n = new Set(o);
@@ -1279,6 +1317,11 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
       <div className="section-head">
         <span className="eyebrow">03 · Detail</span>
         <h2>All findings <span style={{fontWeight:400, color:'var(--muted)', fontSize:13}}>· {filtered.length} of {FINDINGS.length}</span></h2>
+        {editMode && (hiddenFindings?.size > 0) && (
+          <button className="restore-all-btn" onClick={onRestoreAll}>
+            ↩ Restore {hiddenFindings.size} hidden
+          </button>
+        )}
         <div ref={colPickerRef} style={{position:'relative', marginLeft:12, flexShrink:0}}>
           <button className={'chip chip-more' + (visibleCols.length !== DEFAULT_COLS.length ? ' selected' : '')}
                   onClick={() => setColPickerOpen(o => !o)} title="Choose columns">
@@ -1307,13 +1350,21 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear }) {
         {filtered.length === 0 && <div className="empty">No findings match your filters.</div>}
         {filtered.map((f,i) => {
           const isOpen = open.has(i);
+          const isHidden = hiddenFindings?.has(f.checkId);
           return (
             <React.Fragment key={i}>
               <div id={'finding-row-'+(f.checkId||'').replace(/\./g,'-')}
-                   className={'finding-row' + (isOpen?' open':'')} onClick={() => toggle(i)}
+                   className={'finding-row' + (isOpen?' open':'') + (isHidden?' finding-hidden':'')} onClick={() => toggle(i)}
                    style={{gridTemplateColumns: gridTpl}}>
                 {cols.map(c => renderCell(c.id, f))}
-                <div className="caret"><Icon.chevron/></div>
+                {editMode
+                  ? <button className={'hide-finding-btn'+(isHidden?' restore':'')}
+                      title={isHidden?'Restore finding':'Hide from report'}
+                      onClick={e => { e.stopPropagation(); onHide?.(f.checkId); }}>
+                      {isHidden ? '↩' : '✕'}
+                    </button>
+                  : <div className="caret"><Icon.chevron/></div>
+                }
               </div>
               {isOpen && (
                 <div className="finding-detail">
@@ -1394,37 +1445,27 @@ function whyItMatters(f) {
 }
 
 // ======================== Roadmap ========================
-function Roadmap({ onViewFinding }) {
-  const OVERRIDE_KEY = 'm365-roadmap-overrides';
+function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, onRoadmapChange }) {
   const [open, setOpen] = useState(null);
-  const [overrides, setOverrides] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}'); }
-    catch { return {}; }
-  });
-
-  const saveOverrides = next => {
-    setOverrides(next);
-    try { localStorage.setItem(OVERRIDE_KEY, JSON.stringify(next)); } catch {}
-  };
 
   const moveTo = (checkId, lane) => {
-    saveOverrides({ ...overrides, [checkId]: lane });
+    onRoadmapChange({ ...roadmapOverrides, [checkId]: lane });
     if (open === checkId) setOpen(null);
   };
 
   const resetCard = checkId => {
-    const next = { ...overrides };
+    const next = { ...roadmapOverrides };
     delete next[checkId];
-    saveOverrides(next);
+    onRoadmapChange(next);
   };
 
   const resetLane = laneItems => {
-    const next = { ...overrides };
+    const next = { ...roadmapOverrides };
     laneItems.forEach(t => { delete next[t.checkId]; });
-    saveOverrides(next);
+    onRoadmapChange(next);
   };
 
-  const tasks = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info').map(f => ({ ...f }));
+  const tasks = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info' && !hiddenFindings?.has(f.checkId)).map(f => ({ ...f }));
   const score = f => {
     const sev = { critical:100, high:60, medium:30, low:10, none:0, info:5 }[f.severity];
     const eff = { small:3, medium:2, large:1 }[f.effort];
@@ -1465,7 +1506,7 @@ function Roadmap({ onViewFinding }) {
     return 'later';
   };
 
-  const getEffectiveLane = t => overrides[t.checkId] || getNaturalLane(t);
+  const getEffectiveLane = t => roadmapOverrides[t.checkId] || getNaturalLane(t);
   const LANE_LABEL = { now: 'Now', soon: 'Next', later: 'Later' };
 
   const now   = tasks.filter(t => getEffectiveLane(t) === 'now');
@@ -1473,7 +1514,7 @@ function Roadmap({ onViewFinding }) {
   const later = tasks.filter(t => getEffectiveLane(t) === 'later');
 
   const priorityReason = (t, lane) => {
-    if (overrides[t.checkId]) {
+    if (roadmapOverrides[t.checkId]) {
       const natural = LANE_LABEL[getNaturalLane(t)];
       return `Manually moved to ${LANE_LABEL[lane]}. Default lane was ${natural}. Click Reset to restore.`;
     }
@@ -1492,7 +1533,7 @@ function Roadmap({ onViewFinding }) {
   const renderTask = (t, lane) => {
     const key = t.checkId;
     const isOpen = open === key;
-    const isCustom = !!overrides[key];
+    const isCustom = !!roadmapOverrides[key];
     return (
       <div className={'task'+(isOpen?' task-open':'')+(isCustom?' task-custom':'')} key={key}>
         <button className="task-head-btn" onClick={()=>setOpen(isOpen?null:key)} aria-expanded={isOpen}>
@@ -1565,7 +1606,7 @@ function Roadmap({ onViewFinding }) {
   };
 
   const LaneReset = ({ laneItems }) => {
-    const hasCustom = laneItems.some(t => overrides[t.checkId]);
+    const hasCustom = laneItems.some(t => roadmapOverrides[t.checkId]);
     if (!hasCustom) return null;
     return (
       <button className="lane-reset-btn" onClick={() => resetLane(laneItems)}>Reset lane</button>
@@ -1584,7 +1625,7 @@ function Roadmap({ onViewFinding }) {
         <div className="roadmap-intro-head">How we prioritized</div>
         <div className="roadmap-intro-body">
           Findings are bucketed by severity. Critical findings — identity takeover, data exfiltration, privilege escalation paths — always go in <b>Now</b>. High-severity findings land in <b>Next</b>: risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join <b>Next</b> when tractable, or <b>Later</b> for larger hardening work. <br/>
-          <span style={{color:'var(--muted)'}}>Click any task to expand it, or use the move buttons on each card to reprioritize. Overrides persist across page refreshes.</span>
+          <span style={{color:'var(--muted)'}}>Click any task to expand it, or use the move buttons on each card to reprioritize. Use Finalize (✎) to bake lane changes into the report.</span>
         </div>
       </div>
       <div className="roadmap">
@@ -1815,6 +1856,19 @@ function App() {
   const [showTweaks, setShowTweaks] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [focusFinding, setFocusFinding] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [hiddenFindings, setHiddenFindings] = useState(() => new Set(RO?.hiddenFindings || []));
+  const [roadmapOverrides, setRoadmapOverrides] = useState(() => RO?.roadmapOverrides || {});
+
+  const toggleHideFinding = id => setHiddenFindings(prev => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
+  });
+  const restoreAllFindings = () => setHiddenFindings(new Set());
+
+  const handleFinalize = () => finalizeReport({
+    hiddenFindings: [...hiddenFindings],
+    roadmapOverrides,
+  });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1905,6 +1959,10 @@ function App() {
           onPrint={()=>window.print()}
           onTweaks={()=>setShowTweaks(s=>!s)}
           onHamburger={()=>setNavOpen(o=>!o)}
+          editMode={editMode}
+          onEditToggle={()=>setEditMode(e=>!e)}
+          onFinalize={handleFinalize}
+          hiddenCount={hiddenFindings.size}
         />
         <Overview/>
         <Posture/>
@@ -1913,14 +1971,16 @@ function App() {
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch}/>
-        <FindingsTable filters={filters} search={search} focusFinding={focusFinding} onFocusClear={() => setFocusFinding(null)}/>
-        <Roadmap onViewFinding={onViewFinding}/>
+        <FindingsTable filters={filters} search={search} focusFinding={focusFinding} onFocusClear={() => setFocusFinding(null)}
+          editMode={editMode} hiddenFindings={hiddenFindings} onHide={toggleHideFinding} onRestoreAll={restoreAllFindings}/>
+        <Roadmap onViewFinding={onViewFinding} editMode={editMode} hiddenFindings={hiddenFindings} roadmapOverrides={roadmapOverrides} onRoadmapChange={setRoadmapOverrides}/>
         <Appendix/>
         {!D.whiteLabel && (
-          <div style={{textAlign:'center',padding:'30px 0 10px',fontSize:12,color:'var(--muted)',fontFamily:'var(--font-mono)',letterSpacing:'.06em'}}>
+          <div style={{textAlign:'center',padding:'30px 0 10px',fontSize:12,color:'var(--muted)',fontFamily:'var(--font-mono)',letterSpacing:'.06em',display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
             <a href="https://github.com/Galvnyz/M365-Assess" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'underline',textUnderlineOffset:3}}>M365 ASSESS</a>
             {' · READ-ONLY SECURITY ASSESSMENT · '}
             <a href="https://galvnyz.com" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'underline',textUnderlineOffset:3}}>GALVNYZ</a>
+            <button className={'edit-mode-toggle'+(editMode?' active':'')} onClick={()=>setEditMode(e=>!e)} title="Toggle edit mode">✎</button>
           </div>
         )}
       </main>
@@ -1928,14 +1988,6 @@ function App() {
     </div>
   );
 }
-
-// ---- Edit-mode protocol (Tweaks toolbar) ----
-window.addEventListener('message', (e) => {
-  if (e.data?.type === '__activate_edit_mode') {
-    // No-op: the in-page Tweaks button already provides the UI
-  }
-});
-window.parent?.postMessage({type:'__edit_mode_available'}, '*');
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);

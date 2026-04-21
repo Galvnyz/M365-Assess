@@ -77,6 +77,7 @@ function Get-ReportTemplate {
     $null = $sb.Append($ReportDataJson)
     $null = $sb.AppendLine()
     $null = $sb.AppendLine('</script>')
+    $null = $sb.AppendLine('<script id="report-overrides">window.REPORT_OVERRIDES = null;</script>')
     $null = $sb.AppendLine('<script>')
     $null = $sb.Append($reactJs)
     $null = $sb.AppendLine()

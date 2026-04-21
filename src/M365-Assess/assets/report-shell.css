@@ -1432,3 +1432,21 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .spo-top-fails-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
 .spo-fail-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
 .spo-fail-name { color: var(--text-soft, var(--muted)); }
+
+/* Edit mode */
+.edit-toolbar { position: sticky; top: 0; z-index: 200; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: color-mix(in srgb, var(--accent) 12%, var(--bg-elev)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); flex-wrap: wrap; }
+.edit-toolbar-badge { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.edit-toolbar-info { font-size: 12px; color: var(--muted); }
+.edit-toolbar-finalize { font-size: 12px; padding: 5px 14px; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; font-weight: 600; }
+.edit-toolbar-finalize:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.edit-toolbar-exit { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+.edit-toolbar-exit:hover { color: var(--text); border-color: var(--border-strong); }
+.edit-mode-toggle { font-size: 14px; background: none; border: 1px solid var(--border); border-radius: 5px; color: var(--muted); cursor: pointer; padding: 3px 7px; transition: color .15s, border-color .15s; }
+.edit-mode-toggle.active, .edit-mode-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.hide-finding-btn { font-size: 13px; width: 26px; height: 26px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hide-finding-btn:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); border-color: var(--danger); color: var(--danger); }
+.hide-finding-btn.restore { border-color: var(--accent); color: var(--accent); }
+.hide-finding-btn.restore:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.finding-hidden { opacity: .45; }
+.restore-all-btn { font-size: 12px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; margin-left: auto; }
+.restore-all-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
