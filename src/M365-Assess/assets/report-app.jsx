@@ -242,7 +242,7 @@ function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, on
         <div className="palette-switch">
           <button className={theme==='neon'?'active':''} onClick={()=>setTheme('neon')}>Neon</button>
           <button className={theme==='console'?'active':''} onClick={()=>setTheme('console')}>Console</button>
-          <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Light</button>
+          <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Vibe</button>
           <button className={theme==='high-contrast'?'active':''} onClick={()=>setTheme('high-contrast')}>High Contrast</button>
         </div>
         <div className="icon-btn-group">
@@ -1831,7 +1831,7 @@ function TweaksPanel({ onClose, theme, setTheme, mode, setMode, density, setDens
           <div className={'swatch'+(theme==='console'?' active':'')} onClick={()=>setTheme('console')}
                style={{background:'linear-gradient(135deg, #4c8bff, #2563eb)'}}/>
           <div className={'swatch'+(theme==='saas'?' active':'')} onClick={()=>setTheme('saas')}
-               style={{background:'linear-gradient(135deg, #e0e7ff, #6366f1)'}}/>
+               style={{background:'linear-gradient(135deg, #e8a598, #d4857a, #b86e6e)'}}/>
           <div className={'swatch'+(theme==='high-contrast'?' active':'')} onClick={()=>setTheme('high-contrast')}
                style={{background:'linear-gradient(135deg, #005da8, #003d7a)'}}/>
         </div>
