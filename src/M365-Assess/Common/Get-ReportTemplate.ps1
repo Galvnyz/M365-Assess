@@ -41,9 +41,15 @@ function Get-ReportTemplate {
     $reactDomJs = (Get-Content -Path (Join-Path $assetsDir 'react-dom.production.min.js')   -Raw -ErrorAction Stop) -replace '</script>', '<\/script>'
     $appJs      = (Get-Content -Path (Join-Path $assetsDir 'report-app.js')                 -Raw -ErrorAction Stop) -replace '</script>', '<\/script>'
 
+    # Derive the JS theme allowlist from this function's own ValidateSet — single source of truth.
+    # Adding a new theme to [ValidateSet] above automatically updates the anti-FOUC block.
+    $themeValidSet = $MyInvocation.MyCommand.Parameters['DefaultTheme'].Attributes |
+        Where-Object { $_ -is [System.Management.Automation.ValidateSetAttribute] }
+    $jsThemeList = ($themeValidSet.ValidValues | ForEach-Object { "'$_'" }) -join ','
+
     # Anti-FOUC inline script: reads localStorage, validates against known values,
     # falls back to the baked-in default. Runs synchronously before first paint.
-    $antiFouc = "(function(){try{var v=['neon','console','saas','high-contrast'];" +
+    $antiFouc = "(function(){try{var v=[$jsThemeList];" +
                 "var e=document.documentElement;" +
                 "var t=localStorage.getItem('m365-theme');" +
                 "var m=localStorage.getItem('m365-mode');" +

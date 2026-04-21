@@ -73,6 +73,14 @@ Describe 'Get-ReportTemplate — function contract' {
     It 'starts assets directory from PSScriptRoot' {
         $script:content | Should -Match '\$PSScriptRoot'
     }
+
+    It 'derives anti-FOUC JS theme list from ValidateSet via reflection — no hardcoded list' {
+        # The source must use MyInvocation reflection, not a hardcoded string literal
+        $script:content | Should -Match '\$MyInvocation\.MyCommand\.Parameters\[.DefaultTheme.\]'
+        $script:content | Should -Match 'ValidateSetAttribute'
+        # Must NOT contain the old hardcoded array literal
+        $script:content | Should -Not -Match "v=\['neon','console','saas','high-contrast'\]"
+    }
 }
 
 Describe 'Get-ReportTemplate — output validation' {
@@ -143,5 +151,15 @@ Describe 'Get-ReportTemplate — output validation' {
     It 'uses default title when ReportTitle omitted' {
         $result = Get-ReportTemplate -ReportDataJson 'window.REPORT_DATA = {};'
         $result | Should -Match 'M365 Security Assessment'
+    }
+
+    It 'anti-FOUC JS contains every theme from the DefaultTheme ValidateSet' {
+        $result = Get-ReportTemplate -ReportDataJson 'window.REPORT_DATA = {};'
+        $validThemes = (Get-Command Get-ReportTemplate).Parameters['DefaultTheme'].Attributes |
+            Where-Object { $_ -is [System.Management.Automation.ValidateSetAttribute] } |
+            Select-Object -ExpandProperty ValidValues
+        foreach ($theme in $validThemes) {
+            $result | Should -Match "'$theme'" -Because "theme '$theme' must appear in the anti-FOUC allowlist"
+        }
     }
 }
