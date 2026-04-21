@@ -1439,66 +1439,71 @@ function AdHybridPanel() {
 }
 
 // ======================== Domain rollup ========================
-function DomainRollup({
-  onJump
-}) {
-  return /*#__PURE__*/React.createElement("section", {
-    className: "block",
-    id: "identity"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "section-head"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "eyebrow"
-  }, "02 \xB7 Domains"), /*#__PURE__*/React.createElement("h2", null, "Security posture by domain"), /*#__PURE__*/React.createElement("div", {
-    className: "hr"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "domain-grid"
-  }, DOMAIN_ORDER.map(name => {
-    const d = DOMAIN_STATS[name];
-    if (!d) return null;
-    const total = d.total;
-    const score = Math.round((d.pass + d.info * 0.5) / total * 100);
-    return /*#__PURE__*/React.createElement("div", {
-      key: name,
-      className: "domain-card",
-      onClick: () => onJump(name)
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "dc-head"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "dc-name"
-    }, name), /*#__PURE__*/React.createElement("div", {
-      className: "dc-score"
-    }, score, "%")), /*#__PURE__*/React.createElement("div", {
-      className: "dc-bar"
-    }, d.pass > 0 && /*#__PURE__*/React.createElement("i", {
-      className: "pass-seg",
-      style: {
-        flex: d.pass
-      }
-    }), d.warn > 0 && /*#__PURE__*/React.createElement("i", {
-      className: "warn-seg",
-      style: {
-        flex: d.warn
-      }
-    }), d.fail > 0 && /*#__PURE__*/React.createElement("i", {
-      className: "fail-seg",
-      style: {
-        flex: d.fail
-      }
-    }), d.review > 0 && /*#__PURE__*/React.createElement("i", {
-      className: "review-seg",
-      style: {
-        flex: d.review
-      }
-    }), d.info > 0 && /*#__PURE__*/React.createElement("i", {
-      className: "info-seg",
-      style: {
-        flex: d.info
-      }
-    })), /*#__PURE__*/React.createElement("div", {
-      className: "dc-meta"
-    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.review), " review")));
-  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null), /*#__PURE__*/React.createElement(AdHybridPanel, null), /*#__PURE__*/React.createElement(DnsAuthPanel, null));
+function DomainRollup({ onJump }) {
+  const [open, setOpen] = useState(true);
+
+  function toggleOpen(e) {
+    e.stopPropagation();
+    setOpen(o => !o);
+  }
+
+  return (
+    <section className="block" id="identity">
+      <div className="section-head" style={{cursor:'pointer'}} onClick={toggleOpen}>
+        <span className="eyebrow">02 · Domains</span>
+        <h2>Security posture by domain <span className="section-chevron" aria-hidden="true">{open ? '\u25be' : '\u25b8'}</span></h2>
+        <div className="hr"/>
+      </div>
+      {open && (
+        <>
+          <div className="domain-grid">
+            {DOMAIN_ORDER.map(name => {
+              const d = DOMAIN_STATS[name];
+              if (!d) return null;
+              const total = d.total;
+              const score = Math.round(((d.pass + d.info*0.5) / total) * 100);
+              return (
+                <div key={name} className="domain-card" onClick={()=>onJump(name)}>
+                  <div className="dc-head">
+                    <div className="dc-name">{name}</div>
+                    <div className="dc-score">{score}%</div>
+                  </div>
+                  <div className="dc-bar">
+                    {d.pass>0 && <i className="pass-seg" style={{flex: d.pass}}/>}
+                    {d.warn>0 && <i className="warn-seg" style={{flex: d.warn}}/>}
+                    {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
+                    {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
+                    {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
+                  </div>
+                  <div className="dc-meta">
+                    <span><b>{d.pass}</b> pass</span>
+                    <span><b>{d.warn}</b> warn</span>
+                    <span><b>{d.fail}</b> fail</span>
+                    {d.review>0 && <span><b>{d.review}</b> review</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div id="identity-intune">
+            <IntuneCategoryGrid />
+          </div>
+          <div id="identity-mailbox">
+            <MailboxSummaryPanel />
+          </div>
+          <div id="identity-sharepoint">
+            <SharePointSummaryPanel />
+          </div>
+          <div id="identity-ad">
+            <AdHybridPanel />
+          </div>
+          <div id="identity-email">
+            <DnsAuthPanel />
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
 
 // ======================== Framework quilt ========================

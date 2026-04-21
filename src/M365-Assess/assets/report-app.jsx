@@ -758,47 +758,68 @@ function AdHybridPanel() {
 
 // ======================== Domain rollup ========================
 function DomainRollup({ onJump }) {
+  const [open, setOpen] = useState(true);
+
+  function toggleOpen(e) {
+    e.stopPropagation();
+    setOpen(o => !o);
+  }
+
   return (
     <section className="block" id="identity">
-      <div className="section-head">
+      <div className="section-head" style={{cursor:'pointer'}} onClick={toggleOpen}>
         <span className="eyebrow">02 · Domains</span>
-        <h2>Security posture by domain</h2>
+        <h2>Security posture by domain <span className="section-chevron" aria-hidden="true">{open ? '\u25be' : '\u25b8'}</span></h2>
         <div className="hr"/>
       </div>
-      <div className="domain-grid">
-        {DOMAIN_ORDER.map(name => {
-          const d = DOMAIN_STATS[name];
-          if (!d) return null;
-          const total = d.total;
-          const score = Math.round(((d.pass + d.info*0.5) / total) * 100);
-          return (
-            <div key={name} className="domain-card" onClick={()=>onJump(name)}>
-              <div className="dc-head">
-                <div className="dc-name">{name}</div>
-                <div className="dc-score">{score}%</div>
-              </div>
-              <div className="dc-bar">
-                {d.pass>0 && <i className="pass-seg" style={{flex: d.pass}}/>}
-                {d.warn>0 && <i className="warn-seg" style={{flex: d.warn}}/>}
-                {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
-                {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
-                {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
-              </div>
-              <div className="dc-meta">
-                <span><b>{d.pass}</b> pass</span>
-                <span><b>{d.warn}</b> warn</span>
-                <span><b>{d.fail}</b> fail</span>
-                {d.review>0 && <span><b>{d.review}</b> review</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <IntuneCategoryGrid />
-      <MailboxSummaryPanel />
-      <SharePointSummaryPanel />
-      <AdHybridPanel />
-      <DnsAuthPanel />
+      {open && (
+        <>
+          <div className="domain-grid">
+            {DOMAIN_ORDER.map(name => {
+              const d = DOMAIN_STATS[name];
+              if (!d) return null;
+              const total = d.total;
+              const score = Math.round(((d.pass + d.info*0.5) / total) * 100);
+              return (
+                <div key={name} className="domain-card" onClick={()=>onJump(name)}>
+                  <div className="dc-head">
+                    <div className="dc-name">{name}</div>
+                    <div className="dc-score">{score}%</div>
+                  </div>
+                  <div className="dc-bar">
+                    {d.pass>0 && <i className="pass-seg" style={{flex: d.pass}}/>}
+                    {d.warn>0 && <i className="warn-seg" style={{flex: d.warn}}/>}
+                    {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
+                    {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
+                    {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
+                  </div>
+                  <div className="dc-meta">
+                    <span><b>{d.pass}</b> pass</span>
+                    <span><b>{d.warn}</b> warn</span>
+                    <span><b>{d.fail}</b> fail</span>
+                    {d.review>0 && <span><b>{d.review}</b> review</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div id="identity-intune">
+            <IntuneCategoryGrid />
+          </div>
+          <div id="identity-mailbox">
+            <MailboxSummaryPanel />
+          </div>
+          <div id="identity-sharepoint">
+            <SharePointSummaryPanel />
+          </div>
+          <div id="identity-ad">
+            <AdHybridPanel />
+          </div>
+          <div id="identity-email">
+            <DnsAuthPanel />
+          </div>
+        </>
+      )}
     </section>
   );
 }

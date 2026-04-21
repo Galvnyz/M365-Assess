@@ -233,6 +233,7 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
   margin-bottom: 18px;
 }
 .section-head h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.section-chevron { font-size: 13px; opacity: .6; margin-left: 6px; font-weight: 400; vertical-align: middle; }
 .section-head .eyebrow {
   font-family: var(--font-mono); font-size: 13px;
   text-transform: uppercase; letter-spacing: 0.1em;
