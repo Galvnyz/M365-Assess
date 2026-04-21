@@ -210,6 +210,11 @@ try {
         ($_['grantControls']['builtInControls'] -contains 'mfa')
     })
 
+    $mfaAllEvidence = [PSCustomObject]@{
+        PolicyCount = $mfaAllPolicies.Count
+        PolicyNames = @($mfaAllPolicies | ForEach-Object { $_['displayName'] })
+    }
+
     if ($mfaAllPolicies.Count -gt 0) {
         $names = ($mfaAllPolicies | ForEach-Object { $_['displayName'] }) -join '; '
         $settingParams = @{
@@ -220,6 +225,7 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-MFA-ALL-001'
             Remediation      = 'No action needed.'
+            Evidence         = $mfaAllEvidence
         }
         Add-Setting @settingParams
     }
@@ -232,6 +238,7 @@ try {
             Status           = 'Info'
             CheckId          = 'CA-MFA-ALL-001'
             Remediation      = 'Security Defaults enforces MFA for all users. For granular control, disable Security Defaults and create Conditional Access policies.'
+            Evidence         = $mfaAllEvidence
         }
         Add-Setting @settingParams
     }
@@ -244,6 +251,7 @@ try {
             Status           = 'Fail'
             CheckId          = 'CA-MFA-ALL-001'
             Remediation      = 'Create a CA policy: Target All users > All cloud apps > Grant > Require multifactor authentication. Entra admin center > Protection > Conditional Access > New policy.'
+            Evidence         = $mfaAllEvidence
         }
         Add-Setting @settingParams
     }
@@ -263,6 +271,11 @@ try {
         ($_['grantControls']['builtInControls'] -contains 'block')
     })
 
+    $legacyAuthEvidence = [PSCustomObject]@{
+        PolicyCount = $legacyBlockPolicies.Count
+        PolicyNames = @($legacyBlockPolicies | ForEach-Object { $_['displayName'] })
+    }
+
     if ($legacyBlockPolicies.Count -gt 0) {
         $names = ($legacyBlockPolicies | ForEach-Object { $_['displayName'] }) -join '; '
         $settingParams = @{
@@ -273,6 +286,7 @@ try {
             Status           = 'Pass'
             CheckId          = 'CA-LEGACYAUTH-001'
             Remediation      = 'No action needed.'
+            Evidence         = $legacyAuthEvidence
         }
         Add-Setting @settingParams
     }
@@ -285,6 +299,7 @@ try {
             Status           = 'Info'
             CheckId          = 'CA-LEGACYAUTH-001'
             Remediation      = 'Security Defaults blocks legacy authentication protocols. For granular control, disable Security Defaults and create Conditional Access policies.'
+            Evidence         = $legacyAuthEvidence
         }
         Add-Setting @settingParams
     }
@@ -297,6 +312,7 @@ try {
             Status           = 'Fail'
             CheckId          = 'CA-LEGACYAUTH-001'
             Remediation      = 'Create a CA policy: Target All users > Conditions > Client apps > Exchange ActiveSync clients + Other clients > Grant > Block access. Entra admin center > Protection > Conditional Access.'
+            Evidence         = $legacyAuthEvidence
         }
         Add-Setting @settingParams
     }

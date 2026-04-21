@@ -51,7 +51,8 @@ function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
         [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        [PSCustomObject]$Evidence = $null
     )
     $p = @{
         Settings         = $settings
@@ -63,6 +64,7 @@ function Add-Setting {
         Status           = $Status
         CheckId          = $CheckId
         Remediation      = $Remediation
+        Evidence         = $Evidence
     }
     Add-SecuritySetting @p
 }
@@ -418,6 +420,7 @@ try {
         Status           = $(if ($foreignTier0.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-003'
         Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with Tier 0 permissions. These permissions have documented attack paths to Global Administrator. Remove or replace with least-privilege alternatives.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier0); Count = $foreignTier0.Count }
     }
     Add-Setting @settingParams
 
@@ -430,6 +433,7 @@ try {
         Status           = $(if ($foreignTier1.Count -eq 0) { 'Pass' } else { 'Warning' })
         CheckId          = 'ENTRA-ENTAPP-011'
         Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with broad data access (Mail.ReadWrite, Files.ReadWrite.All, etc.). Scope to least-privilege or remove.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier1); Count = $foreignTier1.Count }
     }
     Add-Setting @settingParams
 }
@@ -464,6 +468,7 @@ try {
         Status           = $(if ($foreignDangerousDelegated.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-004'
         Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with high-privilege delegated permissions. Revoke admin consent or remove the app.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignDangerousDelegated); Count = $foreignDangerousDelegated.Count }
     }
     Add-Setting @settingParams
 }

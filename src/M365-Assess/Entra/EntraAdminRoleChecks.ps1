@@ -61,6 +61,11 @@ try {
             Status           = $gaStatus
             CheckId          = 'ENTRA-ADMIN-001'
             Remediation      = 'Run: Get-MgDirectoryRole -Filter "displayName eq ''Global Administrator''" | Get-MgDirectoryRoleMember. Maintain 2-4 global admins using dedicated accounts (break-glass accounts are excluded from this count).'
+            Evidence         = [PSCustomObject]@{
+                OperationalAdmins = @($operationalAdmins | ForEach-Object { [PSCustomObject]@{ DisplayName = $_['displayName']; UserPrincipalName = $_['userPrincipalName']; Type = $_['@odata.type'] } })
+                BreakGlassCount   = $bgExcluded
+                TotalCount        = $allAdmins.Count
+            }
         }
         Add-Setting @settingParams
     }
