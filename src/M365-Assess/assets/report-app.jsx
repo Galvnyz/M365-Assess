@@ -4,6 +4,7 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 // --------------------- Data shape from bundle.js ---------------------
 const D = window.REPORT_DATA;
 const TENANT = D.tenant[0] || {};
+const FILTER_KEY = 'm365-filters-' + (TENANT.TenantId || 'default');
 const USERS = D.users[0] || {};
 const SCORE = D.score[0] || {};
 const MFA_STATS = D.mfaStats;
@@ -97,8 +98,8 @@ const DOMAIN_ORDER = [
 // --------------------- SVG icons ---------------------
 const Icon = {
   search: () => (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>),
-  moon: () => (<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13 9.4A6 6 0 1 1 6.6 3 5 5 0 0 0 13 9.4z"/></svg>),
-  sun: () => (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M13 3l-1.4 1.4M4.4 11.6L3 13"/></svg>),
+  moon: () => (<svg viewBox="0 0 16 16" fill="currentColor"><defs><mask id="mm"><rect width="16" height="16" fill="white"/><circle cx="10" cy="5" r="4.5" fill="black"/></mask></defs><circle cx="7.5" cy="8" r="5.5" mask="url(#mm)"/><circle cx="12.5" cy="3.5" r="1" opacity=".5"/><circle cx="14" cy="7" r=".6" opacity=".35"/></svg>),
+  sun: () => (<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3.2"/><g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"><path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3"/></g></svg>),
   print: () => (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 5V2h8v3"/><path d="M4 13H2V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6h-2"/><rect x="4" y="10" width="8" height="4"/></svg>),
   xlsx: () => (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 6l2.5 4M7.5 6L5 10M9.5 6v4M11 9h-1.5"/></svg>),
   sliders: () => (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5h10M3 11h10"/><circle cx="6" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>),
@@ -241,7 +242,7 @@ function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, on
         <div className="palette-switch">
           <button className={theme==='neon'?'active':''} onClick={()=>setTheme('neon')}>Neon</button>
           <button className={theme==='console'?'active':''} onClick={()=>setTheme('console')}>Console</button>
-          <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Light</button>
+          <button className={theme==='saas'?'active':''} onClick={()=>setTheme('saas')}>Vibe</button>
           <button className={theme==='high-contrast'?'active':''} onClick={()=>setTheme('high-contrast')}>High Contrast</button>
         </div>
         <div className="icon-btn-group">
@@ -1256,11 +1257,29 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
     });
   }, [filters, search, editMode, hiddenFindings]);
 
+  const isFiltered = search.length > 0
+    || filters.status.length > 0
+    || filters.severity.length > 0
+    || filters.framework.length > 0
+    || filters.domain.length > 0
+    || (filters.profile || []).length > 0;
+
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i); else n.add(i);
     return n;
   });
+
+  const hl = (text, q) => {
+    if (!q || !text) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return text;
+    return [
+      text.slice(0, i),
+      <span style={{background:'var(--accent-soft)',color:'var(--accent-text)',borderRadius:2,padding:'0 1px'}}>{text.slice(i, i + q.length)}</span>,
+      text.slice(i + q.length)
+    ];
+  };
 
   const renderCell = (colId, f) => {
     switch (colId) {
@@ -1334,7 +1353,10 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
     <section className="block" id="findings">
       <div className="section-head">
         <span className="eyebrow">03 · Detail</span>
-        <h2>All findings <span style={{fontWeight:400, color:'var(--muted)', fontSize:13}}>· {filtered.length} of {FINDINGS.length}</span></h2>
+        <h2>All findings{isFiltered
+          ? <span style={{marginLeft:8,fontSize:12,fontWeight:500,background:'var(--accent-soft)',border:'1px solid var(--accent-border)',color:'var(--accent-text)',borderRadius:20,padding:'2px 10px',verticalAlign:'middle'}}>Showing {filtered.length} of {FINDINGS.length}</span>
+          : <span style={{fontWeight:400,color:'var(--muted)',fontSize:13}}> · {FINDINGS.length} total</span>
+        }</h2>
         {editMode && (hiddenFindings?.size > 0) && (
           <button className="restore-all-btn" onClick={onRestoreAll}>
             ↩ Restore {hiddenFindings.size} hidden
@@ -1830,7 +1852,7 @@ function TweaksPanel({ onClose, theme, setTheme, mode, setMode, density, setDens
           <div className={'swatch'+(theme==='console'?' active':'')} onClick={()=>setTheme('console')}
                style={{background:'linear-gradient(135deg, #4c8bff, #2563eb)'}}/>
           <div className={'swatch'+(theme==='saas'?' active':'')} onClick={()=>setTheme('saas')}
-               style={{background:'linear-gradient(135deg, #e0e7ff, #6366f1)'}}/>
+               style={{background:'linear-gradient(135deg, #e8a598, #d4857a, #b86e6e)'}}/>
           <div className={'swatch'+(theme==='high-contrast'?' active':'')} onClick={()=>setTheme('high-contrast')}
                style={{background:'linear-gradient(135deg, #005da8, #003d7a)'}}/>
         </div>
@@ -1869,7 +1891,21 @@ function App() {
   const [mode, setMode] = useState(() => lsGet('m365-mode', DEFAULTS.mode));
   const [density, setDensity] = useState(() => lsGet('m365-density', DEFAULTS.density));
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ status:[], severity:[], framework:[], domain:[], profile:[] });
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
+      if (saved && typeof saved === 'object') {
+        return {
+          status:    Array.isArray(saved.status)    ? saved.status    : [],
+          severity:  Array.isArray(saved.severity)  ? saved.severity  : [],
+          framework: Array.isArray(saved.framework) ? saved.framework : [],
+          domain:    Array.isArray(saved.domain)    ? saved.domain    : [],
+          profile:   Array.isArray(saved.profile)   ? saved.profile   : [],
+        };
+      }
+    } catch {}
+    return { status:[], severity:[], framework:[], domain:[], profile:[] };
+  });
   const [active, setActive] = useState('overview');
   const [showTweaks, setShowTweaks] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -1901,6 +1937,10 @@ function App() {
     localStorage.setItem('m365-mode', mode);
     localStorage.setItem('m365-density', density);
   }, [theme, mode, density]);
+
+  useEffect(() => {
+    try { localStorage.setItem(FILTER_KEY, JSON.stringify(filters)); } catch {}
+  }, [filters]);
 
   // Slash-key to focus search
   useEffect(() => {

@@ -1251,16 +1251,63 @@ mark.search-hl {
 
 /* Print-optimized */
 @media print {
-  .sidebar, .topbar .search, .topbar .palette-switch, .topbar .icon-btn-group, .filter-bar { display: none !important; }
+  /* Hide all interactive chrome */
+  .sidebar, .topbar, .filter-bar,
+  .tweaks-panel, .sidebar-overlay, .hamburger-btn,
+  .chip-more, .caret { display: none !important; }
+
+  /* Single-column layout */
   .app { display: block !important; }
   .main { padding: 16px 0 !important; max-width: 100% !important; }
+
+  /* Force light / ink-friendly CSS variables */
+  html {
+    --bg:          #ffffff;
+    --bg-elev:     #ffffff;
+    --bg-elev-2:   #f5f5f5;
+    --surface:     #ffffff;
+    --surface-hero:#ffffff;
+    --subtle:      #fafafa;
+    --hover:       #f8f8f8;
+    --input-bg:    #ffffff;
+    --text:        #111827;
+    --text-soft:   #374151;
+    --muted:       #6b7280;
+    --border:      #e5e7eb;
+    --border-strong:#d1d5db;
+    --chip:        #f3f4f6;
+    --shadow:      transparent;
+    --shadow-card: none;
+    --bar-glow:    none;
+    --hero-glow:   none;
+    --mark-glow:   none;
+  }
+
+  body { background: #fff !important; color: #111827 !important; }
+  * { box-shadow: none !important; text-shadow: none !important; }
+
+  /* Show expanded finding details in print output */
   .finding-detail { display: grid !important; }
   .finding-row { cursor: default !important; }
-  body { background: #fff !important; color: #000 !important; }
-  * { box-shadow: none !important; }
-  section.block { page-break-inside: avoid; break-inside: avoid; }
-  .domain-card, .kpi, .card { break-inside: avoid; }
-  @page { margin: 12mm; }
+
+  /* Suppress last column (caret / empty header cell) in findings table */
+  .findings-head > div:last-child,
+  .finding-row > div:last-child { display: none !important; }
+
+  /* Compact findings grid: status | finding | domain | checkId | severity */
+  .findings-head, .finding-row {
+    grid-template-columns: 72px 2fr 1fr 120px 80px !important;
+  }
+
+  /* Prevent orphaned section headings at page bottom */
+  section.block .section-head,
+  section.block h2 { break-after: avoid; page-break-after: avoid; }
+
+  /* Keep cards and rows intact across pages */
+  section.block { break-inside: avoid; page-break-inside: avoid; }
+  .domain-card, .kpi, .card, .finding-row { break-inside: avoid; }
+
+  @page { size: A4; margin: 15mm 12mm; }
 }
 
 /* Small widths */

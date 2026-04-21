@@ -517,7 +517,7 @@ if ($TenantId -and -not $PSBoundParameters.ContainsKey('M365Environment')) {
         Write-Host ''
         Write-Host "  Cloud environment detected: $($envDisplayNames[$detectedEnv])" -ForegroundColor Cyan
         if ($detectedEnv -eq 'gcchigh') {
-            Write-Host '  (If this is a DoD tenant, re-run with -M365Environment dod)' -ForegroundColor DarkGray
+            Write-Warning 'GCC High and DoD share the same pre-authentication endpoint signals. If this is a DoD tenant, re-run with -M365Environment dod.'
         }
     }
 }

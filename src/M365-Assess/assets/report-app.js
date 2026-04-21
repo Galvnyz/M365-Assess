@@ -10,6 +10,7 @@ const {
 // --------------------- Data shape from bundle.js ---------------------
 const D = window.REPORT_DATA;
 const TENANT = D.tenant[0] || {};
+const FILTER_KEY = 'm365-filters-' + (TENANT.TenantId || 'default');
 const USERS = D.users[0] || {};
 const SCORE = D.score[0] || {};
 const MFA_STATS = D.mfaStats;
@@ -174,21 +175,48 @@ const Icon = {
   moon: () => /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 16 16",
     fill: "currentColor"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M13 9.4A6 6 0 1 1 6.6 3 5 5 0 0 0 13 9.4z"
+  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("mask", {
+    id: "mm"
+  }, /*#__PURE__*/React.createElement("rect", {
+    width: "16",
+    height: "16",
+    fill: "white"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "10",
+    cy: "5",
+    r: "4.5",
+    fill: "black"
+  }))), /*#__PURE__*/React.createElement("circle", {
+    cx: "7.5",
+    cy: "8",
+    r: "5.5",
+    mask: "url(#mm)"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "12.5",
+    cy: "3.5",
+    r: "1",
+    opacity: ".5"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "14",
+    cy: "7",
+    r: ".6",
+    opacity: ".35"
   })),
   sun: () => /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 16 16",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: "1.5"
+    fill: "currentColor"
   }, /*#__PURE__*/React.createElement("circle", {
     cx: "8",
     cy: "8",
-    r: "3"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M13 3l-1.4 1.4M4.4 11.6L3 13"
-  })),
+    r: "3.2"
+  }), /*#__PURE__*/React.createElement("g", {
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    strokeLinecap: "round",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3"
+  }))),
   print: () => /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 16 16",
     fill: "none",
@@ -526,7 +554,7 @@ function Topbar({
   }, "Console"), /*#__PURE__*/React.createElement("button", {
     className: theme === 'saas' ? 'active' : '',
     onClick: () => setTheme('saas')
-  }, "Light"), /*#__PURE__*/React.createElement("button", {
+  }, "Vibe"), /*#__PURE__*/React.createElement("button", {
     className: theme === 'high-contrast' ? 'active' : '',
     onClick: () => setTheme('high-contrast')
   }, "High Contrast")), /*#__PURE__*/React.createElement("div", {
@@ -2176,11 +2204,25 @@ function FindingsTable({
       return true;
     });
   }, [filters, search, editMode, hiddenFindings]);
+  const isFiltered = search.length > 0 || filters.status.length > 0 || filters.severity.length > 0 || filters.framework.length > 0 || filters.domain.length > 0 || (filters.profile || []).length > 0;
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i);else n.add(i);
     return n;
   });
+  const hl = (text, q) => {
+    if (!q || !text) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return text;
+    return [text.slice(0, i), /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: 'var(--accent-soft)',
+        color: 'var(--accent-text)',
+        borderRadius: 2,
+        padding: '0 1px'
+      }
+    }, text.slice(i, i + q.length)), text.slice(i + q.length)];
+  };
   const renderCell = (colId, f) => {
     switch (colId) {
       case 'status':
@@ -2297,13 +2339,25 @@ function FindingsTable({
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings ", /*#__PURE__*/React.createElement("span", {
+  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings", isFiltered ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 8,
+      fontSize: 12,
+      fontWeight: 500,
+      background: 'var(--accent-soft)',
+      border: '1px solid var(--accent-border)',
+      color: 'var(--accent-text)',
+      borderRadius: 20,
+      padding: '2px 10px',
+      verticalAlign: 'middle'
+    }
+  }, "Showing ", filtered.length, " of ", FINDINGS.length) : /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 400,
       color: 'var(--muted)',
       fontSize: 13
     }
-  }, "\xB7 ", filtered.length, " of ", FINDINGS.length)), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
+  }, " \xB7 ", FINDINGS.length, " total")), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
     className: "restore-all-btn",
     onClick: onRestoreAll
   }, "\u21A9 Restore ", hiddenFindings.size, " hidden"), /*#__PURE__*/React.createElement("div", {
@@ -3158,7 +3212,7 @@ function TweaksPanel({
     className: 'swatch' + (theme === 'saas' ? ' active' : ''),
     onClick: () => setTheme('saas'),
     style: {
-      background: 'linear-gradient(135deg, #e0e7ff, #6366f1)'
+      background: 'linear-gradient(135deg, #e8a598, #d4857a, #b86e6e)'
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: 'swatch' + (theme === 'high-contrast' ? ' active' : ''),
@@ -3219,12 +3273,26 @@ function App() {
   const [mode, setMode] = useState(() => lsGet('m365-mode', DEFAULTS.mode));
   const [density, setDensity] = useState(() => lsGet('m365-density', DEFAULTS.density));
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({
-    status: [],
-    severity: [],
-    framework: [],
-    domain: [],
-    profile: []
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
+      if (saved && typeof saved === 'object') {
+        return {
+          status: Array.isArray(saved.status) ? saved.status : [],
+          severity: Array.isArray(saved.severity) ? saved.severity : [],
+          framework: Array.isArray(saved.framework) ? saved.framework : [],
+          domain: Array.isArray(saved.domain) ? saved.domain : [],
+          profile: Array.isArray(saved.profile) ? saved.profile : []
+        };
+      }
+    } catch {}
+    return {
+      status: [],
+      severity: [],
+      framework: [],
+      domain: [],
+      profile: []
+    };
   });
   const [active, setActive] = useState('overview');
   const [showTweaks, setShowTweaks] = useState(false);
@@ -3255,6 +3323,11 @@ function App() {
     localStorage.setItem('m365-mode', mode);
     localStorage.setItem('m365-density', density);
   }, [theme, mode, density]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+    } catch {}
+  }, [filters]);
 
   // Slash-key to focus search
   useEffect(() => {
