@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.2.0'
+    ModuleVersion     = '2.3.1'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -232,7 +232,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.2.0 - Roadmap CSV export; Evidence field Phase 1 (5 collectors); AD/Hybrid dashboard panel; ISO 27001+27002 label clarification; AI disclosure; CheckID v2.17.0 sync'
+            ReleaseNotes = 'v2.3.1 - Filter state persistence; print/PDF CSS; Vibe theme + Neon boost; -ReportDensity param; anti-FOUC ValidateSet reflection; PowerBI Linux skip; PHS false-disabled fix; Secure Score 0pts fix; Entra Connect terminology'
         }
     }
 }

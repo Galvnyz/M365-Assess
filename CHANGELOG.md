@@ -4,6 +4,33 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-04-21
+
+### Fixed
+- Power BI collector now skips gracefully on non-Windows platforms (Linux/macOS) when no service principal is configured; emits an actionable warning instead of hanging on device-code auth (#664)
+- Password Hash Sync status corrected to amber "Verify" (instead of red "Disabled") when `OnPremisesLastPasswordSyncDateTime` is absent on an active hybrid tenant — this is normal for Entra Cloud Sync or PHS enabled before any password changes (#665)
+- Secure Score panel no longer shows 0 earned points when the tenant has a non-zero score; mapping from `currentScore` now applied correctly (#663)
+- Assessment CSV output files now use the correct base filename (was incorrectly including the full script path in some environments) (#666)
+
+### Changed
+- "Microsoft Entra Connect" replaces "Azure AD Connect" in all remediation strings and collector output; "Microsoft Entra Cloud Sync" replaces "Azure AD Connect Cloud Sync" (#667, #662)
+
+## [2.3.0] - 2026-04-21
+
+### Added
+- Filter state persistence — active section/severity/status/framework filters saved to `localStorage` (scoped per tenant) and restored on report reload (#634)
+- `-ReportDensity` parameter (`Compact` | `Comfort`) added to `Export-AssessmentReport` and threaded through to `Get-ReportTemplate`; default `Compact` (no behaviour change) (#646)
+- Vibe theme (`-ReportTheme Light`) — repurposed from the prior flat-light palette to a warm rose-gold dark aesthetic; Neon theme hue and contrast boosted (#649, #650)
+- Anti-FOUC theme allowlist now derived from the PowerShell `ValidateSet` via reflection — a single source of truth; adding a new theme to the `ValidateSet` automatically protects it from flash (#645)
+- N-of-M findings counter displayed in the All Findings table header (#638)
+- Search match text highlighted in yellow in the findings results list (#636)
+- `learnMore` URLs surfaced in the finding detail panel with a direct link (#637)
+- Evidence block (collapsible `<details>`) added to finding detail panel for findings that carry structured evidence data (#640)
+- CMMC L1 / L2 / L3 compliance scoring filters added to the compliance overview (#641)
+
+### Fixed
+- Print / PDF output quality improvements — dedicated print CSS media query, page-break rules, and hidden interactive controls (#635)
+
 ## [2.2.0] - 2026-04-20
 
 ### Added
