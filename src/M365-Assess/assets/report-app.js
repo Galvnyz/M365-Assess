@@ -330,6 +330,16 @@ function Sidebar({
   navOpen,
   onClose
 }) {
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [domainNavOpen, setDomainNavOpen] = useState(false);
+  function toggleRoadmap(e) {
+    e.preventDefault(); e.stopPropagation();
+    setRoadmapOpen(o => !o);
+  }
+  function toggleDomainNav(e) {
+    e.preventDefault(); e.stopPropagation();
+    setDomainNavOpen(o => !o);
+  }
   const DOM_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity'];
   const domains = DOM_ORDER.filter(d => domainCounts.total[d]).concat(Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort());
   const exec = [{
@@ -383,9 +393,10 @@ function Sidebar({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "nav-label"
-  }, "Executive"), exec.map(it => /*#__PURE__*/React.createElement("a", {
+  }, "Executive"), exec.map(it => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: it.id
+  }, /*#__PURE__*/React.createElement("a", {
     href: `#${it.id}`,
-    key: it.id,
     onClick: e => {
       if (it.id === 'overview') {
         e.preventDefault();
@@ -394,7 +405,28 @@ function Sidebar({
       closeIfMobile();
     },
     className: 'nav-item' + (active === it.id ? ' active' : '')
-  }, /*#__PURE__*/React.createElement("span", null, it.label))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, it.label), it.id === 'identity' && /*#__PURE__*/React.createElement("span", {
+    className: "nav-expand-icon",
+    onClick: toggleDomainNav
+  }, domainNavOpen ? '\u2212' : '+')), it.id === 'identity' && domainNavOpen && /*#__PURE__*/React.createElement("div", {
+    className: "nav-subitems"
+  }, FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-intune",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "Intune coverage"), FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-sharepoint",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "SharePoint & OneDrive"), D.adHybrid && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-ad",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "AD & hybrid"), (D.dns || []).length > 0 && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-email",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "Email auth")))), /*#__PURE__*/React.createElement("div", {
     className: "nav-label",
     style: {
       marginTop: 14
@@ -429,10 +461,11 @@ function Sidebar({
     },
     className: 'nav-item' + (active === it.id && !(it.id === 'findings' && activeDomain) ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label), it.id === 'roadmap' ? /*#__PURE__*/React.createElement("span", {
-    className: "nav-expand-icon"
-  }, active === 'roadmap' ? '−' : '+') : it.count !== undefined && /*#__PURE__*/React.createElement("span", {
+    className: "nav-expand-icon",
+    onClick: toggleRoadmap
+  }, (roadmapOpen || active === 'roadmap') ? '\u2212' : '+') : it.count !== undefined && /*#__PURE__*/React.createElement("span", {
     className: "count"
-  }, it.count)), it.id === 'roadmap' && active === 'roadmap' && /*#__PURE__*/React.createElement("div", {
+  }, it.count)), it.id === 'roadmap' && (roadmapOpen || active === 'roadmap') && /*#__PURE__*/React.createElement("div", {
     className: "nav-subitems"
   }, /*#__PURE__*/React.createElement("a", {
     href: "#roadmap-now",

@@ -118,6 +118,16 @@ const fmt = n => Number(n).toLocaleString();
 
 // ======================== Sidebar ========================
 function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onOverviewClick, navOpen, onClose }) {
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [domainNavOpen, setDomainNavOpen] = useState(false);
+  function toggleRoadmap(e) {
+    e.preventDefault(); e.stopPropagation();
+    setRoadmapOpen(o => !o);
+  }
+  function toggleDomainNav(e) {
+    e.preventDefault(); e.stopPropagation();
+    setDomainNavOpen(o => !o);
+  }
   const DOM_ORDER = ['Entra ID','Conditional Access','Enterprise Apps','Exchange Online','Intune','Defender','Purview / Compliance','SharePoint & OneDrive','Teams','Forms','Power BI','Active Directory','SOC 2','Value Opportunity'];
   const domains = DOM_ORDER.filter(d => domainCounts.total[d]).concat(
     Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort()
@@ -150,11 +160,34 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
         <nav style={{flex:1}}>
           <div className="nav-label">Executive</div>
           {exec.map(it => (
-            <a href={`#${it.id}`} key={it.id}
-               onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
-               className={'nav-item' + (active===it.id?' active':'')}>
-              <span>{it.label}</span>
-            </a>
+            <React.Fragment key={it.id}>
+              <a href={`#${it.id}`}
+                 onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
+                 className={'nav-item' + (active===it.id?' active':'')}>
+                <span>{it.label}</span>
+                {it.id === 'identity' && (
+                  <span className="nav-expand-icon" onClick={toggleDomainNav}>
+                    {domainNavOpen ? '\u2212' : '+'}
+                  </span>
+                )}
+              </a>
+              {it.id === 'identity' && domainNavOpen && (
+                <div className="nav-subitems">
+                  {FINDINGS.some(f => f.domain === 'Intune') && (
+                    <a href="#identity-intune" className="nav-subitem" onClick={closeIfMobile}>Intune coverage</a>
+                  )}
+                  {FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && (
+                    <a href="#identity-sharepoint" className="nav-subitem" onClick={closeIfMobile}>SharePoint &amp; OneDrive</a>
+                  )}
+                  {D.adHybrid && (
+                    <a href="#identity-ad" className="nav-subitem" onClick={closeIfMobile}>AD &amp; hybrid</a>
+                  )}
+                  {(D.dns || []).length > 0 && (
+                    <a href="#identity-email" className="nav-subitem" onClick={closeIfMobile}>Email auth</a>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
           ))}
           <div className="nav-label" style={{marginTop:14}}>Domains</div>
           {domains.map(d => {
@@ -177,11 +210,11 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
                  className={'nav-item' + (active===it.id && !(it.id==='findings' && activeDomain)?' active':'')}>
                 <span>{it.label}</span>
                 {it.id === 'roadmap'
-                  ? <span className="nav-expand-icon">{active === 'roadmap' ? '−' : '+'}</span>
+                  ? <span className="nav-expand-icon" onClick={toggleRoadmap}>{(roadmapOpen || active === 'roadmap') ? '\u2212' : '+'}</span>
                   : it.count !== undefined && <span className="count">{it.count}</span>
                 }
               </a>
-              {it.id === 'roadmap' && active === 'roadmap' && (
+              {it.id === 'roadmap' && (roadmapOpen || active === 'roadmap') && (
                 <div className="nav-subitems">
                   <a href="#roadmap-now"   className="nav-subitem">Now   <span className="count">{ROADMAP_COUNTS.now}</span></a>
                   <a href="#roadmap-next"  className="nav-subitem">Next  <span className="count">{ROADMAP_COUNTS.soon}</span></a>
