@@ -1507,3 +1507,5 @@ mark.search-hl {
 .restore-all-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .edit-toolbar-reset { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
 .edit-toolbar-reset:hover { border-color: var(--warn, #f59e0b); color: var(--warn, #f59e0b); }
+.badge-intent { font-size: 10px; font-weight: 600; letter-spacing: .4px; padding: 2px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-text); width: fit-content; }
+.intent-callout { font-size: 13px; background: var(--accent-soft); color: var(--accent-text); border-left: 3px solid var(--accent); border-radius: 4px; padding: 8px 12px; margin-bottom: 10px; line-height: 1.5; }

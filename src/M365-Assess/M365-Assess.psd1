@@ -80,6 +80,7 @@
         'Common\Resolve-DnsRecord.ps1'
         'Common\Resolve-TenantLicenses.ps1'
         'Common\Export-AssessmentReport.ps1'
+        'Common\Export-AssessmentBridgeJson.ps1'
         'Common\New-M365BrandingConfig.ps1'
         'Common\ReportHelpers.ps1'
         'Common\Build-SectionHtml.ps1'

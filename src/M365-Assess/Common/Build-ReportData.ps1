@@ -160,7 +160,8 @@ function Build-ReportDataJson {
             effort       = if ($regEntry) { $e = if ($regEntry -is [hashtable]) { $regEntry['effort'] } else { $regEntry.effort }; if ($e) { $e } else { 'medium' } } else { 'medium' }
             frameworks   = $frameworks
             fwMeta       = $fwMeta
-            intentDesign = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
+            intentDesign    = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
+            intentRationale = if ($f.PSObject.Properties['ImpactRationale'] -and $f.ImpactRationale) { [string]$f.ImpactRationale } else { $null }
             learnMore    = $learnMore
             evidence     = $evidence
         })

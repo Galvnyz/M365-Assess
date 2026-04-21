@@ -468,7 +468,9 @@ function Sidebar({
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "org"), /*#__PURE__*/React.createElement("span", null, TENANT.DefaultDomain || TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
-  }, /*#__PURE__*/React.createElement("span", null, "tenant"), /*#__PURE__*/React.createElement("span", null, (TENANT.TenantId || '').slice(0, 8) + '…')), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "tenant"), /*#__PURE__*/React.createElement("span", null, (TENANT.TenantId || '').slice(0, 8) + '…')), TENANT.tenantAgeYears != null && /*#__PURE__*/React.createElement("div", {
+    className: "sc-row"
+  }, /*#__PURE__*/React.createElement("span", null, "age"), /*#__PURE__*/React.createElement("span", null, TENANT.tenantAgeYears, " yrs")), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "users"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.TotalUsers))), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
@@ -476,7 +478,19 @@ function Sidebar({
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "guests"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.GuestUsers))), USERS.SyncedFromOnPrem > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
-  }, /*#__PURE__*/React.createElement("span", null, "synced"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.SyncedFromOnPrem)))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "synced"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.SyncedFromOnPrem))), USERS.DisabledUsers > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "sc-row"
+  }, /*#__PURE__*/React.createElement("span", null, "disabled"), /*#__PURE__*/React.createElement("span", {
+    className: "sc-warn"
+  }, fmt(USERS.DisabledUsers))), USERS.NeverSignedIn > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "sc-row"
+  }, /*#__PURE__*/React.createElement("span", null, "never signed in"), /*#__PURE__*/React.createElement("span", {
+    className: "sc-warn"
+  }, fmt(USERS.NeverSignedIn))), USERS.StaleMember > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "sc-row"
+  }, /*#__PURE__*/React.createElement("span", null, "stale"), /*#__PURE__*/React.createElement("span", {
+    className: "sc-warn"
+  }, fmt(USERS.StaleMember)))), /*#__PURE__*/React.createElement("div", {
     className: "sc-card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "sc-header"
@@ -2204,21 +2218,42 @@ function FindingsTable({
       return true;
     });
   }, [filters, search, editMode, hiddenFindings]);
+  const isFiltered = search.length > 0 || filters.status.length > 0 || filters.severity.length > 0 || filters.framework.length > 0 || filters.domain.length > 0 || (filters.profile || []).length > 0;
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i);else n.add(i);
     return n;
   });
+  const hl = (text, q) => {
+    if (!q || !text) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return text;
+    return [text.slice(0, i), /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: 'var(--accent-soft)',
+        color: 'var(--accent-text)',
+        borderRadius: 2,
+        padding: '0 1px'
+      }
+    }, text.slice(i, i + q.length)), text.slice(i + q.length)];
+  };
   const renderCell = (colId, f) => {
     switch (colId) {
       case 'status':
         return /*#__PURE__*/React.createElement("div", {
-          key: "status"
+          key: "status",
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3
+          }
         }, /*#__PURE__*/React.createElement("span", {
           className: 'status-badge ' + STATUS_COLORS[f.status]
         }, /*#__PURE__*/React.createElement("span", {
           className: "dot"
-        }), f.status));
+        }), f.status), f.intentDesign && /*#__PURE__*/React.createElement("span", {
+          className: "badge-intent"
+        }, "By Design"));
       case 'finding':
         return /*#__PURE__*/React.createElement("div", {
           key: "finding",
@@ -2325,13 +2360,25 @@ function FindingsTable({
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings ", /*#__PURE__*/React.createElement("span", {
+  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings", isFiltered ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 8,
+      fontSize: 12,
+      fontWeight: 500,
+      background: 'var(--accent-soft)',
+      border: '1px solid var(--accent-border)',
+      color: 'var(--accent-text)',
+      borderRadius: 20,
+      padding: '2px 10px',
+      verticalAlign: 'middle'
+    }
+  }, "Showing ", filtered.length, " of ", FINDINGS.length) : /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 400,
       color: 'var(--muted)',
       fontSize: 13
     }
-  }, "\xB7 ", filtered.length, " of ", FINDINGS.length)), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
+  }, " \xB7 ", FINDINGS.length, " total")), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
     className: "restore-all-btn",
     onClick: onRestoreAll
   }, "\u21A9 Restore ", hiddenFindings.size, " hidden"), /*#__PURE__*/React.createElement("div", {
@@ -2419,7 +2466,9 @@ function FindingsTable({
       className: "caret"
     }, /*#__PURE__*/React.createElement(Icon.chevron, null))), isOpen && /*#__PURE__*/React.createElement("div", {
       className: "finding-detail"
-    }, /*#__PURE__*/React.createElement("div", {
+    }, f.intentDesign && /*#__PURE__*/React.createElement("div", {
+      className: "intent-callout"
+    }, /*#__PURE__*/React.createElement("strong", null, "Intentional by design."), f.intentRationale && /*#__PURE__*/React.createElement("span", null, " ", f.intentRationale)), /*#__PURE__*/React.createElement("div", {
       className: "why"
     }, /*#__PURE__*/React.createElement("div", {
       className: "why-label"

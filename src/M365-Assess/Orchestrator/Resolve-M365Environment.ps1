@@ -33,7 +33,8 @@ function Resolve-M365Environment {
                 return 'gcc'
             }
             if ($regionScope -eq 'USGov') {
-                # Cannot distinguish GCC High from DoD pre-auth; default to gcchigh
+                # GCC High and DoD share the same pre-auth endpoint signals; 'gcchigh' is the safe default.
+                # DoD operators must override with -M365Environment dod.
                 return 'gcchigh'
             }
             return 'commercial'

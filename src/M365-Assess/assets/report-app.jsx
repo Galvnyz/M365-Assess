@@ -200,10 +200,14 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
             </div>
             <div className="sc-row"><span>org</span><span>{TENANT.DefaultDomain || TENANT.OrgDisplayName}</span></div>
             <div className="sc-row"><span>tenant</span><span>{(TENANT.TenantId||'').slice(0,8)+'…'}</span></div>
+            {TENANT.tenantAgeYears != null && <div className="sc-row"><span>age</span><span>{TENANT.tenantAgeYears} yrs</span></div>}
             <div className="sc-row"><span>users</span><span>{fmt(USERS.TotalUsers)}</span></div>
             <div className="sc-row"><span>licensed</span><span>{fmt(USERS.Licensed)}</span></div>
             <div className="sc-row"><span>guests</span><span>{fmt(USERS.GuestUsers)}</span></div>
             {USERS.SyncedFromOnPrem > 0 && <div className="sc-row"><span>synced</span><span>{fmt(USERS.SyncedFromOnPrem)}</span></div>}
+            {USERS.DisabledUsers  > 0 && <div className="sc-row"><span>disabled</span><span className="sc-warn">{fmt(USERS.DisabledUsers)}</span></div>}
+            {USERS.NeverSignedIn  > 0 && <div className="sc-row"><span>never signed in</span><span className="sc-warn">{fmt(USERS.NeverSignedIn)}</span></div>}
+            {USERS.StaleMember    > 0 && <div className="sc-row"><span>stale</span><span className="sc-warn">{fmt(USERS.StaleMember)}</span></div>}
           </div>
           <div className="sc-card">
             <div className="sc-header">
@@ -1257,19 +1261,38 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
     });
   }, [filters, search, editMode, hiddenFindings]);
 
+  const isFiltered = search.length > 0
+    || filters.status.length > 0
+    || filters.severity.length > 0
+    || filters.framework.length > 0
+    || filters.domain.length > 0
+    || (filters.profile || []).length > 0;
+
   const toggle = i => setOpen(o => {
     const n = new Set(o);
     if (n.has(i)) n.delete(i); else n.add(i);
     return n;
   });
 
+  const hl = (text, q) => {
+    if (!q || !text) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return text;
+    return [
+      text.slice(0, i),
+      <span style={{background:'var(--accent-soft)',color:'var(--accent-text)',borderRadius:2,padding:'0 1px'}}>{text.slice(i, i + q.length)}</span>,
+      text.slice(i + q.length)
+    ];
+  };
+
   const renderCell = (colId, f) => {
     switch (colId) {
       case 'status': return (
-        <div key="status">
+        <div key="status" style={{display:'flex',flexDirection:'column',gap:3}}>
           <span className={'status-badge ' + STATUS_COLORS[f.status]}>
             <span className="dot"/>{f.status}
           </span>
+          {f.intentDesign && <span className="badge-intent">By Design</span>}
         </div>
       );
       case 'finding': return (
@@ -1335,7 +1358,10 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
     <section className="block" id="findings">
       <div className="section-head">
         <span className="eyebrow">03 · Detail</span>
-        <h2>All findings <span style={{fontWeight:400, color:'var(--muted)', fontSize:13}}>· {filtered.length} of {FINDINGS.length}</span></h2>
+        <h2>All findings{isFiltered
+          ? <span style={{marginLeft:8,fontSize:12,fontWeight:500,background:'var(--accent-soft)',border:'1px solid var(--accent-border)',color:'var(--accent-text)',borderRadius:20,padding:'2px 10px',verticalAlign:'middle'}}>Showing {filtered.length} of {FINDINGS.length}</span>
+          : <span style={{fontWeight:400,color:'var(--muted)',fontSize:13}}> · {FINDINGS.length} total</span>
+        }</h2>
         {editMode && (hiddenFindings?.size > 0) && (
           <button className="restore-all-btn" onClick={onRestoreAll}>
             ↩ Restore {hiddenFindings.size} hidden
@@ -1387,6 +1413,12 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
               </div>
               {isOpen && (
                 <div className="finding-detail">
+                  {f.intentDesign && (
+                    <div className="intent-callout">
+                      <strong>Intentional by design.</strong>
+                      {f.intentRationale && <span> {f.intentRationale}</span>}
+                    </div>
+                  )}
                   <div className="why">
                     <div className="why-label">Why it matters</div>
                     <div className="why-text">{whyItMatters(f)}</div>

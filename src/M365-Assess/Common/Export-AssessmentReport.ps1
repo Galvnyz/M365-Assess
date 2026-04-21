@@ -130,6 +130,7 @@ if (-not $TenantName) {
 
 # Read domain prefix and version from the assessment log
 $reportDomainPrefix  = ''
+$assessedAt          = [datetime]::UtcNow.ToString('o')
 $assessmentVersion   = (Import-PowerShellDataFile -Path "$PSScriptRoot/../M365-Assess.psd1").ModuleVersion
 $logFile = Get-ChildItem -Path $AssessmentFolder -Filter '_Assessment-Log*.txt' -ErrorAction SilentlyContinue | Select-Object -First 1
 $logPath = if ($logFile) { $logFile.FullName } else { Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Log.txt' }
@@ -139,6 +140,8 @@ if (Test-Path -Path $logPath) {
     if ($versionLine) { $assessmentVersion = $Matches[1] }
     $domainLine = $logHead | Where-Object { $_ -match 'Domain:\s+(\S+)' }
     if ($domainLine -and $Matches[1]) { $reportDomainPrefix = $Matches[1].Trim() }
+    $startedLine = $logHead | Where-Object { $_ -match 'Started:\s+(.+)' }
+    if ($startedLine -and $Matches[1]) { $assessedAt = $Matches[1].Trim() }
 }
 
 # Determine output path
@@ -189,6 +192,42 @@ $html = Get-ReportTemplate `
 
 Set-Content -Path $OutputPath -Value $html -Encoding UTF8
 Write-Output "HTML report generated: $OutputPath"
+
+# ------------------------------------------------------------------
+# Write bridge JSON for M365-Remediate integration
+# ------------------------------------------------------------------
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Export-AssessmentBridgeJson.ps1')
+
+$tenantIdValue = if ($tenantData -and @($tenantData).Count -gt 0 -and $tenantData[0].PSObject.Properties.Name -contains 'TenantId') {
+    $tenantData[0].TenantId
+} else { '' }
+
+$registryVersionValue = ''
+$registryJsonPath = Join-Path -Path $projectRoot -ChildPath 'controls/registry.json'
+if (Test-Path -Path $registryJsonPath) {
+    try {
+        $regMeta = Get-Content -Path $registryJsonPath -Raw | ConvertFrom-Json
+        $registryVersionValue = if ($regMeta.dataVersion) { $regMeta.dataVersion } else { $regMeta.schemaVersion }
+    } catch { Write-Verbose "Could not read registry version: $_" }
+}
+
+$bridgeSuffix = if ($reportDomainPrefix) { "_$reportDomainPrefix" } else { '' }
+$bridgePath   = Join-Path -Path $AssessmentFolder -ChildPath "_Assessment$bridgeSuffix.json"
+
+try {
+    $written = Export-AssessmentBridgeJson `
+        -AllFindings       $allCisFindings `
+        -RegistryData      $controlRegistry `
+        -TenantId          $tenantIdValue `
+        -TenantName        $TenantName `
+        -AssessedAt        $assessedAt `
+        -AssessmentVersion $assessmentVersion `
+        -RegistryVersion   $registryVersionValue `
+        -OutputPath        $bridgePath
+    Write-Output "Bridge JSON written: $written"
+} catch {
+    Write-Warning "Bridge JSON export failed: $($_.Exception.Message)"
+}
 
 if ($OpenReport) {
     Start-Process -FilePath $OutputPath
