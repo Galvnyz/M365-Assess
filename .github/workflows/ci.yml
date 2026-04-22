@@ -24,8 +24,8 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -41,9 +41,9 @@ jobs:
     name: Quality Gates
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: C:\Users\runneradmin\Documents\PowerShell\Modules
           key: psmodules-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -149,9 +149,9 @@ jobs:
     env:
       COVERAGE_THRESHOLD: 65
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: C:\Users\runneradmin\Documents\PowerShell\Modules
           key: psmodules-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -194,14 +194,14 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-ps${{ matrix.ps-version }}
           path: test-results.xml
 
       - name: Upload coverage report
         if: always() && matrix.ps-version == '7.6'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-ps${{ matrix.ps-version }}
           path: coverage.xml
@@ -280,7 +280,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fetch CheckID data
         env:
