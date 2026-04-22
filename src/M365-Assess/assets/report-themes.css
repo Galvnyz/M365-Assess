@@ -416,6 +416,10 @@
 [data-theme="high-contrast"][data-mode="dark"] .brand-mark {
   color: #000000;
 }
+/* high-contrast dark: accent is #fff so active count pill needs dark text */
+[data-theme="high-contrast"][data-mode="dark"] .nav-item.active .count {
+  color: #000000;
+}
 
 /* =========================================================
    NEON DARK — CYBER GLOW LAYER

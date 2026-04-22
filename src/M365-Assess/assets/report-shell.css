@@ -233,6 +233,15 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
   margin-bottom: 18px;
 }
 .section-head h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.section-chevron { font-size: 13px; opacity: .6; margin-left: 6px; font-weight: 400; vertical-align: middle; }
+
+.posture-sub-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+  margin: 28px 0 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
 .section-head .eyebrow {
   font-family: var(--font-mono); font-size: 13px;
   text-transform: uppercase; letter-spacing: 0.1em;
@@ -703,9 +712,17 @@ mark.search-hl {
   font-size: 12.5px; line-height: 1.6;
   color: var(--text);
 }
+.finding-remediation {
+  grid-column: 1 / -1;
+  padding-top: 4px;
+}
+.finding-detail .remediation-text {
+  font-size: 13px; line-height: 1.6; color: var(--text);
+}
 .finding-learn-more {
   grid-column: 1 / -1;
   padding-top: 2px;
+  display: flex; flex-direction: column; gap: 6px;
 }
 .finding-learn-more a {
   font-size: 12px; color: var(--accent-text); text-decoration: none;

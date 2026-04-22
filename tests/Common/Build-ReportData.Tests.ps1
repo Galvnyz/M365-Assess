@@ -166,19 +166,22 @@ Describe 'Build-ReportData' {
             $d.findings[0].effort | Should -Be 'medium'
         }
 
-        It 'should propagate learnMore URL from registry references[0].url' {
+        It 'should propagate references array from registry with url and title' {
             $f = New-Finding -CheckId 'CA-LEGACYAUTH-001.1'
             $url = 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/block-legacy-authentication'
             $registry = @{ 'CA-LEGACYAUTH-001' = @{ riskSeverity = 'Critical'; frameworks = @{}; references = @(@{ url = $url; title = 'Docs' }) } }
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
-            $d.findings[0].learnMore | Should -Be $url
+            $d.findings[0].references | Should -HaveCount 1
+            $d.findings[0].references[0].url | Should -Be $url
+            $d.findings[0].references[0].title | Should -Be 'Docs'
         }
 
-        It 'should set learnMore to null when references array is absent' {
+        It 'should emit empty references when registry has no references' {
             $f = New-Finding -CheckId 'CA-LEGACYAUTH-001.1'
             $registry = @{ 'CA-LEGACYAUTH-001' = @{ riskSeverity = 'Critical'; frameworks = @{} } }
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
-            $d.findings[0].PSObject.Properties['learnMore'] | Should -Not -BeNullOrEmpty -Because 'field must exist even when null'
+            # Empty @() serializes as null in ConvertTo-Json; either null or empty array is acceptable
+            $d.findings[0].references.Count | Should -Be 0
         }
     }
 
