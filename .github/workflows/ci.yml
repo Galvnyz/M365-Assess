@@ -184,14 +184,14 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-ps${{ matrix.ps-version }}
           path: test-results.xml
 
       - name: Upload coverage report
         if: always() && matrix.ps-version == '7.6'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-ps${{ matrix.ps-version }}
           path: coverage.xml
