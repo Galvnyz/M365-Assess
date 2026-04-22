@@ -1501,9 +1501,18 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, editMode, 
                     <div className="block-title">Recommended value</div>
                     <div className="value-box recommended">{f.recommended || '—'}</div>
                   </div>
-                  {f.learnMore && (
+                  {f.remediation && (
+                    <div className="finding-remediation">
+                      <div className="block-title">Remediation</div>
+                      <div className="remediation-text">{f.remediation}</div>
+                    </div>
+                  )}
+                  {f.references && f.references.length > 0 && (
                     <div className="finding-learn-more">
-                      <a href={f.learnMore} target="_blank" rel="noreferrer noopener">Learn more on Microsoft Docs ↗</a>
+                      <div className="block-title">Learn more</div>
+                      {f.references.map((r, i) => (
+                        <a key={i} href={r.url} target="_blank" rel="noreferrer noopener">📖 {r.title} ↗</a>
+                      ))}
                     </div>
                   )}
                   {f.evidence && (
@@ -1606,7 +1615,7 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
         const ref = fw ? `${fw}: ${t.fwMeta[fw].controlId}` : '';
         rows.push([label, t.setting, t.checkId, t.severity, t.effort ?? 'medium',
                    t.category, t.section, t.currentValue, t.recommendedValue,
-                   t.remediation, t.learnMore ?? '', ref].map(esc).join(','));
+                   t.remediation, (t.references && t.references.length > 0 ? t.references[0].url : ''), ref].map(esc).join(','));
       });
     });
     return rows.join('\r\n');
@@ -1705,6 +1714,18 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
                 <div className="task-field-value">{t.rationale}</div>
               </div>
             )}
+            {t.references && t.references.length > 0 && (
+              <div className="task-field">
+                <div className="task-field-label">Learn more</div>
+                <div className="task-field-value" style={{display:'flex',flexDirection:'column',gap:'4px'}}>
+                  {t.references.map((r, i) => (
+                    <a key={i} href={r.url} target="_blank" rel="noreferrer noopener" style={{color:'var(--accent-text)',textDecoration:'none'}}>
+                      📖 {r.title} ↗
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="task-meta-row">
               <span><b>Section:</b> {t.section}</span>
               <span><b>Severity:</b> {SEV_LABEL[t.severity]}</span>
@@ -1716,9 +1737,6 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
                 e.preventDefault();
                 onViewFinding?.(t.checkId);
               }}>View in findings table →</a>
-              {t.learnMore && (
-                <a href={t.learnMore} target="_blank" rel="noreferrer noopener">Learn more on Microsoft Docs ↗</a>
-              )}
             </div>
           </div>
         )}

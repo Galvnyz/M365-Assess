@@ -141,7 +141,11 @@ function Build-ReportDataJson {
                        elseif ($f.PSObject.Properties['Recommended'])   { $f.Recommended }
                        else                                              { '' }
 
-        $learnMore = if ($regEntry -and $regEntry.references -and $regEntry.references.Count -gt 0) { [string]$regEntry.references[0].url } else { $null }
+        $references = if ($regEntry -and $regEntry.references -and $regEntry.references.Count -gt 0) {
+                         @($regEntry.references | Select-Object url, title)
+                     } else { @() }
+        $impact     = if ($regEntry) { $regEntry.impact }    else { $null }
+        $rationale  = if ($regEntry) { $regEntry.rationale } else { $null }
         $evidence  = if ($f.PSObject.Properties['Evidence'] -and $null -ne $f.Evidence) {
                          $f.Evidence | ConvertTo-Json -Depth 5 -Compress
                      } else { $null }
@@ -162,7 +166,9 @@ function Build-ReportDataJson {
             fwMeta       = $fwMeta
             intentDesign    = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
             intentRationale = if ($f.PSObject.Properties['ImpactRationale'] -and $f.ImpactRationale) { [string]$f.ImpactRationale } else { $null }
-            learnMore    = $learnMore
+            references   = $references
+            impact       = $impact
+            rationale    = $rationale
             evidence     = $evidence
         })
     }

@@ -2551,13 +2551,22 @@ function FindingsTable({
       className: "block-title"
     }, "Recommended value"), /*#__PURE__*/React.createElement("div", {
       className: "value-box recommended"
-    }, f.recommended || '—')), f.learnMore && /*#__PURE__*/React.createElement("div", {
+    }, f.recommended || '—')), f.remediation && /*#__PURE__*/React.createElement("div", {
+      className: "finding-remediation"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "block-title"
+    }, "Remediation"), /*#__PURE__*/React.createElement("div", {
+      className: "remediation-text"
+    }, f.remediation)), f.references && f.references.length > 0 && /*#__PURE__*/React.createElement("div", {
       className: "finding-learn-more"
-    }, /*#__PURE__*/React.createElement("a", {
-      href: f.learnMore,
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "block-title"
+    }, "Learn more"), f.references.map((r, i) => /*#__PURE__*/React.createElement("a", {
+      key: i,
+      href: r.url,
       target: "_blank",
       rel: "noreferrer noopener"
-    }, "Learn more on Microsoft Docs \u2197")), f.evidence && /*#__PURE__*/React.createElement("details", {
+    }, "📖 ", r.title, " \u2197"))), f.evidence && /*#__PURE__*/React.createElement("details", {
       className: "finding-evidence"
     }, /*#__PURE__*/React.createElement("summary", null, "Evidence"), /*#__PURE__*/React.createElement("pre", null, JSON.stringify(JSON.parse(f.evidence), null, 2)))));
   })));
@@ -2673,7 +2682,7 @@ function Roadmap({
       items.forEach(t => {
         const fw = FW_PREF_RM.find(k => t.fwMeta?.[k]?.controlId);
         const ref = fw ? `${fw}: ${t.fwMeta[fw].controlId}` : '';
-        rows.push([label, t.setting, t.checkId, t.severity, t.effort ?? 'medium', t.category, t.section, t.currentValue, t.recommendedValue, t.remediation, t.learnMore ?? '', ref].map(esc).join(','));
+        rows.push([label, t.setting, t.checkId, t.severity, t.effort ?? 'medium', t.category, t.section, t.currentValue, t.recommendedValue, t.remediation, (t.references && t.references.length > 0 ? t.references[0].url : ''), ref].map(esc).join(','));
       });
     });
     return rows.join('\r\n');
@@ -2830,7 +2839,27 @@ function Roadmap({
       className: "task-field-label"
     }, "Business rationale"), /*#__PURE__*/React.createElement("div", {
       className: "task-field-value"
-    }, t.rationale)), /*#__PURE__*/React.createElement("div", {
+    }, t.rationale)), t.references && t.references.length > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "task-field"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "task-field-label"
+    }, "Learn more"), /*#__PURE__*/React.createElement("div", {
+      className: "task-field-value",
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px'
+      }
+    }, t.references.map((r, i) => /*#__PURE__*/React.createElement("a", {
+      key: i,
+      href: r.url,
+      target: "_blank",
+      rel: "noreferrer noopener",
+      style: {
+        color: 'var(--accent-text)',
+        textDecoration: 'none'
+      }
+    }, "📖 ", r.title, " \u2197")))), /*#__PURE__*/React.createElement("div", {
       className: "task-meta-row"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Section:"), " ", t.section), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Severity:"), " ", SEV_LABEL[t.severity]), t.effort && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Effort:"), " ", t.effort), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Frameworks:"), " ", t.frameworks.join(', ') || '—')), /*#__PURE__*/React.createElement("div", {
       className: "task-actions"
@@ -2840,11 +2869,7 @@ function Roadmap({
         e.preventDefault();
         onViewFinding?.(t.checkId);
       }
-    }, "View in findings table \u2192"), t.learnMore && /*#__PURE__*/React.createElement("a", {
-      href: t.learnMore,
-      target: "_blank",
-      rel: "noreferrer noopener"
-    }, "Learn more on Microsoft Docs \u2197"))));
+    }, "View in findings table \u2192"))));
   };
   const LaneReset = ({
     laneItems
