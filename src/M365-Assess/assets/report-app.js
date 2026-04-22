@@ -574,7 +574,22 @@ function Topbar({
   onReset,
   hiddenCount
 }) {
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, editMode && /*#__PURE__*/React.createElement("div", {
+    className: "edit-toolbar"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "edit-toolbar-badge"
+  }, "\u270E Edit Mode"), hiddenCount > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "edit-toolbar-info"
+  }, hiddenCount, " finding", hiddenCount === 1 ? '' : 's', " hidden"), /*#__PURE__*/React.createElement("button", {
+    className: "edit-toolbar-reset",
+    onClick: onReset
+  }, "\u21BA Reset all"), /*#__PURE__*/React.createElement("button", {
+    className: "edit-toolbar-finalize",
+    onClick: onFinalize
+  }, "\u2193 Finalize report"), /*#__PURE__*/React.createElement("button", {
+    className: "edit-toolbar-exit",
+    onClick: onEditToggle
+  }, "\u2715 Exit edit mode")), /*#__PURE__*/React.createElement("div", {
     className: "topbar"
   }, /*#__PURE__*/React.createElement("button", {
     className: "hamburger-btn",
@@ -625,22 +640,7 @@ function Topbar({
     className: "icon-btn",
     title: "Tweaks",
     onClick: onTweaks
-  }, /*#__PURE__*/React.createElement(Icon.sliders, null)))), editMode && /*#__PURE__*/React.createElement("div", {
-    className: "edit-toolbar"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "edit-toolbar-badge"
-  }, "\u270E Edit Mode"), hiddenCount > 0 && /*#__PURE__*/React.createElement("span", {
-    className: "edit-toolbar-info"
-  }, hiddenCount, " finding", hiddenCount === 1 ? '' : 's', " hidden"), /*#__PURE__*/React.createElement("button", {
-    className: "edit-toolbar-reset",
-    onClick: onReset
-  }, "\u21BA Reset all"), /*#__PURE__*/React.createElement("button", {
-    className: "edit-toolbar-finalize",
-    onClick: onFinalize
-  }, "\u2193 Finalize report"), /*#__PURE__*/React.createElement("button", {
-    className: "edit-toolbar-exit",
-    onClick: onEditToggle
-  }, "\u2715 Exit edit mode")));
+  }, /*#__PURE__*/React.createElement(Icon.sliders, null)))));
 }
 
 // ======================== Posture hero ========================

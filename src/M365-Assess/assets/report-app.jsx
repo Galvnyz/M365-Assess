@@ -264,6 +264,17 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
 function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, onTweaks, onHamburger, editMode, onEditToggle, onFinalize, onReset, hiddenCount }) {
   return (
     <>
+      {editMode && (
+        <div className="edit-toolbar">
+          <span className="edit-toolbar-badge">✎ Edit Mode</span>
+          {hiddenCount > 0 && (
+            <span className="edit-toolbar-info">{hiddenCount} finding{hiddenCount===1?'':'s'} hidden</span>
+          )}
+          <button className="edit-toolbar-reset" onClick={onReset}>↺ Reset all</button>
+          <button className="edit-toolbar-finalize" onClick={onFinalize}>↓ Finalize report</button>
+          <button className="edit-toolbar-exit" onClick={onEditToggle}>✕ Exit edit mode</button>
+        </div>
+      )}
       <div className="topbar">
         <button className="hamburger-btn" onClick={onHamburger} aria-label="Open navigation"><Icon.menu/></button>
         <div className="title">
@@ -293,17 +304,6 @@ function Topbar({ search, setSearch, mode, setMode, theme, setTheme, onPrint, on
           <button className="icon-btn" title="Tweaks" onClick={onTweaks}><Icon.sliders/></button>
         </div>
       </div>
-      {editMode && (
-        <div className="edit-toolbar">
-          <span className="edit-toolbar-badge">✎ Edit Mode</span>
-          {hiddenCount > 0 && (
-            <span className="edit-toolbar-info">{hiddenCount} finding{hiddenCount===1?'':'s'} hidden</span>
-          )}
-          <button className="edit-toolbar-reset" onClick={onReset}>↺ Reset all</button>
-          <button className="edit-toolbar-finalize" onClick={onFinalize}>↓ Finalize report</button>
-          <button className="edit-toolbar-exit" onClick={onEditToggle}>✕ Exit edit mode</button>
-        </div>
-      )}
     </>
   );
 }
