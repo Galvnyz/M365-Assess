@@ -3384,7 +3384,7 @@ function Appendix() {
       ...monoRight,
       color: 'var(--muted)'
     }
-  }, count))))), dnsTotal > 0 && /*#__PURE__*/React.createElement("div", {
+  }, count)))))), dnsTotal > 0 && /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
