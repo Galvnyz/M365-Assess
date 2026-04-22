@@ -118,6 +118,16 @@ const fmt = n => Number(n).toLocaleString();
 
 // ======================== Sidebar ========================
 function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onOverviewClick, navOpen, onClose }) {
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [domainNavOpen, setDomainNavOpen] = useState(false);
+  function toggleRoadmap(e) {
+    e.preventDefault(); e.stopPropagation();
+    setRoadmapOpen(o => !o);
+  }
+  function toggleDomainNav(e) {
+    e.preventDefault(); e.stopPropagation();
+    setDomainNavOpen(o => !o);
+  }
   const DOM_ORDER = ['Entra ID','Conditional Access','Enterprise Apps','Exchange Online','Intune','Defender','Purview / Compliance','SharePoint & OneDrive','Teams','Forms','Power BI','Active Directory','SOC 2','Value Opportunity'];
   const domains = DOM_ORDER.filter(d => domainCounts.total[d]).concat(
     Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort()
@@ -125,8 +135,8 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
   const exec = [
     { id: 'overview', label: 'Overview' },
     { id: 'posture',  label: 'Posture score' },
-    { id: 'identity', label: 'Domain posture' },
     { id: 'frameworks', label: 'Frameworks' },
+    { id: 'identity', label: 'Domain posture' },
   ];
   const details = [
     { id: 'findings', label: 'All findings', count: counts.total },
@@ -150,11 +160,34 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
         <nav style={{flex:1}}>
           <div className="nav-label">Executive</div>
           {exec.map(it => (
-            <a href={`#${it.id}`} key={it.id}
-               onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
-               className={'nav-item' + (active===it.id?' active':'')}>
-              <span>{it.label}</span>
-            </a>
+            <React.Fragment key={it.id}>
+              <a href={`#${it.id}`}
+                 onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
+                 className={'nav-item' + (active===it.id?' active':'')}>
+                <span>{it.label}</span>
+                {it.id === 'identity' && (
+                  <span className="nav-expand-icon" onClick={toggleDomainNav}>
+                    {domainNavOpen ? '\u2212' : '+'}
+                  </span>
+                )}
+              </a>
+              {it.id === 'identity' && domainNavOpen && (
+                <div className="nav-subitems">
+                  {FINDINGS.some(f => f.domain === 'Intune') && (
+                    <a href="#identity-intune" className="nav-subitem" onClick={closeIfMobile}>Intune coverage</a>
+                  )}
+                  {FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && (
+                    <a href="#identity-sharepoint" className="nav-subitem" onClick={closeIfMobile}>SharePoint &amp; OneDrive</a>
+                  )}
+                  {D.adHybrid && (
+                    <a href="#identity-ad" className="nav-subitem" onClick={closeIfMobile}>AD &amp; hybrid</a>
+                  )}
+                  {(D.dns || []).length > 0 && (
+                    <a href="#identity-email" className="nav-subitem" onClick={closeIfMobile}>Email auth</a>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
           ))}
           <div className="nav-label" style={{marginTop:14}}>Domains</div>
           {domains.map(d => {
@@ -177,11 +210,11 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
                  className={'nav-item' + (active===it.id && !(it.id==='findings' && activeDomain)?' active':'')}>
                 <span>{it.label}</span>
                 {it.id === 'roadmap'
-                  ? <span className="nav-expand-icon">{active === 'roadmap' ? '−' : '+'}</span>
+                  ? <span className="nav-expand-icon" onClick={toggleRoadmap}>{(roadmapOpen || active === 'roadmap') ? '\u2212' : '+'}</span>
                   : it.count !== undefined && <span className="count">{it.count}</span>
                 }
               </a>
-              {it.id === 'roadmap' && active === 'roadmap' && (
+              {it.id === 'roadmap' && (roadmapOpen || active === 'roadmap') && (
                 <div className="nav-subitems">
                   <a href="#roadmap-now"   className="nav-subitem">Now   <span className="count">{ROADMAP_COUNTS.now}</span></a>
                   <a href="#roadmap-next"  className="nav-subitem">Next  <span className="count">{ROADMAP_COUNTS.soon}</span></a>
@@ -758,47 +791,82 @@ function AdHybridPanel() {
 
 // ======================== Domain rollup ========================
 function DomainRollup({ onJump }) {
+  const [open, setOpen] = useState(true);
+
+  function toggleOpen(e) {
+    e.stopPropagation();
+    setOpen(o => !o);
+  }
+
   return (
     <section className="block" id="identity">
-      <div className="section-head">
-        <span className="eyebrow">01 · Domains</span>
-        <h2>Security posture by domain</h2>
+      <div className="section-head" style={{cursor:'pointer'}} onClick={toggleOpen}>
+        <span className="eyebrow">02 · Domains</span>
+        <h2>Security posture by domain <span className="section-chevron" aria-hidden="true">{open ? '\u25be' : '\u25b8'}</span></h2>
         <div className="hr"/>
       </div>
-      <div className="domain-grid">
-        {DOMAIN_ORDER.map(name => {
-          const d = DOMAIN_STATS[name];
-          if (!d) return null;
-          const total = d.total;
-          const score = Math.round(((d.pass + d.info*0.5) / total) * 100);
-          return (
-            <div key={name} className="domain-card" onClick={()=>onJump(name)}>
-              <div className="dc-head">
-                <div className="dc-name">{name}</div>
-                <div className="dc-score">{score}%</div>
-              </div>
-              <div className="dc-bar">
-                {d.pass>0 && <i className="pass-seg" style={{flex: d.pass}}/>}
-                {d.warn>0 && <i className="warn-seg" style={{flex: d.warn}}/>}
-                {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
-                {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
-                {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
-              </div>
-              <div className="dc-meta">
-                <span><b>{d.pass}</b> pass</span>
-                <span><b>{d.warn}</b> warn</span>
-                <span><b>{d.fail}</b> fail</span>
-                {d.review>0 && <span><b>{d.review}</b> review</span>}
-              </div>
+      {open && (
+        <>
+          <div className="domain-grid">
+            {DOMAIN_ORDER.map(name => {
+              const d = DOMAIN_STATS[name];
+              if (!d) return null;
+              const total = d.total;
+              const score = Math.round(((d.pass + d.info*0.5) / total) * 100);
+              return (
+                <div key={name} className="domain-card" onClick={()=>onJump(name)}>
+                  <div className="dc-head">
+                    <div className="dc-name">{name}</div>
+                    <div className="dc-score">{score}%</div>
+                  </div>
+                  <div className="dc-bar">
+                    {d.pass>0 && <i className="pass-seg" style={{flex: d.pass}}/>}
+                    {d.warn>0 && <i className="warn-seg" style={{flex: d.warn}}/>}
+                    {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
+                    {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
+                    {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
+                  </div>
+                  <div className="dc-meta">
+                    <span><b>{d.pass}</b> pass</span>
+                    <span><b>{d.warn}</b> warn</span>
+                    <span><b>{d.fail}</b> fail</span>
+                    {d.review>0 && <span><b>{d.review}</b> review</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {FINDINGS.some(f => f.domain === 'Intune') && (
+            <div id="identity-intune">
+              <div className="posture-sub-label">Intune coverage by category</div>
+              <IntuneCategoryGrid />
             </div>
-          );
-        })}
-      </div>
-      <IntuneCategoryGrid />
-      <MailboxSummaryPanel />
-      <SharePointSummaryPanel />
-      <AdHybridPanel />
-      <DnsAuthPanel />
+          )}
+          {D.mailboxSummary && (
+            <div id="identity-mailbox">
+              <MailboxSummaryPanel />
+            </div>
+          )}
+          {FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && (
+            <div id="identity-sharepoint">
+              <div className="posture-sub-label">SharePoint & OneDrive posture</div>
+              <SharePointSummaryPanel />
+            </div>
+          )}
+          {D.adHybrid && (
+            <div id="identity-ad">
+              <div className="posture-sub-label">Active Directory & hybrid posture</div>
+              <AdHybridPanel />
+            </div>
+          )}
+          {(D.dns || []).length > 0 && (
+            <div id="identity-email">
+              <div className="posture-sub-label">Email authentication posture</div>
+              <DnsAuthPanel />
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -881,7 +949,7 @@ function FrameworkQuilt({ onSelect, selected }) {
   return (
     <section className="block" id="frameworks">
       <div className="section-head">
-        <span className="eyebrow">02 · Compliance</span>
+        <span className="eyebrow">01 · Compliance</span>
         <h2>Framework coverage</h2>
         <div ref={pickerRef} style={{position:'relative', marginLeft:12, flexShrink:0}}>
           <button className={'chip chip-more' + (visibleFws.length > 1 ? ' selected' : '')}
@@ -1793,6 +1861,37 @@ function Overview() {
 
 // ======================== Appendix ========================
 function Appendix() {
+  const mfaTotal = MFA_STATS.total || 1;
+  const mfaPct = n => Math.round((n / mfaTotal) * 100);
+
+  const ca       = D.ca       || [];
+  const licenses = D.licenses || [];
+  const dns = D.dns || [];
+  const dnsTotal = dns.length;
+  const spfPass  = dns.filter(r => r.SPF === 'Pass').length;
+  const dkimPass = dns.filter(r => r.DKIMStatus === 'Pass' || r.DKIM === 'Pass').length;
+  const dmarcEnf = dns.filter(r => r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine').length;
+
+  const allRoles = D['admin-roles'] || [];
+  const roleCounts = allRoles.reduce((acc, r) => {
+    acc[r.RoleName] = (acc[r.RoleName] || 0) + 1;
+    return acc;
+  }, {});
+  const roleEntries = Object.entries(roleCounts).sort((a,b) => b[1] - a[1]);
+
+  const ad = D.adHybrid;
+  const phsLabel = ad
+    ? (ad.pwHashSync === true ? 'Enabled' : ad.pwHashSync === null || ad.pwHashSync === undefined ? 'Verify' : 'Disabled')
+    : null;
+  const phsColor = ad
+    ? (ad.pwHashSync === true ? 'var(--success-text)' : ad.pwHashSync === null || ad.pwHashSync === undefined ? 'var(--warn-text)' : 'var(--danger-text)')
+    : 'var(--muted)';
+
+  const labelStyle = {fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10};
+  const rowStyle   = {borderTop:'1px solid var(--border)'};
+  const cellStyle  = {padding:'6px 0', fontSize:12};
+  const monoRight  = {textAlign:'right',fontFamily:'var(--font-mono)',fontVariantNumeric:'tabular-nums'};
+
   return (
     <section className="block" id="appendix">
       <div className="section-head">
@@ -1800,49 +1899,154 @@ function Appendix() {
         <h2>Tenant appendix</h2>
         <div className="hr"/>
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
+
+      <div className="card" style={{marginBottom:14}}>
+        <div style={labelStyle}>Tenant</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px 24px',fontSize:12}}>
+          <span><span style={{color:'var(--muted)'}}>org</span> <b>{TENANT.OrgDisplayName}</b></span>
+          <span><span style={{color:'var(--muted)'}}>domain</span> <b>{TENANT.DefaultDomain}</b></span>
+          <span><span style={{color:'var(--muted)'}}>id</span> <span style={{fontFamily:'var(--font-mono)'}}>{TENANT.TenantId}</span></span>
+          {TENANT.tenantAgeYears != null && (
+            <span><span style={{color:'var(--muted)'}}>age</span> <b>{TENANT.tenantAgeYears} yrs</b></span>
+          )}
+          {TENANT.CreatedDateTime && (
+            <span><span style={{color:'var(--muted)'}}>created</span> <b>{TENANT.CreatedDateTime.slice(0,10)}</b></span>
+          )}
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
         <div className="card">
-          <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Licenses</div>
+          <div style={labelStyle}>Licenses</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
             <thead><tr style={{textAlign:'left',color:'var(--muted)'}}><th style={{padding:'6px 0'}}>SKU</th><th style={{textAlign:'right'}}>Assigned</th><th style={{textAlign:'right'}}>Total</th></tr></thead>
             <tbody>
-              {D.licenses.filter(l => parseInt(l.Assigned) > 0).map((l,i)=>(
-                <tr key={i} style={{borderTop:'1px solid var(--border)'}}>
-                  <td style={{padding:'6px 0'}}>{l.License}</td>
-                  <td style={{textAlign:'right',fontFamily:'var(--font-mono)',fontVariantNumeric:'tabular-nums'}}>{l.Assigned}</td>
-                  <td style={{textAlign:'right',fontFamily:'var(--font-mono)',fontVariantNumeric:'tabular-nums',color:'var(--muted)'}}>{l.Total}</td>
+              {licenses.filter(l => parseInt(l.Assigned) > 0).map((l,i)=>(
+                <tr key={i} style={rowStyle}>
+                  <td style={cellStyle}>{l.License}</td>
+                  <td style={{...cellStyle,...monoRight}}>{l.Assigned}</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--muted)'}}>{l.Total}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
         <div className="card">
-          <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Conditional Access policies</div>
+          <div style={labelStyle}>MFA coverage ({fmt(mfaTotal)} users)</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
             <tbody>
-              {D.ca.map((r,i)=>(
-                <tr key={i} style={{borderTop:'1px solid var(--border)'}}>
-                  <td style={{padding:'6px 0'}}>{r.DisplayName}</td>
-                  <td style={{textAlign:'right'}}><StatusDot ok={r.State === 'enabled'} warn={r.State?.includes('Report')}/></td>
-                  <td style={{textAlign:'right',fontSize:12,color:'var(--muted)'}}>{r.State}</td>
+              {MFA_STATS.phishResistant > 0 && (
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>Phish-resistant</td>
+                  <td style={{...cellStyle,...monoRight}}>{fmt(MFA_STATS.phishResistant)}</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--success-text)'}}>{mfaPct(MFA_STATS.phishResistant)}%</td>
+                </tr>
+              )}
+              {MFA_STATS.standard > 0 && (
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>Standard MFA</td>
+                  <td style={{...cellStyle,...monoRight}}>{fmt(MFA_STATS.standard)}</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--text-soft)'}}>{mfaPct(MFA_STATS.standard)}%</td>
+                </tr>
+              )}
+              {MFA_STATS.weak > 0 && (
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>Weak (SMS/voice)</td>
+                  <td style={{...cellStyle,...monoRight}}>{fmt(MFA_STATS.weak)}</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--warn-text)'}}>{mfaPct(MFA_STATS.weak)}%</td>
+                </tr>
+              )}
+              <tr style={rowStyle}>
+                <td style={cellStyle}>No MFA</td>
+                <td style={{...cellStyle,...monoRight}}>{fmt(MFA_STATS.none)}</td>
+                <td style={{...cellStyle,...monoRight,color:MFA_STATS.none>0?'var(--danger-text)':'var(--muted)'}}>{mfaPct(MFA_STATS.none)}%</td>
+              </tr>
+              {MFA_STATS.adminsWithoutMfa > 0 && (
+                <tr style={rowStyle}>
+                  <td style={{...cellStyle,color:'var(--danger-text)',fontWeight:600}}>Admins without MFA</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--danger-text)',fontWeight:600}}>{fmt(MFA_STATS.adminsWithoutMfa)}</td>
+                  <td style={cellStyle}/>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="card">
+          <div style={labelStyle}>Conditional Access policies ({ca.length})</div>
+          <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
+            <tbody>
+              {ca.map((r,i)=>(
+                <tr key={i} style={rowStyle}>
+                  <td style={cellStyle}>{r.DisplayName}</td>
+                  <td style={{textAlign:'right',paddingRight:6}}><StatusDot ok={r.State==='enabled'} warn={r.State?.includes('Report')}/></td>
+                  <td style={{...cellStyle,textAlign:'right',color:'var(--muted)'}}>{r.State}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
         <div className="card">
-          <div style={{fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:10}}>Global administrators</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-            {D['admin-roles'].filter(r=>r.RoleName==='Global Administrator').map((r,i)=>(
-              <span key={i} className="fw-pill" style={{fontSize:12,padding:'4px 8px'}}>
-                {r.MemberDisplayName}
-              </span>
-            ))}
-          </div>
-          <div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>
-            {D['admin-roles'].filter(r=>r.RoleName==='Global Administrator').length} Global Administrators detected (including break-glass).
-          </div>
+          <div style={labelStyle}>Privileged roles ({allRoles.length} assignments)</div>
+          <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
+            <tbody>
+              {roleEntries.map(([role, count], i) => (
+                <tr key={i} style={rowStyle}>
+                  <td style={cellStyle}>{role}</td>
+                  <td style={{...cellStyle,...monoRight,color:'var(--muted)'}}>{count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {dnsTotal > 0 && (
+          <div className="card">
+            <div style={labelStyle}>Email authentication ({dnsTotal} domain{dnsTotal!==1?'s':''})</div>
+            <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
+              <tbody>
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>SPF passing</td>
+                  <td style={{...cellStyle,...monoRight,color:spfPass===dnsTotal?'var(--success-text)':spfPass>0?'var(--warn-text)':'var(--danger-text)'}}>{spfPass}/{dnsTotal}</td>
+                </tr>
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>DKIM passing</td>
+                  <td style={{...cellStyle,...monoRight,color:dkimPass===dnsTotal?'var(--success-text)':dkimPass>0?'var(--warn-text)':'var(--danger-text)'}}>{dkimPass}/{dnsTotal}</td>
+                </tr>
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>DMARC enforced</td>
+                  <td style={{...cellStyle,...monoRight,color:dmarcEnf===dnsTotal?'var(--success-text)':dmarcEnf>0?'var(--warn-text)':'var(--danger-text)'}}>{dmarcEnf}/{dnsTotal}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {ad && (
+          <div className="card">
+            <div style={labelStyle}>Hybrid sync</div>
+            <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
+              <tbody>
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>Sync type</td>
+                  <td style={{...cellStyle,textAlign:'right'}}>{ad.syncType || 'Cloud-only'}</td>
+                </tr>
+                <tr style={rowStyle}>
+                  <td style={cellStyle}>Password hash sync</td>
+                  <td style={{...cellStyle,textAlign:'right',color:phsColor,fontWeight:600}}>{phsLabel}</td>
+                </tr>
+                {ad.lastSync && (
+                  <tr style={rowStyle}>
+                    <td style={cellStyle}>Last sync</td>
+                    <td style={{...cellStyle,textAlign:'right',fontFamily:'var(--font-mono)'}}>{String(ad.lastSync).slice(0,19).replace('T',' ')}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -2043,8 +2247,8 @@ function App() {
         />
         <Overview/>
         <Posture/>
-        <DomainRollup onJump={onDomainJump}/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]}/>
+        <DomainRollup onJump={onDomainJump}/>
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch}/>

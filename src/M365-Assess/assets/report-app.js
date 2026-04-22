@@ -330,6 +330,16 @@ function Sidebar({
   navOpen,
   onClose
 }) {
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [domainNavOpen, setDomainNavOpen] = useState(false);
+  function toggleRoadmap(e) {
+    e.preventDefault(); e.stopPropagation();
+    setRoadmapOpen(o => !o);
+  }
+  function toggleDomainNav(e) {
+    e.preventDefault(); e.stopPropagation();
+    setDomainNavOpen(o => !o);
+  }
   const DOM_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity'];
   const domains = DOM_ORDER.filter(d => domainCounts.total[d]).concat(Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort());
   const exec = [{
@@ -339,11 +349,11 @@ function Sidebar({
     id: 'posture',
     label: 'Posture score'
   }, {
-    id: 'identity',
-    label: 'Domain posture'
-  }, {
     id: 'frameworks',
     label: 'Frameworks'
+  }, {
+    id: 'identity',
+    label: 'Domain posture'
   }];
   const details = [{
     id: 'findings',
@@ -383,9 +393,10 @@ function Sidebar({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "nav-label"
-  }, "Executive"), exec.map(it => /*#__PURE__*/React.createElement("a", {
+  }, "Executive"), exec.map(it => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: it.id
+  }, /*#__PURE__*/React.createElement("a", {
     href: `#${it.id}`,
-    key: it.id,
     onClick: e => {
       if (it.id === 'overview') {
         e.preventDefault();
@@ -394,7 +405,28 @@ function Sidebar({
       closeIfMobile();
     },
     className: 'nav-item' + (active === it.id ? ' active' : '')
-  }, /*#__PURE__*/React.createElement("span", null, it.label))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, it.label), it.id === 'identity' && /*#__PURE__*/React.createElement("span", {
+    className: "nav-expand-icon",
+    onClick: toggleDomainNav
+  }, domainNavOpen ? '\u2212' : '+')), it.id === 'identity' && domainNavOpen && /*#__PURE__*/React.createElement("div", {
+    className: "nav-subitems"
+  }, FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-intune",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "Intune coverage"), FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-sharepoint",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "SharePoint & OneDrive"), D.adHybrid && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-ad",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "AD & hybrid"), (D.dns || []).length > 0 && /*#__PURE__*/React.createElement("a", {
+    href: "#identity-email",
+    className: "nav-subitem",
+    onClick: closeIfMobile
+  }, "Email auth")))), /*#__PURE__*/React.createElement("div", {
     className: "nav-label",
     style: {
       marginTop: 14
@@ -429,10 +461,11 @@ function Sidebar({
     },
     className: 'nav-item' + (active === it.id && !(it.id === 'findings' && activeDomain) ? ' active' : '')
   }, /*#__PURE__*/React.createElement("span", null, it.label), it.id === 'roadmap' ? /*#__PURE__*/React.createElement("span", {
-    className: "nav-expand-icon"
-  }, active === 'roadmap' ? '−' : '+') : it.count !== undefined && /*#__PURE__*/React.createElement("span", {
+    className: "nav-expand-icon",
+    onClick: toggleRoadmap
+  }, (roadmapOpen || active === 'roadmap') ? '\u2212' : '+') : it.count !== undefined && /*#__PURE__*/React.createElement("span", {
     className: "count"
-  }, it.count)), it.id === 'roadmap' && active === 'roadmap' && /*#__PURE__*/React.createElement("div", {
+  }, it.count)), it.id === 'roadmap' && (roadmapOpen || active === 'roadmap') && /*#__PURE__*/React.createElement("div", {
     className: "nav-subitems"
   }, /*#__PURE__*/React.createElement("a", {
     href: "#roadmap-now",
@@ -1442,16 +1475,28 @@ function AdHybridPanel() {
 function DomainRollup({
   onJump
 }) {
+  const [open, setOpen] = useState(true);
+  function toggleOpen(e) {
+    e.stopPropagation();
+    setOpen(o => !o);
+  }
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "identity"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "section-head"
+    className: "section-head",
+    style: {
+      cursor: 'pointer'
+    },
+    onClick: toggleOpen
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01 \xB7 Domains"), /*#__PURE__*/React.createElement("h2", null, "Security posture by domain"), /*#__PURE__*/React.createElement("div", {
+  }, "02 \xB7 Domains"), /*#__PURE__*/React.createElement("h2", null, "Security posture by domain ", /*#__PURE__*/React.createElement("span", {
+    className: "section-chevron",
+    "aria-hidden": "true"
+  }, open ? '\u25be' : '\u25b8')), /*#__PURE__*/React.createElement("div", {
     className: "hr"
-  })), /*#__PURE__*/React.createElement("div", {
+  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "domain-grid"
   }, DOMAIN_ORDER.map(name => {
     const d = DOMAIN_STATS[name];
@@ -1498,7 +1543,25 @@ function DomainRollup({
     })), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.review), " review")));
-  })), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null), /*#__PURE__*/React.createElement(MailboxSummaryPanel, null), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null), /*#__PURE__*/React.createElement(AdHybridPanel, null), /*#__PURE__*/React.createElement(DnsAuthPanel, null));
+  })), FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("div", {
+    id: "identity-intune"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "posture-sub-label"
+  }, "Intune coverage by category"), /*#__PURE__*/React.createElement(IntuneCategoryGrid, null)), D.mailboxSummary && /*#__PURE__*/React.createElement("div", {
+    id: "identity-mailbox"
+  }, /*#__PURE__*/React.createElement(MailboxSummaryPanel, null)), FINDINGS.some(f => f.domain === 'SharePoint & OneDrive') && /*#__PURE__*/React.createElement("div", {
+    id: "identity-sharepoint"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "posture-sub-label"
+  }, "SharePoint & OneDrive posture"), /*#__PURE__*/React.createElement(SharePointSummaryPanel, null)), D.adHybrid && /*#__PURE__*/React.createElement("div", {
+    id: "identity-ad"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "posture-sub-label"
+  }, "Active Directory & hybrid posture"), /*#__PURE__*/React.createElement(AdHybridPanel, null)), (D.dns || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    id: "identity-email"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "posture-sub-label"
+  }, "Email authentication posture"), /*#__PURE__*/React.createElement(DnsAuthPanel, null))));
 }
 
 // ======================== Framework quilt ========================
@@ -1603,7 +1666,7 @@ function FrameworkQuilt({
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "02 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("div", {
+  }, "01 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("div", {
     ref: pickerRef,
     style: {
       position: 'relative',
@@ -3039,6 +3102,44 @@ function Overview() {
 
 // ======================== Appendix ========================
 function Appendix() {
+  const mfaTotal = MFA_STATS.total || 1;
+  const mfaPct = n => Math.round(n / mfaTotal * 100);
+  const ca = D.ca || [];
+  const licenses = D.licenses || [];
+  const dns = D.dns || [];
+  const dnsTotal = dns.length;
+  const spfPass = dns.filter(r => r.SPF === 'Pass').length;
+  const dkimPass = dns.filter(r => r.DKIMStatus === 'Pass' || r.DKIM === 'Pass').length;
+  const dmarcEnf = dns.filter(r => r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine').length;
+  const allRoles = D['admin-roles'] || [];
+  const roleCounts = allRoles.reduce((acc, r) => {
+    acc[r.RoleName] = (acc[r.RoleName] || 0) + 1;
+    return acc;
+  }, {});
+  const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+  const ad = D.adHybrid;
+  const phsLabel = ad ? ad.pwHashSync === true ? 'Enabled' : ad.pwHashSync === null || ad.pwHashSync === undefined ? 'Verify' : 'Disabled' : null;
+  const phsColor = ad ? ad.pwHashSync === true ? 'var(--success-text)' : ad.pwHashSync === null || ad.pwHashSync === undefined ? 'var(--warn-text)' : 'var(--danger-text)' : 'var(--muted)';
+  const labelStyle = {
+    fontSize: 12,
+    color: 'var(--muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '.08em',
+    fontWeight: 600,
+    marginBottom: 10
+  };
+  const rowStyle = {
+    borderTop: '1px solid var(--border)'
+  };
+  const cellStyle = {
+    padding: '6px 0',
+    fontSize: 12
+  };
+  const monoRight = {
+    textAlign: 'right',
+    fontFamily: 'var(--font-mono)',
+    fontVariantNumeric: 'tabular-nums'
+  };
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "appendix"
@@ -3049,6 +3150,44 @@ function Appendix() {
   }, "05 \xB7 Reference"), /*#__PURE__*/React.createElement("h2", null, "Tenant appendix"), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: labelStyle
+  }, "Tenant"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '6px 24px',
+      fontSize: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--muted)'
+    }
+  }, "org"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--muted)'
+    }
+  }, "domain"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.DefaultDomain)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--muted)'
+    }
+  }, "id"), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--font-mono)'
+    }
+  }, TENANT.TenantId)), TENANT.tenantAgeYears != null && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--muted)'
+    }
+  }, "age"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.tenantAgeYears, " yrs")), TENANT.CreatedDateTime && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--muted)'
+    }
+  }, "created"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.CreatedDateTime.slice(0, 10))))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
@@ -3057,14 +3196,7 @@ function Appendix() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: 'var(--muted)',
-      textTransform: 'uppercase',
-      letterSpacing: '.08em',
-      fontWeight: 600,
-      marginBottom: 10
-    }
+    style: labelStyle
   }, "Licenses"), /*#__PURE__*/React.createElement("table", {
     style: {
       width: '100%',
@@ -3088,98 +3220,220 @@ function Appendix() {
     style: {
       textAlign: 'right'
     }
-  }, "Total"))), /*#__PURE__*/React.createElement("tbody", null, D.licenses.filter(l => parseInt(l.Assigned) > 0).map((l, i) => /*#__PURE__*/React.createElement("tr", {
+  }, "Total"))), /*#__PURE__*/React.createElement("tbody", null, licenses.filter(l => parseInt(l.Assigned) > 0).map((l, i) => /*#__PURE__*/React.createElement("tr", {
     key: i,
-    style: {
-      borderTop: '1px solid var(--border)'
-    }
+    style: rowStyle
   }, /*#__PURE__*/React.createElement("td", {
-    style: {
-      padding: '6px 0'
-    }
+    style: cellStyle
   }, l.License), /*#__PURE__*/React.createElement("td", {
-    style: {
-      textAlign: 'right',
-      fontFamily: 'var(--font-mono)',
-      fontVariantNumeric: 'tabular-nums'
+    style: { ...cellStyle,
+      ...monoRight
     }
   }, l.Assigned), /*#__PURE__*/React.createElement("td", {
-    style: {
-      textAlign: 'right',
-      fontFamily: 'var(--font-mono)',
-      fontVariantNumeric: 'tabular-nums',
+    style: { ...cellStyle,
+      ...monoRight,
       color: 'var(--muted)'
     }
   }, l.Total)))))), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: 'var(--muted)',
-      textTransform: 'uppercase',
-      letterSpacing: '.08em',
-      fontWeight: 600,
-      marginBottom: 10
-    }
-  }, "Conditional Access policies"), /*#__PURE__*/React.createElement("table", {
+    style: labelStyle
+  }, "MFA coverage (", fmt(mfaTotal), " users)"), /*#__PURE__*/React.createElement("table", {
     style: {
       width: '100%',
       fontSize: 12,
       borderCollapse: 'collapse'
     }
-  }, /*#__PURE__*/React.createElement("tbody", null, D.ca.map((r, i) => /*#__PURE__*/React.createElement("tr", {
-    key: i,
-    style: {
-      borderTop: '1px solid var(--border)'
-    }
+  }, /*#__PURE__*/React.createElement("tbody", null, MFA_STATS.phishResistant > 0 && /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
   }, /*#__PURE__*/React.createElement("td", {
-    style: {
-      padding: '6px 0'
+    style: cellStyle
+  }, "Phish-resistant"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight
     }
+  }, fmt(MFA_STATS.phishResistant)), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: 'var(--success-text)'
+    }
+  }, mfaPct(MFA_STATS.phishResistant), "%")), MFA_STATS.standard > 0 && /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "Standard MFA"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight
+    }
+  }, fmt(MFA_STATS.standard)), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: 'var(--text-soft)'
+    }
+  }, mfaPct(MFA_STATS.standard), "%")), MFA_STATS.weak > 0 && /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "Weak (SMS/voice)"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight
+    }
+  }, fmt(MFA_STATS.weak)), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: 'var(--warn-text)'
+    }
+  }, mfaPct(MFA_STATS.weak), "%")), /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "No MFA"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight
+    }
+  }, fmt(MFA_STATS.none)), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: MFA_STATS.none > 0 ? 'var(--danger-text)' : 'var(--muted)'
+    }
+  }, mfaPct(MFA_STATS.none), "%")), MFA_STATS.adminsWithoutMfa > 0 && /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      color: 'var(--danger-text)',
+      fontWeight: 600
+    }
+  }, "Admins without MFA"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: 'var(--danger-text)',
+      fontWeight: 600
+    }
+  }, fmt(MFA_STATS.adminsWithoutMfa)), /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }))))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: labelStyle
+  }, "Conditional Access policies (", ca.length, ")"), /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: '100%',
+      fontSize: 12,
+      borderCollapse: 'collapse'
+    }
+  }, /*#__PURE__*/React.createElement("tbody", null, ca.map((r, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i,
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
   }, r.DisplayName), /*#__PURE__*/React.createElement("td", {
     style: {
-      textAlign: 'right'
+      textAlign: 'right',
+      paddingRight: 6
     }
   }, /*#__PURE__*/React.createElement(StatusDot, {
     ok: r.State === 'enabled',
     warn: r.State?.includes('Report')
   })), /*#__PURE__*/React.createElement("td", {
-    style: {
+    style: { ...cellStyle,
       textAlign: 'right',
-      fontSize: 12,
       color: 'var(--muted)'
     }
   }, r.State)))))), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
+    style: labelStyle
+  }, "Privileged roles (", allRoles.length, " assignments)"), /*#__PURE__*/React.createElement("table", {
     style: {
+      width: '100%',
       fontSize: 12,
-      color: 'var(--muted)',
-      textTransform: 'uppercase',
-      letterSpacing: '.08em',
-      fontWeight: 600,
-      marginBottom: 10
+      borderCollapse: 'collapse'
     }
-  }, "Global administrators"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 6
-    }
-  }, D['admin-roles'].filter(r => r.RoleName === 'Global Administrator').map((r, i) => /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("tbody", null, roleEntries.map(([role, count], i) => /*#__PURE__*/React.createElement("tr", {
     key: i,
-    className: "fw-pill",
-    style: {
-      fontSize: 12,
-      padding: '4px 8px'
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, role), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: 'var(--muted)'
     }
-  }, r.MemberDisplayName))), /*#__PURE__*/React.createElement("div", {
+  }, count))))), dnsTotal > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: labelStyle
+  }, "Email authentication (", dnsTotal, " domain", dnsTotal !== 1 ? 's' : '', ")"), /*#__PURE__*/React.createElement("table", {
     style: {
+      width: '100%',
       fontSize: 12,
-      color: 'var(--muted)',
-      marginTop: 8
+      borderCollapse: 'collapse'
     }
-  }, D['admin-roles'].filter(r => r.RoleName === 'Global Administrator').length, " Global Administrators detected (including break-glass)."))));
+  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "SPF passing"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: spfPass === dnsTotal ? 'var(--success-text)' : spfPass > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
+    }
+  }, spfPass, "/", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "DKIM passing"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: dkimPass === dnsTotal ? 'var(--success-text)' : dkimPass > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
+    }
+  }, dkimPass, "/", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "DMARC enforced"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      ...monoRight,
+      color: dmarcEnf === dnsTotal ? 'var(--success-text)' : dmarcEnf > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
+    }
+  }, dmarcEnf, "/", dnsTotal))))), ad && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: labelStyle
+  }, "Hybrid sync"), /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: '100%',
+      fontSize: 12,
+      borderCollapse: 'collapse'
+    }
+  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "Sync type"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      textAlign: 'right'
+    }
+  }, ad.syncType || 'Cloud-only')), /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "Password hash sync"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      textAlign: 'right',
+      color: phsColor,
+      fontWeight: 600
+    }
+  }, phsLabel)), ad.lastSync && /*#__PURE__*/React.createElement("tr", {
+    style: rowStyle
+  }, /*#__PURE__*/React.createElement("td", {
+    style: cellStyle
+  }, "Last sync"), /*#__PURE__*/React.createElement("td", {
+    style: { ...cellStyle,
+      textAlign: 'right',
+      fontFamily: 'var(--font-mono)'
+    }
+  }, String(ad.lastSync).slice(0, 19).replace('T', ' '))))))));
 }
 function StatusDot({
   ok,
@@ -3488,11 +3742,11 @@ function App() {
     onFinalize: handleFinalize,
     onReset: handleResetAll,
     hiddenCount: hiddenFindings.size
-  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(DomainRollup, {
-    onJump: onDomainJump
-  }), /*#__PURE__*/React.createElement(FrameworkQuilt, {
+  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {
     onSelect: onFrameworkSelect,
     selected: filters.framework[0]
+  }), /*#__PURE__*/React.createElement(DomainRollup, {
+    onJump: onDomainJump
   }), /*#__PURE__*/React.createElement("div", {
     id: "findings-anchor"
   }), /*#__PURE__*/React.createElement("div", {
