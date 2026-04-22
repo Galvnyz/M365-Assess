@@ -813,13 +813,19 @@ mark.search-hl {
 .domain-card .dc-bar .fail-seg { background: var(--danger); }
 .domain-card .dc-bar .review-seg { background: var(--accent); }
 .domain-card .dc-bar .info-seg { background: var(--muted); opacity: 0.3; }
+.domain-card .dc-bar .skipped-seg { background: var(--muted); opacity: 0.45; }
 .domain-card .dc-meta {
   margin-top: 8px;
-  display: flex; gap: 10px;
+  display: flex; gap: 10px; flex-wrap: wrap;
   font-size: 12px; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.domain-card .dc-meta span b { color: var(--text); font-weight: 600; }
+.domain-card .dc-meta span b { font-weight: 700; }
+.domain-card .dc-meta .dc-pass    b { color: var(--success-text, var(--success)); }
+.domain-card .dc-meta .dc-warn    b { color: var(--warn-text,    var(--warn));    }
+.domain-card .dc-meta .dc-fail    b { color: var(--danger-text,  var(--danger));  }
+.domain-card .dc-meta .dc-review  b { color: var(--accent-text,  var(--accent));  }
+.domain-card .dc-meta .dc-skipped b { color: var(--text-soft); opacity: .85; }
 
 /* ---------- Roadmap ---------- */
 .roadmap {
@@ -1213,6 +1219,7 @@ mark.search-hl {
 .fw-seg.fail   { background: var(--danger); }
 .fw-seg.review { background: var(--accent); opacity: 0.7; }
 .fw-seg.info   { background: var(--muted); opacity: 0.4; }
+.fw-seg.skipped{ background: var(--muted); opacity: 0.45; }
 .fw-seg.empty  { background: var(--border); }
 .quilt-cell .fw-stat {
   display: flex; gap: 10px;

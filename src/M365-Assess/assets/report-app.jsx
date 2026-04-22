@@ -841,12 +841,20 @@ function DomainRollup({ onJump }) {
                     {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
                     {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
                     {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
+                    {(() => {
+                      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+                      return skipped > 0 ? <i className="skipped-seg" style={{flex: skipped}}/> : null;
+                    })()}
                   </div>
                   <div className="dc-meta">
-                    <span><b>{d.pass}</b> pass</span>
-                    <span><b>{d.warn}</b> warn</span>
-                    <span><b>{d.fail}</b> fail</span>
-                    {d.review>0 && <span><b>{d.review}</b> review</span>}
+                    <span className="dc-pass"><b>{d.pass}</b> pass</span>
+                    <span className="dc-warn"><b>{d.warn}</b> warn</span>
+                    <span className="dc-fail"><b>{d.fail}</b> fail</span>
+                    {d.review>0 && <span className="dc-review"><b>{d.review}</b> review</span>}
+                    {(() => {
+                      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+                      return skipped > 0 ? <span className="dc-skipped" title="Skipped — prerequisite unmet or not assessable"><b>{skipped}</b> skipped</span> : null;
+                    })()}
                   </div>
                 </div>
               );
@@ -1002,12 +1010,16 @@ function FrameworkQuilt({ onSelect, selected }) {
                  onClick={() => handleCardClick(f.id)}>
               <div className="fw-name">{f.id}</div>
               <div className="fw-long">{f.full}</div>
-              <div className="fw-bar">
+              <div className="fw-bar" title="Pass (green) / Warn (amber) / Fail (red) / Review (accent) / Skipped (grey, prerequisite unmet)">
                 {d.pass>0   && <div className="fw-seg pass"   style={{flex:d.pass}}/>}
                 {d.warn>0   && <div className="fw-seg warn"   style={{flex:d.warn}}/>}
                 {d.fail>0   && <div className="fw-seg fail"   style={{flex:d.fail}}/>}
                 {d.review>0 && <div className="fw-seg review" style={{flex:d.review}}/>}
                 {d.info>0   && <div className="fw-seg info"   style={{flex:d.info}}/>}
+                {(() => {
+                  const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+                  return skipped > 0 ? <div className="fw-seg skipped" style={{flex:skipped}}/> : null;
+                })()}
                 {d.total===0 && <div className="fw-seg empty" style={{flex:1}}/>}
               </div>
               <div className="fw-stat">

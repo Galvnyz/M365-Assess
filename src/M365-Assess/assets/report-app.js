@@ -1566,9 +1566,31 @@ function DomainRollup({
       style: {
         flex: d.info
       }
-    })), /*#__PURE__*/React.createElement("div", {
+    }), (() => {
+      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+      return skipped > 0 ? /*#__PURE__*/React.createElement("i", {
+        className: "skipped-seg",
+        style: {
+          flex: skipped
+        }
+      }) : null;
+    })()), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
-    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.review), " review")));
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "dc-pass"
+    }, /*#__PURE__*/React.createElement("b", null, d.pass), " pass"), /*#__PURE__*/React.createElement("span", {
+      className: "dc-warn"
+    }, /*#__PURE__*/React.createElement("b", null, d.warn), " warn"), /*#__PURE__*/React.createElement("span", {
+      className: "dc-fail"
+    }, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "dc-review"
+    }, /*#__PURE__*/React.createElement("b", null, d.review), " review"), (() => {
+      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+      return skipped > 0 ? /*#__PURE__*/React.createElement("span", {
+        className: "dc-skipped",
+        title: "Skipped \u2014 prerequisite unmet or not assessable"
+      }, /*#__PURE__*/React.createElement("b", null, skipped), " skipped") : null;
+    })()));
   })), FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("div", {
     id: "identity-intune"
   }, /*#__PURE__*/React.createElement(IntuneCategoryGrid, null)), D.mailboxSummary && /*#__PURE__*/React.createElement("div", {
@@ -1764,7 +1786,8 @@ function FrameworkQuilt({
     }, f.id), /*#__PURE__*/React.createElement("div", {
       className: "fw-long"
     }, f.full), /*#__PURE__*/React.createElement("div", {
-      className: "fw-bar"
+      className: "fw-bar",
+      title: "Pass (green) / Warn (amber) / Fail (red) / Review (accent) / Skipped (grey, prerequisite unmet)"
     }, d.pass > 0 && /*#__PURE__*/React.createElement("div", {
       className: "fw-seg pass",
       style: {
@@ -1790,7 +1813,15 @@ function FrameworkQuilt({
       style: {
         flex: d.info
       }
-    }), d.total === 0 && /*#__PURE__*/React.createElement("div", {
+    }), (() => {
+      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+      return skipped > 0 ? /*#__PURE__*/React.createElement("div", {
+        className: "fw-seg skipped",
+        style: {
+          flex: skipped
+        }
+      }) : null;
+    })(), d.total === 0 && /*#__PURE__*/React.createElement("div", {
       className: "fw-seg empty",
       style: {
         flex: 1
