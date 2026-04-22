@@ -359,7 +359,7 @@ function Posture() {
             <span>100</span>
           </div>
           <Sparkline scores={D.score} avg={avg} />
-          {(SCORE.MicrosoftScore != null && SCORE.CustomerScore != null) && (
+          {(SCORE.MicrosoftScore != null && SCORE.CustomerScore != null && SCORE.MicrosoftScore > 0) && (
             <div className="score-split">
               <div className="score-split-item">
                 <div className="score-split-label">Microsoft-managed</div>

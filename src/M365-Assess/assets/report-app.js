@@ -714,7 +714,7 @@ function Posture() {
   }, /*#__PURE__*/React.createElement("span", null, "0"), /*#__PURE__*/React.createElement("span", null, "Peer avg \xB7 ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
     scores: D.score,
     avg: avg
-  }), SCORE.MicrosoftScore != null && SCORE.CustomerScore != null && /*#__PURE__*/React.createElement("div", {
+  }), SCORE.MicrosoftScore != null && SCORE.CustomerScore != null && SCORE.MicrosoftScore > 0 && /*#__PURE__*/React.createElement("div", {
     className: "score-split"
   }, /*#__PURE__*/React.createElement("div", {
     className: "score-split-item"
