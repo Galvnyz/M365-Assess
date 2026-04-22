@@ -70,6 +70,10 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: All checks passed" -ForegroundColor Green
 
+      - name: JS syntax check
+        shell: bash
+        run: node --check src/M365-Assess/assets/report-app.js
+
       - name: Smoke tests
         shell: pwsh
         run: |
