@@ -148,7 +148,7 @@ if ($pimAvailable -and $pimRoleAssignments -and $pimRoleAssignments['value']) {
         RecommendedValue = 'No permanent Global Admin assignments'
         Status           = $(if ($permanentGA.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-PIM-001'
-        Remediation      = 'Entra admin center > Identity Governance > Privileged Identity Management > Azure AD roles > Global Administrator > Remove permanent active assignments. Use eligible assignments with time-bound activation.'
+        Remediation      = 'Entra admin center > Identity Governance > Privileged Identity Management > Microsoft Entra roles > Global Administrator > Remove permanent active assignments. Use eligible assignments with time-bound activation.'
     }
     Add-Setting @settingParams
 }
@@ -290,7 +290,7 @@ if ($roleManagementPolicies -and $roleManagementPolicies['value']) {
         RecommendedValue = 'Yes'
         Status           = $(if ($gaApprovalRequired) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-PIM-004'
-        Remediation      = 'Entra admin center > Identity Governance > PIM > Azure AD roles > Settings > Global Administrator > Require approval to activate > Yes.'
+        Remediation      = 'Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > Global Administrator > Require approval to activate > Yes.'
     }
     Add-Setting @settingParams
 
@@ -315,7 +315,7 @@ if ($roleManagementPolicies -and $roleManagementPolicies['value']) {
         RecommendedValue = 'Yes'
         Status           = $(if ($praApprovalRequired) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-PIM-005'
-        Remediation      = 'Entra admin center > Identity Governance > PIM > Azure AD roles > Settings > Privileged Role Administrator > Require approval to activate > Yes.'
+        Remediation      = 'Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > Privileged Role Administrator > Require approval to activate > Yes.'
     }
     Add-Setting @settingParams
 }
@@ -327,7 +327,7 @@ elseif (-not $pimAvailable) {
         RecommendedValue = 'Yes'
         Status           = 'Review'
         CheckId          = 'ENTRA-PIM-004'
-        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Azure AD roles > Settings.'
+        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings.'
     }
     Add-Setting @settingParams
 
@@ -338,7 +338,7 @@ elseif (-not $pimAvailable) {
         RecommendedValue = 'Yes'
         Status           = 'Review'
         CheckId          = 'ENTRA-PIM-005'
-        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Azure AD roles > Settings.'
+        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings.'
     }
     Add-Setting @settingParams
 }

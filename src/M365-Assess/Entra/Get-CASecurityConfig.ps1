@@ -571,7 +571,7 @@ try {
             RecommendedValue = 'At least 1 policy'
             Status           = 'Fail'
             CheckId          = 'CA-DEVICE-001'
-            Remediation      = 'Create a CA policy: Target All users > All cloud apps > Grant > Require device to be marked as compliant (or Hybrid Azure AD joined). Entra admin center > Protection > Conditional Access.'
+            Remediation      = 'Create a CA policy: Target All users > All cloud apps > Grant > Require device to be marked as compliant (or Microsoft Entra hybrid joined). Entra admin center > Protection > Conditional Access.'
         }
         Add-Setting @settingParams
     }

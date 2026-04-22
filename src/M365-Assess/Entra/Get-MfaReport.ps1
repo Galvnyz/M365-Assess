@@ -83,7 +83,7 @@ try {
     $registrationDetails = Get-MgReportAuthenticationMethodUserRegistrationDetail -All -ErrorAction Stop
 }
 catch {
-    Write-Warning "Could not retrieve MFA registration details (requires Azure AD Premium P1/P2): $($_.Exception.Message)"
+    Write-Warning "Could not retrieve MFA registration details (requires Microsoft Entra ID P1/P2): $($_.Exception.Message)"
     return
 }
 

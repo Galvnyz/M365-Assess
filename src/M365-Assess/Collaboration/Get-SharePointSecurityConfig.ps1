@@ -579,7 +579,7 @@ try {
             RecommendedValue = 'True'
             Status           = if ($b2bEnabled) { 'Pass' } else { 'Fail' }
             CheckId          = 'SPO-B2B-001'
-            Remediation      = 'Enable B2B integration in SharePoint admin center > Policies > Sharing > More external sharing settings > Enable integration with Azure AD B2B.'
+            Remediation      = 'Enable B2B integration in SharePoint admin center > Policies > Sharing > More external sharing settings > Enable integration with Microsoft Entra B2B.'
         }
         Add-Setting @settingParams
     }
@@ -591,7 +591,7 @@ try {
             RecommendedValue = 'True'
             Status           = 'Warning'
             CheckId          = 'SPO-B2B-001'
-            Remediation      = 'SharePoint admin center > Policies > Sharing > More external sharing settings > check Enable integration with Azure AD B2B.'
+            Remediation      = 'SharePoint admin center > Policies > Sharing > More external sharing settings > check Enable integration with Microsoft Entra B2B.'
         }
         Add-Setting @settingParams
     }

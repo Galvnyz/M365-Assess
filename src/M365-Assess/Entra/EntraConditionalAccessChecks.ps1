@@ -66,7 +66,7 @@ try {
         $joinRestricted = $joinType -ne '#microsoft.graph.allDeviceRegistrationMembership'
         $settingParams = @{
             Category         = 'Device Management'
-            Setting          = 'Azure AD Join Restriction'
+            Setting          = 'Microsoft Entra Join Restriction'
             CurrentValue     = $(if ($joinRestricted) { 'Restricted' } else { 'All users allowed' })
             RecommendedValue = 'Restricted to specific users/groups'
             Status           = $(if ($joinRestricted) { 'Pass' } else { 'Fail' })
@@ -100,7 +100,7 @@ try {
             RecommendedValue = 'Disabled'
             Status           = $(if (-not $gaLocalAdmin) { 'Pass' } else { 'Fail' })
             CheckId          = 'ENTRA-DEVICE-003'
-            Remediation      = 'Entra admin center > Devices > Device settings > Global administrator is added as local administrator on the device during Azure AD Join > No.'
+            Remediation      = 'Entra admin center > Devices > Device settings > Global administrator is added as local administrator on the device during Microsoft Entra join > No.'
         }
         Add-Setting @settingParams
     }
@@ -134,7 +134,7 @@ try {
             RecommendedValue = 'Minimal local admin assignment'
             Status           = $(if ($additionalAdmins -le 0) { 'Pass' } else { 'Review' })
             CheckId          = 'ENTRA-DEVICE-004'
-            Remediation      = 'Entra admin center > Devices > Device settings > Manage Additional local administrators on all Azure AD joined devices. Minimize additional local admins.'
+            Remediation      = 'Entra admin center > Devices > Device settings > Manage Additional local administrators on all Microsoft Entra joined devices. Minimize additional local admins.'
         }
         Add-Setting @settingParams
 

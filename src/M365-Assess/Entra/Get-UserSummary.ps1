@@ -59,7 +59,7 @@ do {
     catch {
         # signInActivity requires AuditLog.Read.All + AAD Premium; retry without it
         if (-not $fallback -and $_.ToString() -match 'signInActivity|AuditLog|Authorization_RequestDenied|Insufficient privileges|Neither combinator') {
-            Write-Warning "SignInActivity not available (requires AuditLog.Read.All + Azure AD Premium). Retrying without it."
+            Write-Warning "SignInActivity not available (requires AuditLog.Read.All + Microsoft Entra ID P1). Retrying without it."
             $fallback = $true
             $selectFields = 'id,displayName,userPrincipalName,userType,accountEnabled,assignedLicenses,onPremisesSyncEnabled'
             $uri = "/v1.0/users?`$select=$selectFields&`$top=999"
