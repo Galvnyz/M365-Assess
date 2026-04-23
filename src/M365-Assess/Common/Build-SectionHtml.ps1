@@ -47,6 +47,18 @@ $sectionData = @{
     'mailbox-summary'  = & $loadCsv '09-Mailbox-Summary.csv'
     'mailflow'         = & $loadCsv '10-Mail-Flow.csv'
     'device-summary'   = & $loadCsv '13-Device-Summary.csv'
+    'trend-snapshots'  = & {
+        # Enumerate saved baselines for this tenant to power the trend view (#642).
+        # Baselines live at <OutputFolder>/Baselines/ which is the parent of <AssessmentFolder>/Baselines
+        # (Export-AssessmentBaseline writes to parent of assessment folder per convention).
+        $baselinesRoot = Join-Path -Path (Split-Path -Parent $AssessmentFolder) -ChildPath 'Baselines'
+        $tenantIdForTrend = if ($tenantData -and @($tenantData).Count -gt 0 -and $tenantData[0].TenantId) { $tenantData[0].TenantId }
+                            elseif ($reportDomainPrefix)                                                   { $reportDomainPrefix }
+                            else                                                                            { '' }
+        if (-not $tenantIdForTrend -or -not (Test-Path -Path $baselinesRoot)) { return @() }
+        . (Join-Path -Path $PSScriptRoot -ChildPath 'Get-BaselineTrend.ps1')
+        @(Get-BaselineTrend -BaselinesRoot $baselinesRoot -TenantId $tenantIdForTrend)
+    }
     'sharepoint-config'= & $loadCsv '20b-SharePoint-Security-Config.csv'
     'ad-hybrid'        = & $loadCsv '23-Hybrid-Sync.csv'
     'ad-security'      = & $loadCsv '26-AD-Security.csv'
