@@ -157,6 +157,11 @@ a:hover { text-decoration: underline; }
   transition: background .15s, color .15s;
 }
 .nav-subitem:hover { background: var(--hover); color: var(--text); }
+.nav-subitem.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
 .nav-subitem .count {
   font-size: 11px; padding: 1px 6px; border-radius: 10px;
   background: var(--chip); color: var(--text-soft);
@@ -455,6 +460,34 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .exec-tile.warn .exec-tile-value { color: var(--warn-text); }
 .exec-tile.bad  { border-left-color: var(--danger); }
 .exec-tile.bad  .exec-tile-value { color: var(--danger-text); }
+
+/* ---------- TrendChart (#642) ---------- */
+.trend-subtitle {
+  margin-left: 10px;
+  font-size: 12px; color: var(--muted);
+  font-family: var(--font-mono); letter-spacing: .04em;
+  align-self: baseline;
+}
+.trend-chart-wrap {
+  padding: 14px 16px 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.trend-chart {
+  display: block;
+  max-height: 220px;
+}
+.trend-legend {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-soft);
+}
+.trend-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.trend-legend-swatch {
+  display: inline-block; width: 12px; height: 3px; border-radius: 2px;
+}
 .kpi .tiny-bar {
   margin-top: 8px; height: 4px; border-radius: 2px;
   background: var(--track); overflow: hidden;

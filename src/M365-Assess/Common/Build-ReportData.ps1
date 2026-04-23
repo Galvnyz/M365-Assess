@@ -251,6 +251,27 @@ function Build-ReportDataJson {
         }
     }
 
+    # Trend data — historical baselines for the trend chart (#642)
+    # Only emit when ≥2 snapshots exist; a single point isn't a trend.
+    $trendSnapshots = & $get 'trend-snapshots'
+    $trendData = $null
+    if ($trendSnapshots.Count -ge 2) {
+        $trendData = @($trendSnapshots | ForEach-Object {
+            [ordered]@{
+                label   = $_.Label
+                savedAt = $_.SavedAt
+                version = $_.Version
+                pass    = $_.Pass
+                warn    = $_.Warn
+                fail    = $_.Fail
+                review  = $_.Review
+                info    = $_.Info
+                skipped = $_.Skipped
+                total   = $_.Total
+            }
+        })
+    }
+
     # AD/Hybrid panel — shape hybrid sync + security data for the AdHybridPanel component
     $adHybridRows   = & $get 'ad-hybrid'
     $adSecurityRows = & $get 'ad-security'
@@ -330,6 +351,7 @@ function Build-ReportDataJson {
         sharepointConfig = if ($spoConfig.Count) { $spoConfig } else { $null }
         adHybrid       = $adHybridData
         deviceStats    = $deviceStats
+        trendData      = $trendData
     }
 
     # ------------------------------------------------------------------

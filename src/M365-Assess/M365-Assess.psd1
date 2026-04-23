@@ -92,6 +92,7 @@
         'Common\Export-FrameworkCatalog.ps1'
         'Common\Build-ValueOpportunityHtml.ps1'
         'Common\Build-DriftHtml.ps1'
+        'Common\Get-BaselineTrend.ps1'
         'Common\Build-IntuneOverviewHtml.ps1'
         'Common\Import-ControlRegistry.ps1'
         'Common\Import-FrameworkDefinitions.ps1'
