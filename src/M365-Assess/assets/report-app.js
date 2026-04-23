@@ -503,7 +503,7 @@ function Sidebar({
     className: "sc-title"
   }, "TENANT"), /*#__PURE__*/React.createElement("span", {
     className: "sc-sub"
-  }, "\xB7 LIVE")), /*#__PURE__*/React.createElement("div", {
+  }, "\xB7 SNAPSHOT")), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "org"), /*#__PURE__*/React.createElement("span", null, TENANT.DefaultDomain || TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
@@ -512,24 +512,43 @@ function Sidebar({
   }, /*#__PURE__*/React.createElement("span", null, "age"), /*#__PURE__*/React.createElement("span", null, TENANT.tenantAgeYears, " yrs")), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "users"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.TotalUsers))), /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "licensed"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.Licensed))), /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "guests"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.GuestUsers))), USERS.SyncedFromOnPrem > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "synced"), /*#__PURE__*/React.createElement("span", null, fmt(USERS.SyncedFromOnPrem))), USERS.DisabledUsers > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "disabled"), /*#__PURE__*/React.createElement("span", {
     className: "sc-warn"
   }, fmt(USERS.DisabledUsers))), USERS.NeverSignedIn > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "never signed in"), /*#__PURE__*/React.createElement("span", {
     className: "sc-warn"
   }, fmt(USERS.NeverSignedIn))), USERS.StaleMember > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "sc-row"
+    className: "sc-row sc-row-indent"
   }, /*#__PURE__*/React.createElement("span", null, "stale"), /*#__PURE__*/React.createElement("span", {
     className: "sc-warn"
-  }, fmt(USERS.StaleMember)))), /*#__PURE__*/React.createElement("div", {
+  }, fmt(USERS.StaleMember))), D.deviceStats != null && (() => {
+    const ds = D.deviceStats;
+    const other = Math.max(0, ds.total - ds.compliant - ds.nonCompliant);
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      className: "sc-row"
+    }, /*#__PURE__*/React.createElement("span", null, "devices"), /*#__PURE__*/React.createElement("span", null, fmt(ds.total))), ds.compliant > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "sc-row sc-row-indent"
+    }, /*#__PURE__*/React.createElement("span", null, "compliant"), /*#__PURE__*/React.createElement("span", {
+      className: "sc-good"
+    }, fmt(ds.compliant))), ds.nonCompliant > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "sc-row sc-row-indent"
+    }, /*#__PURE__*/React.createElement("span", null, "non-compliant"), /*#__PURE__*/React.createElement("span", {
+      className: "sc-danger"
+    }, fmt(ds.nonCompliant))), other > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "sc-row sc-row-indent",
+      title: "Grace period, error, unknown, or not-applicable states"
+    }, /*#__PURE__*/React.createElement("span", null, "other state"), /*#__PURE__*/React.createElement("span", {
+      className: "sc-warn"
+    }, fmt(other))));
+  })()), /*#__PURE__*/React.createElement("div", {
     className: "sc-card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "sc-header"

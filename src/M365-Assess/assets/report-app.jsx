@@ -234,18 +234,30 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
             <div className="sc-header">
               <span className="sc-dot" style={{background:'var(--success)'}}/>
               <span className="sc-title">TENANT</span>
-              <span className="sc-sub">· LIVE</span>
+              <span className="sc-sub">· SNAPSHOT</span>
             </div>
             <div className="sc-row"><span>org</span><span>{TENANT.DefaultDomain || TENANT.OrgDisplayName}</span></div>
             <div className="sc-row"><span>tenant</span><span>{(TENANT.TenantId||'').slice(0,8)+'…'}</span></div>
             {TENANT.tenantAgeYears != null && <div className="sc-row"><span>age</span><span>{TENANT.tenantAgeYears} yrs</span></div>}
             <div className="sc-row"><span>users</span><span>{fmt(USERS.TotalUsers)}</span></div>
-            <div className="sc-row"><span>licensed</span><span>{fmt(USERS.Licensed)}</span></div>
-            <div className="sc-row"><span>guests</span><span>{fmt(USERS.GuestUsers)}</span></div>
-            {USERS.SyncedFromOnPrem > 0 && <div className="sc-row"><span>synced</span><span>{fmt(USERS.SyncedFromOnPrem)}</span></div>}
-            {USERS.DisabledUsers  > 0 && <div className="sc-row"><span>disabled</span><span className="sc-warn">{fmt(USERS.DisabledUsers)}</span></div>}
-            {USERS.NeverSignedIn  > 0 && <div className="sc-row"><span>never signed in</span><span className="sc-warn">{fmt(USERS.NeverSignedIn)}</span></div>}
-            {USERS.StaleMember    > 0 && <div className="sc-row"><span>stale</span><span className="sc-warn">{fmt(USERS.StaleMember)}</span></div>}
+            <div className="sc-row sc-row-indent"><span>licensed</span><span>{fmt(USERS.Licensed)}</span></div>
+            <div className="sc-row sc-row-indent"><span>guests</span><span>{fmt(USERS.GuestUsers)}</span></div>
+            {USERS.SyncedFromOnPrem > 0 && <div className="sc-row sc-row-indent"><span>synced</span><span>{fmt(USERS.SyncedFromOnPrem)}</span></div>}
+            {USERS.DisabledUsers  > 0 && <div className="sc-row sc-row-indent"><span>disabled</span><span className="sc-warn">{fmt(USERS.DisabledUsers)}</span></div>}
+            {USERS.NeverSignedIn  > 0 && <div className="sc-row sc-row-indent"><span>never signed in</span><span className="sc-warn">{fmt(USERS.NeverSignedIn)}</span></div>}
+            {USERS.StaleMember    > 0 && <div className="sc-row sc-row-indent"><span>stale</span><span className="sc-warn">{fmt(USERS.StaleMember)}</span></div>}
+            {D.deviceStats != null && (() => {
+              const ds = D.deviceStats;
+              const other = Math.max(0, ds.total - ds.compliant - ds.nonCompliant);
+              return (
+                <React.Fragment>
+                  <div className="sc-row"><span>devices</span><span>{fmt(ds.total)}</span></div>
+                  {ds.compliant > 0    && <div className="sc-row sc-row-indent"><span>compliant</span><span className="sc-good">{fmt(ds.compliant)}</span></div>}
+                  {ds.nonCompliant > 0 && <div className="sc-row sc-row-indent"><span>non-compliant</span><span className="sc-danger">{fmt(ds.nonCompliant)}</span></div>}
+                  {other > 0           && <div className="sc-row sc-row-indent" title="Grace period, error, unknown, or not-applicable states"><span>other state</span><span className="sc-warn">{fmt(other)}</span></div>}
+                </React.Fragment>
+              );
+            })()}
           </div>
           <div className="sc-card">
             <div className="sc-header">

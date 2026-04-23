@@ -240,6 +240,17 @@ function Build-ReportDataJson {
         outboundConnectors = @($mfRows | Where-Object { $_.ItemType -eq 'OutboundConnector' }).Count
     }
 
+    # Device summary — aggregate Intune-managed device counts by compliance state
+    $deviceRows = & $get 'device-summary'
+    $deviceStats = $null
+    if ($deviceRows.Count -gt 0) {
+        $deviceStats = [ordered]@{
+            total         = $deviceRows.Count
+            compliant     = @($deviceRows | Where-Object { $_.ComplianceState -match '^(?i)compliant$' }).Count
+            nonCompliant  = @($deviceRows | Where-Object { $_.ComplianceState -match '^(?i)noncompliant$' }).Count
+        }
+    }
+
     # AD/Hybrid panel — shape hybrid sync + security data for the AdHybridPanel component
     $adHybridRows   = & $get 'ad-hybrid'
     $adSecurityRows = & $get 'ad-security'
@@ -318,6 +329,7 @@ function Build-ReportDataJson {
         mailflowStats  = if ($mfRows.Count) { $mailflowStats } else { $null }
         sharepointConfig = if ($spoConfig.Count) { $spoConfig } else { $null }
         adHybrid       = $adHybridData
+        deviceStats    = $deviceStats
     }
 
     # ------------------------------------------------------------------

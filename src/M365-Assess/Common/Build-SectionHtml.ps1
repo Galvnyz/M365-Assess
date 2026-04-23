@@ -46,6 +46,7 @@ $sectionData = @{
     'dns'              = @($dnsCsvRaw | Where-Object { $_.Domain -notmatch '\.onmicrosoft\.com$' })
     'mailbox-summary'  = & $loadCsv '09-Mailbox-Summary.csv'
     'mailflow'         = & $loadCsv '10-Mail-Flow.csv'
+    'device-summary'   = & $loadCsv '13-Device-Summary.csv'
     'sharepoint-config'= & $loadCsv '20b-SharePoint-Security-Config.csv'
     'ad-hybrid'        = & $loadCsv '23-Hybrid-Sync.csv'
     'ad-security'      = & $loadCsv '26-AD-Security.csv'
