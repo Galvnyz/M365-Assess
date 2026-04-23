@@ -415,6 +415,7 @@ function Posture() {
           <MFABreakdown />
         </div>
       </div>
+      <ExecSummaryRow/>
       {critical > 0 && (
         <div className="banner">
           <div className="banner-icon">!</div>
@@ -429,6 +430,85 @@ function Posture() {
         </div>
       )}
     </section>
+  );
+}
+
+// ======================== Exec summary row (posture indicators) ========================
+function ExecSummaryRow() {
+  const allRoles = D['admin-roles'] || [];
+  const adminCount = allRoles.length;
+  const adminsWithoutMfa = MFA_STATS.adminsWithoutMfa || 0;
+
+  const ds  = D.deviceStats;
+  const dns = D.dns || [];
+  const dnsTotal = dns.length;
+  const dmarcEnf = dns.filter(r => r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine').length;
+
+  const guests = USERS.GuestUsers || 0;
+  const sharingLevel = D.sharepointConfig?.SharingLevel;
+
+  // Severity: a tile is "alert" when the underlying indicator is concerning.
+  const tiles = [];
+
+  if (adminCount > 0) {
+    tiles.push({
+      label: 'Privileged roles',
+      primary: adminCount,
+      suffix: 'assignments',
+      hint: adminsWithoutMfa > 0
+        ? `${adminsWithoutMfa} admin${adminsWithoutMfa===1?'':'s'} without MFA`
+        : 'All admins MFA-enrolled',
+      state: adminsWithoutMfa > 0 ? 'bad' : 'good',
+    });
+  }
+
+  if (ds && ds.total > 0) {
+    const compliantPct = Math.round((ds.compliant / ds.total) * 100);
+    tiles.push({
+      label: 'Device compliance',
+      primary: compliantPct,
+      suffix: '%',
+      hint: `${fmt(ds.compliant)} of ${fmt(ds.total)} devices compliant`,
+      state: compliantPct >= 90 ? 'good' : compliantPct >= 70 ? 'warn' : 'bad',
+    });
+  }
+
+  if (dnsTotal > 0) {
+    const state = dmarcEnf === dnsTotal ? 'good' : dmarcEnf > 0 ? 'warn' : 'bad';
+    tiles.push({
+      label: 'Email authentication',
+      primary: `${dmarcEnf}/${dnsTotal}`,
+      suffix: 'enforced',
+      hint: `DMARC p=reject or quarantine across ${dnsTotal} domain${dnsTotal===1?'':'s'}`,
+      state,
+    });
+  }
+
+  const guestState = guests > 0 ? 'warn' : 'good';
+  const sharingStateMap = { Anyone: 'bad', ExternalUserAndGuestSharing: 'warn', ExternalUserSharingOnly: 'warn', ExistingExternalUserSharingOnly: 'good', Disabled: 'good' };
+  const sharingState = sharingLevel ? (sharingStateMap[sharingLevel] || 'warn') : 'good';
+  tiles.push({
+    label: 'External exposure',
+    primary: fmt(guests),
+    suffix: guests === 1 ? 'guest' : 'guests',
+    hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SPO sharing level unknown',
+    state: sharingState === 'bad' || guestState === 'bad' ? 'bad' : (sharingState === 'warn' || guestState === 'warn') ? 'warn' : 'good',
+  });
+
+  if (!tiles.length) return null;
+
+  return (
+    <div className="exec-summary-row">
+      {tiles.map(t => (
+        <div key={t.label} className={'exec-tile ' + t.state}>
+          <div className="exec-tile-label">{t.label}</div>
+          <div className="exec-tile-value">
+            {t.primary}<span className="exec-tile-suffix">{t.suffix}</span>
+          </div>
+          <div className="exec-tile-hint">{t.hint}</div>
+        </div>
+      ))}
+    </div>
   );
 }
 
