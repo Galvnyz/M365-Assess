@@ -34,7 +34,8 @@ secrets.json
 credentials.json
 
 # Temp files
-_tmp.ps1
+_tmp*.ps1
+_run*.ps1
 *.tmp
 *~
 
