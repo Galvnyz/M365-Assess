@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.3.1'
+    ModuleVersion     = '2.4.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -232,7 +232,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.3.1 - Filter state persistence; print/PDF CSS; Vibe theme + Neon boost; -ReportDensity param; anti-FOUC ValidateSet reflection; PowerBI Linux skip; PHS false-disabled fix; Secure Score 0pts fix; Entra Connect terminology'
+            ReleaseNotes = 'v2.4.0 - UX polish: EDIT MODE banner at top, sidebar DOMAINS collapsed + DETAILS emphasized, 3-row sticky filter bar, expand/collapse-all findings, topbar text-scale cycle, print auto-expands framework, per-domain email-auth segments, colored domain/framework counts + explicit skipped segment, duplicate Domain Posture headings removed, topbar right-align on wrap, Secure Score split hidden when broken, remaining Azure AD → Microsoft Entra branding'
         }
     }
 }

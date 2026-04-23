@@ -4,6 +4,29 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-04-22
+
+### Added
+- User-controlled text scale cycle in the topbar (A / A+ / A++) — scales finding-title and detail body text without touching chrome; preference persisted in localStorage (#689, #704)
+- Expand-all / collapse-all button on the findings table header (#688)
+- Explicit "skipped" grey segment on domain-card and framework-quilt bars, with matching muted label and hover tooltip explaining the color legend (#703)
+- Print preview auto-expands the first visible framework in the Framework Coverage section via `beforeprint` listener, ensuring framework details always render in the PDF output (#694)
+
+### Changed
+- EDIT MODE banner now renders above the topbar (was below) by reordering the Topbar fragment — the existing `position: sticky; top: 0` CSS then pins it to the top of the main column (#693)
+- Left sidebar: `DOMAINS` section collapsed by default with a `+` toggle; `DETAILS` renamed to `Findings & action` with an accent top-border for visual emphasis; all `+` expand indicators right-aligned consistently (#695, #702)
+- Filter bar restructured into three rows (search / status+severity / framework+domain) and adds `.filter-bar-active` sticky treatment when search or any filter is active (#696)
+- Topbar icon-btn-group now right-aligns even when wrapping to a second row in narrow viewports (#700)
+- Email authentication posture bars now render as discrete per-domain segments (green for pass, red for fail) instead of a single partial bar — 3 green + 1 red is more legible than a 75% filled bar (#699)
+- Domain-card meta counts colored to match their bar segments (pass = success, warn = amber, fail = danger, review = accent, skipped = muted) — the row now doubles as a legend (#703)
+
+### Fixed
+- Duplicate subsection headings removed from Domain Posture (Intune / SharePoint / AD-Hybrid / Email Auth panels each render their title exactly once; outer wrapper divs were repeating the internal panel label) (#701)
+- Microsoft-managed / Customer-earned Secure Score split tiles hidden when `microsoftScore === 0` — the computation uses an invalid `actionType = 'ProviderGenerated'` discriminator so the split was always broken; tiles will return once the classification logic is corrected (#698)
+
+### Documentation / Branding
+- Remaining "Azure AD" literals in PS remediation strings and Setting labels replaced with "Microsoft Entra" across SharePoint B2B, CA device compliance, Entra join/joined devices, PIM role paths, and P1/P2 premium warnings (#667)
+
 ## [2.3.1] - 2026-04-21
 
 ### Fixed

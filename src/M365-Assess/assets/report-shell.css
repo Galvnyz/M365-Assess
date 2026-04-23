@@ -1470,23 +1470,15 @@ mark.search-hl {
 
 /* =========================================================
    TEXT SCALE — user-selectable text sizing via topbar control.
-   normal = baseline (default sizes below),
-   large  = +15%, xlarge = +30%. Applied to finding-row title,
-   finding-detail body text, and remediation/value content.
+   Uses CSS `zoom` on .main (not body) so the sidebar grid
+   column doesn't scale and push content off-screen. Scales
+   the topbar (search / chips / icons), edit-mode banner, and
+   all main content (KPIs, findings, appendix, roadmap).
+   Supported in all modern browsers (Firefox 126+).
    ========================================================= */
-[data-text-scale="large"]  .finding-title .t       { font-size: 15px; }
-[data-text-scale="large"]  .finding-title .sub     { font-size: 13px; }
-[data-text-scale="large"]  .finding-detail .why-text       { font-size: 14.5px; }
-[data-text-scale="large"]  .finding-detail .remediation-text { font-size: 15px; }
-[data-text-scale="large"]  .finding-detail .value-box       { font-size: 13.5px; }
-[data-text-scale="large"]  .finding-detail .block-title     { font-size: 13px; }
-
-[data-text-scale="xlarge"] .finding-title .t       { font-size: 17px; }
-[data-text-scale="xlarge"] .finding-title .sub     { font-size: 14px; }
-[data-text-scale="xlarge"] .finding-detail .why-text       { font-size: 16px; }
-[data-text-scale="xlarge"] .finding-detail .remediation-text { font-size: 16px; }
-[data-text-scale="xlarge"] .finding-detail .value-box       { font-size: 15px; }
-[data-text-scale="xlarge"] .finding-detail .block-title     { font-size: 14px; }
+.main { zoom: 1; }
+[data-text-scale="large"]  .main { zoom: 1.15; }
+[data-text-scale="xlarge"] .main { zoom: 1.3;  }
 
 .text-scale-btn.scale-large span  { color: var(--accent-text, var(--accent)); }
 .text-scale-btn.scale-xlarge span { color: var(--accent-text, var(--accent)); font-size: 15px !important; }
