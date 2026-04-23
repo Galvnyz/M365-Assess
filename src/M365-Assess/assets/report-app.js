@@ -503,7 +503,7 @@ function Sidebar({
     className: "sc-title"
   }, "TENANT"), /*#__PURE__*/React.createElement("span", {
     className: "sc-sub"
-  }, "\xB7 LIVE")), /*#__PURE__*/React.createElement("div", {
+  }, "\xB7 SNAPSHOT")), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "org"), /*#__PURE__*/React.createElement("span", null, TENANT.DefaultDomain || TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"

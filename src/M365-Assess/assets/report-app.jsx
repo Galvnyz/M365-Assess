@@ -234,7 +234,7 @@ function Sidebar({ active, counts, domainCounts, activeDomain, onDomainJump, onO
             <div className="sc-header">
               <span className="sc-dot" style={{background:'var(--success)'}}/>
               <span className="sc-title">TENANT</span>
-              <span className="sc-sub">· LIVE</span>
+              <span className="sc-sub">· SNAPSHOT</span>
             </div>
             <div className="sc-row"><span>org</span><span>{TENANT.DefaultDomain || TENANT.OrgDisplayName}</span></div>
             <div className="sc-row"><span>tenant</span><span>{(TENANT.TenantId||'').slice(0,8)+'…'}</span></div>
