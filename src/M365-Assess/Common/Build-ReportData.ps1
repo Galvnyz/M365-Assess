@@ -28,6 +28,37 @@
     }
 }
 
+function Get-CmmcLevelsFromControlId {
+    <#
+    .SYNOPSIS
+        Derives distinct CMMC maturity levels from a controlId string.
+    .DESCRIPTION
+        CheckID's registry.json uniformly sets frameworks.cmmc.profiles to
+        [L1,L2] or [L1,L2,L3] on every CMMC mapping, which erases the
+        distinction between L1-minimum (FAR 52.204-21, 17 practices) and
+        L2-minimum (NIST SP 800-171, 110 practices) checks. The controlId
+        value carries the truth: tokens like 'IA.L2-3.5.5' or
+        'AC.L1-B.1.I;AC.L2-3.1.1' encode the real maturity level per
+        control. This helper extracts the '.L<n>-' markers and returns the
+        sorted set of levels the check actually addresses, so downstream
+        coverage counts distinguish L1 from L2 correctly.
+    .PARAMETER ControlId
+        The raw controlId string from a CMMC framework mapping. May be a
+        single control (e.g., 'IA.L2-3.5.5') or a semicolon-delimited list.
+    .OUTPUTS
+        [string[]] distinct levels in ('L1','L2','L3'), or empty array when
+        no level markers are present.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([string]$ControlId)
+
+    if ([string]::IsNullOrWhiteSpace($ControlId)) { return @() }
+    $found = [regex]::Matches($ControlId, '\.L([123])-')
+    if ($found.Count -eq 0) { return @() }
+    return @($found | ForEach-Object { 'L' + $_.Groups[1].Value } | Sort-Object -Unique)
+}
+
 function Build-ReportDataJson {
     <#
     .SYNOPSIS
@@ -119,6 +150,9 @@ function Build-ReportDataJson {
                       else                             { [string[]]@() }
 
         # fwMeta — per-framework { controlId, profiles } for Control # column and L1/L2/E3/E5 breakdown
+        # For CMMC mappings, profiles is overridden from controlId because CheckID's
+        # registry uniformly tags every CMMC check [L1,L2] regardless of actual level.
+        # See Get-CmmcLevelsFromControlId for details.
         $fwMeta = [ordered]@{}
         if ($fwSource -is [hashtable]) {
             foreach ($fwId in $fwSource.Keys) {
@@ -129,6 +163,10 @@ function Build-ReportDataJson {
                 $prf = if ($ent -is [hashtable] -and $ent.ContainsKey('profiles'))  { @($ent['profiles']) }
                        elseif ($ent -and $ent.PSObject.Properties['profiles'])       { @($ent.profiles) }
                        else                                                            { @() }
+                if ($fwId -eq 'cmmc') {
+                    $derivedLevels = Get-CmmcLevelsFromControlId -ControlId $cid
+                    if ($derivedLevels.Count -gt 0) { $prf = $derivedLevels }
+                }
                 $fwMeta[$fwId] = [ordered]@{ controlId = $cid; profiles = $prf }
             }
         } elseif ($fwSource) {
@@ -136,6 +174,10 @@ function Build-ReportDataJson {
                 $ent = $prop.Value
                 $cid = if ($ent -and $ent.PSObject.Properties['controlId']) { [string]$ent.controlId } else { '' }
                 $prf = if ($ent -and $ent.PSObject.Properties['profiles'])  { @($ent.profiles) } else { @() }
+                if ($prop.Name -eq 'cmmc') {
+                    $derivedLevels = Get-CmmcLevelsFromControlId -ControlId $cid
+                    if ($derivedLevels.Count -gt 0) { $prf = $derivedLevels }
+                }
                 $fwMeta[$prop.Name] = [ordered]@{ controlId = $cid; profiles = $prf }
             }
         }
