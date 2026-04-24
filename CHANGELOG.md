@@ -4,6 +4,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Added
+- CMMC complete posture view in the Framework Quilt — the CMMC detail panel now surfaces EZ-CMMC handoff gaps (out-of-scope / partial / coverable / inherent) alongside the existing L1/L2/L3 coverage stats, so customers see what M365-Assess automates *and* what requires non-M365 controls (physical access, HR, inherent defaults) tracked separately by EZ-CMMC. `REPORT_DATA.cmmcHandoff` (derived from CheckID's `data/cmmc-ez-handoff.json`) and `REPORT_DATA.cmmcCoverage` (pass/fail/warn per CMMC level, computed from findings) are now part of the report data contract. `sync-checkid.yml` pulls the handoff artifact on every scheduled sync (#594)
+
 ## [2.4.0] - 2026-04-22
 
 ### Added

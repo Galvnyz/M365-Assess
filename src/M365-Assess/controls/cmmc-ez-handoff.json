@@ -1,0 +1,439 @@
+{
+  "schemaVersion": "1.0.0",
+  "generated": "2026-04-20",
+  "description": "CMMC 2.0 practices not covered by CheckID, derived from SCF database gap analysis. Classification: 'out-of-scope' = no M365 equivalent (EZ-CMMC handles these); 'partial' = M365 partially addresses, gap remains; 'coverable' = future CheckID checks could address this practice.",
+  "coverage": {
+    "totalL1Practices": 15,
+    "totalL2Practices": 110,
+    "totalL3Practices": 24,
+    "coveredL1": 12,
+    "coveredL2": 87,
+    "coveredL3": 9,
+    "gapL1": 3,
+    "gapL2": 23,
+    "gapL3": 15
+  },
+  "practices": [
+    {
+      "practiceId": "PE.L1-B.1.IX",
+      "level": "L1",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization enforce physical access authorizations for all physical access points (including designated entry/exit points) to facilities (excluding those areas within the facility officially designated as publicly accessible)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L1-B.1.VIII",
+      "level": "L1",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization maintain a current list of personnel with authorized access to organizational facilities (except for those areas within the facility officially designated as publicly accessible)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "SC.L1-B.1.XI",
+      "level": "L1",
+      "domain": "Network Security",
+      "controlName": "Does the organization ensure network architecture utilizes network segmentation to isolate Technology Assets, Applications and/or Services (TAAS) to protect from other network resources?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Network-level segmentation and traffic filtering require infrastructure controls (firewalls, routers, VLANs) beyond M365's configuration scope.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "AT.L2-3.2.2",
+      "level": "L2",
+      "domain": "Human Resources Security",
+      "controlName": "Does the organization formally educate authorized users on proper data handling practices for all the relevant types of data to which they have access?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Personnel screening, role agreements, and termination processes are organizational HR practices. Not addressable via M365 configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "AT.L2-3.2.3",
+      "level": "L2",
+      "domain": "Security Awareness & Training",
+      "controlName": "Does the organization provide role-based security, compliance and resilience awareness training that is current and relevant to the cyber threats that users might encounter in day-to-day business operations?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Organization-wide security awareness training programs are HR/process controls. M365 Defender Attack Simulation provides partial coverage but cannot satisfy the full practice requirement as a standalone M365 configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "AU.L2-3.3.7",
+      "level": "L2",
+      "domain": "Continuous Monitoring",
+      "controlName": "Does the organization synchronize internal system clocks with an authoritative time source?",
+      "description": "",
+      "classification": "inherent",
+      "reason": "Azure cloud infrastructure automatically synchronizes all workload clocks via the hypervisor time source (UTC, Stratum 1). M365/Azure tenants inherit this with no tenant-level configuration required or possible.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "CA.L2-3.12.2",
+      "level": "L2",
+      "domain": "Information Assurance",
+      "controlName": "Does the organization govern identified deficiencies (e.g., Plan of Action and Milestones (POA&M) or similar methodology) that formally documents, at a minimum:\n(1) Deficiency tracking number;\n(2) Applicable security, compliance and/or resilience control;\n(3) Description of the deficiency(ies);\n(4) Risk associated with the deficiency(ies);\n(5) Source deficiency identification/detection;\n(6) Temporary compensating controls, if applicable;\n(7) Point of Contact (POC) (e.g., asset/process owner);\n(8) Resources required to conduct remediation actions;\n(9) Planned remedial actions to the deficiency(ies);\n(10) Proposed remediation timeline; and\n(11) Disposition statement (e.g., closeout summary)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Security assessment plans, Plans of Action & Milestones (POA&Ms), and system security plan maintenance are governance documentation processes, not M365 configuration controls.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "CA.L2-3.12.4",
+      "level": "L2",
+      "domain": "Information Assurance",
+      "controlName": "Does the organization generate authoritative documentation (e.g., System Security Plan (SSP)) that:\n(1) Identifies key architectural and implementation information on in-scope Technology Assets, Applications and/or Services (TAAS);\n(2) Reflects the current state of applied security, compliance and resilience controls on applicable People, Processes, Technologies, Data and/or Facilities (PPTDF) that are contained within the system boundary; and\n(3) Provides a historical record of applied security controls, including changes?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Security assessment plans, Plans of Action & Milestones (POA&Ms), and system security plan maintenance are governance documentation processes, not M365 configuration controls.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "IA.L2-3.5.11",
+      "level": "L2",
+      "domain": "Identification & Authentication",
+      "controlName": "Does the organization obscure the feedback of authentication information during the authentication process to protect the information from possible exploitation/use by unauthorized individuals?",
+      "description": "",
+      "classification": "inherent",
+      "reason": "Entra ID and all M365 web/native clients obscure password input by default (masking characters). This is a platform default not exposed as a configurable tenant setting — no CheckID check is needed.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "IR.L2-3.6.3",
+      "level": "L2",
+      "domain": "Incident Response",
+      "controlName": "Does the organization formally test incident response capabilities through realistic exercises to determine the operational effectiveness of those capabilities?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Incident response testing, exercises, and tabletop simulations are organizational process requirements. M365 Defender provides IR tooling but not the programmatic testing practice itself.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MA.L2-3.7.1",
+      "level": "L2",
+      "domain": "Maintenance",
+      "controlName": "Does the organization conduct controlled maintenance activities throughout the lifecycle of theTechnology Asset, Application and/or Service (TAAS)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Controlled maintenance of organizational systems involves physical device access and media handling. Not addressable via M365 cloud configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MA.L2-3.7.2",
+      "level": "L2",
+      "domain": "Maintenance",
+      "controlName": "Does the organization control and monitor the use of system maintenance tools?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Controlled maintenance of organizational systems involves physical device access and media handling. Not addressable via M365 cloud configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MA.L2-3.7.4",
+      "level": "L2",
+      "domain": "Maintenance",
+      "controlName": "Does the organization check media containing diagnostic and test programs for malicious code before the media are used?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Controlled maintenance of organizational systems involves physical device access and media handling. Not addressable via M365 cloud configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MA.L2-3.7.6",
+      "level": "L2",
+      "domain": "Maintenance",
+      "controlName": "Does the organization maintain a current list of authorized maintenance organizations or personnel?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Controlled maintenance of organizational systems involves physical device access and media handling. Not addressable via M365 cloud configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MP.L2-3.8.5",
+      "level": "L2",
+      "domain": "Data Classification & Handling",
+      "controlName": "Does the organization protect and control digital and non-digital media during transport outside of controlled areas using appropriate security measures?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical media sanitization, transport, and disposal requirements cannot be addressed by M365 cloud configuration alone.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "MP.L2-3.8.8",
+      "level": "L2",
+      "domain": "Data Classification & Handling",
+      "controlName": "Does the organization prohibit the use of portable storage devices in organizational systems when such devices have no identifiable owner?",
+      "description": "",
+      "classification": "partial",
+      "reason": "INTUNE-REMOVABLEMEDIA-001 blocks all removable storage on managed devices, which inherently prohibits unidentified portable storage as a superset control. MP.L2-3.8.8 is now mapped to INTUNE-REMOVABLEMEDIA-001 in the CheckID registry.",
+      "checkIdMapping": "INTUNE-REMOVABLEMEDIA-001",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "PE.L2-3.10.1",
+      "level": "L2",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization maintain a current list of personnel with authorized access to organizational facilities (except for those areas within the facility officially designated as publicly accessible)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L2-3.10.2",
+      "level": "L2",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization facilitate the operation of physical and environmental protection controls?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L2-3.10.3",
+      "level": "L2",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization enforce physical access authorizations for all physical access points (including designated entry/exit points) to facilities (excluding those areas within the facility officially designated as publicly accessible)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L2-3.10.4",
+      "level": "L2",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization generate a log entry for each access attempt through controlled ingress and egress points?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L2-3.10.5",
+      "level": "L2",
+      "domain": "Physical & Environmental Security",
+      "controlName": "Does the organization enforce physical access authorizations for all physical access points (including designated entry/exit points) to facilities (excluding those areas within the facility officially designated as publicly accessible)?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical access controls require on-premises infrastructure management. No M365 configuration equivalent exists.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PE.L2-3.10.6",
+      "level": "L2",
+      "domain": "Data Classification & Handling",
+      "controlName": "Does the organization protect sensitive/regulated data wherever it is processed and/or stored?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Physical media sanitization, transport, and disposal requirements cannot be addressed by M365 cloud configuration alone.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "PS.L2-3.9.1",
+      "level": "L2",
+      "domain": "Human Resources Security",
+      "controlName": "Does the organization manage personnel security risk by screening individuals prior to authorizing access?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Personnel screening, role agreements, and termination processes are organizational HR practices. Not addressable via M365 configuration.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "SC.L2-3.13.14",
+      "level": "L2",
+      "domain": "Network Security",
+      "controlName": "Does the organization protect the confidentiality, integrity and availability of electronic messaging communications?",
+      "description": "",
+      "classification": "partial",
+      "reason": "Microsoft Teams uses VoIP for calling and meetings. Teams Calling Policies control which users can make/receive calls, and Purview audit logs capture call activity. However, comprehensive VoIP monitoring (call recording, traffic analysis) requires Defender for Cloud Apps or third-party integrations beyond M365 tenant configuration.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "SC.L2-3.13.2",
+      "level": "L2",
+      "domain": "Cloud Security",
+      "controlName": "Does the organization host security-specific technologies in a dedicated subnet?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Practice in the Cloud Security domain requires controls outside the M365 configuration surface.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "SC.L2-3.13.4",
+      "level": "L2",
+      "domain": "Secure Engineering & Architecture",
+      "controlName": "Does the organization prevent unauthorized and unintended information transfer via shared system resources?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Network architecture design, system boundary enforcement, and network segmentation at the infrastructure level are outside M365's configuration surface.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "SC.L2-3.13.5",
+      "level": "L2",
+      "domain": "Network Security",
+      "controlName": "Does the organization ensure network architecture utilizes network segmentation to isolate Technology Assets, Applications and/or Services (TAAS) to protect from other network resources?",
+      "description": "",
+      "classification": "out-of-scope",
+      "reason": "Network-level segmentation and traffic filtering require infrastructure controls (firewalls, routers, VLANs) beyond M365's configuration scope.",
+      "ezCmmc": true
+    },
+    {
+      "practiceId": "AT.L3-3.2.1E",
+      "level": "L3",
+      "domain": "Security Awareness & Training",
+      "controlName": "Does the organization include awareness training on recognizing and reporting potential and actual instances of social engineering and social mining?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "AT.L3-3.2.2E",
+      "level": "L3",
+      "domain": "Security Awareness & Training",
+      "controlName": "Does the organization include practical exercises in security, compliance and resilience training that reinforce training objectives?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "CA.L3-3.12.1E",
+      "level": "L3",
+      "domain": "Vulnerability & Patch Management",
+      "controlName": "Does the organization conduct penetration testing on Technology Assets, Applications and/or Services (TAAS)?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "IA.L3-3.5.3E",
+      "level": "L3",
+      "domain": "Asset Management",
+      "controlName": "Does the organization use automated mechanisms to employ Network Access Control (NAC), or a similar technology, which is capable of detecting unauthorized devices and disable network access to those unauthorized devices?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "IR.L3-3.6.1E",
+      "level": "L3",
+      "domain": "Security Operations",
+      "controlName": "Does the organization establish and maintain a Security Operations Center (SOC) that facilitates a 24x7 response capability?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "IR.L3-3.6.2E",
+      "level": "L3",
+      "domain": "Incident Response",
+      "controlName": "Does the organization establish an integrated team of cybersecurity, IT and business function representatives that are capable of addressing cybersecurity and data protection incident response operations?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "PS.L3-3.9.2E",
+      "level": "L3",
+      "domain": "Human Resources Security",
+      "controlName": "Does the organization ensure that every user accessing Technology Assets, Applications and/or Services (TAAS) that process, store and/or transmit sensitive/regulated data is cleared and regularly trained to handle the information in question?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "RA.L3-3.11.2E",
+      "level": "L3",
+      "domain": "Continuous Monitoring",
+      "controlName": "Does the organization use automated mechanisms to identify and alert on Indicators of Compromise (IoC)?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "RA.L3-3.11.3E",
+      "level": "L3",
+      "domain": "Security Operations",
+      "controlName": "Does the organization utilize Security Orchestration, Automation and Response (SOAR) tools to define, prioritize and automate the response to security incidents?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "RA.L3-3.11.4E",
+      "level": "L3",
+      "domain": "Information Assurance",
+      "controlName": "Does the organization generate authoritative documentation (e.g., System Security Plan (SSP)) that:\n(1) Identifies key architectural and implementation information on in-scope Technology Assets, Applications and/or Services (TAAS);\n(2) Reflects the current state of applied security, compliance and resilience controls on applicable People, Processes, Technologies, Data and/or Facilities (PPTDF) that are contained within the system boundary; and\n(3) Provides a historical record of applied security controls, including changes?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "RA.L3-3.11.6E",
+      "level": "L3",
+      "domain": "Risk Management",
+      "controlName": "Does the organization ensure proper risk response actions were performed to remediate findings from security, compliance and/or resilience-related:\n(1) Assessments;\n(2) Audits; and/or\n(3) Incidents?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "RA.L3-3.11.7E",
+      "level": "L3",
+      "domain": "Risk Management",
+      "controlName": "Does the organization remediate risks to an acceptable level?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "SC.L3-3.13.4E",
+      "level": "L3",
+      "domain": "Network Security",
+      "controlName": "Does the organization implement security functions as a layered structure that minimizes interactions between layers of the design and avoids any dependence by lower layers on the functionality or correctness of higher layers?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "SI.L3-3.14.1E",
+      "level": "L3",
+      "domain": "Asset Management",
+      "controlName": "Does the organization provision and protect the confidentiality, integrity and authenticity of product supplier keys and data that can be used as a “roots of trust” basis for integrity verification?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    },
+    {
+      "practiceId": "SI.L3-3.14.3E",
+      "level": "L3",
+      "domain": "Asset Management",
+      "controlName": "Does the organization determine security, compliance and resilience control applicability by identifying, assigning and documenting the appropriate asset scope categorization for all Technology Assets, Applications and/or Services (TAAS) and personnel (internal and third-parties)?",
+      "description": "",
+      "classification": "coverable",
+      "reason": "No CheckID check currently covers this L3 practice. Future M365 check development could address this gap.",
+      "ezCmmc": false
+    }
+  ]
+}

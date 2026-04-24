@@ -620,4 +620,61 @@ Describe 'Build-ReportData' {
             $d.adHybrid.pwHashSync | Should -BeNullOrEmpty
         }
     }
+
+    # ------------------------------------------------------------------
+    Context 'CMMC handoff and coverage (#594)' {
+        It 'emits cmmcHandoff verbatim when passed in' {
+            $handoff = @{
+                SchemaVersion = '1.0.0'
+                Generated     = '2026-04-20'
+                Practices     = @(@{ practiceId = 'X'; level = 'L2'; classification = 'partial' })
+                Summary       = [ordered]@{
+                    L1    = [ordered]@{ outOfScope = 0; partial = 0; coverable = 0; inherent = 0 }
+                    L2    = [ordered]@{ outOfScope = 0; partial = 1; coverable = 0; inherent = 0 }
+                    L3    = [ordered]@{ outOfScope = 0; partial = 0; coverable = 0; inherent = 0 }
+                    Total = [ordered]@{ outOfScope = 0; partial = 1; coverable = 0; inherent = 0; practices = 1 }
+                }
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -CmmcHandoff $handoff)
+            $d.cmmcHandoff.SchemaVersion        | Should -Be '1.0.0'
+            $d.cmmcHandoff.Summary.L2.partial    | Should -Be 1
+            $d.cmmcHandoff.Summary.Total.practices | Should -Be 1
+        }
+
+        It 'emits a null cmmcHandoff when none is supplied' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson)
+            $d.cmmcHandoff | Should -BeNullOrEmpty
+        }
+
+        It 'derives cmmcCoverage counts from findings per CMMC profile level' {
+            $passL1 = New-Finding -CheckId 'CA-MFA-001.1' -Status 'Pass' -Frameworks @{
+                cmmc = @{ controlId = 'IA.L1-3.5.1'; profiles = @('L1', 'L2') }
+            }
+            $failL2 = New-Finding -CheckId 'CA-LEGACYAUTH-001.1' -Status 'Fail' -Frameworks @{
+                cmmc = @{ controlId = 'AC.L2-3.1.17'; profiles = @('L2') }
+            }
+            $warnL3 = New-Finding -CheckId 'SPO-SHARING-001.1' -Status 'Warning' -Frameworks @{
+                cmmc = @{ controlId = 'SC.L3-3.13.11'; profiles = @('L3') }
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($passL1, $failL2, $warnL3))
+
+            $d.cmmcCoverage.L1.pass   | Should -Be 1
+            $d.cmmcCoverage.L1.total  | Should -Be 1
+            $d.cmmcCoverage.L2.pass   | Should -Be 1   # passL1 also contributes to L2 via profiles
+            $d.cmmcCoverage.L2.fail   | Should -Be 1
+            $d.cmmcCoverage.L2.total  | Should -Be 2
+            $d.cmmcCoverage.L3.warn   | Should -Be 1
+            $d.cmmcCoverage.L3.total  | Should -Be 1
+        }
+
+        It 'skips findings without a CMMC framework mapping' {
+            $noCmmc = New-Finding -Status 'Fail' -Frameworks @{
+                'cis-m365-v6' = @{ controlId = '1.1.1'; profiles = @('L1') }
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($noCmmc))
+            $d.cmmcCoverage.L1.total | Should -Be 0
+            $d.cmmcCoverage.L2.total | Should -Be 0
+            $d.cmmcCoverage.L3.total | Should -Be 0
+        }
+    }
 }

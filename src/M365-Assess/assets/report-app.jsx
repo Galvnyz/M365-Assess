@@ -1260,6 +1260,24 @@ function FrameworkQuilt({ onSelect, selected }) {
               )}
             </div>
           )}
+          {expandedFw === 'cmmc' && D.cmmcHandoff && D.cmmcHandoff.Summary && D.cmmcHandoff.Summary.Total && (
+            <div style={{marginTop:8, marginBottom:12, padding:'10px 12px', background:'var(--card-subtle, rgba(255,255,255,0.03))', borderRadius:6, fontSize:12}}>
+              <div style={{fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'var(--muted)', marginBottom:6}}>
+                Handoff gaps (EZ-CMMC)
+              </div>
+              <div className="fw-profile-stats" style={{marginTop:0, marginBottom:0}}>
+                <span className="fw-profile-chip">Out of scope <b>{D.cmmcHandoff.Summary.Total.outOfScope}</b></span>
+                <span className="fw-profile-chip">Partial <b>{D.cmmcHandoff.Summary.Total.partial}</b></span>
+                <span className="fw-profile-chip">Coverable <b>{D.cmmcHandoff.Summary.Total.coverable}</b></span>
+                {D.cmmcHandoff.Summary.Total.inherent > 0 && (
+                  <span className="fw-profile-chip">Inherent <b>{D.cmmcHandoff.Summary.Total.inherent}</b></span>
+                )}
+              </div>
+              <div style={{marginTop:6, color:'var(--muted)', lineHeight:1.5}}>
+                {D.cmmcHandoff.Summary.Total.practices} CMMC 2.0 practices require non-M365 controls (physical access, HR, inherent defaults) and are tracked separately by EZ-CMMC.
+              </div>
+            </div>
+          )}
           <div className="fw-bar" style={{marginBottom:16, height:10, borderRadius:5}}>
             {expandedData.pass>0   && <div className="fw-seg pass"   style={{flex:expandedData.pass}}/>}
             {expandedData.warn>0   && <div className="fw-seg warn"   style={{flex:expandedData.warn}}/>}

@@ -95,6 +95,9 @@ $controlRegistry = Import-ControlRegistry -ControlsPath $controlsPath -CisFramew
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Import-FrameworkDefinitions.ps1')
 $allFrameworks = Import-FrameworkDefinitions -FrameworksPath (Join-Path -Path $projectRoot -ChildPath 'controls/frameworks')
 
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Import-CmmcHandoff.ps1')
+$cmmcHandoff = Import-CmmcHandoff -ControlsPath $controlsPath
+
 # ------------------------------------------------------------------
 # Validate input
 # ------------------------------------------------------------------
@@ -169,7 +172,8 @@ $reportJson = Build-ReportDataJson `
     -RegistryData   $controlRegistry `
     -WhiteLabel:    $WhiteLabel `
     -XlsxFileName   $xlsxName `
-    -FrameworkDefs  $allFrameworks
+    -FrameworkDefs  $allFrameworks `
+    -CmmcHandoff    $cmmcHandoff
 
 # ------------------------------------------------------------------
 # Assemble HTML and write output

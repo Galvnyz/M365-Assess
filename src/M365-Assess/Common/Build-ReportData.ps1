@@ -86,7 +86,10 @@ function Build-ReportDataJson {
         [hashtable[]]$FrameworkDefs = @(),
 
         [Parameter()]
-        [string]$XlsxFileName = ''
+        [string]$XlsxFileName = '',
+
+        [Parameter()]
+        [hashtable]$CmmcHandoff = $null
     )
 
     # ------------------------------------------------------------------
@@ -251,6 +254,29 @@ function Build-ReportDataJson {
         }
     }
 
+    # CMMC coverage — per-level pass/fail/warn/review/info counts from findings
+    # with a CMMC framework mapping. Each finding's cmmc.profiles (e.g., ["L1","L2"])
+    # drives which levels it contributes to. Combined with CmmcHandoff.Summary
+    # (gap counts) this gives the React panel a full "covered + gaps" picture.
+    $cmmcNewBucket = { [ordered]@{ pass = 0; warn = 0; fail = 0; review = 0; info = 0; total = 0 } }
+    $cmmcCoverage  = [ordered]@{ L1 = & $cmmcNewBucket; L2 = & $cmmcNewBucket; L3 = & $cmmcNewBucket }
+    foreach ($finding in $findings) {
+        $cmmcEntry = $finding.fwMeta['cmmc']
+        if (-not $cmmcEntry) { continue }
+        $profiles = @($cmmcEntry['profiles'])
+        foreach ($level in $profiles) {
+            if (-not $cmmcCoverage.Contains($level)) { continue }
+            $cmmcCoverage[$level].total++
+            switch ($finding.status) {
+                'Pass'    { $cmmcCoverage[$level].pass++   }
+                'Warning' { $cmmcCoverage[$level].warn++   }
+                'Fail'    { $cmmcCoverage[$level].fail++   }
+                'Review'  { $cmmcCoverage[$level].review++ }
+                'Info'    { $cmmcCoverage[$level].info++   }
+            }
+        }
+    }
+
     # Trend data — historical baselines for the trend chart (#642)
     # Only emit when ≥2 snapshots exist; a single point isn't a trend.
     $trendSnapshots = & $get 'trend-snapshots'
@@ -352,6 +378,8 @@ function Build-ReportDataJson {
         adHybrid       = $adHybridData
         deviceStats    = $deviceStats
         trendData      = $trendData
+        cmmcHandoff    = $CmmcHandoff
+        cmmcCoverage   = $cmmcCoverage
     }
 
     # ------------------------------------------------------------------

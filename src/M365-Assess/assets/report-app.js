@@ -2102,7 +2102,44 @@ function FrameworkQuilt({
     className: "fw-profile-chip lic"
   }, "E3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e3)), fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("span", {
     className: "fw-profile-chip lic5"
-  }, "E5 only ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e5only)))), /*#__PURE__*/React.createElement("div", {
+  }, "E5 only ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e5only)))), expandedFw === 'cmmc' && D.cmmcHandoff && D.cmmcHandoff.Summary && D.cmmcHandoff.Summary.Total && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      marginBottom: 12,
+      padding: '10px 12px',
+      background: 'var(--card-subtle, rgba(255,255,255,0.03))',
+      borderRadius: 6,
+      fontSize: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.08em',
+      color: 'var(--muted)',
+      marginBottom: 6
+    }
+  }, "Handoff gaps (EZ-CMMC)"), /*#__PURE__*/React.createElement("div", {
+    className: "fw-profile-stats",
+    style: {
+      marginTop: 0,
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip"
+  }, "Out of scope ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.outOfScope)), /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip"
+  }, "Partial ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.partial)), /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip"
+  }, "Coverable ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.coverable)), D.cmmcHandoff.Summary.Total.inherent > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "fw-profile-chip"
+  }, "Inherent ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.inherent))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      color: 'var(--muted)',
+      lineHeight: 1.5
+    }
+  }, D.cmmcHandoff.Summary.Total.practices, " CMMC 2.0 practices require non-M365 controls (physical access, HR, inherent defaults) and are tracked separately by EZ-CMMC.")), /*#__PURE__*/React.createElement("div", {
     className: "fw-bar",
     style: {
       marginBottom: 16,

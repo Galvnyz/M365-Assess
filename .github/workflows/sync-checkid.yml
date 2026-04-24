@@ -33,6 +33,7 @@ jobs:
           BASE="https://raw.githubusercontent.com/Galvnyz/CheckID/$TAG/data"
           curl -sL "$BASE/registry.json" -o src/M365-Assess/controls/registry.json
           curl -sL "$BASE/sku-feature-map.json" -o src/M365-Assess/controls/sku-feature-map.json
+          curl -sL "$BASE/cmmc-ez-handoff.json" -o src/M365-Assess/controls/cmmc-ez-handoff.json
           for f in cis-controls-v8 cis-m365-v6 cisa-scuba cmmc essential-eight fedramp hipaa iso-27001 mitre-attack nist-800-53-r5 nist-csf pci-dss-v4 soc2-tsc stig; do
             curl -sL "$BASE/frameworks/$f.json" -o "src/M365-Assess/controls/frameworks/$f.json"
           done

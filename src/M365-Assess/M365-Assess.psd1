@@ -95,6 +95,7 @@
         'Common\Get-BaselineTrend.ps1'
         'Common\Build-IntuneOverviewHtml.ps1'
         'Common\Import-ControlRegistry.ps1'
+        'Common\Import-CmmcHandoff.ps1'
         'Common\Import-FrameworkDefinitions.ps1'
         'Common\Show-CheckProgress.ps1'
         'Common\ConvertTo-FrameworkFilter.ps1'
