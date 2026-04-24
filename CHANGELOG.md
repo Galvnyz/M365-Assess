@@ -10,6 +10,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ### Fixed
 - CMMC Level 1 and Level 2 coverage counts were identical on every tenant because CheckID's `registry.json` uniformly tags every CMMC-mapped check with `profiles=[L1,L2]` regardless of the underlying control's actual maturity level (L1 = 17 FAR 52.204-21 practices, L2 = 110 NIST 800-171 practices — they should not be equal). `Build-ReportData` now derives profiles from the `controlId` string, parsing `.L<n>-` tokens out of values like `IA.L2-3.5.5`, so the quilt panel's L1/L2/L3 chips and the new `cmmcCoverage` block show the correct distribution. Non-CMMC frameworks are untouched. Observed effect on the reference tenant: L1 drops from 233 to 118; L2 and L3 unchanged.
 
+### Changed
+- Removed the local `Get-CmmcLevelsFromControlId` override in `Common/Build-ReportData.ps1` now that CheckID v2.22.1 publishes identity-semantic `frameworks.cmmc.profiles` upstream (CheckID#248 / PR #249). Downstream code (`fwMeta`, `cmmcCoverage`, the React `FrameworkQuilt` panel) consumes the registry values directly. Zero behavioural change for the user-facing report — CheckID's derivation and the removed local derivation produce identical output on every spot-check.
+
 ## [2.4.0] - 2026-04-22
 
 ### Added
