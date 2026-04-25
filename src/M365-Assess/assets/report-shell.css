@@ -1384,6 +1384,10 @@ mark.search-hl {
 .fw-profile-chip.level3 { background: var(--danger-soft);  color: var(--danger-text);  border-color: color-mix(in oklab, var(--danger) 30%, transparent); }
 .fw-profile-chip.lic    { background: var(--chip); color: var(--text-soft); }
 .fw-profile-chip.lic5   { background: var(--warn-soft); color: var(--warn-text); border-color: color-mix(in oklab, var(--warn) 30%, transparent); }
+.fw-profile-chip-btn { cursor: pointer; transition: filter .15s, box-shadow .15s; }
+.fw-profile-chip-btn:hover { filter: brightness(1.12); }
+.fw-profile-chip-btn.selected { box-shadow: 0 0 0 2px var(--accent); filter: brightness(1.05); }
+.fw-profile-chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Print-optimized */
 @media print {
