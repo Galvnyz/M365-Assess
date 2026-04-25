@@ -78,6 +78,9 @@ Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com' `
 
 ### Required API Permissions
 
+> The full per-section permissions matrix lives at [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md). It is generated from `AssessmentMaps.ps1` + `PermissionDefinitions.ps1` and CI fails any PR that modifies those sources without regenerating the doc.
+
+
 The App Registration needs these Microsoft Graph **application** permissions:
 
 | Permission | Used By |

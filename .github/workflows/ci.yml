@@ -141,6 +141,7 @@ jobs:
             './tests/Smoke/Script-Validation.Tests.ps1'
             './tests/Smoke/PSGallery-Readiness.Tests.ps1'
             './tests/Smoke/Collector-ReadOnly.Tests.ps1'
+            './tests/Smoke/Permissions-Matrix.Tests.ps1'
             './tests/Consistency'
             './tests/Common/Export-AssessmentReport.Tests.ps1'
             './tests/Common/Import-ControlRegistry.Tests.ps1'
@@ -150,6 +151,14 @@ jobs:
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Detailed'
           Invoke-Pester -Configuration $config
+
+      - name: Permissions matrix in sync
+        shell: pwsh
+        run: |
+          # B7 #778: docs/PERMISSIONS.md is generated from AssessmentMaps.ps1 +
+          # PermissionDefinitions.ps1. Fail any PR that modifies the source maps
+          # without regenerating the doc.
+          ./scripts/Build-PermissionsMatrix.ps1 -Check
 
       - name: Version consistency
         shell: pwsh

@@ -189,7 +189,7 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 
 When no connection parameters are provided (`-TenantId`, `-SkipConnection`, `-ClientId`, or `-ManagedIdentity`), an interactive wizard prompts for tenant, auth method, and output folder. If `-Section` or `-OutputFolder` are provided on the command line, those wizard steps are skipped automatically.
 
-See [Authentication](AUTHENTICATION.md) for detailed auth examples and App Registration setup.
+See [Authentication](AUTHENTICATION.md) for detailed auth examples and App Registration setup. The full per-section permissions matrix (delegated scopes, app roles, EXO RBAC groups, Purview roles) is generated from the runtime maps and lives at [docs/PERMISSIONS.md](docs/PERMISSIONS.md).
 
 ## Connection Profiles
 
@@ -402,6 +402,7 @@ M365-Assess/
 |-------|-------------|
 | [Quickstart](docs/QUICKSTART.md) | Step-by-step setup on a fresh Windows machine |
 | [Authentication](AUTHENTICATION.md) | Interactive, certificate, device code, managed identity, and pre-existing connection methods |
+| [Permissions](docs/PERMISSIONS.md) | Generated per-section matrix: delegated Graph scopes, app permissions, EXO RBAC groups, Purview directory roles |
 | [HTML Report](REPORT.md) | Report features, custom branding, `-NoBranding`, standalone generation |
 | [Compliance](COMPLIANCE.md) | 15 frameworks, XLSX export, CheckId system, control registry |
 | [Compatibility](docs/COMPATIBILITY.md) | Module versions, dependency matrix, known incompatibilities |
