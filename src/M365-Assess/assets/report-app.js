@@ -1820,22 +1820,32 @@ function DomainRollup({
   }, /*#__PURE__*/React.createElement(DnsAuthPanel, null))));
 }
 
+// Token semantics shared by the findings filter and the framework-panel chart:
+// 'E3' matches profiles starting with E3; 'E5only' matches CIS profiles with E5 but no E3
+// variant; bare 'L1'/'L2'/'L3' substring-match handles bare CMMC values and CIS suffixes alike.
+const matchProfileToken = (profilesArr, token) => {
+  if (token === 'E5only') return profilesArr.length > 0 && !profilesArr.some(p => p.startsWith('E3'));
+  if (token === 'E3') return profilesArr.some(p => p.startsWith('E3'));
+  return profilesArr.some(p => p.includes(token));
+};
+
 // ======================== Framework quilt ========================
 function FrameworkQuilt({
   onSelect,
   selected,
   onProfileSelect,
-  activeProfile
+  activeProfiles
 }) {
   const [visibleFws, setVisibleFws] = useState(['cis-m365-v6']);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedFw, setExpandedFw] = useState(null);
   const pickerRef = useRef(null);
 
-  // Toggle: clicking the same profile chip again clears the filter (single-select).
+  // Multi-select toggle: clicking a chip adds or removes its token from the active list.
   const handleProfileClick = token => {
     if (!expandedFw || !onProfileSelect) return;
-    const next = activeProfile === token ? null : token;
+    const cur = activeProfiles || [];
+    const next = cur.includes(token) ? cur.filter(t => t !== token) : [...cur, token];
     onProfileSelect(expandedFw, next);
   };
   useEffect(() => {
@@ -1881,9 +1891,14 @@ function FrameworkQuilt({
   }, []);
   const fwDomainBreakdown = useMemo(() => {
     if (!expandedFw) return {};
+    const tokens = activeProfiles || [];
     const out = {};
     FINDINGS.forEach(f => {
       if (!f.frameworks.includes(expandedFw)) return;
+      if (tokens.length > 0) {
+        const profs = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
+        if (!tokens.some(t => matchProfileToken(profs, t))) return;
+      }
       if (!out[f.domain]) out[f.domain] = {
         pass: 0,
         warn: 0,
@@ -1897,7 +1912,7 @@ function FrameworkQuilt({
       if (k) out[f.domain][k]++;
     });
     return out;
-  }, [expandedFw]);
+  }, [expandedFw, activeProfiles]);
   const fwProfileStats = useMemo(() => {
     if (!expandedFw) return null;
     const l1 = new Set(),
@@ -2097,41 +2112,41 @@ function FrameworkQuilt({
     className: "fw-profile-stats"
   }, fwProfileStats.isCmmc ? /*#__PURE__*/React.createElement(React.Fragment, null, fwProfileStats.l1 > 0 && /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip level fw-profile-chip-btn' + (activeProfile === 'L1' ? ' selected' : ''),
+    className: 'fw-profile-chip level fw-profile-chip-btn' + ((activeProfiles || []).includes('L1') ? ' selected' : ''),
     onClick: () => handleProfileClick('L1'),
-    "aria-pressed": activeProfile === 'L1'
+    "aria-pressed": (activeProfiles || []).includes('L1')
   }, "L1 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l1)), fwProfileStats.l2 > 0 && /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip level2 fw-profile-chip-btn' + (activeProfile === 'L2' ? ' selected' : ''),
+    className: 'fw-profile-chip level2 fw-profile-chip-btn' + ((activeProfiles || []).includes('L2') ? ' selected' : ''),
     onClick: () => handleProfileClick('L2'),
-    "aria-pressed": activeProfile === 'L2'
+    "aria-pressed": (activeProfiles || []).includes('L2')
   }, "L2 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l2)), fwProfileStats.l3 > 0 && /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip level3 fw-profile-chip-btn' + (activeProfile === 'L3' ? ' selected' : ''),
+    className: 'fw-profile-chip level3 fw-profile-chip-btn' + ((activeProfiles || []).includes('L3') ? ' selected' : ''),
     onClick: () => handleProfileClick('L3'),
-    "aria-pressed": activeProfile === 'L3'
+    "aria-pressed": (activeProfiles || []).includes('L3')
   }, "L3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l3))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip level fw-profile-chip-btn' + (activeProfile === 'L1' ? ' selected' : ''),
+    className: 'fw-profile-chip level fw-profile-chip-btn' + ((activeProfiles || []).includes('L1') ? ' selected' : ''),
     onClick: () => handleProfileClick('L1'),
-    "aria-pressed": activeProfile === 'L1'
+    "aria-pressed": (activeProfiles || []).includes('L1')
   }, "L1 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l1)), fwProfileStats.l2 > 0 && /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip level2 fw-profile-chip-btn' + (activeProfile === 'L2' ? ' selected' : ''),
+    className: 'fw-profile-chip level2 fw-profile-chip-btn' + ((activeProfiles || []).includes('L2') ? ' selected' : ''),
     onClick: () => handleProfileClick('L2'),
-    "aria-pressed": activeProfile === 'L2'
+    "aria-pressed": (activeProfiles || []).includes('L2')
   }, "L2 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l2)), /*#__PURE__*/React.createElement("span", {
     className: "fw-profile-sep"
   }, "\xB7"), /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip lic fw-profile-chip-btn' + (activeProfile === 'E3' ? ' selected' : ''),
+    className: 'fw-profile-chip lic fw-profile-chip-btn' + ((activeProfiles || []).includes('E3') ? ' selected' : ''),
     onClick: () => handleProfileClick('E3'),
-    "aria-pressed": activeProfile === 'E3'
+    "aria-pressed": (activeProfiles || []).includes('E3')
   }, "E3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e3)), fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: 'fw-profile-chip lic5 fw-profile-chip-btn' + (activeProfile === 'E5only' ? ' selected' : ''),
+    className: 'fw-profile-chip lic5 fw-profile-chip-btn' + ((activeProfiles || []).includes('E5only') ? ' selected' : ''),
     onClick: () => handleProfileClick('E5only'),
-    "aria-pressed": activeProfile === 'E5only'
+    "aria-pressed": (activeProfiles || []).includes('E5only')
   }, "E5 only ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e5only)))), expandedFw === 'cmmc' && D.cmmcHandoff && D.cmmcHandoff.Summary && D.cmmcHandoff.Summary.Total && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
@@ -2620,15 +2635,7 @@ function FindingsTable({
       if ((filters.profile || []).length) {
         const activeFw = filters.framework.length === 1 ? filters.framework[0] : null;
         const fProfiles = activeFw ? [].concat(f.fwMeta?.[activeFw]?.profiles || []) : [];
-        // Token semantics: 'E3' matches any profile starting with E3; 'E5only' matches
-        // findings whose CIS profiles include E5 but no E3 variant. Bare 'L1'/'L2'/'L3'
-        // substring-match handles both bare CMMC values ('L1') and CIS suffixes ('E3-L1').
-        const matched = filters.profile.some(token => {
-          if (token === 'E5only') return fProfiles.length > 0 && !fProfiles.some(p => p.startsWith('E3'));
-          if (token === 'E3') return fProfiles.some(p => p.startsWith('E3'));
-          return fProfiles.some(p => p.includes(token));
-        });
-        if (!matched) return false;
+        if (!filters.profile.some(token => matchProfileToken(fProfiles, token))) return false;
       }
       if (s) {
         const hay = (f.setting + ' ' + f.checkId + ' ' + f.current + ' ' + f.recommended + ' ' + f.remediation + ' ' + f.domain + ' ' + f.section).toLowerCase();
@@ -4104,23 +4111,15 @@ function App() {
       block: 'start'
     });
   };
-  const onProfileSelect = (fw, profile) => {
-    if (!profile) {
-      setFilters(f => ({
-        ...f,
-        profile: []
-      }));
-      return;
-    }
+  const onProfileSelect = (fw, nextProfiles) => {
+    // Multi-select: nextProfiles is an array (possibly empty for "all cleared").
+    // Stay in place visually — chart bars and findings table refresh in the background.
+    const arr = Array.isArray(nextProfiles) ? nextProfiles : nextProfiles ? [nextProfiles] : [];
     setFilters(f => ({
       ...f,
-      framework: fw ? [fw] : f.framework,
-      profile: [profile]
+      framework: arr.length > 0 && fw ? [fw] : f.framework,
+      profile: arr
     }));
-    document.getElementById('findings-anchor')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
   };
   const onDomainJump = d => {
     setFilters(f => ({
@@ -4190,7 +4189,7 @@ function App() {
     onSelect: onFrameworkSelect,
     selected: filters.framework[0],
     onProfileSelect: onProfileSelect,
-    activeProfile: filters.profile && filters.profile[0] || null
+    activeProfiles: filters.profile || []
   }), /*#__PURE__*/React.createElement(DomainRollup, {
     onJump: onDomainJump
   }), /*#__PURE__*/React.createElement("div", {
