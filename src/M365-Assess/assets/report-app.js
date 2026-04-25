@@ -2478,20 +2478,48 @@ function FilterBar({
   }), /*#__PURE__*/React.createElement("span", null, d), /*#__PURE__*/React.createElement("span", {
     className: "ct"
   }, counts.domain[d] || 0)))))), (() => {
+    // Level / license filter row (#740). Appears when exactly one framework is active
+    // and that framework has profile-bearing findings. CMMC shows L1/L2/L3; CIS shows
+    // L1/L2/E3/E5 only. Single source of truth (filters.profile); chips here mirror
+    // the Framework Quilt panel chips and both write to the same state.
     const singleFw = filters.framework.length === 1 ? filters.framework[0] : null;
-    if (!singleFw || !singleFw.startsWith('cmmc')) return null;
-    const profileCounts = {};
+    if (!singleFw) return null;
+    const isCmmc = singleFw.startsWith('cmmc');
+    const isCis = singleFw.startsWith('cis-');
+    if (!isCmmc && !isCis) return null;
+
+    // Token counts match the semantics in FrameworkQuilt's fwProfileStats.
+    const c = {
+      L1: 0,
+      L2: 0,
+      L3: 0,
+      E3: 0,
+      E5only: 0
+    };
     FINDINGS.forEach(f => {
-      [].concat(f.fwMeta?.[singleFw]?.profiles || []).forEach(p => {
-        if (/^L\d+$/.test(p)) profileCounts[p] = (profileCounts[p] || 0) + 1;
-      });
+      const profs = [].concat(f.fwMeta?.[singleFw]?.profiles || []);
+      if (profs.length === 0) return;
+      if (profs.some(p => p.includes('L1'))) c.L1++;
+      if (profs.some(p => p.includes('L2'))) c.L2++;
+      if (profs.some(p => p.includes('L3'))) c.L3++;
+      const hasE3 = profs.some(p => p.startsWith('E3'));
+      if (hasE3) c.E3++;else c.E5only++;
     });
-    const levels = Object.keys(profileCounts).sort();
-    if (!levels.length) return null;
+    const tokenList = isCmmc ? ['L1', 'L2', 'L3'].filter(t => c[t] > 0) : ['L1', 'L2', 'E3', 'E5only'].filter(t => c[t] > 0);
+    if (!tokenList.length) return null;
     const lvlCss = {
       L1: 'level',
       L2: 'level2',
-      L3: 'level3'
+      L3: 'level3',
+      E3: 'lic',
+      E5only: 'lic5'
+    };
+    const lvlLabel = {
+      L1: 'L1',
+      L2: 'L2',
+      L3: 'L3',
+      E3: 'E3',
+      E5only: 'E5 only'
     };
     return /*#__PURE__*/React.createElement("div", {
       className: "fb-row fb-row-level"
@@ -2499,13 +2527,13 @@ function FilterBar({
       className: "filter-group"
     }, /*#__PURE__*/React.createElement("span", {
       className: "filter-group-label"
-    }, "Level"), levels.map(lvl => /*#__PURE__*/React.createElement("button", {
-      key: lvl,
-      className: 'chip ' + (lvlCss[lvl] || 'level') + ((filters.profile || []).includes(lvl) ? ' selected' : ''),
-      onClick: () => update('profile', lvl)
-    }, lvl, /*#__PURE__*/React.createElement("span", {
+    }, "Level"), tokenList.map(tok => /*#__PURE__*/React.createElement("button", {
+      key: tok,
+      className: 'chip ' + (lvlCss[tok] || 'level') + ((filters.profile || []).includes(tok) ? ' selected' : ''),
+      onClick: () => update('profile', tok)
+    }, lvlLabel[tok], /*#__PURE__*/React.createElement("span", {
       className: "ct"
-    }, profileCounts[lvl] || 0)))));
+    }, c[tok] || 0)))));
   })(), active > 0 && /*#__PURE__*/React.createElement("div", {
     className: "fb-row fb-row-clear"
   }, /*#__PURE__*/React.createElement("button", {
