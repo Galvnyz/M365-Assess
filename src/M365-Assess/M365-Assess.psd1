@@ -98,6 +98,7 @@
         'Common\Import-CmmcHandoff.ps1'
         'Common\Import-FrameworkDefinitions.ps1'
         'Common\Show-CheckProgress.ps1'
+        'Common\Get-RemediationLane.ps1'
         'Common\ConvertTo-FrameworkFilter.ps1'
         'Entra\Get-TenantInfo.ps1'
         'Entra\Get-UserSummary.ps1'

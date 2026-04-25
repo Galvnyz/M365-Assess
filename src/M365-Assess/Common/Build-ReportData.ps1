@@ -1,4 +1,9 @@
-﻿function Get-CheckDomain {
+﻿# Issue #715: dot-source the lane helper so callers (Export-AssessmentReport and
+# Pester tests alike) don't have to know about it. Idempotent — re-sourcing the
+# function on each load is harmless.
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1')
+
+function Get-CheckDomain {
     <#
     .SYNOPSIS
         Maps a base CheckId prefix to the React report domain label.
@@ -156,6 +161,12 @@ function Build-ReportDataJson {
                          $f.Evidence | ConvertTo-Json -Depth 5 -Compress
                      } else { $null }
 
+        $effort = if ($regEntry) { $e = if ($regEntry -is [hashtable]) { $regEntry['effort'] } else { $regEntry.effort }; if ($e) { $e } else { 'medium' } } else { 'medium' }
+
+        # Issue #715: precompute the remediation lane so the HTML report and the
+        # XLSX export agree without recomputing the bucketing rules in two places.
+        $lane = Get-RemediationLane -Status $f.Status -Severity $severity -Effort $effort
+
         $findings.Add([PSCustomObject]@{
             checkId      = $f.CheckId
             status       = $f.Status
@@ -167,7 +178,8 @@ function Build-ReportDataJson {
             current      = $f.CurrentValue
             recommended  = $recommended
             remediation  = $f.Remediation
-            effort       = if ($regEntry) { $e = if ($regEntry -is [hashtable]) { $regEntry['effort'] } else { $regEntry.effort }; if ($e) { $e } else { 'medium' } } else { 'medium' }
+            effort       = $effort
+            lane         = $lane
             frameworks   = $frameworks
             fwMeta       = $fwMeta
             intentDesign    = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
