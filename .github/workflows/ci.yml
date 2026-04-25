@@ -23,9 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      # Third-party action pinned by commit SHA for supply-chain hardening (#768).
+      # First-party actions/* stay on tag pins.
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d  # v4.0.1
         id: filter
         with:
           filters: |
@@ -34,6 +37,53 @@ jobs:
               - 'tests/**'
               - '.github/workflows/ci.yml'
               - 'PSScriptAnalyzerSettings.psd1'
+            docs:
+              - 'README.md'
+              - 'CHANGELOG.md'
+              - 'AUTHENTICATION.md'
+              - 'SECURITY.md'
+              - 'COMPLIANCE.md'
+              - 'REPORT.md'
+              - 'docs/**'
+              - 'package.json'
+              - 'package-lock.json'
+
+  # Lightweight job that runs only the version-consistency check when a PR
+  # touches docs that gate version messaging but does NOT touch code (#776).
+  # When code changes, the full quality-gates job runs version-consistency
+  # itself, so we skip this job to avoid duplicating the check.
+  docs-gates:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' && needs.changes.outputs.code != 'true'
+    name: Docs Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Version consistency
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile -Path ./src/M365-Assess/M365-Assess.psd1
+          $expected = $manifest.ModuleVersion
+          Write-Host "Manifest version: $expected"
+
+          $failures = @()
+          $esc = [regex]::Escape($expected)
+
+          # README badge
+          $readme = Get-Content ./README.md -Raw
+          if ($readme -notmatch "version-$esc-") {
+            $failures += 'README.md badge'
+          }
+
+          if ($failures.Count -gt 0) {
+            Write-Host "`nVersion issues:" -ForegroundColor Red
+            $failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+            Write-Error "$($failures.Count) version issue(s) found"
+            exit 1
+          }
+
+          Write-Host "Version consistency: manifest=$expected, README badge matches" -ForegroundColor Green
 
   quality-gates:
     needs: changes
@@ -259,7 +309,7 @@ jobs:
 
   ci-status:
     name: CI
-    needs: [quality-gates, test]
+    needs: [quality-gates, test, docs-gates]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -267,11 +317,13 @@ jobs:
         run: |
           qg="${{ needs.quality-gates.result }}"
           t="${{ needs.test.result }}"
+          d="${{ needs.docs-gates.result }}"
           if [[ "$qg" == "success" || "$qg" == "skipped" ]] && \
-             [[ "$t" == "success" || "$t" == "skipped" ]]; then
-            echo "CI passed (quality-gates=$qg, test=$t)"
+             [[ "$t"  == "success" || "$t"  == "skipped" ]] && \
+             [[ "$d"  == "success" || "$d"  == "skipped" ]]; then
+            echo "CI passed (quality-gates=$qg, test=$t, docs-gates=$d)"
           else
-            echo "CI failed (quality-gates=$qg, test=$t)"
+            echo "CI failed (quality-gates=$qg, test=$t, docs-gates=$d)"
             exit 1
           fi
 
