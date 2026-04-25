@@ -159,6 +159,7 @@ if (-not $OutputPath) {
 # ------------------------------------------------------------------
 # Load section data, build findings list, and export XLSX
 # ------------------------------------------------------------------
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1')
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Build-ReportData.ps1')
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Build-SectionHtml.ps1')
 # $allCisFindings and $sectionData are now set in scope
