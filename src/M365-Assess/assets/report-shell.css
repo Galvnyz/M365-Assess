@@ -545,7 +545,10 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .fb-row-search .fb-search { flex: 1 1 100%; max-width: none; }
 .fb-row-chips { justify-content: flex-start; }
 .fb-row-chips .filter-group { flex: 1 1 auto; min-width: 0; }
-.fb-row-dropdowns .filter-group { flex: 1 1 auto; min-width: 0; }
+/* Dropdown groups (FRAMEWORK / DOMAIN) size to content and cluster at the start
+   of the row rather than spanning it (#741). Two single-button groups with
+   flex-grow left large dead space between them; 0 0 auto keeps them tight. */
+.fb-row-dropdowns .filter-group { flex: 0 0 auto; min-width: 0; }
 .filter-bar-active {
   position: sticky; top: 0;
   z-index: 50;
