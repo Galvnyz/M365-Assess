@@ -51,10 +51,18 @@ $sectionData = @{
         # Enumerate saved baselines for this tenant to power the trend view (#642).
         # Baselines live at <OutputFolder>/Baselines/ which is the parent of <AssessmentFolder>/Baselines
         # (Export-AssessmentBaseline writes to parent of assessment folder per convention).
+        #
+        # Identifier convention (see #733): Invoke-M365Assessment passes the tenant DOMAIN
+        # as -TenantId to Export-AssessmentBaseline, so baselines are named with the full
+        # domain suffix (e.g. 'auto-20260424-164223_dz9m.com'). The trend filter must use
+        # the same convention. DefaultDomain from the tenant CSV is authoritative; the log's
+        # Domain: line is a short-form variant (e.g. 'dz9m' without TLD) so is used only as
+        # a last resort fallback. TenantId (GUID) only matches hand-labelled GUID fixtures.
         $baselinesRoot = Join-Path -Path (Split-Path -Parent $AssessmentFolder) -ChildPath 'Baselines'
-        $tenantIdForTrend = if ($tenantData -and @($tenantData).Count -gt 0 -and $tenantData[0].TenantId) { $tenantData[0].TenantId }
-                            elseif ($reportDomainPrefix)                                                   { $reportDomainPrefix }
-                            else                                                                            { '' }
+        $tenantIdForTrend = if ($tenantData -and @($tenantData).Count -gt 0 -and $tenantData[0].DefaultDomain) { $tenantData[0].DefaultDomain }
+                            elseif ($reportDomainPrefix)                                                        { $reportDomainPrefix }
+                            elseif ($tenantData -and @($tenantData).Count -gt 0 -and $tenantData[0].TenantId)   { $tenantData[0].TenantId }
+                            else                                                                                  { '' }
         if (-not $tenantIdForTrend -or -not (Test-Path -Path $baselinesRoot)) { return @() }
         . (Join-Path -Path $PSScriptRoot -ChildPath 'Get-BaselineTrend.ps1')
         @(Get-BaselineTrend -BaselinesRoot $baselinesRoot -TenantId $tenantIdForTrend)
