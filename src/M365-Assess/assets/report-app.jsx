@@ -36,12 +36,15 @@ function finalizeReport({ hiddenFindings, roadmapOverrides }) {
   URL.revokeObjectURL(url);
 }
 
-// Pre-compute roadmap lane counts for sidebar sub-nav (mirrors Roadmap bucketing logic)
+// Issue #715: roadmap lane counts now read from t.lane (precomputed by
+// Get-RemediationLane.ps1 in the data bridge) so sidebar nav, Roadmap, and
+// XLSX export all agree on bucketing without parallel JS rules.
 const _RM = FINDINGS.filter(f => f.status !== 'Pass' && f.status !== 'Info');
-const _RM_NOW   = _RM.filter(t => t.severity === 'critical' || (t.severity === 'high' && t.effort === 'small'));
-const _RM_SOON  = _RM.filter(t => !_RM_NOW.includes(t) && (t.severity === 'high' || (t.severity === 'medium' && t.effort !== 'large')));
-const _RM_LATER = _RM.filter(t => !_RM_NOW.includes(t) && !_RM_SOON.includes(t));
-const ROADMAP_COUNTS = { now: _RM_NOW.length, soon: _RM_SOON.length, later: _RM_LATER.length };
+const ROADMAP_COUNTS = {
+  now:   _RM.filter(t => t.lane === 'now').length,
+  soon:  _RM.filter(t => t.lane === 'soon').length,
+  later: _RM.filter(t => t.lane === 'later' || !t.lane).length,
+};
 
 const FRAMEWORKS = (D.frameworks && D.frameworks.length) ? D.frameworks : [
   { id: 'cis-m365-v6',     full: 'CIS Microsoft 365 v6.0.1' },
@@ -2047,23 +2050,10 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
     URL.revokeObjectURL(url);
   };
 
-  const getNaturalLane = t => {
-    // Rebalance (#709). Previous rule put every medium-severity Warning and Review
-    // into Next regardless of status, ballooning Next to >100 items on realistic tenants
-    // (observed: Now 18 / Next 126 / Later 3 on dz9m). New rule treats Warnings and
-    // Reviews as informational prompts by default, so they land in Later unless their
-    // severity is critical. Only Fail-status findings earn a spot in Now / Next.
-    if (t.status !== 'Fail') {
-      return t.severity === 'critical' ? 'now' : 'later';
-    }
-    // Fail status — prioritise by severity + effort
-    if (t.severity === 'critical') return 'now';
-    if (t.severity === 'high' && t.effort === 'small') return 'now';   // high-value quick win
-    if (t.severity === 'high') return 'soon';
-    if (t.severity === 'medium' && t.effort !== 'large') return 'soon';
-    return 'later';  // medium+large-effort Fails, all low severity
-  };
-
+  // Issue #715: lane bucketing now lives in Get-RemediationLane.ps1 (the single
+  // source of truth shared by HTML + XLSX). Build-ReportData precomputes t.lane;
+  // we just read it here. Falls back to 'later' for any unexpected missing value.
+  const getNaturalLane = t => t.lane || 'later';
   const getEffectiveLane = t => roadmapOverrides[t.checkId] || getNaturalLane(t);
   const LANE_LABEL = { now: 'Now', soon: 'Next', later: 'Later' };
 

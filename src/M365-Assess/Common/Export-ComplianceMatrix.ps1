@@ -62,6 +62,7 @@ if (-not (Test-Path -Path $AssessmentFolder -PathType Container)) {
 # ------------------------------------------------------------------
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Import-ControlRegistry.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1')
 $controlsPath = Join-Path -Path $projectRoot -ChildPath 'controls'
 $controlRegistry = Import-ControlRegistry -ControlsPath $controlsPath
 
@@ -126,18 +127,27 @@ foreach ($c in $summary) {
         $entry = if ($controlRegistry.ContainsKey($baseCheckId)) { $controlRegistry[$baseCheckId] } else { $null }
         $fw = if ($entry) { $entry.frameworks } else { @{} }
 
+        # Issue #715: precompute Horizon (Now/Next/Later) so the XLSX agrees
+        # with the HTML report's Remediation Roadmap. Pass-status rows get an
+        # empty Horizon — the lane is a remediation concept, not a finding one.
+        $sevForLane = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { 'medium' }
+        $effortForLane = if ($entry -and $entry.effort) { $entry.effort } else { 'medium' }
+        $horizon = Get-RemediationLane -Status $row.Status -Severity $sevForLane -Effort $effortForLane
+
         # Fixed columns
         $finding = [ordered]@{
             CheckId         = $row.CheckId
             Setting         = $row.Setting
             Category        = $row.Category
             Status          = $row.Status
+            Horizon         = $horizon
             RiskSeverity    = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { '' }
             ImpactSeverity  = if ($entry -and $entry.impactRating) { $entry.impactRating.severity }  else { '' }
             ImpactRationale = if ($entry -and $entry.impactRating) { $entry.impactRating.rationale } else { '' }
             SCFDomain       = if ($entry -and $entry.scf)          { $entry.scf.domain }             else { '' }
             CSFFunction     = if ($entry -and $entry.scf)          { $entry.scf.csfFunction }        else { '' }
             SCFWeight       = if ($entry -and $entry.scf)          { $entry.scf.relativeWeighting }  else { '' }
+            Effort          = $effortForLane
             Source          = $c.Collector
             Remediation     = $row.Remediation
         }
@@ -508,6 +518,39 @@ if ($verificationRows.Count -gt 0) {
 }
 
 # ------------------------------------------------------------------
+# Remediation Roadmap sheet (issue #715)
+# Mirrors the HTML report's Roadmap: one row per actionable finding,
+# grouped by Now/Next/Later, sorted within each group by severity.
+# ------------------------------------------------------------------
+$severityOrder = @{ 'critical' = 0; 'high' = 1; 'medium' = 2; 'low' = 3; 'info' = 4; 'none' = 5 }
+$horizonOrder  = @{ 'now' = 0; 'soon' = 1; 'later' = 2 }
+$roadmapRows = $sortedFindings | Where-Object { $_.Horizon } | ForEach-Object {
+    [PSCustomObject]@{
+        Horizon       = switch ($_.Horizon) { 'now' { 'Now' } 'soon' { 'Next' } 'later' { 'Later' } default { $_.Horizon } }
+        CheckId       = $_.CheckId
+        Setting       = $_.Setting
+        Severity      = $_.RiskSeverity
+        Effort        = $_.Effort
+        Status        = $_.Status
+        Remediation   = $_.Remediation
+        _hOrder       = $horizonOrder[$_.Horizon]
+        _sOrder       = if ($severityOrder.ContainsKey(($_.RiskSeverity).ToLower())) { $severityOrder[($_.RiskSeverity).ToLower()] } else { 99 }
+    }
+} | Sort-Object -Property _hOrder, _sOrder, CheckId | Select-Object Horizon, CheckId, Setting, Severity, Effort, Status, Remediation
+
+if ($roadmapRows -and @($roadmapRows).Count -gt 0) {
+    $roadmapParams = @{
+        Path          = $outputFile
+        WorksheetName = 'Remediation Roadmap'
+        AutoSize      = $true
+        FreezeTopRow  = $true
+        BoldTopRow    = $true
+        TableStyle    = 'Medium4'
+    }
+    $roadmapRows | Export-Excel @roadmapParams
+}
+
+# ------------------------------------------------------------------
 # Drift sheet (if a baseline comparison was run)
 # ------------------------------------------------------------------
 if ($DriftReport -and $DriftReport.Count -gt 0) {
@@ -540,11 +583,12 @@ if ($DriftReport -and $DriftReport.Count -gt 0) {
 # ------------------------------------------------------------------
 $pkg = Open-ExcelPackage -Path $outputFile
 
-# Matrix sheet - color-code Status, RiskSeverity, and ImpactSeverity columns
+# Matrix sheet - color-code Status, Horizon, RiskSeverity, and ImpactSeverity columns
 $matrixSheet = $pkg.Workbook.Worksheets['Compliance Matrix']
 $statusCol      = 4   # Column D = Status
-$riskSevCol     = 5   # Column E = RiskSeverity
-$impactSevCol   = 6   # Column F = ImpactSeverity
+$horizonCol     = 5   # Column E = Horizon (issue #715)
+$riskSevCol     = 6   # Column F = RiskSeverity
+$impactSevCol   = 7   # Column G = ImpactSeverity
 $lastRow = $matrixSheet.Dimension.End.Row
 
 for ($r = 2; $r -le $lastRow; $r++) {
@@ -555,6 +599,14 @@ for ($r = 2; $r -le $lastRow; $r++) {
         'Warning' { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
         'Review'  { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(30, 64, 175));  $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(219, 234, 254)) }
         'Info'    { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(107, 114, 128)); $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(243, 244, 246)) }
+    }
+
+    # Issue #715: color the Horizon cell so consultants can scan Now/Next/Later visually
+    $horizonVal = $matrixSheet.Cells[$r, $horizonCol].Value
+    switch ($horizonVal) {
+        'now'   { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(185, 28, 28));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 226, 226)) }
+        'soon'  { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
+        'later' { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(30, 64, 175));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(219, 234, 254)) }
     }
 
     $sevVal = $matrixSheet.Cells[$r, $riskSevCol].Value
