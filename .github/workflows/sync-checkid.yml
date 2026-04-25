@@ -1,5 +1,13 @@
 name: Sync CheckID on Release
-# Triggered by CheckID tag push via repository_dispatch, or manually via workflow_dispatch
+# Channel: stable.
+#
+# M365-Assess subscribes to the stable channel — tagged CheckID releases only.
+# It does NOT subscribe to checkid-preview events; preview-channel dispatches
+# from CheckID main HEAD are intentionally ignored. This matches M365-Assess's
+# conservative public-release posture (PSGallery module).
+#
+# Triggered by CheckID tag push via repository_dispatch, or manually via
+# workflow_dispatch.
 
 on:
   repository_dispatch:
@@ -23,6 +31,19 @@ jobs:
       - uses: actions/checkout@v6
         with:
           token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
+      - name: Verify channel
+        # Defense-in-depth: even though we only subscribe to checkid-released,
+        # confirm the dispatch payload's channel is stable (or absent for
+        # workflow_dispatch / older payloads). Fail fast if a preview payload
+        # somehow reaches this workflow.
+        run: |
+          CHANNEL="${{ github.event.client_payload.channel }}"
+          if [ -n "$CHANNEL" ] && [ "$CHANNEL" != "stable" ]; then
+            echo "::error::M365-Assess only consumes the stable channel; got channel='$CHANNEL'"
+            exit 1
+          fi
+          echo "Channel: ${CHANNEL:-stable (workflow_dispatch / pre-channel payload)}"
 
       - name: Fetch CheckID data
         env:
