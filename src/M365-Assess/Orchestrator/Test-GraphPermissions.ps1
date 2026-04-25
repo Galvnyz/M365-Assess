@@ -1,11 +1,161 @@
 <#
 .SYNOPSIS
-    Validates Graph API scopes after connection against required scopes.
+    Validates Graph API permissions after connection against required permissions.
 .DESCRIPTION
-    Compares granted scopes from Get-MgContext against the scopes
-    required by selected assessment sections. Warns about missing
-    scopes before collectors run.
+    For delegated auth, compares granted scopes from Get-MgContext against the
+    scopes required by selected assessment sections (sectionScopeMap).
+
+    For app-only auth (B2 #773), queries the running app's service principal
+    appRoleAssignments and compares against the per-section app permissions
+    declared in Setup/PermissionDefinitions.ps1. Both paths emit per-section
+    deficit warnings before collectors run, so users know which sections may
+    produce incomplete results.
 #>
+
+# B2 #773: dot-source PermissionDefinitions for the per-section app-role map.
+# Same source of truth as Grant-M365AssessConsent and the generated
+# docs/PERMISSIONS.md (B7 #778). Idempotent re-source on each load.
+. (Join-Path -Path $PSScriptRoot -ChildPath '..\Setup\PermissionDefinitions.ps1')
+
+function Test-GraphAppRolePermissions {
+    <#
+    .SYNOPSIS
+        Validates app-only Graph permissions by querying the running SP's
+        app-role assignments and comparing against per-section requirements.
+    .DESCRIPTION
+        Used by Test-GraphPermissions when app-only auth is detected. Reads
+        $script:RequiredGraphPermissions from PermissionDefinitions.ps1
+        (which has Sections annotations on every permission) and inverts to
+        a per-section view; queries the SP's appRoleAssignments via Graph;
+        resolves role IDs to permission names through the Microsoft Graph
+        SP's appRoles collection; reports missing roles per active section.
+
+        Failures to query (e.g., the app lacks Application.Read.All to
+        introspect itself) produce an explicit "could not verify" warning,
+        not silence. AC for B2 #773.
+    .PARAMETER Context
+        The Get-MgContext output for the current Graph connection.
+    .PARAMETER ActiveSections
+        Section names the user selected for this run.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Context,
+
+        [Parameter(Mandatory)]
+        [string[]]$ActiveSections
+    )
+
+    $clientId = $Context.ClientId
+    if (-not $clientId) {
+        Write-Host '    i App-only auth detected but no ClientId in context -- cannot validate app roles.' -ForegroundColor Yellow
+        Write-AssessmentLog -Level WARN -Message 'App-role validation skipped: ClientId missing from Graph context' -Section 'Setup'
+        return
+    }
+
+    # Build per-section app-role requirements from the shared definitions.
+    $perSection = @{}
+    foreach ($entry in $script:RequiredGraphPermissions) {
+        $sections = $entry.Sections -split ',' | ForEach-Object { $_.Trim() }
+        foreach ($s in $sections) {
+            if (-not $perSection.ContainsKey($s)) {
+                $perSection[$s] = [System.Collections.Generic.List[string]]::new()
+            }
+            $perSection[$s].Add($entry.Name)
+        }
+    }
+
+    # Required permissions for the selected sections (deduplicated, case-insensitive).
+    $requiredRoles = New-Object -TypeName System.Collections.Generic.HashSet[string] -ArgumentList @([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($s in $ActiveSections) {
+        if ($perSection.ContainsKey($s)) {
+            foreach ($p in $perSection[$s]) { [void]$requiredRoles.Add($p) }
+        }
+    }
+
+    if ($requiredRoles.Count -eq 0) {
+        Write-Host '    i App-only auth: no Graph app roles required for the selected sections.' -ForegroundColor DarkGray
+        return
+    }
+
+    # Query the running SP's app-role assignments and resolve role IDs through
+    # the Microsoft Graph SP's appRoles collection. Wrapped in try/catch so
+    # the structured "could not verify" warning fires on any failure.
+    try {
+        $sp = Get-MgServicePrincipal -Filter "appId eq '$clientId'" -Top 1 -ErrorAction Stop
+        if (-not $sp) {
+            Write-Host "    ! App-only auth: could not locate service principal for ClientId '$clientId'." -ForegroundColor Yellow
+            Write-AssessmentLog -Level WARN -Message 'App-role validation skipped: SP lookup returned no results' -Section 'Setup'
+            return
+        }
+
+        $assignments = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -All -ErrorAction Stop)
+
+        $graphSp = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'" -Top 1 -ErrorAction Stop
+        if (-not $graphSp) {
+            Write-Host '    ! App-only auth: Microsoft Graph SP not resolvable -- cannot map role IDs to names.' -ForegroundColor Yellow
+            Write-AssessmentLog -Level WARN -Message 'App-role validation skipped: Microsoft Graph SP not found' -Section 'Setup'
+            return
+        }
+
+        $roleById = @{}
+        foreach ($r in $graphSp.AppRoles) {
+            $roleById[[string]$r.Id] = $r.Value
+        }
+
+        $grantedRoles = New-Object -TypeName System.Collections.Generic.HashSet[string] -ArgumentList @([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($a in $assignments) {
+            if ($a.ResourceId -eq $graphSp.Id) {
+                $name = $roleById[[string]$a.AppRoleId]
+                if ($name) { [void]$grantedRoles.Add($name) }
+            }
+        }
+
+        $missing = @($requiredRoles | Where-Object { -not $grantedRoles.Contains($_) })
+
+        if ($missing.Count -eq 0) {
+            Write-Host "    $([char]0x2714) All $($requiredRoles.Count) required Graph app role(s) granted" -ForegroundColor Green
+            Write-AssessmentLog -Level INFO -Message "Graph app-role validation passed ($($requiredRoles.Count) roles)" -Section 'Setup'
+            return
+        }
+
+        # Map missing roles back to affected sections.
+        $affectedSections = @{}
+        foreach ($role in $missing) {
+            foreach ($s in $ActiveSections) {
+                if (-not $perSection.ContainsKey($s)) { continue }
+                if ($perSection[$s] | Where-Object { $_ -ieq $role }) {
+                    if (-not $affectedSections.ContainsKey($s)) {
+                        $affectedSections[$s] = [System.Collections.Generic.List[string]]::new()
+                    }
+                    $affectedSections[$s].Add($role)
+                }
+            }
+        }
+
+        Write-Host ''
+        Write-Host "    $([char]0x26A0) $($missing.Count) Graph app role(s) not granted -- some checks may fail:" -ForegroundColor Yellow
+        foreach ($s in $affectedSections.Keys | Sort-Object) {
+            $list = ($affectedSections[$s] | Sort-Object) -join ', '
+            Write-Host "      ${s}: $list" -ForegroundColor Yellow
+        }
+        Write-Host '    To fix: Entra ID > App registrations > [your app] > API permissions >' -ForegroundColor DarkGray
+        Write-Host '      Add a permission > Microsoft Graph > Application permissions' -ForegroundColor DarkGray
+        Write-Host "    Then click 'Grant admin consent for [tenant]' and re-run." -ForegroundColor DarkGray
+        Write-Host ''
+
+        Write-AssessmentLog -Level WARN -Message "Missing Graph app roles: $($missing -join ', ')" -Section 'Setup'
+    }
+    catch {
+        # Structured "could not verify" warning per the AC -- never silent.
+        Write-Host "    ! App-only auth: could not validate app roles -- $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host '    This usually means the app lacks Application.Read.All or Directory.Read.All' -ForegroundColor DarkGray
+        Write-Host '    (needed to read its own service principal). Add either permission and re-run.' -ForegroundColor DarkGray
+        Write-AssessmentLog -Level WARN -Message "App-role validation could not be performed: $($_.Exception.Message)" -Section 'Setup'
+    }
+}
+
 function Test-GraphPermissions {
     <#
     .SYNOPSIS
@@ -47,10 +197,11 @@ function Test-GraphPermissions {
 
     $grantedScopes = @($context.Scopes)
 
-    # App-only auth: scopes may be empty or contain only '.default'
+    # App-only auth: delegated scopes are empty / '.default' (B2 #773).
+    # Hand off to the app-role validator instead of skipping silently.
     if ($grantedScopes.Count -eq 0 -or ($grantedScopes.Count -eq 1 -and $grantedScopes[0] -eq '.default')) {
-        Write-Host '    i App-only auth detected -- scope validation not available (permissions set in app registration)' -ForegroundColor DarkGray
-        Write-AssessmentLog -Level INFO -Message 'App-only auth: scope validation skipped (permissions defined in Entra app registration)' -Section 'Setup'
+        Write-Host '    i App-only auth detected -- validating Graph app role assignments instead of delegated scopes...' -ForegroundColor DarkGray
+        Test-GraphAppRolePermissions -Context $context -ActiveSections $ActiveSections
         return
     }
 
