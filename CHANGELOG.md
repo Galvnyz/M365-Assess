@@ -4,6 +4,12 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Fixed
+- Posture trend (#642) was silently filtering baselines by tenant GUID while `Invoke-M365Assessment` saves baselines with the tenant domain as the folder-name suffix. Result: real `auto-*_<domain>` baselines were invisible to the trend and only hand-labelled GUID-suffixed fixtures appeared. `Build-SectionHtml.ps1` now prefers the tenant's `DefaultDomain` from the tenant CSV (authoritative full domain) over the log-derived short-form prefix or the GUID. Reference tenant now shows 3 real trend snapshots instead of 2 synthetic fixture snapshots (#733)
+
+### Changed
+- Framework coverage panel is expanded by default on report load (previously required a click). First visible framework (CIS M365 v6) opens automatically so L1/L2 chips and Coverage by Domain bars are immediately visible; the × close button continues to work (#735)
+
 ### Added
 - CMMC complete posture view in the Framework Quilt — the CMMC detail panel now surfaces EZ-CMMC handoff gaps (out-of-scope / partial / coverable / inherent) alongside the existing L1/L2/L3 coverage stats, so customers see what M365-Assess automates *and* what requires non-M365 controls (physical access, HR, inherent defaults) tracked separately by EZ-CMMC. `REPORT_DATA.cmmcHandoff` (derived from CheckID's `data/cmmc-ez-handoff.json`) and `REPORT_DATA.cmmcCoverage` (pass/fail/warn per CMMC level, computed from findings) are now part of the report data contract. `sync-checkid.yml` pulls the handoff artifact on every scheduled sync (#594)
 - Clickable CMMC and CIS profile chips in the Framework Quilt expanded panel: clicking L1, L2, L3 (CMMC) or L1, L2, E3, E5 only (CIS) toggles each level's membership in `filters.profile` (multi-select; any combination allowed). The findings table filters to checks whose `fwMeta[fw].profiles` matches at least one active token, and the panel's Coverage by Domain bars re-compute against the same filter so the chart and findings stay consistent. No auto-scroll; the user stays in the framework panel. Selected chips show a subtle accent ring (#730, #731, #736)

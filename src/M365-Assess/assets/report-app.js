@@ -1838,7 +1838,10 @@ function FrameworkQuilt({
 }) {
   const [visibleFws, setVisibleFws] = useState(['cis-m365-v6']);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [expandedFw, setExpandedFw] = useState(null);
+  // Panel open by default (#735): the first visible framework ('cis-m365-v6' initially)
+  // is expanded on mount so the L1/L2 chips + Coverage by Domain bars are visible
+  // without requiring an extra click. User can still collapse via the × button.
+  const [expandedFw, setExpandedFw] = useState('cis-m365-v6');
   const pickerRef = useRef(null);
 
   // Multi-select toggle: clicking a chip adds or removes its token from the active list.
