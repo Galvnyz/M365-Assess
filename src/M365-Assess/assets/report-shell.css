@@ -422,6 +422,8 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
   display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   margin-top: 14px;
+  /* #742: separate the tile row from the critical-findings banner below */
+  margin-bottom: 12px;
 }
 .exec-tile {
   padding: 14px 16px;
@@ -1269,14 +1271,30 @@ mark.search-hl {
 }
 @media (max-width: 900px) { .quilt { grid-template-columns: repeat(2, 1fr); } }
 .quilt-cell {
+  position: relative;
   padding: 14px;
+  padding-right: 34px;  /* room for the chevron affordance */
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all .15s;
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.quilt-cell:hover { border-color: var(--accent-border); }
+.quilt-cell:hover {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+.quilt-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quilt-cell.expanded { border-color: var(--accent-border); box-shadow: 0 0 0 1px var(--accent-border) inset; }
+.quilt-cell-chevron {
+  position: absolute; top: 14px; right: 12px;
+  width: 14px; height: 14px;
+  opacity: .55;
+  transition: transform .15s, opacity .15s;
+  pointer-events: none;
+}
+.quilt-cell:hover .quilt-cell-chevron { opacity: .9; }
+.quilt-cell.expanded .quilt-cell-chevron { transform: rotate(180deg); opacity: 1; }
 .quilt-cell .fw-name {
   font-size: 12px; font-weight: 700;
   font-family: var(--font-mono);

@@ -2023,8 +2023,27 @@ function FrameworkQuilt({
     return /*#__PURE__*/React.createElement("div", {
       key: f.id,
       className: 'quilt-cell' + (isExpanded ? ' expanded' : '') + (selected === f.id ? ' selected' : ''),
-      onClick: () => handleCardClick(f.id)
-    }, /*#__PURE__*/React.createElement("div", {
+      role: "button",
+      tabIndex: 0,
+      "aria-expanded": isExpanded,
+      "aria-label": `${f.full || f.id} — click to ${isExpanded ? 'collapse' : 'expand'} details`,
+      onClick: () => handleCardClick(f.id),
+      onKeyDown: e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick(f.id);
+        }
+      }
+    }, /*#__PURE__*/React.createElement("svg", {
+      className: "quilt-cell-chevron",
+      viewBox: "0 0 16 16",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: "1.8",
+      "aria-hidden": "true"
+    }, /*#__PURE__*/React.createElement("path", {
+      d: "M4 6l4 4 4-4"
+    })), /*#__PURE__*/React.createElement("div", {
       className: "fw-name"
     }, f.id), /*#__PURE__*/React.createElement("div", {
       className: "fw-long"

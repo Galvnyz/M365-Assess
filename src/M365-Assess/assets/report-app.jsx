@@ -1216,7 +1216,16 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
           const isExpanded = expandedFw === f.id;
           return (
             <div key={f.id} className={'quilt-cell' + (isExpanded?' expanded':'') + (selected===f.id?' selected':'')}
-                 onClick={() => handleCardClick(f.id)}>
+                 role="button"
+                 tabIndex={0}
+                 aria-expanded={isExpanded}
+                 aria-label={`${f.full || f.id} — click to ${isExpanded ? 'collapse' : 'expand'} details`}
+                 onClick={() => handleCardClick(f.id)}
+                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(f.id); } }}>
+              {/* #743: chevron affordance — rotates 180° on expand via .quilt-cell.expanded rule */}
+              <svg className="quilt-cell-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M4 6l4 4 4-4"/>
+              </svg>
               <div className="fw-name">{f.id}</div>
               <div className="fw-long">{f.full}</div>
               <div className="fw-bar" title="Pass (green) / Warn (amber) / Fail (red) / Review (accent) / Skipped (grey, prerequisite unmet)">
