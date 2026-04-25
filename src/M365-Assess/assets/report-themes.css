@@ -449,6 +449,22 @@
 [data-theme="neon"][data-mode="dark"] .status-badge.review {
   box-shadow: 0 0 9px rgba(192,132,252,0.55), 0 0 0 1px rgba(192,132,252,0.3);
 }
+/* v2.9.0 statuses -- match the chip color family. See docs/CHECK-STATUS-MODEL.md.
+   Skipped / NotApplicable use soft gray glow (muted "no data" treatment).
+   Unknown uses yellow (distinct from warn's amber).
+   NotLicensed uses violet (accent), tinted slightly differently from review. */
+[data-theme="neon"][data-mode="dark"] .status-badge.skipped {
+  box-shadow: 0 0 7px rgba(156,163,175,0.4), 0 0 0 1px rgba(156,163,175,0.25);
+}
+[data-theme="neon"][data-mode="dark"] .status-badge.unknown {
+  box-shadow: 0 0 9px rgba(253,224,71,0.55), 0 0 0 1px rgba(253,224,71,0.3);
+}
+[data-theme="neon"][data-mode="dark"] .status-badge.notapplicable {
+  box-shadow: 0 0 6px rgba(156,163,175,0.3), 0 0 0 1px rgba(156,163,175,0.2);
+}
+[data-theme="neon"][data-mode="dark"] .status-badge.notlicensed {
+  box-shadow: 0 0 9px rgba(167,139,250,0.55), 0 0 0 1px rgba(167,139,250,0.35);
+}
 [data-theme="neon"][data-mode="dark"] .sev-badge.critical .bar i {
   box-shadow: 0 0 7px rgba(251,113,133,0.95);
 }
