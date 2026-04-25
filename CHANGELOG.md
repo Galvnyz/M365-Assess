@@ -5,10 +5,12 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ## [Unreleased]
 
 ### Added
+- Framework cards in the Framework Quilt now carry a rotating chevron affordance in their top-right corner (down when collapsed, up when the detail panel is open) plus keyboard accessibility (`role="button"`, `aria-expanded`, Enter/Space to toggle, `:focus-visible` outline) and a more visible hover state. Signals the card as interactive so first-time readers see it as an expandable element (#743)
 - FilterBar Level row now appears for CIS M365 as well as CMMC, with L1 / L2 / E3 / E5 only chips (CMMC unchanged; still L1/L2/L3). Chips write to the same `filters.profile` field used by the Framework Quilt panel chips, so selecting a level in either place lights up the other — single source of truth (#740)
 
 ### Changed
 - FilterBar FRAMEWORK and DOMAIN dropdowns now cluster at the left of their row instead of being pushed to opposite ends by a flex-grow rule. Cleaner association of two related pickers (#741)
+- 12px vertical spacing added between the Executive Summary tile row and the critical-findings banner below it; the two elements were previously flush against each other (#742)
 
 ### Fixed
 - Posture trend (#642) was silently filtering baselines by tenant GUID while `Invoke-M365Assessment` saves baselines with the tenant domain as the folder-name suffix. Result: real `auto-*_<domain>` baselines were invisible to the trend and only hand-labelled GUID-suffixed fixtures appeared. `Build-SectionHtml.ps1` now prefers the tenant's `DefaultDomain` from the tenant CSV (authoritative full domain) over the log-derived short-form prefix or the GUID. Reference tenant now shows 3 real trend snapshots instead of 2 synthetic fixture snapshots (#733)
