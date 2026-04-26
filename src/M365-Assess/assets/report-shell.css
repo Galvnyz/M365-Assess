@@ -1042,6 +1042,28 @@ mark.search-hl {
 }
 .scoring-view-more { color: var(--muted); font-size: 11px; padding-top: 4px !important; }
 
+/* ---------- Permissions panel (#812 B2 followup) ---------- */
+.permissions-panel {
+  margin: 24px 0; padding: 18px 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.permissions-table {
+  width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px;
+}
+.permissions-table th,
+.permissions-table td {
+  padding: 8px 10px; text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.permissions-table th {
+  font-weight: 600; color: var(--text-soft); background: var(--surface2);
+}
+.permissions-table tr:last-child td { border-bottom: none; }
+.permissions-table .status-badge {
+  display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0;
+  font-size: 11px; font-weight: 500; border-radius: 999px;
+}
+
 /* ---------- Domain grid ---------- */
 .domain-grid {
   display: grid;

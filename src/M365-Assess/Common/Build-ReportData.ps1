@@ -97,7 +97,13 @@ function Build-ReportDataJson {
         [hashtable]$CmmcHandoff = $null,
 
         [Parameter()]
-        [switch]$IncludeTrend
+        [switch]$IncludeTrend,
+
+        # #812 -- per-section app-role / scope deficits surfaced on the React
+        # Permissions panel. Loaded from <AssessmentFolder>/_PermissionDeficits.json
+        # by Export-AssessmentReport when present.
+        [Parameter()]
+        [object]$PermissionDeficits = $null
     )
 
     # ------------------------------------------------------------------
@@ -428,6 +434,7 @@ function Build-ReportDataJson {
         trendOptIn     = [bool]$IncludeTrend
         cmmcHandoff    = $CmmcHandoff
         cmmcCoverage   = $cmmcCoverage
+        permissions    = $PermissionDeficits
     }
 
     # ------------------------------------------------------------------

@@ -170,6 +170,18 @@ if (-not $OutputPath) {
 $xlsxName   = if ($reportDomainPrefix) { "_Compliance-Matrix_$reportDomainPrefix.xlsx" } else { '_Compliance-Matrix.xlsx' }
 $reportTitle = if ($TenantName -ne 'M365 Tenant') { "$TenantName — M365 Security Assessment" } else { 'M365 Security Assessment' }
 
+# #812: load the deficit map written by Test-GraphPermissions / Test-GraphAppRolePermissions.
+# Hashtable[]/PSCustomObject is fine -- Build-ReportDataJson just passes it through.
+$permissionDeficits = $null
+$deficitPath = Join-Path -Path $AssessmentFolder -ChildPath '_PermissionDeficits.json'
+if (Test-Path -Path $deficitPath) {
+    try {
+        $permissionDeficits = Get-Content -Path $deficitPath -Raw | ConvertFrom-Json
+    } catch {
+        Write-Warning "Could not parse $deficitPath -- skipping Permissions panel data: $($_.Exception.Message)"
+    }
+}
+
 $reportJson = Build-ReportDataJson `
     -AllFindings    $allCisFindings `
     -SectionData    $sectionData `
@@ -178,7 +190,8 @@ $reportJson = Build-ReportDataJson `
     -XlsxFileName   $xlsxName `
     -FrameworkDefs  $allFrameworks `
     -CmmcHandoff    $cmmcHandoff `
-    -IncludeTrend:  $IncludeTrend
+    -IncludeTrend:  $IncludeTrend `
+    -PermissionDeficits $permissionDeficits
 
 # ------------------------------------------------------------------
 # Assemble HTML and write output

@@ -527,6 +527,46 @@ function ScoringViews() {
   );
 }
 
+// ======================== Permissions panel (#812 B2 followup) ========================
+// Renders the deficit map written by Test-GraphPermissions / Test-GraphAppRolePermissions.
+// Source: window.REPORT_DATA.permissions; null when the assessment ran without
+// the deficit-write seam (older runs, SkipConnection mode, etc.).
+function PermissionsPanel() {
+  const p = D.permissions;
+  if (!p || !p.sections) return null;
+  const sections = Object.entries(p.sections);
+  const allOk = sections.every(([, s]) => s.ok);
+  return (
+    <section className="permissions-panel" id="permissions">
+      <div className="section-header">
+        <h2>Permissions</h2>
+        <div className="section-sub">
+          {p.authMode} auth | {sections.length} section{sections.length===1?'':'s'} checked | {allOk ? 'all granted' : `${(p.missing || []).length} role(s) missing`}
+        </div>
+      </div>
+      <table className="permissions-table">
+        <thead>
+          <tr><th>Section</th><th>Required</th><th>Missing</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {sections.map(([name, s]) => (
+            <tr key={name}>
+              <td><strong>{name}</strong></td>
+              <td>{s.required && s.required.length ? s.required.join(', ') : <span className="muted">none</span>}</td>
+              <td>
+                {s.missing && s.missing.length
+                  ? s.missing.map((m, i) => <span key={i} className="status-badge unknown">{m}</span>)
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              <td>{s.ok ? <span className="status-badge pass">OK</span> : <span className="status-badge fail">deficit</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 // ======================== Posture hero ========================
 function Posture() {
   const score = parseFloat(SCORE.Percentage);
@@ -2952,6 +2992,7 @@ function App() {
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>
         <DomainRollup onJump={onDomainJump}/>
+        <PermissionsPanel/>
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch}/>

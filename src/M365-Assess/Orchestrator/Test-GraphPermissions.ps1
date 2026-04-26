@@ -17,6 +17,58 @@
 # docs/PERMISSIONS.md (B7 #778). Idempotent re-source on each load.
 . (Join-Path -Path $PSScriptRoot -ChildPath '..\Setup\PermissionDefinitions.ps1')
 
+function Write-PermissionDeficitsFile {
+    <#
+    .SYNOPSIS
+        Writes _PermissionDeficits.json with structured per-section deficit data.
+    .DESCRIPTION
+        Companion to Test-GraphAppRolePermissions / Test-GraphPermissions
+        (#812 B2 followup). The HTML report's Permissions panel and the evidence
+        package both consume this file. The shape is forward-compatible -- new
+        keys can be added without breaking older readers.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [string]$OutputFolder,
+        [Parameter(Mandatory)] [ValidateSet('Delegated', 'AppOnly')] [string]$AuthMode,
+        [Parameter(Mandatory)] [string[]]$ActiveSections,
+        [Parameter()] [object]$RequiredRoles,   # HashSet[string] or [string[]]
+        [Parameter()] [object]$GrantedRoles,    # HashSet[string] or [string[]]
+        [Parameter()] [object]$MissingByRole = @(),
+        [Parameter()] [hashtable]$PerSection = @{}
+    )
+
+    $reqArr = @($RequiredRoles | Where-Object { $_ })
+    $grtArr = @($GrantedRoles  | Where-Object { $_ })
+    $missArr = @($MissingByRole | Where-Object { $_ })
+
+    # Per-section view: which roles each section needs, and which are missing.
+    $sectionDeficits = [ordered]@{}
+    foreach ($s in ($ActiveSections | Sort-Object -Unique)) {
+        $required = if ($PerSection.ContainsKey($s)) { @($PerSection[$s]) } else { @() }
+        $missing  = @($required | Where-Object { $missArr -icontains $_ })
+        $sectionDeficits[$s] = [ordered]@{
+            required = $required
+            missing  = $missing
+            ok       = ($missing.Count -eq 0)
+        }
+    }
+
+    $payload = [ordered]@{
+        schemaVersion  = '1.0'
+        authMode       = $AuthMode
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+        activeSections = $ActiveSections
+        required       = $reqArr
+        granted        = $grtArr
+        missing        = $missArr
+        sections       = $sectionDeficits
+    }
+    $path = Join-Path -Path $OutputFolder -ChildPath '_PermissionDeficits.json'
+    $payload | ConvertTo-Json -Depth 6 | Set-Content -Path $path -Encoding UTF8
+    Write-AssessmentLog -Level INFO -Message "Wrote permission deficit map: $path" -Section 'Setup'
+}
+
 function Test-GraphAppRolePermissions {
     <#
     .SYNOPSIS
@@ -37,6 +89,10 @@ function Test-GraphAppRolePermissions {
         The Get-MgContext output for the current Graph connection.
     .PARAMETER ActiveSections
         Section names the user selected for this run.
+    .PARAMETER OutputFolder
+        Optional. When supplied, writes _PermissionDeficits.json into this folder
+        with the structured deficit map so the HTML report's Permissions panel
+        and the evidence package can surface it (#812 B2 followup).
     #>
     [CmdletBinding()]
     param(
@@ -44,7 +100,10 @@ function Test-GraphAppRolePermissions {
         [object]$Context,
 
         [Parameter(Mandatory)]
-        [string[]]$ActiveSections
+        [string[]]$ActiveSections,
+
+        [Parameter()]
+        [string]$OutputFolder
     )
 
     $clientId = $Context.ClientId
@@ -117,6 +176,11 @@ function Test-GraphAppRolePermissions {
         if ($missing.Count -eq 0) {
             Write-Host "    $([char]0x2714) All $($requiredRoles.Count) required Graph app role(s) granted" -ForegroundColor Green
             Write-AssessmentLog -Level INFO -Message "Graph app-role validation passed ($($requiredRoles.Count) roles)" -Section 'Setup'
+            if ($OutputFolder -and (Test-Path -Path $OutputFolder -PathType Container)) {
+                Write-PermissionDeficitsFile -OutputFolder $OutputFolder -AuthMode 'AppOnly' `
+                    -ActiveSections $ActiveSections -RequiredRoles $requiredRoles -GrantedRoles $grantedRoles `
+                    -MissingByRole @() -PerSection $perSection
+            }
             return
         }
 
@@ -146,6 +210,12 @@ function Test-GraphAppRolePermissions {
         Write-Host ''
 
         Write-AssessmentLog -Level WARN -Message "Missing Graph app roles: $($missing -join ', ')" -Section 'Setup'
+
+        if ($OutputFolder -and (Test-Path -Path $OutputFolder -PathType Container)) {
+            Write-PermissionDeficitsFile -OutputFolder $OutputFolder -AuthMode 'AppOnly' `
+                -ActiveSections $ActiveSections -RequiredRoles $requiredRoles -GrantedRoles $grantedRoles `
+                -MissingByRole $missing -PerSection $perSection
+        }
     }
     catch {
         # Structured "could not verify" warning per the AC -- never silent.
@@ -176,6 +246,10 @@ function Test-GraphPermissions {
         Hashtable mapping section names to their required scope arrays.
     .PARAMETER ActiveSections
         Array of section names the user selected.
+    .PARAMETER OutputFolder
+        Optional. When supplied, writes _PermissionDeficits.json into this folder
+        so the HTML report's Permissions panel and the evidence package can
+        surface the deficit map (#812 B2 followup).
     #>
     [CmdletBinding()]
     param(
@@ -186,7 +260,10 @@ function Test-GraphPermissions {
         [hashtable]$SectionScopeMap,
 
         [Parameter(Mandatory)]
-        [string[]]$ActiveSections
+        [string[]]$ActiveSections,
+
+        [Parameter()]
+        [string]$OutputFolder
     )
 
     $context = Get-MgContext -ErrorAction SilentlyContinue
@@ -201,7 +278,7 @@ function Test-GraphPermissions {
     # Hand off to the app-role validator instead of skipping silently.
     if ($grantedScopes.Count -eq 0 -or ($grantedScopes.Count -eq 1 -and $grantedScopes[0] -eq '.default')) {
         Write-Host '    i App-only auth detected -- validating Graph app role assignments instead of delegated scopes...' -ForegroundColor DarkGray
-        Test-GraphAppRolePermissions -Context $context -ActiveSections $ActiveSections
+        Test-GraphAppRolePermissions -Context $context -ActiveSections $ActiveSections -OutputFolder $OutputFolder
         return
     }
 
@@ -212,6 +289,11 @@ function Test-GraphPermissions {
     if ($missingScopes.Count -eq 0) {
         Write-Host "    $([char]0x2714) All $($RequiredScopes.Count) required Graph scopes granted" -ForegroundColor Green
         Write-AssessmentLog -Level INFO -Message "Graph scope validation passed ($($RequiredScopes.Count) scopes)" -Section 'Setup'
+        if ($OutputFolder -and (Test-Path -Path $OutputFolder -PathType Container)) {
+            Write-PermissionDeficitsFile -OutputFolder $OutputFolder -AuthMode 'Delegated' `
+                -ActiveSections $ActiveSections -RequiredRoles $RequiredScopes -GrantedRoles $grantedScopes `
+                -MissingByRole @() -PerSection $SectionScopeMap
+        }
         return
     }
 
@@ -253,4 +335,10 @@ function Test-GraphPermissions {
     Write-Host ''
 
     Write-AssessmentLog -Level WARN -Message "Missing Graph scopes: $($missingScopes -join ', ')" -Section 'Setup'
+
+    if ($OutputFolder -and (Test-Path -Path $OutputFolder -PathType Container)) {
+        Write-PermissionDeficitsFile -OutputFolder $OutputFolder -AuthMode 'Delegated' `
+            -ActiveSections $ActiveSections -RequiredRoles $RequiredScopes -GrantedRoles $grantedScopes `
+            -MissingByRole $missingScopes -PerSection $SectionScopeMap
+    }
 }

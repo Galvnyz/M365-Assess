@@ -96,7 +96,10 @@ function Connect-RequiredService {
             if ($svc -eq 'Graph' -and -not $script:graphPermissionsChecked) {
                 $script:graphPermissionsChecked = $true
                 if (Get-Command -Name Test-GraphPermissions -ErrorAction SilentlyContinue) {
-                    Test-GraphPermissions -RequiredScopes $graphScopes -SectionScopeMap $sectionScopeMap -ActiveSections $Section
+                    # #812: pass assessment folder so the deficit map is written for
+                    # the HTML Permissions panel + the evidence package to consume.
+                    Test-GraphPermissions -RequiredScopes $graphScopes -SectionScopeMap $sectionScopeMap `
+                        -ActiveSections $Section -OutputFolder $assessmentFolder
                 }
             }
 

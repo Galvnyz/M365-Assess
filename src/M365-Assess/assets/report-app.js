@@ -909,6 +909,40 @@ function ScoringViews() {
   }, v.label))), body);
 }
 
+// ======================== Permissions panel (#812 B2 followup) ========================
+// Renders the deficit map written by Test-GraphPermissions / Test-GraphAppRolePermissions.
+// Source: window.REPORT_DATA.permissions; null when the assessment ran without
+// the deficit-write seam (older runs, SkipConnection mode, etc.).
+function PermissionsPanel() {
+  const p = D.permissions;
+  if (!p || !p.sections) return null;
+  const sections = Object.entries(p.sections);
+  const allOk = sections.every(([, s]) => s.ok);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "permissions-panel",
+    id: "permissions"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-header"
+  }, /*#__PURE__*/React.createElement("h2", null, "Permissions"), /*#__PURE__*/React.createElement("div", {
+    className: "section-sub"
+  }, p.authMode, " auth | ", sections.length, " section", sections.length === 1 ? '' : 's', " checked | ", allOk ? 'all granted' : `${(p.missing || []).length} role(s) missing`)), /*#__PURE__*/React.createElement("table", {
+    className: "permissions-table"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Section"), /*#__PURE__*/React.createElement("th", null, "Required"), /*#__PURE__*/React.createElement("th", null, "Missing"), /*#__PURE__*/React.createElement("th", null, "Status"))), /*#__PURE__*/React.createElement("tbody", null, sections.map(([name, s]) => /*#__PURE__*/React.createElement("tr", {
+    key: name
+  }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("strong", null, name)), /*#__PURE__*/React.createElement("td", null, s.required && s.required.length ? s.required.join(', ') : /*#__PURE__*/React.createElement("span", {
+    className: "muted"
+  }, "none")), /*#__PURE__*/React.createElement("td", null, s.missing && s.missing.length ? s.missing.map((m, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    className: "status-badge unknown"
+  }, m)) : /*#__PURE__*/React.createElement("span", {
+    className: "muted"
+  }, "\u2014")), /*#__PURE__*/React.createElement("td", null, s.ok ? /*#__PURE__*/React.createElement("span", {
+    className: "status-badge pass"
+  }, "OK") : /*#__PURE__*/React.createElement("span", {
+    className: "status-badge fail"
+  }, "deficit")))))));
+}
+
 // ======================== Posture hero ========================
 function Posture() {
   const score = parseFloat(SCORE.Percentage);
@@ -4663,7 +4697,7 @@ function App() {
     activeProfiles: filters.profile || []
   }), /*#__PURE__*/React.createElement(DomainRollup, {
     onJump: onDomainJump
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement(PermissionsPanel, null), /*#__PURE__*/React.createElement("div", {
     id: "findings-anchor"
   }), /*#__PURE__*/React.createElement("div", {
     style: {

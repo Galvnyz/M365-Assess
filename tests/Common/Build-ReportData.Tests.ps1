@@ -540,6 +540,30 @@ Describe 'Build-ReportData' {
         }
     }
 
+    Context 'Permission deficits passthrough (#812 B2 followup)' {
+        It 'surfaces the deficit object on REPORT_DATA.permissions when supplied' {
+            $deficits = [PSCustomObject]@{
+                schemaVersion = '1.0'
+                authMode      = 'AppOnly'
+                missing       = @('Reports.Read.All')
+                sections      = @{
+                    Identity = @{ required = @('Policy.Read.All','Reports.Read.All'); missing = @('Reports.Read.All'); ok = $false }
+                    Email    = @{ required = @(); missing = @(); ok = $true }
+                }
+            }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -PermissionDeficits $deficits)
+            $d.permissions                                    | Should -Not -BeNullOrEmpty
+            $d.permissions.authMode                           | Should -Be 'AppOnly'
+            $d.permissions.sections.Identity.ok               | Should -BeFalse
+            $d.permissions.sections.Email.ok                  | Should -BeTrue
+        }
+
+        It 'leaves REPORT_DATA.permissions null when no deficit data is provided' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson)
+            $d.permissions | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'Evidence field passthrough (D1 #785 structured schema)' {
         It 'maps legacy free-form Evidence blob to the .raw subfield of structured evidence' {
             $finding = New-Finding
