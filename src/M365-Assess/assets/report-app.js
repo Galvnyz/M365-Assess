@@ -3139,10 +3139,51 @@ function FindingsTable({
       href: r.url,
       target: "_blank",
       rel: "noreferrer noopener"
-    }, "\uD83D\uDCD6 ", r.title, " \u2197"))), f.evidence && /*#__PURE__*/React.createElement("details", {
-      className: "finding-evidence"
-    }, /*#__PURE__*/React.createElement("summary", null, "Evidence"), /*#__PURE__*/React.createElement("pre", null, JSON.stringify(JSON.parse(f.evidence), null, 2)))));
+    }, "\uD83D\uDCD6 ", r.title, " \u2197"))), f.evidence && /*#__PURE__*/React.createElement(EvidenceBlock, {
+      evidence: f.evidence
+    })));
   })));
+}
+
+// D1 #785 -- structured evidence schema renderer.
+// Accepts either the new object shape ({ observedValue, expectedValue, ..., raw }) or
+// the legacy JSON-string shape (pre-v2.9 reports). Renders a structured table for
+// typed fields and a collapsible <pre> for the legacy raw blob when present.
+function EvidenceBlock({
+  evidence
+}) {
+  if (!evidence) return null;
+  // Defensive: legacy reports stored evidence as a JSON string. Try to parse.
+  let ev = evidence;
+  if (typeof ev === 'string') {
+    try {
+      ev = {
+        raw: ev
+      };
+    } catch {
+      return null;
+    }
+  }
+  const fields = [['observedValue', 'Observed value'], ['expectedValue', 'Expected value'], ['evidenceSource', 'Source'], ['evidenceTimestamp', 'Collected at (UTC)'], ['collectionMethod', 'Collection method'], ['permissionRequired', 'Permission used'], ['confidence', 'Confidence'], ['limitations', 'Limitations']];
+  const rows = fields.filter(([k]) => ev[k] !== undefined && ev[k] !== null && ev[k] !== '');
+  let rawPretty = null;
+  if (ev.raw) {
+    try {
+      rawPretty = JSON.stringify(JSON.parse(ev.raw), null, 2);
+    } catch {
+      rawPretty = String(ev.raw);
+    }
+  }
+  if (rows.length === 0 && !rawPretty) return null;
+  return /*#__PURE__*/React.createElement("details", {
+    className: "finding-evidence"
+  }, /*#__PURE__*/React.createElement("summary", null, "Evidence"), rows.length > 0 && /*#__PURE__*/React.createElement("table", {
+    className: "evidence-table"
+  }, /*#__PURE__*/React.createElement("tbody", null, rows.map(([k, label]) => /*#__PURE__*/React.createElement("tr", {
+    key: k
+  }, /*#__PURE__*/React.createElement("th", null, label), /*#__PURE__*/React.createElement("td", null, k === 'confidence' ? `${Math.round(ev[k] * 100)}%` : String(ev[k])))))), rawPretty && /*#__PURE__*/React.createElement("details", {
+    className: "finding-evidence-raw"
+  }, /*#__PURE__*/React.createElement("summary", null, "Raw evidence"), /*#__PURE__*/React.createElement("pre", null, rawPretty)));
 }
 function renderRemediation(text) {
   if (!text) return /*#__PURE__*/React.createElement("span", {

@@ -37,18 +37,25 @@ try {
         $threshold = $policy.PhishThresholdLevel
         $mailboxIntelligence = [bool]$policy.EnableMailboxIntelligence
         $settingParams = @{
-            Category         = 'Anti-Phishing'
-            Setting          = "Phishing Threshold ($policyLabel)"
-            CurrentValue     = "$threshold"
-            RecommendedValue = '2+ (Aggressive)'
-            Status           = if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }
-            CheckId          = 'DEFENDER-ANTIPHISH-001'
-            Remediation      = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
-            Evidence         = [PSCustomObject]@{
+            Category           = 'Anti-Phishing'
+            Setting            = "Phishing Threshold ($policyLabel)"
+            CurrentValue       = "$threshold"
+            RecommendedValue   = '2+ (Aggressive)'
+            Status             = if ([int]$threshold -ge 2) { 'Pass' } else { 'Fail' }
+            CheckId            = 'DEFENDER-ANTIPHISH-001'
+            Remediation        = 'Run: Set-AntiPhishPolicy -Identity <PolicyName> -PhishThresholdLevel 2. Security admin center > Anti-phishing > Edit policy > Set threshold to 2 (Aggressive) or higher.'
+            Evidence           = [PSCustomObject]@{
                 PolicyName                = $policy.Name
                 PhishThresholdLevel       = [int]$threshold
                 EnableMailboxIntelligence = $mailboxIntelligence
             }
+            # D1 #785 -- structured evidence
+            ObservedValue      = [string][int]$threshold
+            ExpectedValue      = '2'
+            EvidenceSource     = 'Get-AntiPhishPolicy'
+            CollectionMethod   = 'Direct'
+            PermissionRequired = 'Exchange Online: View-Only Configuration'
+            Confidence         = 1.0
         }
         Add-Setting @settingParams
 

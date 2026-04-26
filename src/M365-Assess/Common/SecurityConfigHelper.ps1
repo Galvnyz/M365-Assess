@@ -64,6 +64,30 @@ function Add-SecuritySetting {
         Guidance for fixing a non-passing result.
     .PARAMETER Evidence
         Optional structured evidence object attached to the finding (serialized to JSON in the report).
+        Free-form -- prefer the typed evidence fields below for new code.
+    .PARAMETER ObservedValue
+        Machine-readable representation of what the tenant returned. CurrentValue is the
+        human-readable summary; ObservedValue is the raw value (e.g. boolean, GUID, count).
+    .PARAMETER ExpectedValue
+        Machine-readable representation of what the benchmark expects. Companion to ObservedValue.
+    .PARAMETER EvidenceSource
+        The Graph endpoint, EXO cmdlet, or DNS query that produced the data
+        (e.g. 'Get-AdminAuditLogConfig', '/identity/conditionalAccess/policies').
+    .PARAMETER EvidenceTimestamp
+        UTC ISO-8601 timestamp of when the upstream data was collected. Leave empty
+        if the collector does not have a precise collection time -- do not synthesize one.
+    .PARAMETER CollectionMethod
+        How the value was determined: 'Direct' (read from API), 'Derived' (computed
+        from API output), or 'Inferred' (best-effort based on partial data).
+    .PARAMETER PermissionRequired
+        The Graph scope or RBAC role used to produce this finding (e.g. 'Policy.Read.All',
+        'Exchange Online: View-Only Configuration'). Lets auditors verify the access path.
+    .PARAMETER Confidence
+        Number from 0.0 to 1.0 indicating confidence in the finding. Null = unspecified.
+        Distinguishes 'this is definitely Pass' (1.0) from 'best-effort given missing scopes' (e.g. 0.6).
+    .PARAMETER Limitations
+        Free-text note explaining caveats (e.g. 'Required Reports.Read.All which was not
+        granted; counted user signins from /auditLogs/signIns instead').
     #>
     [CmdletBinding()]
     param(
@@ -103,8 +127,41 @@ function Add-SecuritySetting {
         [switch]$IntentDesign,
 
         [Parameter()]
-        [PSCustomObject]$Evidence = $null
+        [PSCustomObject]$Evidence = $null,
+
+        # D1 #785 -- standardized evidence schema (all optional; empty by default)
+        [Parameter()]
+        [string]$ObservedValue = '',
+
+        [Parameter()]
+        [string]$ExpectedValue = '',
+
+        [Parameter()]
+        [string]$EvidenceSource = '',
+
+        [Parameter()]
+        [string]$EvidenceTimestamp = '',
+
+        [Parameter()]
+        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
+        [string]$CollectionMethod = '',
+
+        [Parameter()]
+        [string]$PermissionRequired = '',
+
+        [Parameter()]
+        [Nullable[double]]$Confidence = $null,
+
+        [Parameter()]
+        [string]$Limitations = ''
     )
+
+    # D1 #785 -- validate Confidence range manually so the [Nullable[double]] default
+    # of $null does not trip ValidateRange (which rejects null on PS 7.x).
+    if ($null -ne $Confidence -and ($Confidence -lt 0.0 -or $Confidence -gt 1.0)) {
+        throw [System.Management.Automation.ValidationMetadataException]::new(
+            "Confidence must be between 0.0 and 1.0 (or omitted). Received: $Confidence")
+    }
 
     # Auto-generate sub-numbered CheckId for individual setting traceability
     $subCheckId = $CheckId
@@ -124,15 +181,23 @@ function Add-SecuritySetting {
     }
 
     $Settings.Add([PSCustomObject]@{
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $subCheckId
-        Remediation      = $Remediation
-        IntentDesign     = [bool]$IntentDesign
-        Evidence         = $Evidence
+        Category           = $Category
+        Setting            = $Setting
+        CurrentValue       = $CurrentValue
+        RecommendedValue   = $RecommendedValue
+        Status             = $Status
+        CheckId            = $subCheckId
+        Remediation        = $Remediation
+        IntentDesign       = [bool]$IntentDesign
+        Evidence           = $Evidence
+        ObservedValue      = $ObservedValue
+        ExpectedValue      = $ExpectedValue
+        EvidenceSource     = $EvidenceSource
+        EvidenceTimestamp  = $EvidenceTimestamp
+        CollectionMethod   = $CollectionMethod
+        PermissionRequired = $PermissionRequired
+        Confidence         = $Confidence
+        Limitations        = $Limitations
     })
 
     # Accumulate adoption signal for Value Opportunity analysis

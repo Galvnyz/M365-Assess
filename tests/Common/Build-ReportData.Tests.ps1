@@ -540,34 +540,53 @@ Describe 'Build-ReportData' {
         }
     }
 
-    Context 'Evidence field passthrough' {
-        It 'serializes evidence object to JSON string in findings output' {
+    Context 'Evidence field passthrough (D1 #785 structured schema)' {
+        It 'maps legacy free-form Evidence blob to the .raw subfield of structured evidence' {
             $finding = New-Finding
             $finding | Add-Member -NotePropertyName Evidence -NotePropertyValue ([PSCustomObject]@{ IsSecurityDefaultsEnabled = $true })
             $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'Critical'; effort = 'small' } }
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
             $d.findings[0].evidence | Should -Not -BeNullOrEmpty
-            $parsed = $d.findings[0].evidence | ConvertFrom-Json
+            $d.findings[0].evidence.raw | Should -Not -BeNullOrEmpty
+            $parsed = $d.findings[0].evidence.raw | ConvertFrom-Json
             $parsed.IsSecurityDefaultsEnabled | Should -Be $true
         }
 
-        It 'evidence field is null when not set on finding' {
+        It 'evidence field is null when no evidence at all is set on the finding' {
             $finding = New-Finding
             $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'Critical'; effort = 'small' } }
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
             $d.findings[0].evidence | Should -BeNullOrEmpty
         }
 
-        It 'evidence JSON string is parseable when present' {
+        It 'serializes structured evidence fields onto the evidence object' {
             $finding = New-Finding
-            $finding | Add-Member -NotePropertyName Evidence -NotePropertyValue ([PSCustomObject]@{
-                PolicyCount = 3; PolicyNames = @('Policy A', 'Policy B', 'Policy C')
-            })
+            $finding | Add-Member -NotePropertyName ObservedValue      -NotePropertyValue 'true'
+            $finding | Add-Member -NotePropertyName ExpectedValue      -NotePropertyValue 'true'
+            $finding | Add-Member -NotePropertyName EvidenceSource     -NotePropertyValue 'Get-AdminAuditLogConfig'
+            $finding | Add-Member -NotePropertyName CollectionMethod   -NotePropertyValue 'Direct'
+            $finding | Add-Member -NotePropertyName PermissionRequired -NotePropertyValue 'View-Only Audit Logs'
+            $finding | Add-Member -NotePropertyName Confidence         -NotePropertyValue 1.0
             $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'High'; effort = 'medium' } }
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
-            { $d.findings[0].evidence | ConvertFrom-Json } | Should -Not -Throw
-            $ev = $d.findings[0].evidence | ConvertFrom-Json
-            $ev.PolicyCount | Should -Be 3
+            $d.findings[0].evidence                    | Should -Not -BeNullOrEmpty
+            $d.findings[0].evidence.observedValue      | Should -Be 'true'
+            $d.findings[0].evidence.evidenceSource     | Should -Be 'Get-AdminAuditLogConfig'
+            $d.findings[0].evidence.collectionMethod   | Should -Be 'Direct'
+            $d.findings[0].evidence.permissionRequired | Should -Be 'View-Only Audit Logs'
+            $d.findings[0].evidence.confidence         | Should -Be 1.0
+        }
+
+        It 'omits empty structured fields from the evidence object' {
+            $finding = New-Finding
+            $finding | Add-Member -NotePropertyName ObservedValue  -NotePropertyValue 'true'
+            $finding | Add-Member -NotePropertyName ExpectedValue  -NotePropertyValue ''
+            $finding | Add-Member -NotePropertyName EvidenceSource -NotePropertyValue $null
+            $registry = @{ 'ENTRA-MFA-001' = [PSCustomObject]@{ riskSeverity = 'High'; effort = 'medium' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($finding) -RegistryData $registry)
+            $d.findings[0].evidence.observedValue  | Should -Be 'true'
+            $d.findings[0].evidence.PSObject.Properties['expectedValue']  | Should -BeNullOrEmpty
+            $d.findings[0].evidence.PSObject.Properties['evidenceSource'] | Should -BeNullOrEmpty
         }
     }
 

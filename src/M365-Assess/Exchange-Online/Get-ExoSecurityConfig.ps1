@@ -45,19 +45,37 @@ function Add-Setting {
         [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown')]
         [string]$Status,
         [string]$CheckId = '', [string]$Remediation = '',
-        [PSCustomObject]$Evidence = $null
+        [PSCustomObject]$Evidence = $null,
+        # D1 #785 -- structured evidence schema
+        [string]$ObservedValue = '',
+        [string]$ExpectedValue = '',
+        [string]$EvidenceSource = '',
+        [string]$EvidenceTimestamp = '',
+        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
+        [string]$CollectionMethod = '',
+        [string]$PermissionRequired = '',
+        [Nullable[double]]$Confidence = $null,
+        [string]$Limitations = ''
     )
     $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-        Evidence         = $Evidence
+        Settings           = $settings
+        CheckIdCounter     = $checkIdCounter
+        Category           = $Category
+        Setting            = $Setting
+        CurrentValue       = $CurrentValue
+        RecommendedValue   = $RecommendedValue
+        Status             = $Status
+        CheckId            = $CheckId
+        Remediation        = $Remediation
+        Evidence           = $Evidence
+        ObservedValue      = $ObservedValue
+        ExpectedValue      = $ExpectedValue
+        EvidenceSource     = $EvidenceSource
+        EvidenceTimestamp  = $EvidenceTimestamp
+        CollectionMethod   = $CollectionMethod
+        PermissionRequired = $PermissionRequired
+        Confidence         = $Confidence
+        Limitations        = $Limitations
     }
     Add-SecuritySetting @p
 }
@@ -72,29 +90,43 @@ try {
     # Modern Authentication
     $modernAuth = $orgConfig.OAuth2ClientProfileEnabled
     $settingParams = @{
-        Category         = 'Authentication'
-        Setting          = 'Modern Authentication Enabled'
-        CurrentValue     = "$modernAuth"
-        RecommendedValue = 'True'
-        Status           = if ($modernAuth) { 'Pass' } else { 'Fail' }
-        CheckId          = 'EXO-AUTH-001'
-        Remediation      = 'Exchange admin center > Settings > Modern authentication > Enable. Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true'
-        Evidence         = [PSCustomObject]@{
+        Category           = 'Authentication'
+        Setting            = 'Modern Authentication Enabled'
+        CurrentValue       = "$modernAuth"
+        RecommendedValue   = 'True'
+        Status             = if ($modernAuth) { 'Pass' } else { 'Fail' }
+        CheckId            = 'EXO-AUTH-001'
+        Remediation        = 'Exchange admin center > Settings > Modern authentication > Enable. Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true'
+        Evidence           = [PSCustomObject]@{
             OAuth2ClientProfileEnabled = [bool]$modernAuth
         }
+        # D1 #785 -- structured evidence
+        ObservedValue      = [string][bool]$modernAuth
+        ExpectedValue      = 'True'
+        EvidenceSource     = 'Get-OrganizationConfig'
+        CollectionMethod   = 'Direct'
+        PermissionRequired = 'Exchange Online: View-Only Configuration'
+        Confidence         = 1.0
     }
     Add-Setting @settingParams
 
     # Audit Enabled
     $auditEnabled = $orgConfig.AuditDisabled
     $settingParams = @{
-        Category         = 'Auditing'
-        Setting          = 'Exchange Org Audit Config'
-        CurrentValue     = "$(if ($auditEnabled) { 'Disabled' } else { 'Enabled' })"
-        RecommendedValue = 'Enabled'
-        Status           = if (-not $auditEnabled) { 'Pass' } else { 'Fail' }
-        CheckId          = 'EXO-AUDIT-001'
-        Remediation      = 'Run: Set-OrganizationConfig -AuditDisabled $false. Note: this is the Exchange org-level audit flag and is a pre-condition for UAL, but does not guarantee UAL ingestion is active. Verify UAL separately (COMPLIANCE-AUDIT-001).'
+        Category           = 'Auditing'
+        Setting            = 'Exchange Org Audit Config'
+        CurrentValue       = "$(if ($auditEnabled) { 'Disabled' } else { 'Enabled' })"
+        RecommendedValue   = 'Enabled'
+        Status             = if (-not $auditEnabled) { 'Pass' } else { 'Fail' }
+        CheckId            = 'EXO-AUDIT-001'
+        Remediation        = 'Run: Set-OrganizationConfig -AuditDisabled $false. Note: this is the Exchange org-level audit flag and is a pre-condition for UAL, but does not guarantee UAL ingestion is active. Verify UAL separately (COMPLIANCE-AUDIT-001).'
+        ObservedValue      = if ($auditEnabled) { 'Disabled' } else { 'Enabled' }
+        ExpectedValue      = 'Enabled'
+        EvidenceSource     = 'Get-OrganizationConfig'
+        CollectionMethod   = 'Direct'
+        PermissionRequired = 'Exchange Online: View-Only Configuration'
+        Confidence         = 1.0
+        Limitations        = 'Org-level audit is a pre-condition for UAL ingestion but does not guarantee active UAL flow; verify via COMPLIANCE-AUDIT-001.'
     }
     Add-Setting @settingParams
 

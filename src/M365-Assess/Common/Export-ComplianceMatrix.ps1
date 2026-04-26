@@ -3,11 +3,14 @@
     Exports compliance overview data as a formatted XLSX workbook.
 .DESCRIPTION
     Reads security config CSVs from an assessment folder, looks up each CheckId
-    in the control registry, and generates an XLSX file with up to four sheets:
+    in the control registry, and generates an XLSX file with up to seven sheets:
       Sheet 1 - Compliance Matrix (one row per check; framework columns + SCF impact/domain)
       Sheet 2 - Summary (pass/fail counts and coverage per framework)
       Sheet 3 - Grouped by Profile (CIS M365 profile-level breakdown)
       Sheet 4 - Verification (one row per SCF assessment objective -- audit guidance)
+      Sheet 5 - Remediation Roadmap (Now/Next/Later view; only when findings need fixing)
+      Sheet 6 - Drift (only when -CompareBaseline was passed)
+      Sheet 7 - Evidence Details (D1 #785; one row per finding with structured evidence)
     Framework columns are auto-discovered from JSON definitions in controls/frameworks/.
     SCF impact and verification data require CheckID v2.0.0 registry entries.
     Requires the ImportExcel module. If not available, logs a warning and returns.
@@ -109,6 +112,10 @@ $summary = Import-Csv -Path $summaryFile.FullName
 # Scan CSVs and build findings with dynamic framework columns
 # ------------------------------------------------------------------
 $findings = [System.Collections.Generic.List[PSCustomObject]]::new()
+# D1 #785 -- parallel collection of structured evidence per finding. Populated only
+# for rows where at least one evidence field is non-empty; surfaced on Sheet 5.
+$evidenceRows = [System.Collections.Generic.List[PSCustomObject]]::new()
+$evidenceFieldNames = @('ObservedValue','ExpectedValue','EvidenceSource','EvidenceTimestamp','CollectionMethod','PermissionRequired','Confidence','Limitations')
 
 foreach ($c in $summary) {
     if ($c.Status -ne 'Complete' -or [int]$c.Items -eq 0) { continue }
@@ -123,6 +130,31 @@ foreach ($c in $summary) {
 
     foreach ($row in $data) {
         if (-not $row.CheckId -or $row.CheckId -eq '') { continue }
+
+        # D1 #785 -- collect rows with structured evidence for the dedicated sheet
+        $hasEvidence = $false
+        foreach ($f in $evidenceFieldNames) {
+            if ($columns -contains $f -and -not [string]::IsNullOrWhiteSpace($row.$f)) {
+                $hasEvidence = $true
+                break
+            }
+        }
+        if ($hasEvidence) {
+            $evidenceRows.Add([PSCustomObject][ordered]@{
+                CheckId            = $row.CheckId
+                Setting            = $row.Setting
+                Status             = $row.Status
+                ObservedValue      = if ($columns -contains 'ObservedValue')      { $row.ObservedValue }      else { '' }
+                ExpectedValue      = if ($columns -contains 'ExpectedValue')      { $row.ExpectedValue }      else { '' }
+                EvidenceSource     = if ($columns -contains 'EvidenceSource')     { $row.EvidenceSource }     else { '' }
+                EvidenceTimestamp  = if ($columns -contains 'EvidenceTimestamp')  { $row.EvidenceTimestamp }  else { '' }
+                CollectionMethod   = if ($columns -contains 'CollectionMethod')   { $row.CollectionMethod }   else { '' }
+                PermissionRequired = if ($columns -contains 'PermissionRequired') { $row.PermissionRequired } else { '' }
+                Confidence         = if ($columns -contains 'Confidence')         { $row.Confidence }         else { '' }
+                Limitations        = if ($columns -contains 'Limitations')        { $row.Limitations }        else { '' }
+            })
+        }
+
         $baseCheckId = $row.CheckId -replace '\.\d+$', ''
         $entry = if ($controlRegistry.ContainsKey($baseCheckId)) { $controlRegistry[$baseCheckId] } else { $null }
         $fw = if ($entry) { $entry.frameworks } else { @{} }
@@ -583,6 +615,25 @@ if ($DriftReport -and $DriftReport.Count -gt 0) {
         TableStyle    = 'Medium2'
     }
     $driftRows | Export-Excel @driftParams
+}
+
+# ------------------------------------------------------------------
+# Sheet - Evidence Details (D1 #785)
+# One row per finding with at least one structured evidence field populated.
+# Kept on a dedicated sheet so the main Compliance Matrix stays scannable for
+# compliance leaders who only need CheckId/Status/framework mappings.
+# ------------------------------------------------------------------
+if ($evidenceRows -and @($evidenceRows).Count -gt 0) {
+    $evidenceParams = @{
+        Path          = $outputFile
+        WorksheetName = 'Evidence Details'
+        AutoSize      = $true
+        AutoFilter    = $true
+        FreezeTopRow  = $true
+        BoldTopRow    = $true
+        TableStyle    = 'Medium3'
+    }
+    $evidenceRows | Export-Excel @evidenceParams
 }
 
 # ------------------------------------------------------------------

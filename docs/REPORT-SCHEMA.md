@@ -128,11 +128,32 @@ Every entry in `findings[]` follows this shape:
     "cmmc":   { "controlId": "IA.L2-3.5.3", "profiles": ["L2"] },
     "nist-800-53-r5": { "controlId": "IA-2", "profiles": [] }
   },
-  "references":      [ /* learn-more links from registry */ ]
+  "references":      [ /* learn-more links from registry */ ],
+  "evidence":        { /* optional; D1 #785 -- see Evidence object below */ }
 }
 ```
 
 **Sub-numbering**: a single registry CheckId (`ENTRA-MFA-001`) emits multiple finding rows when the collector inspects the same control in multiple ways. The React app strips trailing `.\d+` to find registry metadata: `baseCheckId = checkId.replace(/\.\d+$/, '')`.
+
+## Evidence object (optional, D1 #785)
+
+When a collector populates any of the structured evidence fields on `Add-SecuritySetting`, `findings[].evidence` is a structured object. When no evidence field is populated, it is `null` (or omitted entirely from the JSON). Consumers should branch on the property's truthiness, not its type.
+
+```jsonc
+{
+  "observedValue":      "false",                                    // machine-readable
+  "expectedValue":      "true",
+  "evidenceSource":     "Get-OrganizationConfig",                   // API/cmdlet/endpoint
+  "evidenceTimestamp":  "2026-04-26T10:00:00Z",                     // UTC ISO-8601 (optional)
+  "collectionMethod":   "Direct",                                   // Direct | Derived | Inferred
+  "permissionRequired": "Exchange Online: View-Only Configuration", // scope or RBAC role
+  "confidence":         1.0,                                        // 0.0-1.0
+  "limitations":        "Org-level audit ≠ active UAL flow",        // free-text caveat
+  "raw":                "{...}"                                     // legacy free-form blob (JSON string)
+}
+```
+
+Empty fields are omitted (so a finding that only sets `EvidenceSource` and `PermissionRequired` produces an object with just those two keys). The `raw` subfield carries the legacy `Add-SecuritySetting -Evidence` blob from collectors that haven't migrated to the structured schema; new collectors should prefer the typed fields. See [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) for the field reference and migration cookbook.
 
 ## Status semantics
 

@@ -157,9 +157,30 @@ function Build-ReportDataJson {
                      } else { @() }
         $impact     = if ($regEntry) { $regEntry.impact }    else { $null }
         $rationale  = if ($regEntry) { $regEntry.rationale } else { $null }
-        $evidence  = if ($f.PSObject.Properties['Evidence'] -and $null -ne $f.Evidence) {
-                         $f.Evidence | ConvertTo-Json -Depth 5 -Compress
-                     } else { $null }
+        # D1 #785 -- structured evidence schema. Emit a typed object so the React
+        # appendix can render a per-field table; preserve legacy free-form Evidence
+        # blob under .raw for backwards compat with collectors that haven't migrated.
+        $evidence = $null
+        $hasStructured = $false
+        $structured = [ordered]@{}
+        foreach ($field in @('ObservedValue','ExpectedValue','EvidenceSource','EvidenceTimestamp','CollectionMethod','PermissionRequired','Confidence','Limitations')) {
+            if ($f.PSObject.Properties[$field]) {
+                $val = $f.$field
+                $isEmpty = ($null -eq $val) -or ($val -is [string] -and [string]::IsNullOrWhiteSpace($val))
+                if (-not $isEmpty) {
+                    $structured[([char]::ToLower($field[0])) + $field.Substring(1)] = $val
+                    $hasStructured = $true
+                }
+            }
+        }
+        $rawEvidence = if ($f.PSObject.Properties['Evidence'] -and $null -ne $f.Evidence) {
+                           $f.Evidence | ConvertTo-Json -Depth 5 -Compress
+                       } else { $null }
+        if ($hasStructured -or $rawEvidence) {
+            $evidence = [ordered]@{}
+            foreach ($k in $structured.Keys) { $evidence[$k] = $structured[$k] }
+            if ($rawEvidence) { $evidence['raw'] = $rawEvidence }
+        }
 
         $effort = if ($regEntry) { $e = if ($regEntry -is [hashtable]) { $regEntry['effort'] } else { $regEntry.effort }; if ($e) { $e } else { 'medium' } } else { 'medium' }
 

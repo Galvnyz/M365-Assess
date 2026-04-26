@@ -71,3 +71,70 @@ Describe 'Add-SecuritySetting - status taxonomy (#774)' {
         } | Should -Throw -ExpectedMessage '*BananaPancakes*'
     }
 }
+
+Describe 'Add-SecuritySetting - structured evidence schema (D1 #785)' {
+    BeforeEach {
+        $ctx = Initialize-SecurityConfig
+    }
+
+    It 'Defaults all 8 evidence fields to empty/null when omitted' {
+        Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+            -Category 'Test' -Setting 'no evidence' -CurrentValue 'x' `
+            -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001'
+        $row = $ctx.Settings[0]
+        $row.ObservedValue      | Should -Be ''
+        $row.ExpectedValue      | Should -Be ''
+        $row.EvidenceSource     | Should -Be ''
+        $row.EvidenceTimestamp  | Should -Be ''
+        $row.CollectionMethod   | Should -Be ''
+        $row.PermissionRequired | Should -Be ''
+        $row.Confidence         | Should -BeNullOrEmpty
+        $row.Limitations        | Should -Be ''
+    }
+
+    It 'Round-trips populated evidence fields onto the output PSCustomObject' {
+        Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+            -Category 'Test' -Setting 'with evidence' -CurrentValue 'x' `
+            -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001' `
+            -ObservedValue 'true' -ExpectedValue 'true' `
+            -EvidenceSource '/test/endpoint' -EvidenceTimestamp '2026-04-26T10:00:00Z' `
+            -CollectionMethod 'Direct' -PermissionRequired 'Test.Read.All' `
+            -Confidence 0.95 -Limitations 'tested in lab tenant only'
+        $row = $ctx.Settings[0]
+        $row.ObservedValue      | Should -Be 'true'
+        $row.ExpectedValue      | Should -Be 'true'
+        $row.EvidenceSource     | Should -Be '/test/endpoint'
+        $row.EvidenceTimestamp  | Should -Be '2026-04-26T10:00:00Z'
+        $row.CollectionMethod   | Should -Be 'Direct'
+        $row.PermissionRequired | Should -Be 'Test.Read.All'
+        $row.Confidence         | Should -Be 0.95
+        $row.Limitations        | Should -Be 'tested in lab tenant only'
+    }
+
+    It 'Rejects CollectionMethod values outside the controlled vocabulary' {
+        {
+            Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+                -Category 'Test' -Setting 'bad method' -CurrentValue 'x' `
+                -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001' `
+                -CollectionMethod 'Hallucinated'
+        } | Should -Throw
+    }
+
+    It 'Rejects Confidence outside the [0.0, 1.0] range' {
+        {
+            Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+                -Category 'Test' -Setting 'bad confidence' -CurrentValue 'x' `
+                -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001' `
+                -Confidence 1.5
+        } | Should -Throw
+    }
+
+    It 'Accepts the legacy Evidence blob alongside structured fields' {
+        Add-SecuritySetting -Settings $ctx.Settings -CheckIdCounter $ctx.CheckIdCounter `
+            -Category 'Test' -Setting 'mixed' -CurrentValue 'x' `
+            -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001' `
+            -Evidence ([PSCustomObject]@{ rawCount = 7 }) -ObservedValue '7'
+        $ctx.Settings[0].Evidence.rawCount | Should -Be 7
+        $ctx.Settings[0].ObservedValue     | Should -Be '7'
+    }
+}

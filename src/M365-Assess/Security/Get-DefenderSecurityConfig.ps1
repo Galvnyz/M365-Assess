@@ -56,19 +56,37 @@ function Add-Setting {
         [string]$Status,
         [string]$CheckId = '',
         [string]$Remediation = '',
-        [PSCustomObject]$Evidence = $null
+        [PSCustomObject]$Evidence = $null,
+        # D1 #785 -- structured evidence schema
+        [string]$ObservedValue = '',
+        [string]$ExpectedValue = '',
+        [string]$EvidenceSource = '',
+        [string]$EvidenceTimestamp = '',
+        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
+        [string]$CollectionMethod = '',
+        [string]$PermissionRequired = '',
+        [Nullable[double]]$Confidence = $null,
+        [string]$Limitations = ''
     )
     $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-        Evidence         = $Evidence
+        Settings           = $settings
+        CheckIdCounter     = $checkIdCounter
+        Category           = $Category
+        Setting            = $Setting
+        CurrentValue       = $CurrentValue
+        RecommendedValue   = $RecommendedValue
+        Status             = $Status
+        CheckId            = $CheckId
+        Remediation        = $Remediation
+        Evidence           = $Evidence
+        ObservedValue      = $ObservedValue
+        ExpectedValue      = $ExpectedValue
+        EvidenceSource     = $EvidenceSource
+        EvidenceTimestamp  = $EvidenceTimestamp
+        CollectionMethod   = $CollectionMethod
+        PermissionRequired = $PermissionRequired
+        Confidence         = $Confidence
+        Limitations        = $Limitations
     }
     Add-SecuritySetting @p
 }

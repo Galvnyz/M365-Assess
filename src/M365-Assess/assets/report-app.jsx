@@ -1958,12 +1958,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
                       ))}
                     </div>
                   )}
-                  {f.evidence && (
-                    <details className="finding-evidence">
-                      <summary>Evidence</summary>
-                      <pre>{JSON.stringify(JSON.parse(f.evidence), null, 2)}</pre>
-                    </details>
-                  )}
+                  {f.evidence && <EvidenceBlock evidence={f.evidence} />}
                 </div>
               )}
             </React.Fragment>
@@ -1971,6 +1966,59 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
         })}
       </div>}
     </section>
+  );
+}
+
+// D1 #785 -- structured evidence schema renderer.
+// Accepts either the new object shape ({ observedValue, expectedValue, ..., raw }) or
+// the legacy JSON-string shape (pre-v2.9 reports). Renders a structured table for
+// typed fields and a collapsible <pre> for the legacy raw blob when present.
+function EvidenceBlock({ evidence }) {
+  if (!evidence) return null;
+  // Defensive: legacy reports stored evidence as a JSON string. Try to parse.
+  let ev = evidence;
+  if (typeof ev === 'string') {
+    try { ev = { raw: ev }; } catch { return null; }
+  }
+  const fields = [
+    ['observedValue',      'Observed value'],
+    ['expectedValue',      'Expected value'],
+    ['evidenceSource',     'Source'],
+    ['evidenceTimestamp',  'Collected at (UTC)'],
+    ['collectionMethod',   'Collection method'],
+    ['permissionRequired', 'Permission used'],
+    ['confidence',         'Confidence'],
+    ['limitations',        'Limitations'],
+  ];
+  const rows = fields.filter(([k]) => ev[k] !== undefined && ev[k] !== null && ev[k] !== '');
+  let rawPretty = null;
+  if (ev.raw) {
+    try { rawPretty = JSON.stringify(JSON.parse(ev.raw), null, 2); }
+    catch { rawPretty = String(ev.raw); }
+  }
+  if (rows.length === 0 && !rawPretty) return null;
+  return (
+    <details className="finding-evidence">
+      <summary>Evidence</summary>
+      {rows.length > 0 && (
+        <table className="evidence-table">
+          <tbody>
+            {rows.map(([k, label]) => (
+              <tr key={k}>
+                <th>{label}</th>
+                <td>{k === 'confidence' ? `${Math.round(ev[k] * 100)}%` : String(ev[k])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {rawPretty && (
+        <details className="finding-evidence-raw">
+          <summary>Raw evidence</summary>
+          <pre>{rawPretty}</pre>
+        </details>
+      )}
+    </details>
   );
 }
 

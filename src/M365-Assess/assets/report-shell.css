@@ -979,6 +979,27 @@ mark.search-hl {
   border-radius: 6px; font-size: 11px; overflow-x: auto;
   color: var(--text); line-height: 1.5;
 }
+/* D1 #785 -- structured evidence schema. Compact two-column table; one row per
+   non-empty evidence field. Raw blob (legacy collectors) is in a sub-details. */
+.evidence-table {
+  margin: 6px 0 0; width: 100%; border-collapse: collapse;
+  font-size: 12px; background: var(--surface2); border-radius: 6px; overflow: hidden;
+}
+.evidence-table th,
+.evidence-table td {
+  padding: 6px 10px; text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.evidence-table tr:last-child th,
+.evidence-table tr:last-child td { border-bottom: none; }
+.evidence-table th {
+  width: 30%; font-weight: 600; color: var(--text-soft); white-space: nowrap;
+}
+.evidence-table td { color: var(--text); word-break: break-word; }
+.finding-evidence-raw { margin-top: 8px; }
+.finding-evidence-raw summary {
+  cursor: pointer; font-size: 11px; color: var(--muted); user-select: none;
+}
 
 /* ---------- Domain grid ---------- */
 .domain-grid {

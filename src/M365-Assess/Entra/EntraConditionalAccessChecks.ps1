@@ -33,13 +33,20 @@ try {
     Add-Setting @settingParams
 
     $settingParams = @{
-        Category         = 'Conditional Access'
-        Setting          = 'Enabled CA Policies'
-        CurrentValue     = "$enabledCount"
-        RecommendedValue = '1+'
-        Status           = $(if ($enabledCount -gt 0) { 'Pass' } else { 'Warning' })
-        CheckId          = 'ENTRA-CA-003'
-        Remediation      = 'Run: Get-MgIdentityConditionalAccessPolicy | Where-Object {$_.State -eq ''enabled''}. Ensure policies are set to On, not Report-only.'
+        Category           = 'Conditional Access'
+        Setting            = 'Enabled CA Policies'
+        CurrentValue       = "$enabledCount"
+        RecommendedValue   = '1+'
+        Status             = $(if ($enabledCount -gt 0) { 'Pass' } else { 'Warning' })
+        CheckId            = 'ENTRA-CA-003'
+        Remediation        = 'Run: Get-MgIdentityConditionalAccessPolicy | Where-Object {$_.State -eq ''enabled''}. Ensure policies are set to On, not Report-only.'
+        # D1 #785 -- structured evidence
+        ObservedValue      = [string]$enabledCount
+        ExpectedValue      = '>=1'
+        EvidenceSource     = '/identity/conditionalAccess/policies'
+        CollectionMethod   = 'Direct'
+        PermissionRequired = 'Policy.Read.All'
+        Confidence         = 1.0
     }
     Add-Setting @settingParams
 

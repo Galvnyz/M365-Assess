@@ -45,18 +45,36 @@ function Add-Setting {
     param(
         [string]$Category, [string]$Setting, [string]$CurrentValue,
         [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
+        [string]$CheckId = '', [string]$Remediation = '',
+        # D1 #785 -- structured evidence schema
+        [string]$ObservedValue = '',
+        [string]$ExpectedValue = '',
+        [string]$EvidenceSource = '',
+        [string]$EvidenceTimestamp = '',
+        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
+        [string]$CollectionMethod = '',
+        [string]$PermissionRequired = '',
+        [Nullable[double]]$Confidence = $null,
+        [string]$Limitations = ''
     )
     $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
+        Settings           = $settings
+        CheckIdCounter     = $checkIdCounter
+        Category           = $Category
+        Setting            = $Setting
+        CurrentValue       = $CurrentValue
+        RecommendedValue   = $RecommendedValue
+        Status             = $Status
+        CheckId            = $CheckId
+        Remediation        = $Remediation
+        ObservedValue      = $ObservedValue
+        ExpectedValue      = $ExpectedValue
+        EvidenceSource     = $EvidenceSource
+        EvidenceTimestamp  = $EvidenceTimestamp
+        CollectionMethod   = $CollectionMethod
+        PermissionRequired = $PermissionRequired
+        Confidence         = $Confidence
+        Limitations        = $Limitations
     }
     Add-SecuritySetting @p
 }
@@ -77,13 +95,20 @@ try {
     # A low threshold (or specific config) means devices are flagged quickly
     if ($null -ne $markNonCompliant) {
         $settingParams = @{
-            Category         = 'Device Compliance'
-            Setting          = 'Non-Compliant Default Threshold'
-            CurrentValue     = "$markNonCompliant days"
-            RecommendedValue = 'Devices without policy marked non-compliant'
-            Status           = if ([int]$markNonCompliant -le 30) { 'Pass' } else { 'Warning' }
-            CheckId          = 'INTUNE-COMPLIANCE-001'
-            Remediation      = 'Intune admin center > Devices > Compliance > Compliance policy settings > Mark devices with no compliance policy assigned as > Not compliant.'
+            Category           = 'Device Compliance'
+            Setting            = 'Non-Compliant Default Threshold'
+            CurrentValue       = "$markNonCompliant days"
+            RecommendedValue   = 'Devices without policy marked non-compliant'
+            Status             = if ([int]$markNonCompliant -le 30) { 'Pass' } else { 'Warning' }
+            CheckId            = 'INTUNE-COMPLIANCE-001'
+            Remediation        = 'Intune admin center > Devices > Compliance > Compliance policy settings > Mark devices with no compliance policy assigned as > Not compliant.'
+            # D1 #785 -- structured evidence
+            ObservedValue      = [string][int]$markNonCompliant
+            ExpectedValue      = '<=30'
+            EvidenceSource     = '/deviceManagement/settings'
+            CollectionMethod   = 'Direct'
+            PermissionRequired = 'DeviceManagementConfiguration.Read.All'
+            Confidence         = 1.0
         }
         Add-Setting @settingParams
     }
