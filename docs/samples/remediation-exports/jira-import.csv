@@ -1,0 +1,10 @@
+"Summary","Description","Issue Type","Priority","Labels","Components"
+"[EXO-AUTH-001.1] Modern Authentication Enabled","Status: Fail. Current: False. Recommended: True. 
+
+Remediation: Run: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true. Or in Exchange admin center > Settings > Modern authentication > Enable.","Task","Highest","m365-assess fail horizon-now severity-Critical","Authentication"
+"[ENTRA-CA-003.1] Enabled CA Policies","Status: Warning. Current: 0. Recommended: 1+. 
+
+Remediation: Add at least one Conditional Access policy via the Entra portal.","Task","Medium","m365-assess warning horizon-later severity-Medium","Conditional Access"
+"[COMPLIANCE-AUDIT-001.1] Unified audit log ingestion","Status: Review. Current: Verify in portal. Recommended: Active ingestion. 
+
+Remediation: Verify the unified audit log is actively ingesting events: Microsoft Purview > Audit > Search.","Task","High","m365-assess review horizon-later severity-High","Auditing"

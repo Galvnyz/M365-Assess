@@ -51,6 +51,7 @@
         'Remove-M365ConnectionProfile'
         'Get-M365ConnectionProfile'
         'Compare-M365Baseline'
+        'Export-M365Remediation'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
@@ -90,6 +91,7 @@
         'Common\Get-ReportTemplate.ps1'
         'Common\Export-ComplianceMatrix.ps1'
         'Common\Export-EvidencePackage.ps1'
+        'Common\Export-M365Remediation.ps1'
         'Common\Get-RedactionRules.ps1'
         'Common\Export-ComplianceOverview.ps1'
         'Common\Export-FrameworkCatalog.ps1'
