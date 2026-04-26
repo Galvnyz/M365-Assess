@@ -334,6 +334,42 @@ jobs:
           }
           Write-Host "Coverage gate passed" -ForegroundColor Green
 
+  cross-platform-smoke:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Cross-Platform Smoke (${{ matrix.os }})
+    # B6 #777: catches platform-shaped bugs (path separators, case-sensitivity in
+    # dot-source paths, line endings) without paying the heavy install cost of
+    # Microsoft.Graph + EXO modules. Pester-on-Windows in `test` remains the
+    # source of truth; this lane just verifies that the parts of the module
+    # that DON'T require the Graph SDK still load on Linux + macOS.
+    #
+    # Advisory initially -- not part of the `ci-status` aggregator that drives
+    # branch protection. Promote to required by adding to `ci-status.needs`
+    # after one stable green run.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+
+      - name: Run cross-platform smoke
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests/Smoke/Cross-Platform.Tests.ps1'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
   ci-status:
     name: CI
     needs: [quality-gates, test, docs-gates]

@@ -172,21 +172,23 @@ CI surfaces a `behavior-tests` count separately from line-coverage so each is me
 
 ## Cross-platform smoke (post-B6)
 
-`B6 #777` adds a `cross-platform-smoke` CI job running on `ubuntu-latest` and `macos-latest`. Steps:
+`B6 #777` adds a `cross-platform-smoke` CI job running on `ubuntu-latest` and `macos-latest`. The job runs `tests/Smoke/Cross-Platform.Tests.ps1`, which exercises the parts of the module that don't require the Microsoft.Graph SDK:
 
-```powershell
-Import-Module ./src/M365-Assess
-Test-ModuleManifest -Path ./src/M365-Assess/M365-Assess.psd1
-# Generate a report from a checked-in fixture (no tenant calls)
-```
+- Manifest parses via `Import-PowerShellDataFile` on the current platform
+- `FileList` entries resolve case-correctly on Linux (case-sensitive filesystem)
+- `Import-ControlRegistry` + `Import-FrameworkDefinitions` succeed
+- `SecurityConfigHelper` contract works (Initialize / Add-SecuritySetting)
+- `Build-ReportDataJson` produces a well-formed `window.REPORT_DATA = {...};` from synthetic findings
 
 Local equivalent:
 
 ```bash
-pwsh -NoProfile -Command 'Import-Module ./src/M365-Assess; Test-ModuleManifest ./src/M365-Assess/M365-Assess.psd1'
+pwsh -NoProfile -Command "Invoke-Pester -Path './tests/Smoke/Cross-Platform.Tests.ps1' -Output Detailed"
 ```
 
-The smoke lane catches platform-shaped bugs (path separators, case-sensitivity, missing modules) without running the full Windows-only Pester matrix.
+The smoke lane is **advisory initially** — it runs on every PR and shows a check, but is not part of the `ci-status` aggregator that drives branch protection. Promote it to required by adding to `ci-status.needs` after one stable green run.
+
+It deliberately skips `Import-Module ./src/M365-Assess` and `Test-ModuleManifest` because those would require installing the entire Microsoft.Graph SDK + EXO + Purview module set on each platform (5–10 minutes per OS). Pester-on-Windows remains the source of truth for full integration; this lane just catches platform-shaped bugs (path separators, case-sensitivity in dot-source paths, line endings).
 
 ---
 
