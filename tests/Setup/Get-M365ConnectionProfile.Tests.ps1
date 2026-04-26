@@ -1,4 +1,8 @@
 BeforeAll {
+    # B1 #772: Get-M365ConnectionProfile uses Resolve-ProfileConfigPath
+    # defined in Save-M365ConnectionProfile.ps1. The module loader sources
+    # Save- before Get- in production; tests must do the same.
+    . "$PSScriptRoot/../../src/M365-Assess/Setup/Save-M365ConnectionProfile.ps1"
     . "$PSScriptRoot/../../src/M365-Assess/Setup/Get-M365ConnectionProfile.ps1"
 }
 

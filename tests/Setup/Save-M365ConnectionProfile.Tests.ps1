@@ -122,3 +122,59 @@ Describe 'Save-M365ConnectionProfile alias' {
         $alias | Should -Not -BeNullOrEmpty
     }
 }
+
+Describe 'Profile path resolution (B1 #772)' {
+    Context 'Get-ProfileConfigPath' {
+        It 'should return a path under the per-user app-data root' {
+            $path = Get-ProfileConfigPath
+            $path | Should -Not -BeNullOrEmpty
+            $appDataRoot = [Environment]::GetFolderPath('ApplicationData')
+            $path | Should -BeLike "$appDataRoot*"
+        }
+
+        It 'should end with M365-Assess/profiles.json' {
+            $path = Get-ProfileConfigPath
+            # Use Split-Path to be path-separator-agnostic across platforms
+            (Split-Path $path -Leaf) | Should -Be 'profiles.json'
+            (Split-Path (Split-Path $path -Parent) -Leaf) | Should -Be 'M365-Assess'
+        }
+
+        It 'should NOT point at the module root anymore' {
+            $newPath = Get-ProfileConfigPath
+            $legacyPath = Get-LegacyProfileConfigPath
+            $newPath | Should -Not -Be $legacyPath
+        }
+    }
+
+    Context 'Get-LegacyProfileConfigPath' {
+        It 'should return the module-root .m365assess.json path' {
+            $path = Get-LegacyProfileConfigPath
+            (Split-Path $path -Leaf) | Should -Be '.m365assess.json'
+        }
+    }
+
+    Context 'Resolve-ProfileConfigPath' {
+        It 'should prefer the new app-data path when it exists' {
+            $newPath = Get-ProfileConfigPath
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $newPath } { return $true }
+            $resolved = Resolve-ProfileConfigPath
+            $resolved | Should -Be $newPath
+        }
+
+        It 'should fall back to the legacy path when only legacy exists' {
+            $newPath = Get-ProfileConfigPath
+            $legacyPath = Get-LegacyProfileConfigPath
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $newPath }    { return $false }
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $legacyPath } { return $true }
+            $resolved = Resolve-ProfileConfigPath
+            $resolved | Should -Be $legacyPath
+        }
+
+        It 'should return the new path when neither file exists (so writes go there)' {
+            $newPath = Get-ProfileConfigPath
+            Mock Test-Path { return $false }
+            $resolved = Resolve-ProfileConfigPath
+            $resolved | Should -Be $newPath
+        }
+    }
+}

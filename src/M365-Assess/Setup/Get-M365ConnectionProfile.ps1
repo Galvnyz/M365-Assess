@@ -21,8 +21,9 @@ function Get-M365ConnectionProfile {
         [string]$ProfileName
     )
 
-    $projectRoot = if ($PSCommandPath) { Split-Path -Parent (Split-Path -Parent $PSCommandPath) } else { $PSScriptRoot }
-    $configPath = Join-Path -Path $projectRoot -ChildPath '.m365assess.json'
+    # B1 #772: prefer per-user app-data path; fall back to legacy module-root .m365assess.json.
+    # Helpers come from Save-M365ConnectionProfile.ps1, which the module loader sources first.
+    $configPath = Resolve-ProfileConfigPath
 
     if (-not (Test-Path -Path $configPath)) {
         Write-Host '  No saved connection profiles found.' -ForegroundColor DarkGray

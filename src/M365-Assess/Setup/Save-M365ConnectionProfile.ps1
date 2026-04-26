@@ -1,12 +1,69 @@
 # ------------------------------------------------------------------
-# Shared helper: read/write .m365assess.json config
+# Shared helpers: read/write the connection-profiles config
+#
+# Profiles live under per-user app data (B1 #772), not under the module
+# root. Three reasons:
+#   1. PSGallery installs put the module under read-mostly paths
+#   2. Multi-client consultants must not carry one tenant's profile
+#      between module copies on the same machine
+#   3. Importing a module shouldn't mutate module files
+#
+# Backward-compat: if the new file is absent but the legacy module-root
+# .m365assess.json exists, we READ from legacy on lookup. WRITES always
+# go to the new location, so the first save migrates implicitly without
+# touching the legacy file. The legacy file stays in place for the user
+# to verify and remove manually.
 # ------------------------------------------------------------------
 function Get-ProfileConfigPath {
+    <#
+    .SYNOPSIS
+        Returns the canonical profiles-config path under per-user app data.
+    .DESCRIPTION
+        Windows: %APPDATA%\M365-Assess\profiles.json
+        Linux:   $XDG_CONFIG_HOME/M365-Assess/profiles.json (or ~/.config)
+        macOS:   ~/.config/M365-Assess/profiles.json
+        Resolved via [Environment]::GetFolderPath('ApplicationData') which
+        is cross-platform in PowerShell 7+.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    $appDataRoot = [Environment]::GetFolderPath('ApplicationData')
+    Join-Path -Path (Join-Path -Path $appDataRoot -ChildPath 'M365-Assess') -ChildPath 'profiles.json'
+}
+
+function Get-LegacyProfileConfigPath {
+    <#
+    .SYNOPSIS
+        Returns the legacy module-root .m365assess.json path (pre-v2.9.0).
+    .DESCRIPTION
+        Used only for backward-compat reads. Never written to.
+    #>
     [CmdletBinding()]
     [OutputType([string])]
     param()
     $root = if ($PSCommandPath) { Split-Path -Parent (Split-Path -Parent $PSCommandPath) } else { $PSScriptRoot }
     Join-Path -Path $root -ChildPath '.m365assess.json'
+}
+
+function Resolve-ProfileConfigPath {
+    <#
+    .SYNOPSIS
+        Returns the path to read profiles from, preferring the new location
+        but falling back to the legacy module-root path if the new file
+        does not yet exist.
+    .DESCRIPTION
+        Always returns a valid path; if neither file exists, returns the
+        new path so consumers can write to it.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    $newPath = Get-ProfileConfigPath
+    if (Test-Path -LiteralPath $newPath) { return $newPath }
+    $legacy = Get-LegacyProfileConfigPath
+    if (Test-Path -LiteralPath $legacy) { return $legacy }
+    return $newPath
 }
 
 function Read-ProfileConfig {
@@ -29,6 +86,11 @@ function Read-ProfileConfig {
 function Write-ProfileConfig {
     [CmdletBinding()]
     param([hashtable]$Config, [string]$ConfigPath)
+    # Ensure the parent directory exists -- the new app-data folder won't on first save.
+    $parent = Split-Path -Parent $ConfigPath
+    if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
     $Config | ConvertTo-Json -Depth 5 | Set-Content -Path $ConfigPath -Encoding UTF8
 }
 
@@ -136,8 +198,9 @@ function New-M365ConnectionProfile {
         return
     }
 
-    $configPath = Get-ProfileConfigPath
-    $config = Read-ProfileConfig -ConfigPath $configPath
+    $readPath  = Resolve-ProfileConfigPath
+    $writePath = Get-ProfileConfigPath
+    $config = Read-ProfileConfig -ConfigPath $readPath
 
     $existingKey = $config['profiles'].Keys | Where-Object { $_ -eq $ProfileName } | Select-Object -First 1
     if ($existingKey) {
@@ -147,7 +210,10 @@ function New-M365ConnectionProfile {
 
     $entry = Build-ProfileEntry -TenantId $TenantId -AuthMethod $AuthMethod -M365Environment $M365Environment -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -UserPrincipalName $UserPrincipalName -AppName $AppName
     $config['profiles'][$ProfileName] = $entry
-    Write-ProfileConfig -Config $config -ConfigPath $configPath
+    Write-ProfileConfig -Config $config -ConfigPath $writePath
+    if ($readPath -ne $writePath) {
+        Write-Host "  Migrated profiles from legacy '$readPath' to '$writePath' (legacy file preserved)" -ForegroundColor DarkGray
+    }
     Write-Host "  Created connection profile '$ProfileName' for $TenantId" -ForegroundColor Green
 }
 
@@ -216,13 +282,17 @@ function Set-M365ConnectionProfile {
         return
     }
 
-    $configPath = Get-ProfileConfigPath
-    $config = Read-ProfileConfig -ConfigPath $configPath
+    $readPath  = Resolve-ProfileConfigPath
+    $writePath = Get-ProfileConfigPath
+    $config = Read-ProfileConfig -ConfigPath $readPath
     $verb = if ($config['profiles'].ContainsKey($ProfileName)) { 'Updated' } else { 'Created' }
 
     $entry = Build-ProfileEntry -TenantId $TenantId -AuthMethod $AuthMethod -M365Environment $M365Environment -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -UserPrincipalName $UserPrincipalName -AppName $AppName
     $config['profiles'][$ProfileName] = $entry
-    Write-ProfileConfig -Config $config -ConfigPath $configPath
+    Write-ProfileConfig -Config $config -ConfigPath $writePath
+    if ($readPath -ne $writePath) {
+        Write-Host "  Migrated profiles from legacy '$readPath' to '$writePath' (legacy file preserved)" -ForegroundColor DarkGray
+    }
     Write-Host "  $verb connection profile '$ProfileName' for $TenantId" -ForegroundColor Green
 }
 
@@ -255,13 +325,14 @@ function Remove-M365ConnectionProfile {
         [switch]$All
     )
 
-    $configPath = Get-ProfileConfigPath
-    $config = Read-ProfileConfig -ConfigPath $configPath
+    $readPath  = Resolve-ProfileConfigPath
+    $writePath = Get-ProfileConfigPath
+    $config = Read-ProfileConfig -ConfigPath $readPath
 
     if ($All) {
         $count = $config['profiles'].Count
         $config['profiles'] = @{}
-        Write-ProfileConfig -Config $config -ConfigPath $configPath
+        Write-ProfileConfig -Config $config -ConfigPath $writePath
         Write-Host "  Removed all $count connection profile(s)." -ForegroundColor Yellow
         return
     }
@@ -274,7 +345,7 @@ function Remove-M365ConnectionProfile {
     }
 
     $config['profiles'].Remove($matchKey)
-    Write-ProfileConfig -Config $config -ConfigPath $configPath
+    Write-ProfileConfig -Config $config -ConfigPath $writePath
     Write-Host "  Removed connection profile '$ProfileName'." -ForegroundColor Yellow
 }
 

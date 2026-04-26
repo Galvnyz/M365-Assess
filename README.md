@@ -171,7 +171,7 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 | `-UserPrincipalName` | string | | UPN for interactive auth (avoids WAM broker issues) |
 | `-UseDeviceCode` | switch | | Use device code flow for headless environments |
 | `-ManagedIdentity` | switch | | Use Azure managed identity auth (VMs, App Service, Functions) |
-| `-ConnectionProfile` | string | | Name of a saved connection profile from `.m365assess.json` |
+| `-ConnectionProfile` | string | | Name of a saved connection profile (per-user app-data; legacy `.m365assess.json` at module root still readable) |
 | `-NonInteractive` | switch | | Skip all interactive prompts; log errors and exit on required module issues, skip sections for optional ones |
 | `-M365Environment` | string | `commercial` | Cloud environment: `commercial`, `gcc`, `gcchigh`, `dod` |
 | `-QuickScan` | switch | | Run only Critical and High severity checks for faster CI/CD or daily monitoring |
@@ -193,7 +193,7 @@ See [Authentication](AUTHENTICATION.md) for detailed auth examples and App Regis
 
 ## Connection Profiles
 
-Connection profiles let you save tenant and auth settings once and reuse them across runs. Profiles are stored in `.m365assess.json` at the module root.
+Connection profiles let you save tenant and auth settings once and reuse them across runs. Profiles are stored per-user under `%APPDATA%\M365-Assess\profiles.json` (Windows) or `~/.config/M365-Assess/profiles.json` (Linux/macOS). Profiles created on older versions at the module-root `.m365assess.json` continue to load — they're migrated to the new location on the next save.
 
 ### Create a profile
 
@@ -250,7 +250,7 @@ Remove-M365ConnectionProfile -ProfileName 'OldTenant'
 Remove-M365ConnectionProfile -All
 ```
 
-> Profiles are stored per-install in `.m365assess.json` at the module root. For GCC/GCC High/DoD tenants, pass `-M365Environment gcc` (or `gcchigh`, `dod`) when creating the profile.
+> Profiles are stored per-user under `%APPDATA%\M365-Assess\profiles.json` (Windows) or `~/.config/M365-Assess/profiles.json` (Linux/macOS). For GCC/GCC High/DoD tenants, pass `-M365Environment gcc` (or `gcchigh`, `dod`) when creating the profile.
 
 ## Module Helper
 
