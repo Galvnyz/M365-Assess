@@ -133,6 +133,23 @@ jobs:
           fi
           echo "JS build check passed — report-app.js matches Babel output"
 
+      - name: npm audit (advisory)
+        shell: bash
+        # C4 #783: surface HIGH-or-above advisories without blocking the PR.
+        # Babel devDependencies don't ship to end users; runtime React/ReactDOM
+        # are pinned + committed and not subject to transitive npm advisories.
+        # Rationale + cadence: docs/REPORT-FRONTEND.md.
+        run: |
+          set +e
+          npm audit --audit-level=high
+          AUDIT_EXIT=$?
+          set -e
+          if [ "$AUDIT_EXIT" -ne 0 ]; then
+            echo "::warning::npm audit found HIGH-or-above advisories (advisory; not blocking). See docs/REPORT-FRONTEND.md for the response cadence."
+          else
+            echo "npm audit: no HIGH-or-above advisories"
+          fi
+
       - name: Smoke tests
         shell: pwsh
         run: |
