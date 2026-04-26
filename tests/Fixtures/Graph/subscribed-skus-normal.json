@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "fixture-sku-1",
+    "SkuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06",
+    "SkuPartNumber": "SPE_E5",
+    "AppliesTo": "User",
+    "CapabilityStatus": "Enabled",
+    "ConsumedUnits": 4,
+    "PrepaidUnits": {
+      "Enabled": 25,
+      "Suspended": 0,
+      "Warning": 0
+    },
+    "ServicePlans": [
+      { "ServicePlanId": "8e0c0a52-6a6c-4d40-8370-dd62790dcd70", "ServicePlanName": "THREAT_INTELLIGENCE", "AppliesTo": "User", "ProvisioningStatus": "Success" }
+    ]
+  },
+  {
+    "Id": "fixture-sku-2",
+    "SkuId": "f30db892-07e9-47e9-837c-80727f46fd3d",
+    "SkuPartNumber": "FLOW_FREE",
+    "AppliesTo": "User",
+    "CapabilityStatus": "Enabled",
+    "ConsumedUnits": 2,
+    "PrepaidUnits": {
+      "Enabled": 10000,
+      "Suspended": 0,
+      "Warning": 0
+    },
+    "ServicePlans": []
+  }
+]

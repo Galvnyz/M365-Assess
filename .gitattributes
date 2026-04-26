@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Test fixtures (D5 #789): JSON snapshots used by mocked Graph/EXO tests.
+# Pinned to LF so cross-platform CI doesn't see false drift on Windows runners.
+tests/Fixtures/**/*.json text eol=lf

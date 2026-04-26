@@ -1,0 +1,66 @@
+[
+  {
+    "Id": "11111111-1111-1111-1111-111111111111",
+    "DisplayName": "Alice Wong",
+    "UserPrincipalName": "alice.wong@contoso.com",
+    "AccountEnabled": true,
+    "UserType": "Member",
+    "AssignedLicenses": [
+      { "SkuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06" }
+    ],
+    "OnPremisesSyncEnabled": true,
+    "SignInActivity": {
+      "LastSignInDateTime": "2026-04-20T14:32:00Z"
+    }
+  },
+  {
+    "Id": "22222222-2222-2222-2222-222222222222",
+    "DisplayName": "Bob Chen",
+    "UserPrincipalName": "bob.chen@contoso.com",
+    "AccountEnabled": true,
+    "UserType": "Member",
+    "AssignedLicenses": [
+      { "SkuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06" }
+    ],
+    "OnPremisesSyncEnabled": true,
+    "SignInActivity": {
+      "LastSignInDateTime": "2026-04-22T09:15:00Z"
+    }
+  },
+  {
+    "Id": "33333333-3333-3333-3333-333333333333",
+    "DisplayName": "Carol Diaz",
+    "UserPrincipalName": "carol.diaz@contoso.com",
+    "AccountEnabled": true,
+    "UserType": "Guest",
+    "AssignedLicenses": [],
+    "OnPremisesSyncEnabled": false,
+    "SignInActivity": {
+      "LastSignInDateTime": "2026-03-15T11:00:00Z"
+    }
+  },
+  {
+    "Id": "44444444-4444-4444-4444-444444444444",
+    "DisplayName": "Dave Patel",
+    "UserPrincipalName": "dave.patel@contoso.com",
+    "AccountEnabled": false,
+    "UserType": "Member",
+    "AssignedLicenses": [],
+    "OnPremisesSyncEnabled": true,
+    "SignInActivity": null
+  },
+  {
+    "Id": "55555555-5555-5555-5555-555555555555",
+    "DisplayName": "Eve Johnson",
+    "UserPrincipalName": "eve.johnson@contoso.com",
+    "AccountEnabled": true,
+    "UserType": "Member",
+    "AssignedLicenses": [
+      { "SkuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06" }
+    ],
+    "OnPremisesSyncEnabled": false,
+    "SignInActivity": {
+      "LastSignInDateTime": "2026-04-25T16:45:00Z"
+    }
+  }
+]

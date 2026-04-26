@@ -1,0 +1,20 @@
+[
+  {
+    "Id": "role-template-ga-instance",
+    "RoleTemplateId": "62e90394-69f5-4237-9190-012177145e10",
+    "DisplayName": "Global Administrator",
+    "Description": "Can manage all aspects of Microsoft Entra ID and Microsoft services that use Microsoft Entra identities."
+  },
+  {
+    "Id": "role-template-secread-instance",
+    "RoleTemplateId": "5d6b6bb7-de71-4623-b4af-96380a352509",
+    "DisplayName": "Security Reader",
+    "Description": "Can read security information and reports."
+  },
+  {
+    "Id": "role-template-globread-instance",
+    "RoleTemplateId": "f2ef992c-3afb-46b9-b7cf-a126ee74c451",
+    "DisplayName": "Global Reader",
+    "Description": "Can read everything that a Global Administrator can, but not update anything."
+  }
+]
