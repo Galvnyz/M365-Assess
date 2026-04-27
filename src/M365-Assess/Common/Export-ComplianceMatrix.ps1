@@ -429,7 +429,18 @@ if ($preparedByHeader) {
     $matrixParams['TitleSize']            = 11
     $matrixParams['TitleBackgroundColor'] = [System.Drawing.Color]::FromArgb(219, 234, 254)
 }
-$sortedFindings | Export-Excel @matrixParams
+# Issue #840: project Horizon → Sequence at export time, marking Pass rows as 'Done'
+# so no cell is empty. The source object's Horizon property stays untouched —
+# downstream consumers (Roadmap sheet line 566, Export-M365Remediation) still
+# read $_.Horizon, where Pass remains '' and Roadmap correctly excludes it.
+$matrixCols = foreach ($propName in $sortedFindings[0].PSObject.Properties.Name) {
+    if ($propName -eq 'Horizon') {
+        @{ Name = 'Sequence'; Expression = { if ($_.Status -eq 'Pass') { 'Done' } else { $_.Horizon } }.GetNewClosure() }
+    } else {
+        $propName
+    }
+}
+$sortedFindings | Select-Object -Property $matrixCols | Export-Excel @matrixParams
 
 # Sheet 2 - Summary (with profile/maturity sub-rows for CIS and CMMC)
 $summaryParams = @{
@@ -641,10 +652,10 @@ if ($evidenceRows -and @($evidenceRows).Count -gt 0) {
 # ------------------------------------------------------------------
 $pkg = Open-ExcelPackage -Path $outputFile
 
-# Matrix sheet - color-code Status, Horizon, RiskSeverity, and ImpactSeverity columns
+# Matrix sheet - color-code Status, Sequence, RiskSeverity, and ImpactSeverity columns
 $matrixSheet = $pkg.Workbook.Worksheets['Compliance Matrix']
 $statusCol      = 4   # Column D = Status
-$horizonCol     = 5   # Column E = Horizon (issue #715)
+$sequenceCol    = 5   # Column E = Sequence (issue #715, renamed in #840)
 $riskSevCol     = 6   # Column F = RiskSeverity
 $impactSevCol   = 7   # Column G = ImpactSeverity
 $lastRow = $matrixSheet.Dimension.End.Row
@@ -664,12 +675,14 @@ for ($r = 2; $r -le $lastRow; $r++) {
         'NotLicensed'   { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(109, 40, 217));  $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(237, 233, 254)) }
     }
 
-    # Issue #715: color the Horizon cell so consultants can scan Now/Next/Later visually
-    $horizonVal = $matrixSheet.Cells[$r, $horizonCol].Value
-    switch ($horizonVal) {
-        'now'   { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(185, 28, 28));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 226, 226)) }
-        'soon'  { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
-        'later' { $matrixSheet.Cells[$r, $horizonCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(30, 64, 175));  $matrixSheet.Cells[$r, $horizonCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $horizonCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(219, 234, 254)) }
+    # Issue #715: color the Sequence cell so consultants can scan Now/Next/Later/Done visually
+    # Issue #840: 'Done' added (Pass rows) using the same green palette as the Pass status cell
+    $sequenceVal = $matrixSheet.Cells[$r, $sequenceCol].Value
+    switch ($sequenceVal) {
+        'now'   { $matrixSheet.Cells[$r, $sequenceCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(185, 28, 28));  $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 226, 226)) }
+        'soon'  { $matrixSheet.Cells[$r, $sequenceCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(146, 64, 14));  $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(254, 243, 199)) }
+        'later' { $matrixSheet.Cells[$r, $sequenceCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(30, 64, 175));  $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(219, 234, 254)) }
+        'Done'  { $matrixSheet.Cells[$r, $sequenceCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(21, 128, 61));   $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $sequenceCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(220, 252, 231)) }
     }
 
     $sevVal = $matrixSheet.Cells[$r, $riskSevCol].Value
