@@ -229,23 +229,6 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
               )}
             </React.Fragment>
           ))}
-          <div className="nav-label nav-label-collapsible" style={{marginTop:14}}
-               onClick={() => setDomainsCollapsed(c => !c)}>
-            <span>Domains</span>
-            <span className="nav-label-chev">{domainsCollapsed ? '+' : '−'}</span>
-          </div>
-          {!domainsCollapsed && domains.map(d => {
-            const fails = domainCounts.fail[d] || 0;
-            const total = domainCounts.total[d] || 0;
-            return (
-              <a href="#findings-anchor" key={d}
-                 onClick={(e)=>{ e.preventDefault(); onDomainJump(d); closeIfMobile(); }}
-                 className={'nav-item' + (activeDomain===d?' active':'')}>
-                <span>{d}</span>
-                <span className={'count' + (fails ? ' pill-fail' : '')}>{fails || total}</span>
-              </a>
-            );
-          })}
           <div className="nav-label nav-label-emphasis" style={{marginTop:14}}>Findings &amp; action</div>
           {details.map(it => (
             <React.Fragment key={it.id}>
@@ -264,6 +247,32 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
                   <a href="#roadmap-next"  className="nav-subitem">Next  <span className="count">{ROADMAP_COUNTS.soon}</span></a>
                   <a href="#roadmap-later" className="nav-subitem">Later <span className="count">{ROADMAP_COUNTS.later}</span></a>
                 </div>
+              )}
+              {it.id === 'findings' && (
+                <React.Fragment>
+                  <a href="#findings-anchor"
+                     onClick={e => { e.preventDefault(); setDomainsCollapsed(c => !c); }}
+                     className="nav-item">
+                    <span>Domains</span>
+                    <span className="nav-expand-icon">{domainsCollapsed ? '+' : '−'}</span>
+                  </a>
+                  {!domainsCollapsed && (
+                    <div className="nav-subitems">
+                      {domains.map(d => {
+                        const fails = domainCounts.fail[d] || 0;
+                        const total = domainCounts.total[d] || 0;
+                        return (
+                          <a href="#findings-anchor" key={d}
+                             onClick={(e)=>{ e.preventDefault(); onDomainJump(d); closeIfMobile(); }}
+                             className={'nav-subitem' + (activeDomain===d?' active':'')}>
+                            <span>{d}</span>
+                            <span className={'count' + (fails ? ' pill-fail' : '')}>{fails || total}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </React.Fragment>
               )}
             </React.Fragment>
           ))}
@@ -473,9 +482,10 @@ function ScoringViews() {
   let body;
   if (view.kind === 'score') {
     const value = view.compute(FINDINGS);
+    const tier = value === null ? '' : value >= 80 ? ' tier-good' : value >= 60 ? ' tier-warn' : ' tier-bad';
     body = (
       <div className="scoring-view-body">
-        <div className="scoring-view-num">
+        <div className={'scoring-view-num' + tier}>
           {value === null ? '—' : `${value}%`}
         </div>
         <div className="scoring-view-blurb">{view.blurb}</div>
@@ -512,18 +522,25 @@ function ScoringViews() {
     );
   }
   return (
-    <div className="scoring-views">
-      <div className="scoring-views-tabs" role="tablist">
-        {SCORING_VIEWS.map(v => (
-          <button key={v.id} role="tab" aria-selected={v.id === active}
-            className={'scoring-views-tab' + (v.id === active ? ' active' : '')}
-            onClick={() => setActive(v.id)}>
-            {v.label}
-          </button>
-        ))}
+    <section className="block" id="scoring">
+      <div className="section-head">
+        <span className="eyebrow">01c · Scoring</span>
+        <h2>Posture views by audience</h2>
+        <div className="hr"/>
       </div>
-      {body}
-    </div>
+      <div className="scoring-views">
+        <div className="scoring-views-tabs" role="tablist">
+          {SCORING_VIEWS.map(v => (
+            <button key={v.id} role="tab" aria-selected={v.id === active}
+              className={'scoring-views-tab' + (v.id === active ? ' active' : '')}
+              onClick={() => setActive(v.id)}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+        {body}
+      </div>
+    </section>
   );
 }
 
@@ -540,13 +557,12 @@ function PermissionsPanel() {
   const sections = Object.entries(p.sections);
   const allOk = sections.every(([, s]) => s.ok);
   const missingTotal = asArray(p.missing).length;
+  const labelStyle = {fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:6};
   return (
-    <section className="permissions-panel" id="permissions">
-      <div className="section-header">
-        <h2>Permissions</h2>
-        <div className="section-sub">
-          {p.authMode} auth | {sections.length} section{sections.length===1?'':'s'} checked | {allOk ? 'all granted' : `${missingTotal} role(s) missing`}
-        </div>
+    <div className="card" id="permissions" style={{marginTop:14}}>
+      <div style={labelStyle}>Permissions used by this run</div>
+      <div style={{fontSize:12,color:'var(--text-soft)',marginBottom:10}}>
+        {p.authMode} auth · {sections.length} section{sections.length===1?'':'s'} checked · {allOk ? 'all granted' : `${missingTotal} role(s) missing`}
       </div>
       <table className="permissions-table">
         <thead>
@@ -571,7 +587,7 @@ function PermissionsPanel() {
           })}
         </tbody>
       </table>
-    </section>
+    </div>
   );
 }
 
@@ -659,7 +675,6 @@ function Posture() {
         </div>
       </div>
       <ExecSummaryRow/>
-      <ScoringViews/>
       {critical > 0 && (
         <div className="banner">
           <div className="banner-icon">!</div>
@@ -2747,7 +2762,9 @@ function Appendix() {
             </table>
           </div>
         )}
-      </div></>}
+      </div>
+      <PermissionsPanel/>
+      </>}
     </section>
   );
 }
@@ -2997,10 +3014,10 @@ function App() {
         />
         <Overview/>
         <Posture/>
+        <ScoringViews/>
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>
         <DomainRollup onJump={onDomainJump}/>
-        <PermissionsPanel/>
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch}/>

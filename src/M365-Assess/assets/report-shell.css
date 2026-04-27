@@ -102,18 +102,6 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--muted); padding: 0 8px 8px 8px;
 }
-.nav-label-collapsible {
-  display: flex; align-items: center; justify-content: space-between;
-  cursor: pointer; user-select: none;
-  padding-left: 10px; padding-right: 10px;
-  transition: color .15s;
-}
-.nav-label-collapsible:hover { color: var(--text-soft); }
-.nav-label-chev {
-  font-size: 14px; font-weight: 400; line-height: 1;
-  color: var(--muted); opacity: .7;
-  flex-shrink: 0;
-}
 .nav-label-emphasis {
   color: var(--accent-text, var(--accent));
   border-top: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -1041,12 +1029,11 @@ mark.search-hl {
   font-size: 11px; color: var(--muted); white-space: nowrap;
 }
 .scoring-view-more { color: var(--muted); font-size: 11px; padding-top: 4px !important; }
+.scoring-view-num.tier-good { color: var(--success-text); }
+.scoring-view-num.tier-warn { color: var(--warn-text); }
+.scoring-view-num.tier-bad  { color: var(--danger-text); }
 
 /* ---------- Permissions panel (#812 B2 followup) ---------- */
-.permissions-panel {
-  margin: 24px 0; padding: 18px 20px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-}
 .permissions-table {
   width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px;
 }

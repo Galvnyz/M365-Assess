@@ -461,29 +461,6 @@ function Sidebar({
     className: 'nav-subitem' + (activeSubsection === 'identity-email' ? ' active' : ''),
     onClick: closeIfMobile
   }, "Email auth")))), /*#__PURE__*/React.createElement("div", {
-    className: "nav-label nav-label-collapsible",
-    style: {
-      marginTop: 14
-    },
-    onClick: () => setDomainsCollapsed(c => !c)
-  }, /*#__PURE__*/React.createElement("span", null, "Domains"), /*#__PURE__*/React.createElement("span", {
-    className: "nav-label-chev"
-  }, domainsCollapsed ? '+' : '−')), !domainsCollapsed && domains.map(d => {
-    const fails = domainCounts.fail[d] || 0;
-    const total = domainCounts.total[d] || 0;
-    return /*#__PURE__*/React.createElement("a", {
-      href: "#findings-anchor",
-      key: d,
-      onClick: e => {
-        e.preventDefault();
-        onDomainJump(d);
-        closeIfMobile();
-      },
-      className: 'nav-item' + (activeDomain === d ? ' active' : '')
-    }, /*#__PURE__*/React.createElement("span", null, d), /*#__PURE__*/React.createElement("span", {
-      className: 'count' + (fails ? ' pill-fail' : '')
-    }, fails || total));
-  }), /*#__PURE__*/React.createElement("div", {
     className: "nav-label nav-label-emphasis",
     style: {
       marginTop: 14
@@ -519,7 +496,33 @@ function Sidebar({
     className: "nav-subitem"
   }, "Later ", /*#__PURE__*/React.createElement("span", {
     className: "count"
-  }, ROADMAP_COUNTS.later)))))), /*#__PURE__*/React.createElement("div", {
+  }, ROADMAP_COUNTS.later))), it.id === 'findings' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("a", {
+    href: "#findings-anchor",
+    onClick: e => {
+      e.preventDefault();
+      setDomainsCollapsed(c => !c);
+    },
+    className: "nav-item"
+  }, /*#__PURE__*/React.createElement("span", null, "Domains"), /*#__PURE__*/React.createElement("span", {
+    className: "nav-expand-icon"
+  }, domainsCollapsed ? '+' : '−')), !domainsCollapsed && /*#__PURE__*/React.createElement("div", {
+    className: "nav-subitems"
+  }, domains.map(d => {
+    const fails = domainCounts.fail[d] || 0;
+    const total = domainCounts.total[d] || 0;
+    return /*#__PURE__*/React.createElement("a", {
+      href: "#findings-anchor",
+      key: d,
+      onClick: e => {
+        e.preventDefault();
+        onDomainJump(d);
+        closeIfMobile();
+      },
+      className: 'nav-subitem' + (activeDomain === d ? ' active' : '')
+    }, /*#__PURE__*/React.createElement("span", null, d), /*#__PURE__*/React.createElement("span", {
+      className: 'count' + (fails ? ' pill-fail' : '')
+    }, fails || total));
+  })))))), /*#__PURE__*/React.createElement("div", {
     className: "sidebar-cards"
   }, /*#__PURE__*/React.createElement("div", {
     className: "sc-card"
@@ -850,10 +853,11 @@ function ScoringViews() {
   let body;
   if (view.kind === 'score') {
     const value = view.compute(FINDINGS);
+    const tier = value === null ? '' : value >= 80 ? ' tier-good' : value >= 60 ? ' tier-warn' : ' tier-bad';
     body = /*#__PURE__*/React.createElement("div", {
       className: "scoring-view-body"
     }, /*#__PURE__*/React.createElement("div", {
-      className: "scoring-view-num"
+      className: 'scoring-view-num' + tier
     }, value === null ? '—' : `${value}%`), /*#__PURE__*/React.createElement("div", {
       className: "scoring-view-blurb"
     }, view.blurb));
@@ -895,7 +899,16 @@ function ScoringViews() {
       }
     }, "findings table"))));
   }
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("section", {
+    className: "block",
+    id: "scoring"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "01c \xB7 Scoring"), /*#__PURE__*/React.createElement("h2", null, "Posture views by audience"), /*#__PURE__*/React.createElement("div", {
+    className: "hr"
+  })), /*#__PURE__*/React.createElement("div", {
     className: "scoring-views"
   }, /*#__PURE__*/React.createElement("div", {
     className: "scoring-views-tabs",
@@ -906,7 +919,7 @@ function ScoringViews() {
     "aria-selected": v.id === active,
     className: 'scoring-views-tab' + (v.id === active ? ' active' : ''),
     onClick: () => setActive(v.id)
-  }, v.label))), body);
+  }, v.label))), body));
 }
 
 // ======================== Permissions panel (#812 B2 followup) ========================
@@ -922,14 +935,29 @@ function PermissionsPanel() {
   const sections = Object.entries(p.sections);
   const allOk = sections.every(([, s]) => s.ok);
   const missingTotal = asArray(p.missing).length;
-  return /*#__PURE__*/React.createElement("section", {
-    className: "permissions-panel",
-    id: "permissions"
+  const labelStyle = {
+    fontSize: 12,
+    color: 'var(--muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '.08em',
+    fontWeight: 600,
+    marginBottom: 6
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    id: "permissions",
+    style: {
+      marginTop: 14
+    }
   }, /*#__PURE__*/React.createElement("div", {
-    className: "section-header"
-  }, /*#__PURE__*/React.createElement("h2", null, "Permissions"), /*#__PURE__*/React.createElement("div", {
-    className: "section-sub"
-  }, p.authMode, " auth | ", sections.length, " section", sections.length === 1 ? '' : 's', " checked | ", allOk ? 'all granted' : `${missingTotal} role(s) missing`)), /*#__PURE__*/React.createElement("table", {
+    style: labelStyle
+  }, "Permissions used by this run"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--text-soft)',
+      marginBottom: 10
+    }
+  }, p.authMode, " auth \xB7 ", sections.length, " section", sections.length === 1 ? '' : 's', " checked \xB7 ", allOk ? 'all granted' : `${missingTotal} role(s) missing`), /*#__PURE__*/React.createElement("table", {
     className: "permissions-table"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Section"), /*#__PURE__*/React.createElement("th", null, "Required"), /*#__PURE__*/React.createElement("th", null, "Missing"), /*#__PURE__*/React.createElement("th", null, "Status"))), /*#__PURE__*/React.createElement("tbody", null, sections.map(([name, s]) => {
     const req = asArray(s.required);
@@ -1079,7 +1107,7 @@ function Posture() {
       width: pct(pass, scoreDenom(FINDINGS)) + '%',
       background: 'var(--success)'
     }
-  })))), /*#__PURE__*/React.createElement(MFABreakdown, null))), /*#__PURE__*/React.createElement(ExecSummaryRow, null), /*#__PURE__*/React.createElement(ScoringViews, null), critical > 0 && /*#__PURE__*/React.createElement("div", {
+  })))), /*#__PURE__*/React.createElement(MFABreakdown, null))), /*#__PURE__*/React.createElement(ExecSummaryRow, null), critical > 0 && /*#__PURE__*/React.createElement("div", {
     className: "banner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "banner-icon"
@@ -4329,7 +4357,7 @@ function Appendix() {
       textAlign: 'right',
       fontFamily: 'var(--font-mono)'
     }
-  }, String(ad.lastSync).slice(0, 19).replace('T', ' ')))))))));
+  }, String(ad.lastSync).slice(0, 19).replace('T', ' '))))))), /*#__PURE__*/React.createElement(PermissionsPanel, null)));
 }
 function StatusDot({
   ok,
@@ -4698,14 +4726,14 @@ function App() {
     onFinalize: handleFinalize,
     onReset: handleResetAll,
     hiddenCount: hiddenFindings.size
-  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {
+  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(ScoringViews, null), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {
     onSelect: onFrameworkSelect,
     selected: filters.framework[0],
     onProfileSelect: onProfileSelect,
     activeProfiles: filters.profile || []
   }), /*#__PURE__*/React.createElement(DomainRollup, {
     onJump: onDomainJump
-  }), /*#__PURE__*/React.createElement(PermissionsPanel, null), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     id: "findings-anchor"
   }), /*#__PURE__*/React.createElement("div", {
     style: {
