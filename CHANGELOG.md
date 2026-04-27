@@ -4,6 +4,23 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.9.2] - 2026-04-27
+
+Polish release: HTML report layout cleanup, XLSX matrix readability, and a `-SaveBaseline` UX papercut. One **breaking change** to a parameter type (see Changed).
+
+### Added
+- **ScoringViews section header (#835)** — the scoring-tabs panel now has a proper `01c · Scoring` eyebrow + `Posture views by audience` h2 above it (was a "naked" tab strip with no section context). Big % number is color-coded by tier: ≥80 green, 60–79 amber, <60 red, using the theme-safe `--success-text` / `--warn-text` / `--danger-text` palette across all 4 themes. New `<section id="scoring">` anchor enables sidebar deep-linking
+- **`-BaselineLabel` parameter on `Invoke-M365Assessment` (#809)** — optional custom label paired with the new switch-form `-SaveBaseline`. Pre-existing `auto-<timestamp>` naming via `-AutoBaseline` is unchanged
+
+### Changed
+- **`-SaveBaseline` is now a `[switch]` (BREAKING, #809)** — `-SaveBaseline 'mylabel'` no longer works; migrate to `-SaveBaseline -BaselineLabel 'mylabel'`. The bare `-SaveBaseline` form now auto-labels as `manual-<timestamp>`. Why the breaking shape: PowerShell parameter binding does not allow a single non-switch parameter to accept BOTH the bare flag form AND a string-value form; the two-parameter shape is the only PowerShell-legal way to honor the bare-`-SaveBaseline` request
+- **Compliance Matrix XLSX `Horizon` column renamed to `Sequence` (#840)** — Pass-status rows now show `Done` (was empty) with green color-coding matching the Pass status cell. Source data unchanged so the Remediation Roadmap sheet still excludes Pass rows correctly
+- **Permissions panel moved from top-of-report to Appendix (#834)** — was wedged between the Domain rollup and findings table; now renders as a card alongside Tenant / MFA / CA in `Appendix · tenant`. The `id="permissions"` deep-link anchor is preserved
+- **Sidebar Domains demoted from top-level group to collapsible sub-tree under Findings & Action (#836)** — the per-domain entries are filter shortcuts into the findings table, not separate destinations, so they read more truthfully nested under FINDINGS & ACTION. `Domain posture` link under EXECUTIVE (separate destination) is preserved
+
+### Fixed
+- **FilterBar sticky pin no longer follows the user past the findings section (#838)** — `.filter-bar-active`'s `position: sticky` was scoped to the App's main scroll container and stayed pinned through Roadmap, the Permissions card, and Tenant Appendix. Now gates the sticky class on the App's existing scrollspy signal (`active === 'findings'`) so the bar releases when the user scrolls past the table. Reuses the IntersectionObserver already driving sidebar highlighting; no new event listeners
+
 ## [2.9.1] - 2026-04-26
 
 Hotfix to v2.9.0. Caught by live-tenant validation post-tag — the underlying lesson is also addressed by a new `.claude/rules/releases.md` rule requiring live verification before any future tag/publish.

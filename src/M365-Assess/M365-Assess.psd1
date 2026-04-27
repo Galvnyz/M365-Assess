@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.9.1'
+    ModuleVersion     = '2.9.2'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -242,7 +242,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.9.1 - Hotfix. PowerShell parser ambiguity in Get-BaselineTrend caused HTML report generation to fail silently when -AutoBaseline was supplied: New-Object -TypeName System.Collections.Generic.Dictionary[string, System.IO.DirectoryInfo] was parsed as an array literal, yielding "Cannot convert Object[] to System.String required by parameter TypeName" inside Build-ReportData -- and the catch block in Invoke-M365Assessment swallowed the failure to a WARN log line. Switched to ::new() which parses unambiguously, made the report-generation catch block also Write-Warning to console so silent failures stop happening, added regression test coverage for Get-BaselineTrend (no prior tests). v2.9.0: Trust Hardening release with evidence schema, sanitized evidence package, license-adjusted scoring views, remediation export formats, HTML Permissions panel, wrapper deprecation, cross-platform smoke lane, behavioral tests.'
+            ReleaseNotes = 'v2.9.2 - Polish release. HTML report layout cleanup: ScoringViews gained a section header + tier-coloured % number (#835); Permissions panel relocated from top-of-report into Appendix (#834); sidebar Domains demoted from top-level group to a collapsible sub-tree under Findings & Action (#836). XLSX Compliance Matrix: Horizon column renamed to Sequence; Pass rows now show Done with green color-coding (#840). Fixed: FilterBar position:sticky no longer follows the user past the findings section (#838). BREAKING: -SaveBaseline is now a [switch]; combine with new -BaselineLabel parameter for custom labels. Old -SaveBaseline ''mylabel'' form must migrate to -SaveBaseline -BaselineLabel ''mylabel'' (#809). v2.9.1: hotfix for AutoBaseline + PermissionsPanel render bugs. v2.9.0: Trust Hardening release.'
         }
     }
 }
