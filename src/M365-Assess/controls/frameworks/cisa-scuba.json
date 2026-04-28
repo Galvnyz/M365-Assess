@@ -42,5 +42,15 @@
       "color": "#FDBA74"
     }
   },
-  "controlIdFormat": "MS.{product}.{number}v{version}"
+  "controlIdFormat": "MS.{product}.{number}v{version}",
+  "groupBy": "scuba-service",
+  "groupLabel": "service",
+  "groups": {
+    "MS.AAD":           "Azure AD / Entra ID",
+    "MS.EXO":           "Exchange Online",
+    "MS.DEFENDER":      "Microsoft Defender",
+    "MS.POWERPLATFORM": "Power Platform",
+    "MS.SHAREPOINT":    "SharePoint",
+    "MS.TEAMS":         "Teams"
+  }
 }

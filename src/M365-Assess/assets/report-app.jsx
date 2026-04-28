@@ -1351,10 +1351,10 @@ const matchProfileToken = (profilesArr, token) => {
   return profilesArr.some(p => p.includes(token));
 };
 
-// Issue #751: extraction strategies that derive a "group key" (section number,
-// family code, function letter, etc.) from a framework's native controlId.
-// Each framework's JSON file declares its `groupBy` strategy + `groups` map
-// (key → display name); the strategies are enumerated here.
+// Issue #751 / #845: extraction strategies that derive a "group key" (section
+// number, family code, function letter, service prefix, etc.) from a framework's
+// native controlId. Each framework's JSON file declares its `groupBy` strategy
+// + `groups` map (key → display name); the strategies are enumerated here.
 const GROUP_EXTRACTORS = {
   // CIS M365 v6, CIS Controls v8, PCI DSS v4: leading numeric section (e.g. '5.2.2.5' → '5')
   'section-prefix': (cid) => {
@@ -1374,6 +1374,31 @@ const GROUP_EXTRACTORS = {
   // ISO 27001:2022: 'A.5.1.1' → 'A.5'; ISO 27001:2013 also uses A.X.Y form
   'iso-clause-prefix': (cid) => {
     const m = String(cid).match(/^(A\.\d+)/);
+    return m ? m[1] : null;
+  },
+  // HIPAA Security Rule: '164.308(a)(1)(ii)(A)' → '308'
+  'hipaa-section': (cid) => {
+    const m = String(cid).match(/^164\.(\d+)/);
+    return m ? m[1] : null;
+  },
+  // SOC 2 Trust Services Criteria: 'CC1.1' → 'CC', 'PI1.2-POF1' → 'PI', 'A1.2' → 'A'
+  // PI must be tested before P (longest-match). C is single-letter and ambiguous
+  // with CC prefix; check CC first then C.
+  'soc2-tsc-prefix': (cid) => {
+    const s = String(cid);
+    if (s.startsWith('CC')) return 'CC';
+    if (s.startsWith('PI')) return 'PI';
+    const m = s.match(/^([ACP])\d/);
+    return m ? m[1] : null;
+  },
+  // Essential Eight: 'ML1-P3' → '3' (group by practice number, not maturity level)
+  'essential-eight-practice': (cid) => {
+    const m = String(cid).match(/-P(\d+)/);
+    return m ? m[1] : null;
+  },
+  // CISA SCUBA: 'MS.AAD.1.1v1' → 'MS.AAD'
+  'scuba-service': (cid) => {
+    const m = String(cid).match(/^(MS\.[A-Z]+)/);
     return m ? m[1] : null;
   },
 };

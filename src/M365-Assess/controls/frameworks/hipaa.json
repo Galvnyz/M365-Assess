@@ -43,5 +43,15 @@
       "background": "#831843",
       "color": "#F9A8D4"
     }
+  },
+  "groupBy": "hipaa-section",
+  "groupLabel": "safeguard",
+  "groups": {
+    "306": "General Rules",
+    "308": "Administrative Safeguards",
+    "310": "Physical Safeguards",
+    "312": "Technical Safeguards",
+    "314": "Organizational Requirements",
+    "316": "Policies, Procedures & Documentation"
   }
 }
