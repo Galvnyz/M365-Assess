@@ -2211,9 +2211,27 @@ function DomainRollup({
 // Token semantics shared by the findings filter and the framework-panel chart:
 // 'E3' matches profiles starting with E3; 'E5only' matches CIS profiles with E5 but no E3
 // variant; bare 'L1'/'L2'/'L3' substring-match handles bare CMMC values and CIS suffixes alike.
+// Issue #844: levels (L1/L2/L3, Low/Mod/High) are CUMULATIVE per the
+// underlying frameworks: CMMC L3 ⊇ L2 ⊇ L1; CIS L2 ⊇ L1; NIST 800-53
+// High ⊇ Mod ⊇ Low. So "show me checks an L3 tenant runs" must include
+// every check tagged L1 OR L2 OR L3 — not just L3-explicit. License
+// tiers (E3 / E5only) are orthogonal and stay exclusive.
+//
+// The registry already uses duplicative tagging downward (an L1 check
+// carries L2; an L3 check carries L2). This helper enforces upward-cumulative
+// matching so the "level X" filter and counts mean "what an X-level tenant
+// evaluates", not "the X-only subset". See docs/LEVELS.md.
 const matchProfileToken = (profilesArr, token) => {
   if (token === 'E5only') return profilesArr.length > 0 && !profilesArr.some(p => p.startsWith('E3'));
   if (token === 'E3') return profilesArr.some(p => p.startsWith('E3'));
+  // Cumulative-up for maturity levels:
+  if (token === 'L3') return profilesArr.some(p => p.includes('L3') || p.includes('L2') || p.includes('L1'));
+  if (token === 'L2') return profilesArr.some(p => p.includes('L2') || p.includes('L1'));
+  if (token === 'L1') return profilesArr.some(p => p.includes('L1'));
+  // Cumulative-up for NIST 800-53 baselines:
+  if (token === 'High') return profilesArr.some(p => p.includes('High') || p.includes('Moderate') || p === 'Mod' || p.includes('Low'));
+  if (token === 'Mod') return profilesArr.some(p => p.includes('Moderate') || p === 'Mod' || p.includes('Low'));
+  if (token === 'Low') return profilesArr.some(p => p.includes('Low'));
   return profilesArr.some(p => p.includes(token));
 };
 
@@ -2352,6 +2370,20 @@ function buildFrameworkData(fwId, activeProfiles) {
   });
   let profileType = null;
   if (fwId.startsWith('cmmc')) profileType = 'cmmc';else if (fwId.startsWith('cis-')) profileType = 'cis';else if (fwId.startsWith('nist-800-53') || fwId === 'fedramp') profileType = 'nist';
+
+  // Issue #844: apply cumulative inheritance to the maturity-level Sets so
+  // chip counts mean "what an X-level tenant evaluates", not "the X-only
+  // subset". License tiers (E3 / E5only) stay exclusive — they're orthogonal,
+  // not inherited.
+  if (profileType === 'cmmc') {
+    profileSets.L1.forEach(idx => profileSets.L2.add(idx));
+    profileSets.L2.forEach(idx => profileSets.L3.add(idx));
+  } else if (profileType === 'cis') {
+    profileSets.L1.forEach(idx => profileSets.L2.add(idx));
+  } else if (profileType === 'nist') {
+    profileSets.Low.forEach(idx => profileSets.Mod.add(idx));
+    profileSets.Mod.forEach(idx => profileSets.High.add(idx));
+  }
   const profiles = profileType === 'cmmc' ? {
     L1: profileSets.L1.size,
     L2: profileSets.L2.size,
@@ -3509,9 +3541,11 @@ function FilterBar({
     FINDINGS.forEach(f => {
       const profs = [].concat(f.fwMeta?.[singleFw]?.profiles || []);
       if (profs.length === 0) return;
-      if (profs.some(p => p.includes('L1'))) c.L1++;
-      if (profs.some(p => p.includes('L2'))) c.L2++;
-      if (profs.some(p => p.includes('L3'))) c.L3++;
+      // Issue #844: cumulative-up matching so chip counts agree with the
+      // matchProfileToken filter semantics (an L3 tenant runs L1+L2+L3).
+      if (matchProfileToken(profs, 'L1')) c.L1++;
+      if (matchProfileToken(profs, 'L2')) c.L2++;
+      if (matchProfileToken(profs, 'L3')) c.L3++;
       const hasE3 = profs.some(p => p.startsWith('E3'));
       if (hasE3) c.E3++;else c.E5only++;
     });
