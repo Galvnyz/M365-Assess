@@ -20,6 +20,7 @@ const LS = key => `${key}-${TENANT.TenantId || 'anon'}`;
 const RO = window.REPORT_OVERRIDES || null;
 function finalizeReport({
   hiddenFindings,
+  hiddenElements,
   roadmapOverrides
 }) {
   const overridesEl = document.getElementById('report-overrides');
@@ -29,6 +30,7 @@ function finalizeReport({
   }
   const overrides = {
     hiddenFindings: [...(hiddenFindings || [])],
+    hiddenElements: [...(hiddenElements || [])],
     roadmapOverrides: roadmapOverrides || {}
   };
   const clone = document.documentElement.cloneNode(true);
@@ -43,6 +45,45 @@ function finalizeReport({
   a.download = (TENANT.OrgDisplayName || 'Assessment').replace(/[^a-z0-9 ]/gi, '').trim().replace(/\s+/g, '-') + '-M365-Report.html';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Issue #712: edit-mode generic hide capability for any card or section.
+// Context lets HideableBlock read editMode + hiddenElements without prop
+// drilling through every parent component (App > Posture > KPI cards, etc.).
+const EditModeContext = React.createContext({
+  editMode: false,
+  hiddenElements: new Set(),
+  toggleHideElement: () => {}
+});
+
+// HideableBlock wraps any element to make it hideable in edit mode.
+//  - In production view (editMode=false) and the key is hidden → renders nothing
+//  - In production view and not hidden → renders children with a transparent wrapper (display:contents)
+//  - In edit mode → renders a positioning wrapper with a ✕ overlay (or ↩ Restore when hidden)
+function HideableBlock({
+  hideKey,
+  children,
+  label
+}) {
+  const {
+    editMode,
+    hiddenElements,
+    toggleHideElement
+  } = React.useContext(EditModeContext);
+  const isHidden = hiddenElements?.has(hideKey);
+  if (!editMode && isHidden) return null;
+  if (!editMode) return /*#__PURE__*/React.createElement(React.Fragment, null, children);
+  return /*#__PURE__*/React.createElement("div", {
+    className: 'hideable-block' + (isHidden ? ' hideable-block-hidden' : ''),
+    "data-hide-key": hideKey
+  }, children, /*#__PURE__*/React.createElement("button", {
+    className: 'hideable-btn' + (isHidden ? ' restore' : ''),
+    title: isHidden ? `Restore ${label || 'this section'}` : `Hide ${label || 'this section'}`,
+    onClick: e => {
+      e.stopPropagation();
+      toggleHideElement(hideKey);
+    }
+  }, isHidden ? '↩' : '✕'));
 }
 
 // Issue #715: roadmap lane counts now read from t.lane (precomputed by
@@ -995,6 +1036,9 @@ function Posture() {
     id: "posture"
   }, /*#__PURE__*/React.createElement("div", {
     className: "posture-grid"
+  }, /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "posture-score-card",
+    label: "Microsoft Secure Score card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "score-card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1040,11 +1084,14 @@ function Posture() {
     className: "score-split-label"
   }, "Customer-earned"), /*#__PURE__*/React.createElement("div", {
     className: "score-split-value"
-  }, fmt(SCORE.CustomerScore), " pts")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, fmt(SCORE.CustomerScore), " pts"))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "kpi-strip",
     style: {
       marginBottom: 10
     }
+  }, /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "kpi-critical",
+    label: "Critical findings KPI"
   }, /*#__PURE__*/React.createElement("div", {
     className: 'kpi ' + (critical ? 'bad' : 'good')
   }, /*#__PURE__*/React.createElement("div", {
@@ -1062,7 +1109,10 @@ function Posture() {
       width: Math.min(100, critical * 15) + '%',
       background: 'var(--danger)'
     }
-  }))), /*#__PURE__*/React.createElement("div", {
+  })))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "kpi-fails",
+    label: "Fails KPI"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "kpi bad"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -1077,7 +1127,10 @@ function Posture() {
       width: pct(fail, scoreDenom(FINDINGS)) + '%',
       background: 'var(--danger)'
     }
-  }))), /*#__PURE__*/React.createElement("div", {
+  })))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "kpi-warnings",
+    label: "Warnings KPI"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "kpi warn"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -1092,7 +1145,10 @@ function Posture() {
       width: pct(warn, scoreDenom(FINDINGS)) + '%',
       background: 'var(--warn)'
     }
-  }))), /*#__PURE__*/React.createElement("div", {
+  })))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "kpi-passing",
+    label: "Passing KPI"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "kpi good"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -1107,7 +1163,7 @@ function Posture() {
       width: pct(pass, scoreDenom(FINDINGS)) + '%',
       background: 'var(--success)'
     }
-  })))), /*#__PURE__*/React.createElement(MFABreakdown, null))), /*#__PURE__*/React.createElement(ExecSummaryRow, null), critical > 0 && /*#__PURE__*/React.createElement("div", {
+  }))))), /*#__PURE__*/React.createElement(MFABreakdown, null))), /*#__PURE__*/React.createElement(ExecSummaryRow, null), critical > 0 && /*#__PURE__*/React.createElement("div", {
     className: "banner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "banner-icon"
@@ -3906,6 +3962,9 @@ function Roadmap({
     }
   }, "Click any task to expand it, or use the move buttons on each card to reprioritize. Use Finalize (\u270E) to bake lane changes into the report."))), /*#__PURE__*/React.createElement("div", {
     className: "roadmap"
+  }, /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "roadmap-lane-now",
+    label: "Now lane"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3930,7 +3989,10 @@ function Roadmap({
     laneItems: now
   }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "< 1 week"))), now.map(t => renderTask(t, 'now'))), /*#__PURE__*/React.createElement("div", {
+  }, "< 1 week"))), now.map(t => renderTask(t, 'now')))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "roadmap-lane-next",
+    label: "Next lane"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "lane"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane-head"
@@ -3954,7 +4016,10 @@ function Roadmap({
     laneItems: soon
   }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 4 weeks"))), soon.map(t => renderTask(t, 'soon'))), /*#__PURE__*/React.createElement("div", {
+  }, "1 \u2013 4 weeks"))), soon.map(t => renderTask(t, 'soon')))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "roadmap-lane-later",
+    label: "Later lane"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "lane"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lane-head"
@@ -3978,7 +4043,7 @@ function Roadmap({
     laneItems: later
   }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 3 months"))), later.map(t => renderTask(t, 'later'))))));
+  }, "1 \u2013 3 months"))), later.map(t => renderTask(t, 'later')))))));
 }
 
 // ======================== Critical Exposure section ========================
@@ -4182,7 +4247,10 @@ function Appendix() {
     "aria-hidden": "true"
   }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
     className: "hr"
-  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-tenant",
+    label: "Tenant info"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       marginBottom: 14
@@ -4220,12 +4288,15 @@ function Appendix() {
     style: {
       color: 'var(--muted)'
     }
-  }, "created"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.CreatedDateTime.slice(0, 10))))), /*#__PURE__*/React.createElement("div", {
+  }, "created"), " ", /*#__PURE__*/React.createElement("b", null, TENANT.CreatedDateTime.slice(0, 10)))))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
       gap: 14
     }
+  }, /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-licenses",
+    label: "Licenses card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4269,7 +4340,10 @@ function Appendix() {
       ...monoRight,
       color: 'var(--muted)'
     }
-  }, l.Total)))))), /*#__PURE__*/React.createElement("div", {
+  }, l.Total))))))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-mfa-coverage",
+    label: "MFA coverage card"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
@@ -4356,7 +4430,10 @@ function Appendix() {
     }
   }, fmt(MFA_STATS.adminsWithoutMfa)), /*#__PURE__*/React.createElement("td", {
     style: cellStyle
-  }))))), /*#__PURE__*/React.createElement("div", {
+  })))))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-ca-policies",
+    label: "Conditional Access policies card"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
@@ -4385,7 +4462,10 @@ function Appendix() {
       textAlign: 'right',
       color: 'var(--muted)'
     }
-  }, r.State)))))), /*#__PURE__*/React.createElement("div", {
+  }, r.State))))))), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-privileged-roles",
+    label: "Privileged roles card"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
@@ -4406,7 +4486,10 @@ function Appendix() {
       ...monoRight,
       color: 'var(--muted)'
     }
-  }, count)))))), dnsTotal > 0 && /*#__PURE__*/React.createElement("div", {
+  }, count))))))), dnsTotal > 0 && /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-email-auth",
+    label: "Email authentication card"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
@@ -4446,7 +4529,10 @@ function Appendix() {
       ...monoRight,
       color: dmarcEnf === dnsTotal ? 'var(--success-text)' : dmarcEnf > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
     }
-  }, dmarcEnf, "/", dnsTotal))))), ad && /*#__PURE__*/React.createElement("div", {
+  }, dmarcEnf, "/", dnsTotal)))))), ad && /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "appendix-hybrid-sync",
+    label: "Hybrid sync card"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     style: labelStyle
@@ -4486,7 +4572,7 @@ function Appendix() {
       textAlign: 'right',
       fontFamily: 'var(--font-mono)'
     }
-  }, String(ad.lastSync).slice(0, 19).replace('T', ' '))))))), /*#__PURE__*/React.createElement(PermissionsPanel, null)));
+  }, String(ad.lastSync).slice(0, 19).replace('T', ' ')))))))), /*#__PURE__*/React.createElement(PermissionsPanel, null)));
 }
 function StatusDot({
   ok,
@@ -4661,21 +4747,34 @@ function App() {
   }, [matchIdx, searchMatches]);
   const [editMode, setEditMode] = useState(false);
   const [hiddenFindings, setHiddenFindings] = useState(() => new Set(RO?.hiddenFindings || []));
+  const [hiddenElements, setHiddenElements] = useState(() => new Set(RO?.hiddenElements || []));
   const [roadmapOverrides, setRoadmapOverrides] = useState(() => RO?.roadmapOverrides || {});
   const toggleHideFinding = id => setHiddenFindings(prev => {
     const s = new Set(prev);
     s.has(id) ? s.delete(id) : s.add(id);
     return s;
   });
+  const toggleHideElement = key => setHiddenElements(prev => {
+    const s = new Set(prev);
+    s.has(key) ? s.delete(key) : s.add(key);
+    return s;
+  });
   const restoreAllFindings = () => setHiddenFindings(new Set());
   const handleFinalize = () => finalizeReport({
     hiddenFindings: [...hiddenFindings],
+    hiddenElements: [...hiddenElements],
     roadmapOverrides
   });
   const handleResetAll = () => {
     setHiddenFindings(new Set());
+    setHiddenElements(new Set());
     setRoadmapOverrides({});
   };
+  const editModeCtx = useMemo(() => ({
+    editMode,
+    hiddenElements,
+    toggleHideElement
+  }), [editMode, hiddenElements]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.mode = mode;
@@ -4820,7 +4919,9 @@ function App() {
       block: 'start'
     });
   }, []);
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement(EditModeContext.Provider, {
+    value: editModeCtx
+  }, /*#__PURE__*/React.createElement("div", {
     className: "app"
   }, /*#__PURE__*/React.createElement(Sidebar, {
     active: active,
@@ -4854,7 +4955,7 @@ function App() {
     onEditToggle: () => setEditMode(e => !e),
     onFinalize: handleFinalize,
     onReset: handleResetAll,
-    hiddenCount: hiddenFindings.size
+    hiddenCount: hiddenFindings.size + hiddenElements.size
   }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(ScoringViews, null), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {
     onSelect: onFrameworkSelect,
     selected: filters.framework[0],
@@ -4935,7 +5036,7 @@ function App() {
     setMode: setMode,
     density: density,
     setDensity: setDensity
-  }));
+  })));
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(App, null));

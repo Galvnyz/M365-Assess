@@ -14,7 +14,7 @@ const DOMAIN_STATS = D.domainStats;
 const LS = key => `${key}-${TENANT.TenantId || 'anon'}`;
 const RO = window.REPORT_OVERRIDES || null;
 
-function finalizeReport({ hiddenFindings, roadmapOverrides }) {
+function finalizeReport({ hiddenFindings, hiddenElements, roadmapOverrides }) {
   const overridesEl = document.getElementById('report-overrides');
   if (!overridesEl) {
     alert('This report is missing the overrides injection point. Regenerate it with the latest template.');
@@ -22,6 +22,7 @@ function finalizeReport({ hiddenFindings, roadmapOverrides }) {
   }
   const overrides = {
     hiddenFindings:   [...(hiddenFindings || [])],
+    hiddenElements:   [...(hiddenElements || [])],
     roadmapOverrides: roadmapOverrides || {},
   };
   const clone = document.documentElement.cloneNode(true);
@@ -34,6 +35,33 @@ function finalizeReport({ hiddenFindings, roadmapOverrides }) {
   a.download = (TENANT.OrgDisplayName || 'Assessment').replace(/[^a-z0-9 ]/gi, '').trim().replace(/\s+/g, '-') + '-M365-Report.html';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Issue #712: edit-mode generic hide capability for any card or section.
+// Context lets HideableBlock read editMode + hiddenElements without prop
+// drilling through every parent component (App > Posture > KPI cards, etc.).
+const EditModeContext = React.createContext({ editMode: false, hiddenElements: new Set(), toggleHideElement: () => {} });
+
+// HideableBlock wraps any element to make it hideable in edit mode.
+//  - In production view (editMode=false) and the key is hidden → renders nothing
+//  - In production view and not hidden → renders children with a transparent wrapper (display:contents)
+//  - In edit mode → renders a positioning wrapper with a ✕ overlay (or ↩ Restore when hidden)
+function HideableBlock({ hideKey, children, label }) {
+  const { editMode, hiddenElements, toggleHideElement } = React.useContext(EditModeContext);
+  const isHidden = hiddenElements?.has(hideKey);
+  if (!editMode && isHidden) return null;
+  if (!editMode) return <>{children}</>;
+  return (
+    <div className={'hideable-block' + (isHidden ? ' hideable-block-hidden' : '')} data-hide-key={hideKey}>
+      {children}
+      <button
+        className={'hideable-btn' + (isHidden ? ' restore' : '')}
+        title={isHidden ? `Restore ${label || 'this section'}` : `Hide ${label || 'this section'}`}
+        onClick={e => { e.stopPropagation(); toggleHideElement(hideKey); }}>
+        {isHidden ? '↩' : '✕'}
+      </button>
+    </div>
+  );
 }
 
 // Issue #715: roadmap lane counts now read from t.lane (precomputed by
@@ -607,6 +635,7 @@ function Posture() {
   return (
     <section className="block" id="posture">
       <div className="posture-grid">
+        <HideableBlock hideKey="posture-score-card" label="Microsoft Secure Score card">
         <div className="score-card">
           <div className="score-eyebrow">Microsoft Secure Score</div>
           <div className="score-headline">
@@ -643,33 +672,42 @@ function Posture() {
             </div>
           )}
         </div>
+        </HideableBlock>
 
         <div>
           <div className="kpi-strip" style={{marginBottom:10}}>
+            <HideableBlock hideKey="kpi-critical" label="Critical findings KPI">
             <div className={'kpi ' + (critical?'bad':'good')}>
               <div className="kpi-label">Critical findings</div>
               <div className="kpi-value">{critical}<span className="kpi-suffix">open</span></div>
               <div className="kpi-hint">Admin, PIM & break-glass exposure</div>
               <div className="tiny-bar"><span style={{width: Math.min(100, critical*15)+'%', background:'var(--danger)'}}/></div>
             </div>
+            </HideableBlock>
+            <HideableBlock hideKey="kpi-fails" label="Fails KPI">
             <div className="kpi bad">
               <div className="kpi-label">Fails</div>
               <div className="kpi-value">{fail}</div>
               <div className="kpi-hint">of {FINDINGS.length} checks</div>
               <div className="tiny-bar"><span style={{width: pct(fail, scoreDenom(FINDINGS))+'%', background:'var(--danger)'}}/></div>
             </div>
+            </HideableBlock>
+            <HideableBlock hideKey="kpi-warnings" label="Warnings KPI">
             <div className="kpi warn">
               <div className="kpi-label">Warnings</div>
               <div className="kpi-value">{warn}</div>
               <div className="kpi-hint">Review & harden</div>
               <div className="tiny-bar"><span style={{width: pct(warn, scoreDenom(FINDINGS))+'%', background:'var(--warn)'}}/></div>
             </div>
+            </HideableBlock>
+            <HideableBlock hideKey="kpi-passing" label="Passing KPI">
             <div className="kpi good">
               <div className="kpi-label">Passing</div>
               <div className="kpi-value">{pass}</div>
               <div className="kpi-hint">Controls validated</div>
               <div className="tiny-bar"><span style={{width: pct(pass, scoreDenom(FINDINGS))+'%', background:'var(--success)'}}/></div>
             </div>
+            </HideableBlock>
           </div>
           <MFABreakdown />
         </div>
@@ -2585,6 +2623,7 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
         </div>
       </div>
       <div className="roadmap">
+        <HideableBlock hideKey="roadmap-lane-now" label="Now lane">
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-now"><span className="lane-dot crit"/>Now <span style={{color:'var(--muted)', fontWeight:400}}>· {now.length}</span></div>
@@ -2595,6 +2634,8 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
           </div>
           {now.map(t => renderTask(t, 'now'))}
         </div>
+        </HideableBlock>
+        <HideableBlock hideKey="roadmap-lane-next" label="Next lane">
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-next"><span className="lane-dot soon"/>Next <span style={{color:'var(--muted)', fontWeight:400}}>· {soon.length}</span></div>
@@ -2605,6 +2646,8 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
           </div>
           {soon.map(t => renderTask(t, 'soon'))}
         </div>
+        </HideableBlock>
+        <HideableBlock hideKey="roadmap-lane-later" label="Later lane">
         <div className="lane">
           <div className="lane-head">
             <div className="lane-title" id="roadmap-later"><span className="lane-dot later"/>Later <span style={{color:'var(--muted)', fontWeight:400}}>· {later.length}</span></div>
@@ -2615,6 +2658,7 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
           </div>
           {later.map(t => renderTask(t, 'later'))}
         </div>
+        </HideableBlock>
       </div></>}
     </section>
   );
@@ -2739,7 +2783,9 @@ function Appendix() {
         <div className="hr"/>
       </div>
 
-      {open && <><div className="card" style={{marginBottom:14}}>
+      {open && <>
+      <HideableBlock hideKey="appendix-tenant" label="Tenant info">
+      <div className="card" style={{marginBottom:14}}>
         <div style={labelStyle}>Tenant</div>
         <div style={{display:'flex',flexWrap:'wrap',gap:'6px 24px',fontSize:12}}>
           <span><span style={{color:'var(--muted)'}}>org</span> <b>{TENANT.OrgDisplayName}</b></span>
@@ -2753,8 +2799,10 @@ function Appendix() {
           )}
         </div>
       </div>
+      </HideableBlock>
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <HideableBlock hideKey="appendix-licenses" label="Licenses card">
         <div className="card">
           <div style={labelStyle}>Licenses</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2770,7 +2818,9 @@ function Appendix() {
             </tbody>
           </table>
         </div>
+        </HideableBlock>
 
+        <HideableBlock hideKey="appendix-mfa-coverage" label="MFA coverage card">
         <div className="card">
           <div style={labelStyle}>MFA coverage ({fmt(mfaTotal)} users)</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2811,7 +2861,9 @@ function Appendix() {
             </tbody>
           </table>
         </div>
+        </HideableBlock>
 
+        <HideableBlock hideKey="appendix-ca-policies" label="Conditional Access policies card">
         <div className="card">
           <div style={labelStyle}>Conditional Access policies ({ca.length})</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2826,7 +2878,9 @@ function Appendix() {
             </tbody>
           </table>
         </div>
+        </HideableBlock>
 
+        <HideableBlock hideKey="appendix-privileged-roles" label="Privileged roles card">
         <div className="card">
           <div style={labelStyle}>Privileged roles ({allRoles.length} assignments)</div>
           <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2840,8 +2894,10 @@ function Appendix() {
             </tbody>
           </table>
         </div>
+        </HideableBlock>
 
         {dnsTotal > 0 && (
+          <HideableBlock hideKey="appendix-email-auth" label="Email authentication card">
           <div className="card">
             <div style={labelStyle}>Email authentication ({dnsTotal} domain{dnsTotal!==1?'s':''})</div>
             <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2861,9 +2917,11 @@ function Appendix() {
               </tbody>
             </table>
           </div>
+          </HideableBlock>
         )}
 
         {ad && (
+          <HideableBlock hideKey="appendix-hybrid-sync" label="Hybrid sync card">
           <div className="card">
             <div style={labelStyle}>Hybrid sync</div>
             <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
@@ -2885,6 +2943,7 @@ function Appendix() {
               </tbody>
             </table>
           </div>
+          </HideableBlock>
         )}
       </div>
       <PermissionsPanel/>
@@ -2993,22 +3052,33 @@ function App() {
   }, [matchIdx, searchMatches]);
   const [editMode, setEditMode] = useState(false);
   const [hiddenFindings, setHiddenFindings] = useState(() => new Set(RO?.hiddenFindings || []));
+  const [hiddenElements, setHiddenElements] = useState(() => new Set(RO?.hiddenElements || []));
   const [roadmapOverrides, setRoadmapOverrides] = useState(() => RO?.roadmapOverrides || {});
 
   const toggleHideFinding = id => setHiddenFindings(prev => {
     const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
   });
+  const toggleHideElement = key => setHiddenElements(prev => {
+    const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s;
+  });
   const restoreAllFindings = () => setHiddenFindings(new Set());
 
   const handleFinalize = () => finalizeReport({
     hiddenFindings: [...hiddenFindings],
+    hiddenElements: [...hiddenElements],
     roadmapOverrides,
   });
 
   const handleResetAll = () => {
     setHiddenFindings(new Set());
+    setHiddenElements(new Set());
     setRoadmapOverrides({});
   };
+
+  const editModeCtx = useMemo(
+    () => ({ editMode, hiddenElements, toggleHideElement }),
+    [editMode, hiddenElements]
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -3117,6 +3187,7 @@ function App() {
   }, []);
 
   return (
+    <EditModeContext.Provider value={editModeCtx}>
     <div className="app">
       <Sidebar active={active} activeSubsection={activeSubsection} counts={navCounts} domainCounts={domainCounts} activeDomain={filters.domain.length===1 ? filters.domain[0] : null} onDomainJump={onDomainJump} onOverviewClick={onOverviewClick} navOpen={navOpen} onClose={()=>setNavOpen(false)}/>
       <main className="main">
@@ -3134,7 +3205,7 @@ function App() {
           onEditToggle={()=>setEditMode(e=>!e)}
           onFinalize={handleFinalize}
           onReset={handleResetAll}
-          hiddenCount={hiddenFindings.size}
+          hiddenCount={hiddenFindings.size + hiddenElements.size}
         />
         <Overview/>
         <Posture/>
@@ -3161,6 +3232,7 @@ function App() {
       </main>
       {showTweaks && <TweaksPanel onClose={()=>setShowTweaks(false)} theme={theme} setTheme={setTheme} mode={mode} setMode={setMode} density={density} setDensity={setDensity}/>}
     </div>
+    </EditModeContext.Provider>
   );
 }
 

@@ -1921,6 +1921,37 @@ mark.search-hl {
 .hide-finding-btn.restore { border-color: var(--accent); color: var(--accent); }
 .hide-finding-btn.restore:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .finding-hidden { opacity: .45; }
+
+/* Issue #712: HideableBlock wrapper. Active only in edit mode (the JSX bypasses
+   the wrapper entirely when edit mode is off). The wrapper preserves the host
+   element's natural sizing -- display: contents would drop the box but breaks
+   the absolutely-positioned ✕ button, so we use position: relative with no
+   layout impact other than introducing a stacking context. */
+.hideable-block { position: relative; }
+.hideable-block-hidden > *:not(.hideable-btn) { opacity: .35; pointer-events: none; }
+.hideable-btn {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px;
+  font-size: 12px; line-height: 1;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s, background .15s, border-color .15s, color .15s;
+  z-index: 5;
+}
+.hideable-block:hover > .hideable-btn,
+.hideable-block-hidden > .hideable-btn { opacity: 1; }
+.hideable-btn:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); border-color: var(--danger); color: var(--danger); }
+.hideable-btn.restore { border-color: var(--accent); color: var(--accent); opacity: 1; }
+.hideable-btn.restore:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+@media print {
+  /* Hidden elements stay hidden in print; ✕ overlays never print. */
+  .hideable-block-hidden { display: none; }
+  .hideable-btn { display: none !important; }
+}
 .restore-all-btn { font-size: 12px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; margin-left: auto; }
 .restore-all-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .edit-toolbar-reset { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
