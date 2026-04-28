@@ -1399,27 +1399,21 @@ function DomainRollup({ onJump }) {
 // Token semantics shared by the findings filter and the framework-panel chart:
 // 'E3' matches profiles starting with E3; 'E5only' matches CIS profiles with E5 but no E3
 // variant; bare 'L1'/'L2'/'L3' substring-match handles bare CMMC values and CIS suffixes alike.
-// Issue #844: levels (L1/L2/L3, Low/Mod/High) are CUMULATIVE per the
-// underlying frameworks: CMMC L3 ⊇ L2 ⊇ L1; CIS L2 ⊇ L1; NIST 800-53
-// High ⊇ Mod ⊇ Low. So "show me checks an L3 tenant runs" must include
-// every check tagged L1 OR L2 OR L3 — not just L3-explicit. License
-// tiers (E3 / E5only) are orthogonal and stay exclusive.
+// Issue #844: level/profile chip counts and filters use the registry's
+// per-check designations EXACTLY as authored. We do NOT synthesize
+// inheritance (e.g., "L2 must include L1") in code — that assumption is
+// wrong in practice: CMMC L2 isn't always a strict superset of L1; CIS
+// Profile Level 2 sometimes replaces L1 controls with stricter alternatives;
+// NIST 800-53 Mod and High baselines select different control sets, not
+// just additions. If a check should appear at multiple levels, the
+// REGISTRY must tag it with each — code does not infer inheritance.
 //
-// The registry already uses duplicative tagging downward (an L1 check
-// carries L2; an L3 check carries L2). This helper enforces upward-cumulative
-// matching so the "level X" filter and counts mean "what an X-level tenant
-// evaluates", not "the X-only subset". See docs/LEVELS.md.
+// 'E5only' is the one designed-exclusive case: checks that DON'T carry
+// any 'E3-' prefixed profile (i.e., they require E5). All others match
+// the literal token via substring. See docs/LEVELS.md.
 const matchProfileToken = (profilesArr, token) => {
   if (token === 'E5only') return profilesArr.length > 0 && !profilesArr.some(p => p.startsWith('E3'));
   if (token === 'E3')      return profilesArr.some(p => p.startsWith('E3'));
-  // Cumulative-up for maturity levels:
-  if (token === 'L3')   return profilesArr.some(p => p.includes('L3') || p.includes('L2') || p.includes('L1'));
-  if (token === 'L2')   return profilesArr.some(p => p.includes('L2') || p.includes('L1'));
-  if (token === 'L1')   return profilesArr.some(p => p.includes('L1'));
-  // Cumulative-up for NIST 800-53 baselines:
-  if (token === 'High') return profilesArr.some(p => p.includes('High') || p.includes('Moderate') || p === 'Mod' || p.includes('Low'));
-  if (token === 'Mod')  return profilesArr.some(p => p.includes('Moderate') || p === 'Mod' || p.includes('Low'));
-  if (token === 'Low')  return profilesArr.some(p => p.includes('Low'));
   return profilesArr.some(p => p.includes(token));
 };
 
@@ -1531,19 +1525,8 @@ function buildFrameworkData(fwId, activeProfiles) {
   else if (fwId.startsWith('cis-')) profileType = 'cis';
   else if (fwId.startsWith('nist-800-53') || fwId === 'fedramp') profileType = 'nist';
 
-  // Issue #844: apply cumulative inheritance to the maturity-level Sets so
-  // chip counts mean "what an X-level tenant evaluates", not "the X-only
-  // subset". License tiers (E3 / E5only) stay exclusive — they're orthogonal,
-  // not inherited.
-  if (profileType === 'cmmc') {
-    profileSets.L1.forEach(idx => profileSets.L2.add(idx));
-    profileSets.L2.forEach(idx => profileSets.L3.add(idx));
-  } else if (profileType === 'cis') {
-    profileSets.L1.forEach(idx => profileSets.L2.add(idx));
-  } else if (profileType === 'nist') {
-    profileSets.Low.forEach(idx => profileSets.Mod.add(idx));
-    profileSets.Mod.forEach(idx => profileSets.High.add(idx));
-  }
+  // Issue #844: chip counts reflect the registry's per-check designations
+  // EXACTLY as authored. No synthetic inheritance — see docs/LEVELS.md.
 
   const profiles = profileType === 'cmmc'
     ? { L1: profileSets.L1.size, L2: profileSets.L2.size, L3: profileSets.L3.size }
@@ -2163,8 +2146,8 @@ function FilterBar({ filters, setFilters, counts, total, search, setSearch, inFi
     FINDINGS.forEach(f => {
       const profs = [].concat(f.fwMeta?.[singleFw]?.profiles || []);
       if (profs.length === 0) return;
-      // Issue #844: cumulative-up matching so chip counts agree with the
-      // matchProfileToken filter semantics (an L3 tenant runs L1+L2+L3).
+      // Issue #844: chip counts reflect the registry's exact tags. No
+      // synthetic inheritance. See docs/LEVELS.md.
       if (matchProfileToken(profs, 'L1')) c.L1++;
       if (matchProfileToken(profs, 'L2')) c.L2++;
       if (matchProfileToken(profs, 'L3')) c.L3++;
