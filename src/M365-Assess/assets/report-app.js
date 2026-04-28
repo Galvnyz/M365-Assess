@@ -2248,7 +2248,808 @@ function compareGroupKeys(a, b) {
   return String(a).localeCompare(String(b));
 }
 
-// ======================== Framework quilt ========================
+// ======================== Framework redesign helpers (#855) ========================
+// Adapter that computes the design-shape per framework (counts + families +
+// profile aggregates) from the live FRAMEWORKS metadata + FINDINGS.
+function buildFrameworkData(fwId, activeProfiles) {
+  const meta = FRAMEWORKS.find(f => f.id === fwId);
+  if (!meta) return null;
+  const tokens = activeProfiles || [];
+  const counts = {
+    pass: 0,
+    warn: 0,
+    fail: 0,
+    review: 0,
+    info: 0,
+    total: 0
+  };
+  const familiesMap = {};
+  const profileSets = {
+    L1: new Set(),
+    L2: new Set(),
+    L3: new Set(),
+    E3: new Set(),
+    E5only: new Set(),
+    Low: new Set(),
+    Mod: new Set(),
+    High: new Set()
+  };
+  const extract = meta.groupBy ? GROUP_EXTRACTORS[meta.groupBy] : null;
+  const groupNames = meta.groups || {};
+  FINDINGS.forEach((f, idx) => {
+    if (!f.frameworks.includes(fwId)) return;
+    const profs = [].concat(f.fwMeta?.[fwId]?.profiles || []);
+    if (tokens.length > 0 && !tokens.some(t => matchProfileToken(profs, t))) return;
+    counts.total++;
+    const k = STATUS_COLORS[f.status];
+    if (k) counts[k]++;
+    const hasE3 = profs.some(p => p.startsWith('E3'));
+    profs.forEach(p => {
+      if (p.includes('L1')) profileSets.L1.add(idx);
+      if (p.includes('L2')) profileSets.L2.add(idx);
+      if (p.includes('L3')) profileSets.L3.add(idx);
+      if (p.includes('Low')) profileSets.Low.add(idx);
+      if (p.includes('Moderate') || p === 'Mod') profileSets.Mod.add(idx);
+      if (p.includes('High')) profileSets.High.add(idx);
+    });
+    if (profs.length > 0) {
+      if (hasE3) profileSets.E3.add(idx);else profileSets.E5only.add(idx);
+    }
+    if (extract) {
+      const cidRaw = f.fwMeta?.[fwId]?.controlId;
+      if (!cidRaw) return;
+      const cids = String(cidRaw).split(/[;,]/).map(s => s.trim()).filter(Boolean);
+      const groups = new Set();
+      cids.forEach(cid => {
+        const code = extract(cid);
+        if (code) groups.add(code);
+      });
+      if (groups.size === 0) groups.add('OTHER');
+      groups.forEach(code => {
+        if (!familiesMap[code]) familiesMap[code] = {
+          code,
+          name: groupNames[code] || (code === 'OTHER' ? 'Other' : code),
+          pass: 0,
+          warn: 0,
+          fail: 0,
+          review: 0,
+          info: 0,
+          total: 0
+        };
+        familiesMap[code].total++;
+        if (k) familiesMap[code][k]++;
+      });
+    }
+  });
+  let profileType = null;
+  if (fwId.startsWith('cmmc')) profileType = 'cmmc';else if (fwId.startsWith('cis-')) profileType = 'cis';else if (fwId.startsWith('nist-800-53') || fwId === 'fedramp') profileType = 'nist';
+  const profiles = profileType === 'cmmc' ? {
+    L1: profileSets.L1.size,
+    L2: profileSets.L2.size,
+    L3: profileSets.L3.size
+  } : profileType === 'cis' ? {
+    L1: profileSets.L1.size,
+    L2: profileSets.L2.size,
+    E3: profileSets.E3.size,
+    E5only: profileSets.E5only.size
+  } : profileType === 'nist' ? {
+    Low: profileSets.Low.size,
+    Mod: profileSets.Mod.size,
+    High: profileSets.High.size
+  } : null;
+  return {
+    id: fwId,
+    full: meta.full,
+    counts,
+    families: extract ? Object.values(familiesMap) : null,
+    profiles,
+    profileType
+  };
+}
+function fwCoveragePct(c) {
+  return c && c.total ? Math.round((c.pass + c.info * 0.5) / c.total * 100) : 0;
+}
+function fwReadinessLabel(pct) {
+  if (pct >= 90) return {
+    label: 'Audit-ready',
+    tone: 'pass'
+  };
+  if (pct >= 75) return {
+    label: 'On track',
+    tone: 'pass'
+  };
+  if (pct >= 55) return {
+    label: 'At risk',
+    tone: 'warn'
+  };
+  return {
+    label: 'Failing',
+    tone: 'fail'
+  };
+}
+function useFwCountUp(value, duration = 600) {
+  const [n, setN] = useState(value);
+  const startRef = useRef(null);
+  const fromRef = useRef(value);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    fromRef.current = n;
+    startRef.current = null;
+    cancelAnimationFrame(rafRef.current);
+    const tick = ts => {
+      if (startRef.current == null) startRef.current = ts;
+      const t = Math.min(1, (ts - startRef.current) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cur = fromRef.current + (value - fromRef.current) * eased;
+      setN(cur);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+    // eslint-disable-next-line
+  }, [value]);
+  return n;
+}
+function ScoreDonut({
+  counts,
+  size = 168,
+  stroke = 18,
+  animKey
+}) {
+  const segs = [{
+    key: 'pass',
+    v: counts.pass,
+    color: 'var(--success)'
+  }, {
+    key: 'warn',
+    v: counts.warn,
+    color: 'var(--warn)'
+  }, {
+    key: 'fail',
+    v: counts.fail,
+    color: 'var(--danger)'
+  }, {
+    key: 'review',
+    v: counts.review,
+    color: 'var(--accent)'
+  }, {
+    key: 'info',
+    v: counts.info,
+    color: 'var(--muted)'
+  }].filter(s => s.v > 0);
+  const total = counts.total || 1;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const cx = size / 2;
+  const cy = size / 2;
+  const targetPct = fwCoveragePct(counts);
+  const animatedPct = useFwCountUp(targetPct, 700);
+  const tone = fwReadinessLabel(targetPct).tone;
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    setProgress(0);
+    const id = requestAnimationFrame(() => {
+      setTimeout(() => setProgress(1), 40);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [animKey, counts.total, counts.pass, counts.warn, counts.fail]);
+  let acc = 0;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fw-donut-wrap",
+    style: {
+      width: size,
+      height: size
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: size,
+    height: size,
+    viewBox: `0 0 ${size} ${size}`,
+    className: "fw-donut"
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: cx,
+    cy: cy,
+    r: r,
+    fill: "none",
+    stroke: "var(--border)",
+    strokeWidth: stroke,
+    opacity: ".4"
+  }), segs.map(s => {
+    const frac = s.v / total;
+    const dash = frac * c * progress;
+    const offset = -acc * c * progress;
+    acc += frac;
+    const gap = segs.length > 1 ? 1.5 : 0;
+    return /*#__PURE__*/React.createElement("circle", {
+      key: s.key,
+      cx: cx,
+      cy: cy,
+      r: r,
+      fill: "none",
+      stroke: s.color,
+      strokeWidth: stroke,
+      strokeLinecap: "butt",
+      strokeDasharray: `${Math.max(0, dash - gap)} ${c}`,
+      strokeDashoffset: offset,
+      transform: `rotate(-90 ${cx} ${cy})`,
+      style: {
+        transition: 'stroke-dasharray .7s cubic-bezier(.22,1,.36,1), stroke-dashoffset .7s cubic-bezier(.22,1,.36,1)'
+      }
+    });
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fw-donut-center"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: 'fw-donut-pct ' + tone
+  }, Math.round(animatedPct), /*#__PURE__*/React.createElement("span", null, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "fw-donut-sub"
+  }, counts.pass, "/", counts.total)));
+}
+function FwManageButton({
+  allFw,
+  visibleIds,
+  onToggle,
+  onSetAll,
+  fwDataById
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onOut = e => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onEsc = e => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onOut);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onOut);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+  return /*#__PURE__*/React.createElement("div", {
+    ref: ref,
+    style: {
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: 'chip chip-more' + (open ? ' selected' : ''),
+    onClick: () => setOpen(o => !o)
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.6",
+    style: {
+      marginRight: 4
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M3 4h10M3 8h10M3 12h10"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "6",
+    cy: "4",
+    r: "1.5",
+    fill: "currentColor",
+    stroke: "none"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "11",
+    cy: "8",
+    r: "1.5",
+    fill: "currentColor",
+    stroke: "none"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "5",
+    cy: "12",
+    r: "1.5",
+    fill: "currentColor",
+    stroke: "none"
+  })), "Manage frameworks", /*#__PURE__*/React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 10 10",
+    style: {
+      marginLeft: 6,
+      opacity: .6,
+      transition: 'transform .15s',
+      transform: open ? 'rotate(180deg)' : 'none'
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3l3 3 3-3",
+    stroke: "currentColor",
+    strokeWidth: "1.4",
+    fill: "none"
+  }))), open && /*#__PURE__*/React.createElement("div", {
+    className: "domain-menu fw-manage-menu"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-manage-head"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-manage-eyebrow"
+  }, "Frameworks in scope \xB7 ", visibleIds.length, " of ", allFw.length), /*#__PURE__*/React.createElement("div", {
+    className: "fw-manage-bulk"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSetAll(allFw.map(f => f.id))
+  }, "Select all"), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSetAll([allFw[0].id]),
+    disabled: visibleIds.length === 1
+  }, "Reset"))), allFw.map(f => {
+    const sel = visibleIds.includes(f.id);
+    const data = fwDataById(f.id);
+    const pct = data ? fwCoveragePct(data.counts) : 0;
+    const r = fwReadinessLabel(pct);
+    return /*#__PURE__*/React.createElement("label", {
+      key: f.id,
+      className: 'domain-opt' + (sel ? ' sel' : '')
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: sel,
+      onChange: () => onToggle(f.id)
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 0,
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 500
+      }
+    }, f.full), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: 'var(--muted)',
+        fontFamily: 'var(--font-mono)'
+      }
+    }, f.id, " \xB7 ", data?.counts.total || 0, " controls")), /*#__PURE__*/React.createElement("span", {
+      className: 'ct ' + r.tone
+    }, pct, "%"));
+  })));
+}
+function ProfileChipsM({
+  data,
+  active,
+  onChange,
+  compact
+}) {
+  if (!data.profileType || !data.profiles) return null;
+  const tokens = data.profileType === 'cmmc' ? [{
+    tok: 'L1',
+    label: 'L1',
+    count: data.profiles.L1,
+    cls: 'level'
+  }, {
+    tok: 'L2',
+    label: 'L2',
+    count: data.profiles.L2,
+    cls: 'level2'
+  }, {
+    tok: 'L3',
+    label: 'L3',
+    count: data.profiles.L3,
+    cls: 'level3'
+  }] : data.profileType === 'cis' ? [{
+    tok: 'L1',
+    label: 'L1',
+    count: data.profiles.L1,
+    cls: 'level'
+  }, {
+    tok: 'L2',
+    label: 'L2',
+    count: data.profiles.L2,
+    cls: 'level2'
+  }, {
+    tok: 'E3',
+    label: 'E3',
+    count: data.profiles.E3,
+    cls: 'lic'
+  }, {
+    tok: 'E5only',
+    label: 'E5 only',
+    count: data.profiles.E5only,
+    cls: 'lic5'
+  }] : [{
+    tok: 'Low',
+    label: 'Low',
+    count: data.profiles.Low,
+    cls: 'level'
+  }, {
+    tok: 'Mod',
+    label: 'Moderate',
+    count: data.profiles.Mod,
+    cls: 'level2'
+  }, {
+    tok: 'High',
+    label: 'High',
+    count: data.profiles.High,
+    cls: 'level3'
+  }];
+  return /*#__PURE__*/React.createElement("div", null, !compact && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '.08em',
+      fontWeight: 600,
+      marginBottom: 6
+    }
+  }, "Filter by ", data.profileType === 'cmmc' ? 'maturity level' : data.profileType === 'cis' ? 'profile' : 'baseline'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    }
+  }, tokens.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.tok,
+    className: 'fw-profile-chip fw-profile-chip-btn ' + t.cls + (active.includes(t.tok) ? ' selected' : ''),
+    onClick: () => {
+      const next = active.includes(t.tok) ? active.filter(x => x !== t.tok) : [...active, t.tok];
+      onChange(next);
+    }
+  }, t.label, " ", /*#__PURE__*/React.createElement("b", null, t.count))), active.length > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "fw-tb-clear",
+    onClick: () => onChange([])
+  }, "Clear")));
+}
+function FilterBanner({
+  profiles,
+  family,
+  onClear
+}) {
+  if (profiles.length === 0 && !family) return null;
+  const parts = [];
+  if (profiles.length) parts.push(`${profiles.length} profile filter${profiles.length > 1 ? 's' : ''} (${profiles.join(', ')})`);
+  if (family) parts.push(`family ${family.code}`);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fw-filter-banner"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.6"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 3h12l-4.5 6v4l-3 1.5V9L2 3z"
+  })), /*#__PURE__*/React.createElement("span", null, "Filtered by ", parts.join(' + ')), /*#__PURE__*/React.createElement("button", {
+    onClick: onClear
+  }, "Clear"));
+}
+function FamilyChartM({
+  families,
+  focused,
+  onFocus
+}) {
+  const max = Math.max(...families.map(f => f.total));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fw-fam-chart"
+  }, families.map(fam => {
+    const pct = fam.total ? Math.round((fam.pass + fam.info * 0.5) / fam.total * 100) : 0;
+    const ok = pct >= 80;
+    const isFocused = focused && focused.code === fam.code;
+    return /*#__PURE__*/React.createElement("button", {
+      key: fam.code,
+      className: 'fw-fam-row fw-fam-row-btn' + (isFocused ? ' focused' : ''),
+      onClick: () => onFocus && onFocus(isFocused ? null : fam),
+      type: "button"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-fam-code"
+    }, fam.code), /*#__PURE__*/React.createElement("div", {
+      className: "fw-fam-name"
+    }, fam.name), /*#__PURE__*/React.createElement("div", {
+      className: "fw-fam-track",
+      style: {
+        flexBasis: `${fam.total / max * 100}%`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-bar fw-fam-bar"
+    }, fam.pass > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg pass",
+      style: {
+        flex: fam.pass
+      }
+    }), fam.warn > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg warn",
+      style: {
+        flex: fam.warn
+      }
+    }), fam.fail > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg fail",
+      style: {
+        flex: fam.fail
+      }
+    }), fam.review > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg review",
+      style: {
+        flex: fam.review
+      }
+    }), fam.info > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg info",
+      style: {
+        flex: fam.info
+      }
+    }))), /*#__PURE__*/React.createElement("div", {
+      className: 'fw-fam-stat ' + (ok ? 'pass' : fam.fail > 2 ? 'fail' : 'warn')
+    }, fam.fail > 0 ? `${fam.fail} gap${fam.fail !== 1 ? 's' : ''}` : `${fam.pass} pass`), /*#__PURE__*/React.createElement("div", {
+      className: "fw-fam-pct"
+    }, pct, "%"));
+  }));
+}
+function CoverageChart({
+  frameworks,
+  focused,
+  onFocus
+}) {
+  const sorted = useMemo(() => [...frameworks].sort((a, b) => fwCoveragePct(b.counts) - fwCoveragePct(a.counts)), [frameworks]);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fw-cov-chart"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-cov-chart-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '.1em',
+      fontWeight: 700,
+      marginBottom: 2
+    }
+  }, "Coverage comparison"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--text-soft)'
+    }
+  }, frameworks.length, " frameworks \xB7 sorted by coverage")), /*#__PURE__*/React.createElement("div", {
+    className: "fw-cov-chart-axis"
+  }, /*#__PURE__*/React.createElement("span", null, "0%"), /*#__PURE__*/React.createElement("span", null, "50%"), /*#__PURE__*/React.createElement("span", null, "100%"))), /*#__PURE__*/React.createElement("div", {
+    className: "fw-cov-chart-body"
+  }, sorted.map(fw => {
+    const pct = fwCoveragePct(fw.counts);
+    const r = fwReadinessLabel(pct);
+    const isFocused = focused === fw.id;
+    const tip = `${fw.counts.pass} pass · ${fw.counts.warn} warn · ${fw.counts.fail} fail` + (fw.counts.review > 0 ? ` · ${fw.counts.review} review` : '') + (fw.counts.info > 0 ? ` · ${fw.counts.info} info` : '');
+    return /*#__PURE__*/React.createElement("button", {
+      key: fw.id,
+      className: 'fw-cov-row' + (isFocused ? ' focused' : ''),
+      onClick: () => onFocus(fw.id),
+      title: tip
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-cov-name"
+    }, fw.full), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cov-track"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-bar fw-cov-bar"
+    }, fw.counts.pass > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg pass",
+      style: {
+        flex: fw.counts.pass
+      }
+    }), fw.counts.warn > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg warn",
+      style: {
+        flex: fw.counts.warn
+      }
+    }), fw.counts.fail > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg fail",
+      style: {
+        flex: fw.counts.fail
+      }
+    }), fw.counts.review > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg review",
+      style: {
+        flex: fw.counts.review
+      }
+    }), fw.counts.info > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg info",
+      style: {
+        flex: fw.counts.info
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cov-marker",
+      style: {
+        left: `${pct}%`
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: 'fw-cov-marker-pct ' + r.tone
+    }, pct, "%"))), /*#__PURE__*/React.createElement("div", {
+      className: 'fw-cov-gaps ' + (fw.counts.fail > 10 ? 'fail' : fw.counts.fail > 4 ? 'warn' : 'pass')
+    }, fw.counts.fail, " gap", fw.counts.fail !== 1 ? 's' : ''));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fw-cov-chart-legend"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot pass"
+  }), "Pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot warn"
+  }), "Warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot fail"
+  }), "Fail"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot review"
+  }), "Review"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot info"
+  }), "Info")));
+}
+function CompareTableM({
+  frameworks,
+  focused,
+  onFocus,
+  onRemove
+}) {
+  const [sort, setSort] = useState({
+    key: 'coverage',
+    dir: 'desc'
+  });
+  const sorted = useMemo(() => {
+    const arr = [...frameworks];
+    arr.sort((a, b) => {
+      let av, bv;
+      if (sort.key === 'coverage') {
+        av = fwCoveragePct(a.counts);
+        bv = fwCoveragePct(b.counts);
+      } else if (sort.key === 'gaps') {
+        av = a.counts.fail;
+        bv = b.counts.fail;
+      } else if (sort.key === 'name') {
+        av = a.full.toLowerCase();
+        bv = b.full.toLowerCase();
+      } else {
+        av = 0;
+        bv = 0;
+      }
+      if (av < bv) return sort.dir === 'asc' ? -1 : 1;
+      if (av > bv) return sort.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [frameworks, sort]);
+  const setSortKey = key => setSort(s => s.key === key ? {
+    key,
+    dir: s.dir === 'asc' ? 'desc' : 'asc'
+  } : {
+    key,
+    dir: key === 'name' ? 'asc' : 'desc'
+  });
+  const Caret = ({
+    k
+  }) => sort.key !== k ? /*#__PURE__*/React.createElement("span", {
+    className: "fw-sort-caret"
+  }) : /*#__PURE__*/React.createElement("span", {
+    className: 'fw-sort-caret active ' + sort.dir
+  }, sort.dir === 'asc' ? '▲' : '▼');
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fw-cmp-table"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-cmp-row fw-cmp-head"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fw-cmp-sort",
+    onClick: () => setSortKey('name')
+  }, "Framework ", /*#__PURE__*/React.createElement(Caret, {
+    k: "name"
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "fw-cmp-sort",
+    style: {
+      textAlign: 'right'
+    },
+    onClick: () => setSortKey('coverage')
+  }, "Coverage ", /*#__PURE__*/React.createElement(Caret, {
+    k: "coverage"
+  })), /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("button", {
+    className: "fw-cmp-sort",
+    onClick: () => setSortKey('gaps')
+  }, "Gaps ", /*#__PURE__*/React.createElement(Caret, {
+    k: "gaps"
+  })), /*#__PURE__*/React.createElement("div", null, "Distribution"), /*#__PURE__*/React.createElement("div", null)), sorted.map(fw => {
+    const pct = fwCoveragePct(fw.counts);
+    const r = fwReadinessLabel(pct);
+    const isFocused = focused === fw.id;
+    return /*#__PURE__*/React.createElement("div", {
+      key: fw.id,
+      className: 'fw-cmp-row' + (isFocused ? ' focused' : ''),
+      onClick: () => onFocus(fw.id),
+      role: "button",
+      tabIndex: 0,
+      onKeyDown: e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onFocus(fw.id);
+        }
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-name-cell"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-name"
+    }, fw.full), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-id"
+    }, fw.id)), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-pct-cell"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: 'fw-cmp-pct ' + r.tone
+    }, pct, "%"), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-pct-sub"
+    }, fw.counts.pass, "/", fw.counts.total)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: 'fw-readiness-pill ' + r.tone
+    }, r.label)), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-gaps"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: fw.counts.fail > 10 ? 'fail' : fw.counts.fail > 4 ? 'warn' : 'pass'
+    }, fw.counts.fail), fw.counts.warn > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--warn-text)',
+        fontSize: 11,
+        marginLeft: 4
+      }
+    }, "+ ", fw.counts.warn, " warn")), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-dist"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fw-bar",
+      style: {
+        height: 8,
+        borderRadius: 4
+      }
+    }, fw.counts.pass > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg pass",
+      style: {
+        flex: fw.counts.pass
+      }
+    }), fw.counts.warn > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg warn",
+      style: {
+        flex: fw.counts.warn
+      }
+    }), fw.counts.fail > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg fail",
+      style: {
+        flex: fw.counts.fail
+      }
+    }), fw.counts.review > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg review",
+      style: {
+        flex: fw.counts.review
+      }
+    }), fw.counts.info > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg info",
+      style: {
+        flex: fw.counts.info
+      }
+    }))), /*#__PURE__*/React.createElement("div", {
+      className: "fw-cmp-act"
+    }, frameworks.length > 1 && /*#__PURE__*/React.createElement("button", {
+      className: "fw-cmp-rm-btn",
+      title: "Remove from scope",
+      onClick: e => {
+        e.stopPropagation();
+        onRemove(fw.id);
+      }
+    }, "\xD7"), /*#__PURE__*/React.createElement("span", {
+      className: "fw-cmp-chev"
+    }, isFocused ? '▾' : '▸')));
+  }));
+}
+function GapsCTA({
+  count,
+  onClick
+}) {
+  return /*#__PURE__*/React.createElement("button", {
+    className: "fw-gaps-cta",
+    type: "button",
+    onClick: onClick
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fw-gaps-cta-num"
+  }, count), /*#__PURE__*/React.createElement("span", {
+    className: "fw-gaps-cta-label"
+  }, "View gaps in findings"), /*#__PURE__*/React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.8"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M5 3l5 5-5 5"
+  })));
+}
+
+// ======================== Framework quilt (#855 redesign) ========================
 function FrameworkQuilt({
   onSelect,
   selected,
@@ -2259,567 +3060,342 @@ function FrameworkQuilt({
     open,
     headProps
   } = useCollapsibleSection();
-  const [visibleFws, setVisibleFws] = useState(['cis-m365-v6']);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // Panel open by default (#735): the first visible framework ('cis-m365-v6' initially)
-  // is expanded on mount so the L1/L2 chips + Coverage by Domain bars are visible
-  // without requiring an extra click. User can still collapse via the × button.
-  const [expandedFw, setExpandedFw] = useState('cis-m365-v6');
-  const pickerRef = useRef(null);
-
-  // Multi-select toggle: clicking a chip adds or removes its token from the active list.
-  const handleProfileClick = token => {
-    if (!expandedFw || !onProfileSelect) return;
-    const cur = activeProfiles || [];
-    const next = cur.includes(token) ? cur.filter(t => t !== token) : [...cur, token];
-    onProfileSelect(expandedFw, next);
-  };
+  const [visibleIds, setVisibleIds] = useState(['cis-m365-v6']);
+  const [focusedId, setFocusedId] = useState('cis-m365-v6');
+  const [family, setFamily] = useState(null);
   useEffect(() => {
-    if (!pickerOpen) return;
-    const onKey = e => {
-      if (e.key === 'Escape') setPickerOpen(false);
-    };
-    const onOut = e => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onOut);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onOut);
-    };
-  }, [pickerOpen]);
+    setFamily(null);
+  }, [focusedId]);
+  useEffect(() => {
+    if (visibleIds.length > 0 && !visibleIds.includes(focusedId)) setFocusedId(visibleIds[0]);
+  }, [visibleIds]);
   useEffect(() => {
     const expand = () => {
-      if (!expandedFw && visibleFws.length > 0) setExpandedFw(visibleFws[0]);
+      if (visibleIds.length === 0) setVisibleIds([FRAMEWORKS[0]?.id || 'cis-m365-v6']);
     };
     window.addEventListener('beforeprint', expand);
     return () => window.removeEventListener('beforeprint', expand);
-  }, [expandedFw, visibleFws]);
-  const toggleFw = fw => setVisibleFws(v => v.includes(fw) ? v.length > 1 ? v.filter(x => x !== fw) : v : [...v, fw]);
-  const byFw = useMemo(() => {
-    const out = {};
-    FRAMEWORKS.forEach(f => out[f.id] = {
-      pass: 0,
-      warn: 0,
-      fail: 0,
-      review: 0,
-      info: 0,
-      total: 0
-    });
-    FINDINGS.forEach(f => f.frameworks.forEach(fw => {
-      if (!out[fw]) return;
-      out[fw].total++;
-      const k = STATUS_COLORS[f.status];
-      if (k) out[fw][k]++;
-    }));
-    return out;
-  }, []);
-
-  // Issue #751: hoisted before fwFamilyBreakdown so the memo's dependency
-  // array can reference expandedMeta without hitting a TDZ ReferenceError
-  // (which unmounted the entire report on the prior commit on this branch).
-  const expandedMeta = expandedFw ? FRAMEWORKS.find(f => f.id === expandedFw) : null;
-  const fwDomainBreakdown = useMemo(() => {
-    if (!expandedFw) return {};
-    const tokens = activeProfiles || [];
-    const out = {};
-    FINDINGS.forEach(f => {
-      if (!f.frameworks.includes(expandedFw)) return;
-      if (tokens.length > 0) {
-        const profs = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
-        if (!tokens.some(t => matchProfileToken(profs, t))) return;
-      }
-      if (!out[f.domain]) out[f.domain] = {
-        pass: 0,
-        warn: 0,
-        fail: 0,
-        review: 0,
-        info: 0,
-        total: 0
-      };
-      out[f.domain].total++;
-      const k = STATUS_COLORS[f.status];
-      if (k) out[f.domain][k]++;
-    });
-    return out;
-  }, [expandedFw, activeProfiles]);
-
-  // Issue #751: native-taxonomy breakdown for frameworks that declare a `groupBy`
-  // strategy + `groups` map in their framework JSON (CIS, CMMC, NIST, ISO, ...).
-  // Each finding is counted ONCE per group it touches (a CMMC finding mapped to
-  // AC + IA + MA increments all three groups' totals, but multiple AC.L2-*
-  // controlIds within the same finding still count as one AC entry).
-  const fwFamilyBreakdown = useMemo(() => {
-    if (!expandedFw) return null;
-    if (!expandedMeta || !expandedMeta.groupBy) return null;
-    const extract = GROUP_EXTRACTORS[expandedMeta.groupBy];
-    if (!extract) return null;
-    const tokens = activeProfiles || [];
-    const out = {};
-    FINDINGS.forEach(f => {
-      if (!f.frameworks.includes(expandedFw)) return;
-      if (tokens.length > 0) {
-        const profs = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
-        if (!tokens.some(t => matchProfileToken(profs, t))) return;
-      }
-      const cidRaw = f.fwMeta?.[expandedFw]?.controlId;
-      if (!cidRaw) return;
-      // controlId can be a single value or a semi/comma-separated list
-      const cids = String(cidRaw).split(/[;,]/).map(s => s.trim()).filter(Boolean);
-      const groups = new Set();
-      cids.forEach(cid => {
-        const code = extract(cid);
-        if (code) groups.add(code);
-      });
-      if (groups.size === 0) groups.add('OTHER');
-      groups.forEach(code => {
-        if (!out[code]) out[code] = {
-          pass: 0,
-          warn: 0,
-          fail: 0,
-          review: 0,
-          info: 0,
-          total: 0
-        };
-        out[code].total++;
-        const k = STATUS_COLORS[f.status];
-        if (k) out[code][k]++;
-      });
-    });
-    return out;
-  }, [expandedFw, activeProfiles, expandedMeta]);
-  const fwProfileStats = useMemo(() => {
-    if (!expandedFw) return null;
-    const l1 = new Set(),
-      l2 = new Set(),
-      l3 = new Set(),
-      e3 = new Set(),
-      e5only = new Set();
-    FINDINGS.forEach((f, idx) => {
-      const profiles = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
-      if (profiles.length === 0) return;
-      const hasE3 = profiles.some(p => p.startsWith('E3'));
-      profiles.forEach(p => {
-        if (p.includes('L1')) l1.add(idx);
-        if (p.includes('L2')) l2.add(idx);
-        if (p.includes('L3')) l3.add(idx);
-      });
-      if (hasE3) e3.add(idx);else e5only.add(idx);
-    });
-    const isCmmc = expandedFw.startsWith('cmmc');
-    return {
-      l1: l1.size,
-      l2: l2.size,
-      l3: l3.size,
-      e3: e3.size,
-      e5only: e5only.size,
-      isCmmc
+  }, [visibleIds]);
+  const toggle = id => setVisibleIds(v => v.includes(id) ? v.filter(x => x !== id) : [...v, id]);
+  const remove = id => setVisibleIds(v => v.filter(x => x !== id));
+  const setAll = ids => setVisibleIds(ids);
+  const fwDataById = useMemo(() => {
+    const cache = {};
+    return id => {
+      if (cache[id] !== undefined) return cache[id];
+      cache[id] = buildFrameworkData(id, activeProfiles || []);
+      return cache[id];
     };
-  }, [expandedFw]);
-  const displayFws = FRAMEWORKS.filter(f => visibleFws.includes(f.id));
-  const pickerLabel = visibleFws.length === 1 ? FRAMEWORKS.find(f => f.id === visibleFws[0])?.full || visibleFws[0] : `${visibleFws.length} frameworks`;
-  const handleCardClick = fwId => setExpandedFw(e => e === fwId ? null : fwId);
-
-  // expandedMeta is hoisted earlier (above fwFamilyBreakdown) — see comment there.
-  const expandedData = expandedFw ? byFw[expandedFw] : null;
-
-  // Count of findings within the expanded framework that match the active level-chip
-  // selection (L1/L2/L3/E3/E5only). When no chips are selected, falls back to the
-  // framework total so the CTA renders the original phrasing. Uses the same
-  // matchProfileToken semantics as fwDomainBreakdown above.
-  const selectedCount = useMemo(() => {
-    if (!expandedFw || !expandedData) return 0;
-    const tokens = activeProfiles || [];
-    if (tokens.length === 0) return expandedData.total;
-    let n = 0;
-    FINDINGS.forEach(f => {
-      if (!f.frameworks.includes(expandedFw)) return;
-      const profs = [].concat(f.fwMeta?.[expandedFw]?.profiles || []);
-      if (tokens.some(t => matchProfileToken(profs, t))) n++;
-    });
-    return n;
-  }, [expandedFw, activeProfiles, expandedData]);
-  return /*#__PURE__*/React.createElement("section", {
-    className: "block",
-    id: "frameworks"
-  }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
-    className: "eyebrow"
-  }, "01 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("div", {
-    ref: pickerRef,
-    style: {
-      position: 'relative',
-      marginLeft: 12,
-      flexShrink: 0
-    },
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("button", {
-    className: 'chip chip-more' + (visibleFws.length > 1 ? ' selected' : ''),
-    onClick: () => setPickerOpen(o => !o)
-  }, pickerLabel, /*#__PURE__*/React.createElement("svg", {
-    width: "10",
-    height: "10",
-    viewBox: "0 0 10 10",
-    style: {
-      marginLeft: 4,
-      opacity: .6
-    }
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M2 3l3 3 3-3",
-    stroke: "currentColor",
-    strokeWidth: "1.4",
-    fill: "none"
-  }))), pickerOpen && /*#__PURE__*/React.createElement("div", {
-    className: "domain-menu",
-    style: {
-      right: 0,
-      left: 'auto',
-      minWidth: 280
-    }
-  }, FRAMEWORKS.map(f => /*#__PURE__*/React.createElement("label", {
-    key: f.id,
-    className: 'domain-opt' + (visibleFws.includes(f.id) ? ' sel' : '')
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: visibleFws.includes(f.id),
-    onChange: () => toggleFw(f.id)
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      minWidth: 0
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      fontWeight: 500,
-      lineHeight: 1.3
-    }
-  }, f.full || f.id), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'var(--font-mono)',
-      fontSize: 12,
-      color: 'var(--muted)',
-      marginTop: 1
-    }
-  }, f.id)), /*#__PURE__*/React.createElement("span", {
-    className: "ct"
-  }, byFw[f.id]?.total || 0))))), /*#__PURE__*/React.createElement("span", {
-    className: "section-chevron",
-    "aria-hidden": "true"
-  }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
-    className: "hr"
-  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "quilt"
-  }, displayFws.map(f => {
-    const d = byFw[f.id];
-    // #802: strict denominator -- removed (pass + info*0.5) weighting per doc rule.
-    const score = pct(d.pass, d.pass + d.fail + d.warn);
-    const isExpanded = expandedFw === f.id;
-    return /*#__PURE__*/React.createElement("div", {
-      key: f.id,
-      className: 'quilt-cell' + (isExpanded ? ' expanded' : '') + (selected === f.id ? ' selected' : ''),
-      role: "button",
-      tabIndex: 0,
-      "aria-expanded": isExpanded,
-      "aria-label": `${f.full || f.id} — click to ${isExpanded ? 'collapse' : 'expand'} details`,
-      onClick: () => handleCardClick(f.id),
-      onKeyDown: e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleCardClick(f.id);
-        }
-      }
-    }, /*#__PURE__*/React.createElement("svg", {
-      className: "quilt-cell-chevron",
-      viewBox: "0 0 16 16",
-      fill: "none",
-      stroke: "currentColor",
-      strokeWidth: "1.8",
-      "aria-hidden": "true"
-    }, /*#__PURE__*/React.createElement("path", {
-      d: "M4 6l4 4 4-4"
-    })), /*#__PURE__*/React.createElement("div", {
-      className: "fw-name"
-    }, f.id), /*#__PURE__*/React.createElement("div", {
-      className: "fw-long"
-    }, f.full), /*#__PURE__*/React.createElement("div", {
-      className: "fw-bar",
-      title: "Pass (green) / Warn (amber) / Fail (red) / Review (accent) / Skipped (grey, prerequisite unmet)"
-    }, d.pass > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg pass",
-      style: {
-        flex: d.pass
-      }
-    }), d.warn > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg warn",
-      style: {
-        flex: d.warn
-      }
-    }), d.fail > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg fail",
-      style: {
-        flex: d.fail
-      }
-    }), d.review > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg review",
-      style: {
-        flex: d.review
-      }
-    }), d.info > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg info",
-      style: {
-        flex: d.info
-      }
-    }), (() => {
-      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-      return skipped > 0 ? /*#__PURE__*/React.createElement("div", {
-        className: "fw-seg skipped",
-        style: {
-          flex: skipped
-        }
-      }) : null;
-    })(), d.total === 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg empty",
-      style: {
-        flex: 1
-      }
-    })), /*#__PURE__*/React.createElement("div", {
-      className: "fw-stat"
-    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, score, "%"), " covered"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, d.fail), " gaps"), /*#__PURE__*/React.createElement("span", null, d.total, " checks")));
-  })), expandedFw && expandedMeta && expandedData && /*#__PURE__*/React.createElement("div", {
-    className: "fw-detail-panel"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fw-detail-header"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "fw-detail-name"
-  }, expandedMeta.full), /*#__PURE__*/React.createElement("div", {
-    className: "fw-detail-id"
-  }, expandedFw)), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setExpandedFw(null),
-    style: {
-      background: 'none',
-      border: 0,
-      color: 'var(--muted)',
-      cursor: 'pointer',
-      fontSize: 18,
-      lineHeight: 1,
-      padding: '0 4px'
-    }
-  }, "\xD7")), (expandedMeta?.desc || FW_BLURB[expandedFw]) && /*#__PURE__*/React.createElement("div", {
-    className: "fw-blurb"
-  }, expandedMeta?.desc || FW_BLURB[expandedFw]?.desc, ' ', (expandedMeta?.url || FW_BLURB[expandedFw]?.url) && /*#__PURE__*/React.createElement("a", {
-    href: expandedMeta?.url || FW_BLURB[expandedFw]?.url,
-    target: "_blank",
-    rel: "noopener noreferrer"
-  }, "Official site \u2197")), /*#__PURE__*/React.createElement("div", {
-    className: "fw-detail-summary"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, expandedData.total), " controls"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: 'var(--success-text)'
-    }
-  }, expandedData.pass), " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: 'var(--warn-text)'
-    }
-  }, expandedData.warn), " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: 'var(--danger-text)'
-    }
-  }, expandedData.fail), " fail"), expandedData.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, expandedData.review), " review")), fwProfileStats && fwProfileStats.l1 + fwProfileStats.l2 + fwProfileStats.l3 + fwProfileStats.e3 + fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-profile-stats"
-  }, fwProfileStats.isCmmc ? /*#__PURE__*/React.createElement(React.Fragment, null, fwProfileStats.l1 > 0 && /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip level fw-profile-chip-btn' + ((activeProfiles || []).includes('L1') ? ' selected' : ''),
-    onClick: () => handleProfileClick('L1'),
-    "aria-pressed": (activeProfiles || []).includes('L1')
-  }, "L1 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l1)), fwProfileStats.l2 > 0 && /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip level2 fw-profile-chip-btn' + ((activeProfiles || []).includes('L2') ? ' selected' : ''),
-    onClick: () => handleProfileClick('L2'),
-    "aria-pressed": (activeProfiles || []).includes('L2')
-  }, "L2 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l2)), fwProfileStats.l3 > 0 && /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip level3 fw-profile-chip-btn' + ((activeProfiles || []).includes('L3') ? ' selected' : ''),
-    onClick: () => handleProfileClick('L3'),
-    "aria-pressed": (activeProfiles || []).includes('L3')
-  }, "L3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l3)), fwProfileStats.l3 > 0 && /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-info",
-    title: "L2 includes all L3 practices. Every CMMC L3 control is also assessed at L2 by design \u2014 selecting L2 will count L3 checks too."
-  }, "L2 \u2287 L3")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip level fw-profile-chip-btn' + ((activeProfiles || []).includes('L1') ? ' selected' : ''),
-    onClick: () => handleProfileClick('L1'),
-    "aria-pressed": (activeProfiles || []).includes('L1')
-  }, "L1 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l1)), fwProfileStats.l2 > 0 && /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip level2 fw-profile-chip-btn' + ((activeProfiles || []).includes('L2') ? ' selected' : ''),
-    onClick: () => handleProfileClick('L2'),
-    "aria-pressed": (activeProfiles || []).includes('L2')
-  }, "L2 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.l2)), /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-sep"
-  }, "\xB7"), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip lic fw-profile-chip-btn' + ((activeProfiles || []).includes('E3') ? ' selected' : ''),
-    onClick: () => handleProfileClick('E3'),
-    "aria-pressed": (activeProfiles || []).includes('E3')
-  }, "E3 ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e3)), fwProfileStats.e5only > 0 && /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: 'fw-profile-chip lic5 fw-profile-chip-btn' + ((activeProfiles || []).includes('E5only') ? ' selected' : ''),
-    onClick: () => handleProfileClick('E5only'),
-    "aria-pressed": (activeProfiles || []).includes('E5only')
-  }, "E5 only ", /*#__PURE__*/React.createElement("b", null, fwProfileStats.e5only)))), expandedFw === 'cmmc' && D.cmmcHandoff && D.cmmcHandoff.Summary && D.cmmcHandoff.Summary.Total && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 8,
-      marginBottom: 12,
-      padding: '10px 12px',
-      background: 'var(--card-subtle, rgba(255,255,255,0.03))',
-      borderRadius: 6,
-      fontSize: 12
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: '.08em',
-      color: 'var(--muted)',
-      marginBottom: 6
-    }
-  }, "Handoff gaps"), /*#__PURE__*/React.createElement("div", {
-    className: "fw-profile-stats",
-    style: {
-      marginTop: 0,
-      marginBottom: 0
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-chip"
-  }, "Out of scope ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.outOfScope)), /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-chip"
-  }, "Partial ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.partial)), /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-chip"
-  }, "Coverable ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.coverable)), D.cmmcHandoff.Summary.Total.inherent > 0 && /*#__PURE__*/React.createElement("span", {
-    className: "fw-profile-chip"
-  }, "Inherent ", /*#__PURE__*/React.createElement("b", null, D.cmmcHandoff.Summary.Total.inherent))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6,
-      color: 'var(--muted)',
-      lineHeight: 1.5
-    }
-  }, D.cmmcHandoff.Summary.Total.practices, " CMMC 2.0 practices require non-M365 controls (physical access, HR, inherent defaults) and are tracked separately.")), /*#__PURE__*/React.createElement("div", {
-    className: "fw-bar",
-    style: {
-      marginBottom: 16,
-      height: 10,
-      borderRadius: 5
-    }
-  }, expandedData.pass > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-seg pass",
-    style: {
-      flex: expandedData.pass
-    }
-  }), expandedData.warn > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-seg warn",
-    style: {
-      flex: expandedData.warn
-    }
-  }), expandedData.fail > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-seg fail",
-    style: {
-      flex: expandedData.fail
-    }
-  }), expandedData.review > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-seg review",
-    style: {
-      flex: expandedData.review
-    }
-  }), expandedData.info > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "fw-seg info",
-    style: {
-      flex: expandedData.info
-    }
-  })), (() => {
-    // Issue #751: prefer the framework's own native taxonomy when available
-    // (declared via groupBy + groups in the framework JSON); fall back to
-    // M365-Assess domain breakdown for frameworks without that metadata.
-    const useFamily = fwFamilyBreakdown && Object.keys(fwFamilyBreakdown).length > 0;
-    const groupLabel = expandedMeta?.groupLabel || (useFamily ? 'family' : 'domain');
-    const headerLabel = useFamily ? `Coverage by ${groupLabel}` : 'Coverage by domain';
-    const groupNames = expandedMeta?.groups || {};
-    const rows = useFamily ? Object.entries(fwFamilyBreakdown).sort((a, b) => compareGroupKeys(a[0], b[0])) : Object.entries(fwDomainBreakdown).sort((a, b) => b[1].fail - a[1].fail || b[1].total - a[1].total);
-    const labelFor = key => {
-      if (!useFamily) return key;
-      if (key === 'OTHER') return 'Other';
-      const name = groupNames[key];
-      return name ? `${key} · ${name}` : `${key} · (unmapped)`;
-    };
-    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '.1em',
-        color: 'var(--muted)',
-        marginBottom: 8
-      }
-    }, headerLabel), /*#__PURE__*/React.createElement("div", {
-      className: "fw-detail-domains"
-    }, rows.map(([key, s]) => /*#__PURE__*/React.createElement("div", {
-      key: key,
-      className: "fw-domain-row"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "fw-domain-name"
-    }, labelFor(key)), /*#__PURE__*/React.createElement("div", {
-      className: "fw-domain-bar"
-    }, s.pass > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg pass",
-      style: {
-        flex: s.pass
-      }
-    }), s.warn > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg warn",
-      style: {
-        flex: s.warn
-      }
-    }), s.fail > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg fail",
-      style: {
-        flex: s.fail
-      }
-    }), s.review > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg review",
-      style: {
-        flex: s.review
-      }
-    }), s.info > 0 && /*#__PURE__*/React.createElement("div", {
-      className: "fw-seg info",
-      style: {
-        flex: s.info
-      }
-    })), /*#__PURE__*/React.createElement("div", {
-      className: "fw-domain-stat"
-    }, s.fail > 0 ? /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: 'var(--danger-text)'
-      }
-    }, s.fail, " gap", s.fail !== 1 ? 's' : '') : /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: 'var(--success-text)'
-      }
-    }, s.pass, " pass"))))));
-  })(), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 14,
-      paddingTop: 12,
-      borderTop: '1px solid var(--border)'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "chip chip-more selected",
-    onClick: () => {
-      onSelect(expandedFw);
+    // eslint-disable-next-line
+  }, [activeProfiles]);
+  const visibleFw = visibleIds.map(id => fwDataById(id)).filter(Boolean);
+  const focused = visibleFw.find(f => f.id === focusedId) || visibleFw[0];
+  const isEmpty = visibleFw.length === 0;
+  const isSingle = visibleFw.length === 1;
+  const handleProfilesChange = next => {
+    if (onProfileSelect && focused) onProfileSelect(focused.id, next);
+  };
+  const onClearFilters = () => {
+    if (onProfileSelect && focused) onProfileSelect(focused.id, []);
+    setFamily(null);
+  };
+  const handleGapsCTA = () => {
+    if (focused && onSelect) {
+      onSelect(focused.id);
       document.getElementById('findings-anchor')?.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
     }
-  }, (activeProfiles || []).length === 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, "View all ", expandedData.total, " findings in this framework \u2192") : /*#__PURE__*/React.createElement(React.Fragment, null, "View ", selectedCount, " of ", expandedData.total, " findings matching ", (activeProfiles || []).join(' + '), " \u2192"))))));
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    className: "block",
+    id: "frameworks"
+  }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "01 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--muted)',
+      fontWeight: 400,
+      marginLeft: 8
+    }
+  }, isEmpty ? 'Nothing in scope' : isSingle ? '1 framework in scope' : `Comparing ${visibleFw.length} of ${FRAMEWORKS.length}`), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: 'auto',
+      flexShrink: 0
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement(FwManageButton, {
+    allFw: FRAMEWORKS,
+    visibleIds: visibleIds,
+    onToggle: toggle,
+    onSetAll: setAll,
+    fwDataById: fwDataById
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "section-chevron",
+    "aria-hidden": "true"
+  }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
+    className: "hr"
+  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, isEmpty && /*#__PURE__*/React.createElement("div", {
+    className: "fw-empty-state"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-empty-icon"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "40",
+    height: "40",
+    viewBox: "0 0 40 40",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    opacity: ".6"
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: "4",
+    y: "6",
+    width: "32",
+    height: "6",
+    rx: "1.5"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "4",
+    y: "16",
+    width: "32",
+    height: "6",
+    rx: "1.5"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "4",
+    y: "26",
+    width: "32",
+    height: "6",
+    rx: "1.5"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: "2",
+    y1: "38",
+    x2: "38",
+    y2: "2",
+    stroke: "var(--danger)",
+    strokeWidth: "1.5"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "fw-empty-title"
+  }, "No frameworks in scope"), /*#__PURE__*/React.createElement("div", {
+    className: "fw-empty-msg"
+  }, "Pick at least one framework to see coverage data."), /*#__PURE__*/React.createElement("button", {
+    className: "fw-gaps-cta",
+    onClick: () => setAll([FRAMEWORKS[0].id])
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fw-gaps-cta-label"
+  }, "Restore default framework"), /*#__PURE__*/React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.8"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M5 3l5 5-5 5"
+  })))), isSingle && focused && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(FilterBanner, {
+    profiles: activeProfiles || [],
+    family: family,
+    onClear: onClearFilters
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fw-tb-score fw-merged-score"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-grid"
+  }, /*#__PURE__*/React.createElement(ScoreDonut, {
+    counts: focused.counts,
+    animKey: focused.id
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-name"
+  }, focused.full), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-org",
+    style: {
+      fontFamily: 'var(--font-mono)',
+      fontSize: 11,
+      color: 'var(--muted)'
+    }
+  }, focused.id), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'fw-readiness-pill ' + fwReadinessLabel(fwCoveragePct(focused.counts)).tone
+  }, fwReadinessLabel(fwCoveragePct(focused.counts)).label), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: 'var(--muted)',
+      fontFamily: 'var(--font-mono)'
+    }
+  }, focused.counts.pass, "/", focused.counts.total, " controls passing")), /*#__PURE__*/React.createElement("div", {
+    className: "fw-bar fw-tb-score-bar"
+  }, focused.counts.pass > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg pass",
+    style: {
+      flex: focused.counts.pass
+    }
+  }), focused.counts.warn > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg warn",
+    style: {
+      flex: focused.counts.warn
+    }
+  }), focused.counts.fail > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg fail",
+    style: {
+      flex: focused.counts.fail
+    }
+  }), focused.counts.review > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg review",
+    style: {
+      flex: focused.counts.review
+    }
+  }), focused.counts.info > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg info",
+    style: {
+      flex: focused.counts.info
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fw-tb-score-legend",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot pass"
+  }), focused.counts.pass, " pass"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot warn"
+  }), focused.counts.warn, " warn"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot fail"
+  }), focused.counts.fail, " fail"), focused.counts.review > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot review"
+  }), focused.counts.review, " review"), focused.counts.info > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot info"
+  }), focused.counts.info, " info"))), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-cta"
+  }, focused.profileType && /*#__PURE__*/React.createElement(ProfileChipsM, {
+    data: focused,
+    active: activeProfiles || [],
+    onChange: handleProfilesChange
+  }), /*#__PURE__*/React.createElement(GapsCTA, {
+    count: focused.counts.fail,
+    onClick: handleGapsCTA
+  })))), focused.families && focused.families.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-tb-fam-section"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-tb-fam-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '.1em',
+      fontWeight: 700,
+      marginBottom: 2
+    }
+  }, "Coverage by control family"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--text-soft)'
+    }
+  }, focused.families.length, " families \xB7 sorted by gaps \xB7 click a row to filter"))), /*#__PURE__*/React.createElement(FamilyChartM, {
+    families: [...focused.families].sort((a, b) => b.fail - a.fail),
+    focused: family,
+    onFocus: setFamily
+  }))), !isEmpty && !isSingle && focused && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(CompareTableM, {
+    frameworks: visibleFw,
+    focused: focused.id,
+    onFocus: setFocusedId,
+    onRemove: remove
+  }), /*#__PURE__*/React.createElement(CoverageChart, {
+    frameworks: visibleFw,
+    focused: focused.id,
+    onFocus: setFocusedId
+  }), /*#__PURE__*/React.createElement(FilterBanner, {
+    profiles: activeProfiles || [],
+    family: family,
+    onClear: onClearFilters
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fw-cmp-detail fw-merged-detail",
+    key: focused.id
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-detail-anim"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-grid"
+  }, /*#__PURE__*/React.createElement(ScoreDonut, {
+    counts: focused.counts,
+    size: 140,
+    stroke: 16,
+    animKey: focused.id
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-detail-eyebrow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fw-merged-detail-arrow"
+  }, "\u2193"), "Selected \xB7 ", focused.id), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-name",
+    style: {
+      fontSize: 20
+    }
+  }, focused.full), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'fw-readiness-pill ' + fwReadinessLabel(fwCoveragePct(focused.counts)).tone
+  }, fwReadinessLabel(fwCoveragePct(focused.counts)).label), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: 'var(--muted)',
+      fontFamily: 'var(--font-mono)'
+    }
+  }, focused.counts.pass, "/", focused.counts.total)), focused.profileType && /*#__PURE__*/React.createElement(ProfileChipsM, {
+    data: focused,
+    active: activeProfiles || [],
+    onChange: handleProfilesChange,
+    compact: true
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fw-merged-score-cta"
+  }, /*#__PURE__*/React.createElement(GapsCTA, {
+    count: focused.counts.fail,
+    onClick: handleGapsCTA
+  }))), focused.families && focused.families.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 18,
+      paddingTop: 16,
+      borderTop: '1px solid var(--border)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '.1em',
+      fontWeight: 700,
+      marginBottom: 8,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8
+    }
+  }, "Coverage by control family", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: 'var(--text-soft)',
+      textTransform: 'none',
+      letterSpacing: 0,
+      fontWeight: 400
+    }
+  }, "\xB7 click a row to filter")), /*#__PURE__*/React.createElement(FamilyChartM, {
+    families: [...focused.families].sort((a, b) => b.fail - a.fail),
+    focused: family,
+    onFocus: setFamily
+  })))))));
 }
 
 // ======================== Filter bar ========================

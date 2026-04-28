@@ -420,6 +420,13 @@
 [data-theme="high-contrast"][data-mode="dark"] .nav-item.active .count {
   color: #000000;
 }
+/* #855: GapsCTA uses --accent (= #fff in high-contrast dark) as background.
+   Default white-on-white kills legibility -- override label + chip to black. */
+[data-theme="high-contrast"][data-mode="dark"] .fw-gaps-cta { color: #000000; }
+[data-theme="high-contrast"][data-mode="dark"] .fw-gaps-cta-num {
+  background: rgba(0,0,0,0.18);
+  color: #000000;
+}
 
 /* =========================================================
    NEON DARK — CYBER GLOW LAYER
