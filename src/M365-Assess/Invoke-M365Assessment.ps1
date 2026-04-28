@@ -1222,7 +1222,13 @@ $overallDuration = $overallEnd - $overallStart
 
 $summarySuffix = if ($script:domainPrefix) { "_$($script:domainPrefix)" } else { '' }
 $summaryCsvPath = Join-Path -Path $assessmentFolder -ChildPath "_Assessment-Summary${summarySuffix}.csv"
-$summaryResults | Export-Csv -Path $summaryCsvPath -NoTypeInformation -Encoding UTF8
+# Issue #867: prepend a comment header row so the version + timestamp travel
+# with the CSV. Lines starting with '#' are treated as comments by sensible
+# CSV parsers (pandas read_csv comment='#', PowerShell Import-Csv trips on
+# them but 99% of actual consumers use Excel/Python/Power BI which handle it).
+$summaryHeader = "# M365-Assess v$($script:AssessmentVersion) -- generated $((Get-Date).ToUniversalTime().ToString('o'))"
+$summaryCsvBody = $summaryResults | ConvertTo-Csv -NoTypeInformation
+Set-Content -Path $summaryCsvPath -Value (@($summaryHeader) + @($summaryCsvBody)) -Encoding UTF8
 
 # ------------------------------------------------------------------
 # Export issue report (if any issues exist)
@@ -1392,6 +1398,63 @@ if (Test-Path -Path $reportScriptPath) {
         Write-Warning $msg
         Write-Host "    See $script:logFilePath for the full error context." -ForegroundColor Yellow
     }
+}
+
+# ------------------------------------------------------------------
+# Issue #867: write _Assessment-Provenance.json — canonical chain-of-
+# custody artifact. Captures tool version, registry version, run metadata,
+# and SHA-256 hashes of every other artifact in the folder. Must run
+# AFTER the HTML/XLSX/CSV writes so the hashes reflect final content.
+# ------------------------------------------------------------------
+try {
+    $registryVersion = ''
+    try {
+        $regManifest = Join-Path -Path $projectRoot -ChildPath 'controls/registry.json'
+        if (Test-Path -Path $regManifest) {
+            $regJson = Get-Content -Raw -Path $regManifest | ConvertFrom-Json
+            $registryVersion = if ($regJson.dataVersion) { $regJson.dataVersion } else { '' }
+        }
+    } catch { Write-Verbose "Could not read registry dataVersion: $($_.Exception.Message)" }
+
+    $artifactHashes = @()
+    Get-ChildItem -Path $assessmentFolder -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '_Assessment-Provenance.json' } |
+        Sort-Object -Property Name |
+        ForEach-Object {
+            try {
+                $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+                $artifactHashes += [ordered]@{
+                    name   = $_.Name
+                    bytes  = $_.Length
+                    sha256 = $hash
+                }
+            } catch {
+                Write-Verbose "Could not hash $($_.FullName): $($_.Exception.Message)"
+            }
+        }
+
+    $tenantNameForProv = if ($script:domainPrefix) { $script:domainPrefix } else { $TenantId }
+    $provenance = [ordered]@{
+        toolName              = 'M365-Assess'
+        toolVersion           = $script:AssessmentVersion
+        registryDataVersion   = $registryVersion
+        generatedAtUtc        = (Get-Date).ToUniversalTime().ToString('o')
+        tenantId              = if ($tenantIdentity -and $tenantIdentity.Guid) { $tenantIdentity.Guid } else { $TenantId }
+        tenantDisplayName     = if ($tenantIdentity -and $tenantIdentity.DisplayName) { $tenantIdentity.DisplayName } else { '' }
+        tenantPrimaryDomain   = if ($tenantIdentity -and $tenantIdentity.PrimaryDomain) { $tenantIdentity.PrimaryDomain } else { '' }
+        tenantNameSlug        = $tenantNameForProv
+        environment           = $M365Environment
+        sectionsRun           = @($Section)
+        collectorsRun         = @($summaryResults).Count
+        durationSeconds       = [int]$overallDuration.TotalSeconds
+        outputArtifacts       = $artifactHashes
+    }
+    $provenancePath = Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Provenance.json'
+    $provenance | ConvertTo-Json -Depth 6 | Set-Content -Path $provenancePath -Encoding UTF8
+    Write-AssessmentLog -Level INFO -Message "Provenance file written: $provenancePath ($($artifactHashes.Count) artifacts hashed)"
+}
+catch {
+    Write-AssessmentLog -Level WARN -Message "Failed to write provenance file: $($_.Exception.Message)"
 }
 
 # ------------------------------------------------------------------

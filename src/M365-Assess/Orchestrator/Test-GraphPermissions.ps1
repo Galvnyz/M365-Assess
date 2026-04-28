@@ -54,15 +54,28 @@ function Write-PermissionDeficitsFile {
         }
     }
 
+    # Issue #867: include assessment version in the provenance set.
+    $assessmentVersion = ''
+    try {
+        $manifestPath = Join-Path -Path $PSScriptRoot -ChildPath '..\M365-Assess.psd1'
+        if (Test-Path -Path $manifestPath) {
+            $assessmentVersion = (Import-PowerShellDataFile -Path $manifestPath).ModuleVersion
+        }
+    }
+    catch {
+        Write-Verbose "Could not read M365-Assess.psd1 ModuleVersion: $($_.Exception.Message)"
+    }
+
     $payload = [ordered]@{
-        schemaVersion  = '1.0'
-        authMode       = $AuthMode
-        generatedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
-        activeSections = $ActiveSections
-        required       = $reqArr
-        granted        = $grtArr
-        missing        = $missArr
-        sections       = $sectionDeficits
+        schemaVersion     = '1.0'
+        assessmentVersion = $assessmentVersion
+        authMode          = $AuthMode
+        generatedAtUtc    = (Get-Date).ToUniversalTime().ToString('o')
+        activeSections    = $ActiveSections
+        required          = $reqArr
+        granted           = $grtArr
+        missing           = $missArr
+        sections          = $sectionDeficits
     }
     $path = Join-Path -Path $OutputFolder -ChildPath '_PermissionDeficits.json'
     $payload | ConvertTo-Json -Depth 6 | Set-Content -Path $path -Encoding UTF8

@@ -413,6 +413,21 @@ if ($CustomBranding) {
     $preparedByHeader = $parts -join ' | '
 }
 
+# Issue #867: always emit a provenance Title row so the XLSX carries the
+# tool version + timestamp regardless of whether Prepared By/For was supplied.
+$assessmentVersion = ''
+try {
+    $manifestPath = Join-Path -Path $PSScriptRoot -ChildPath '..\M365-Assess.psd1'
+    if (Test-Path -Path $manifestPath) {
+        $assessmentVersion = (Import-PowerShellDataFile -Path $manifestPath).ModuleVersion
+    }
+}
+catch {
+    Write-Verbose "Could not read M365-Assess.psd1 ModuleVersion: $($_.Exception.Message)"
+}
+$provenanceLine = "M365-Assess v$assessmentVersion | Generated $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')) UTC"
+$titleHeader = if ($preparedByHeader) { "$preparedByHeader | $provenanceLine" } else { $provenanceLine }
+
 # Sheet 1 - Compliance Matrix
 $matrixParams = @{
     Path          = $outputFile
@@ -420,14 +435,12 @@ $matrixParams = @{
     AutoSize      = $true
     AutoFilter    = $true
     FreezeTopRow  = $true
-    BoldTopRow    = (-not $preparedByHeader)
+    BoldTopRow    = $false  # title row above provides bold context
     TableStyle    = 'Medium2'
-}
-if ($preparedByHeader) {
-    $matrixParams['Title']                = $preparedByHeader
-    $matrixParams['TitleBold']            = $true
-    $matrixParams['TitleSize']            = 11
-    $matrixParams['TitleBackgroundColor'] = [System.Drawing.Color]::FromArgb(219, 234, 254)
+    Title                = $titleHeader
+    TitleBold            = $true
+    TitleSize            = 11
+    TitleBackgroundColor = [System.Drawing.Color]::FromArgb(219, 234, 254)
 }
 # Issue #840: project Horizon → Sequence at export time, marking Pass rows as 'Done'
 # so no cell is empty. The source object's Horizon property stays untouched —
