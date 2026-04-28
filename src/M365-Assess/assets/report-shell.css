@@ -879,6 +879,15 @@ mark.search-hl {
 }
 .finding-detail .value-box.current { border-left: 3px solid var(--danger); }
 .finding-detail .value-box.recommended { border-left: 3px solid var(--success); }
+/* Issue #674 (partial): tier-based outline so a passing value doesn't read as
+   failing. The .current rule above sets the default red; these per-tier rules
+   override based on the finding's status. */
+.finding-detail .value-box.finding-current-pass    { border-left-color: var(--success); }
+.finding-detail .value-box.finding-current-fail    { border-left-color: var(--danger); }
+.finding-detail .value-box.finding-current-warn    { border-left-color: var(--warn); }
+.finding-detail .value-box.finding-current-review  { border-left-color: var(--accent); }
+.finding-detail .value-box.finding-current-info,
+.finding-detail .value-box.finding-current-neutral { border-left-color: var(--border); }
 .finding-detail .why {
   grid-column: 1 / -1;
   padding: 10px 14px;

@@ -4098,7 +4098,7 @@ function FindingsTable({
     }, whyItMatters(f))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       className: "block-title"
     }, "Current value"), /*#__PURE__*/React.createElement("div", {
-      className: "value-box current"
+      className: 'value-box current finding-current-' + statusTier(f.status)
     }, f.current || '—')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       className: "block-title"
     }, "Recommended value"), /*#__PURE__*/React.createElement("div", {
@@ -4216,6 +4216,19 @@ function renderRemediation(text) {
   }, /*#__PURE__*/React.createElement("span", {
     className: "remediation-label"
   }, "Portal"), /*#__PURE__*/React.createElement("p", null, b.text))));
+}
+
+// Issue #674 (partial cherry-pick from PR #853): map a finding's status to a
+// CSS-class tier so the Current value card's left-border color reflects
+// pass/fail/warn/etc. — was always red, which incorrectly visually flagged
+// passing values as failing.
+function statusTier(status) {
+  if (status === 'Pass') return 'pass';
+  if (status === 'Fail') return 'fail';
+  if (status === 'Warning') return 'warn';
+  if (status === 'Review') return 'review';
+  if (status === 'Info') return 'info';
+  return 'neutral';
 }
 function whyItMatters(f) {
   const id = f.checkId;

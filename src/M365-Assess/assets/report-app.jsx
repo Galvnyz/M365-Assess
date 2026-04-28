@@ -2516,7 +2516,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
                   </div>
                   <div>
                     <div className="block-title">Current value</div>
-                    <div className="value-box current">{f.current || '—'}</div>
+                    <div className={'value-box current finding-current-' + statusTier(f.status)}>{f.current || '—'}</div>
                   </div>
                   <div>
                     <div className="block-title">Recommended value</div>
@@ -2636,6 +2636,19 @@ function renderRemediation(text) {
       )}
     </div>
   );
+}
+
+// Issue #674 (partial cherry-pick from PR #853): map a finding's status to a
+// CSS-class tier so the Current value card's left-border color reflects
+// pass/fail/warn/etc. — was always red, which incorrectly visually flagged
+// passing values as failing.
+function statusTier(status) {
+  if (status === 'Pass') return 'pass';
+  if (status === 'Fail') return 'fail';
+  if (status === 'Warning') return 'warn';
+  if (status === 'Review') return 'review';
+  if (status === 'Info') return 'info';
+  return 'neutral';
 }
 
 function whyItMatters(f) {
