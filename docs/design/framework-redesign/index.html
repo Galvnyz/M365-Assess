@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="neon" data-mode="dark" data-density="compact">
+<head>
+<meta charset="UTF-8"/>
+<title>Framework Coverage — Redesign Explorations</title>
+<link rel="stylesheet" href="report-themes.css"/>
+<link rel="stylesheet" href="report-shell.css"/>
+<link rel="stylesheet" href="redesign.css"/>
+<style>
+  /* Force dark neon for the canvas host while keeping artboards consistent */
+  body { background: #0a0616; }
+  .dc-artboard-inner { background: var(--bg); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="mock-data.js"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="direction-a.jsx"></script>
+<script type="text/babel" src="direction-b.jsx"></script>
+<script type="text/babel" src="direction-c.jsx"></script>
+<script type="text/babel" src="direction-merged.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+function Frame({ tag, title, blurb, children }) {
+  return (
+    <div className="dir-frame">
+      <div className="dir-note">
+        <span className="dir-tag">{tag}</span>
+        <b>{title}</b> — {blurb}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Canvas() {
+  return (
+    <DesignCanvas title="Framework Coverage — Redesign Explorations" subtitle="Adaptive layout: single-framework view collapses to A's focus; multi shows the comparison table + chart. Click any artboard to focus.">
+      <DCSection id="merged" title="Merged direction — adaptive (A when 1 fw, C when 2+)">
+
+        <DCArtboard id="merged-multi" label="Merged — multiple frameworks (default)" width={1280} height={1280}>
+          <Frame
+            tag="Merged"
+            title="Multi-framework view"
+            blurb="Default state with 4 frameworks pinned. Top: comparison table (sortable, click to drill). Middle: coverage chart with each framework's distribution + position marker, sorted best→worst. Bottom: focused-row detail panel with donut score, profile filters, and family chart. Use 'Manage frameworks' to add/remove rows.">
+            <DirectionMerged/>
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="merged-single" label="Merged — single framework" width={1280} height={920}>
+          <Frame
+            tag="Merged"
+            title="Single-framework view"
+            blurb="When only one framework is in scope, the layout collapses to a focused single-surface view: donut score with full distribution + legend, profile filters, primary CTA, and the family breakdown. Same component — it just adapts based on visible count.">
+            <DirectionMerged initialIds={['cis-m365-v6']}/>
+          </Frame>
+        </DCArtboard>
+
+      </DCSection>
+
+      <DCSection id="originals" title="Original explorations (for reference)">
+
+        <DCArtboard id="a" label="A — Toolbar + Focus" width={1280} height={920}>
+          <Frame
+            tag="Direction A"
+            title="Toolbar + focus"
+            blurb="One framework at a time. Selector becomes a proper labeled dropdown in a clean toolbar with profile filters and a primary CTA. Best for the consultant flow — fast switching, big readable surface for the active framework. The 14-framework long tail lives one click away in the dropdown menu, not as cards competing for visual weight.">
+            <DirectionA/>
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="b" label="B — Pinned chips + compare" width={1280} height={1080}>
+          <Frame
+            tag="Direction B"
+            title="Pinned chips + compare mode"
+            blurb="Persistent chip rail of pinned frameworks (default 4) with mini score bars — always visible, always scannable. '+ N more' menu pins/unpins from the long tail. A 'Compare' toggle pivots into a 2-up split view so users can put two frameworks side by side. Best when more than one framework matters and the user wants to see scores at a glance.">
+            <DirectionB/>
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="c" label="C — Comparison table" width={1280} height={980}>
+          <Frame
+            tag="Direction C"
+            title="Comparison table + drilldown"
+            blurb="Dense table showing every active framework as a row — coverage %, readiness pill, gap count, distribution bar. Click a row to drill into its detail panel below (with profile filters and family chart). 'Manage frameworks' opens a sheet to add/remove rows. Best for execs and MSP handoff — audit-readiness at a glance, drill-down on demand.">
+            <DirectionC/>
+          </Frame>
+        </DCArtboard>
+
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Canvas/>);
+</script>
+</body>
+</html>
