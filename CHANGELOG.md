@@ -4,6 +4,18 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-04-29
+
+The **Polish & Audits** milestone — 10 of 10 issues closed. Three audit-flavored research artifacts (ISO 27001/27002, CIS M365 v6.0.1, per-control narrative content) plus the long-standing SharePoint prefix-bug in the report's "Why It Matters" renderer. No breaking API changes.
+
+### Added
+- **Per-prefix narrative content for the finding-detail "Why It Matters" callout (#854)** — expanded coverage from ~22 to ~70 prefix families across SPO / EXO / DNS / DEFENDER / ENTRA / CA / INTUNE / COMPLIANCE / TEAMS / POWERBI / PBI / FORMS. Order preserves more-specific-first (e.g., `EXO-FORWARD` before generic `EXO-`). New `docs/research/narrative-content-sources.md` captures source-authority by family (Microsoft Learn, CIS M365 v6.0.1, NIST 800-63B / 800-53 r5, CISA, M3AAWG, FBI IC3, MITRE ATT&CK). Per-checkId refinement + architectural move to `controls/narrative-overlay.json` deferred to follow-up
+- **ISO 27001 vs 27002 mapping audit (#858)** — new `docs/research/iso-27001-vs-27002-audit.md` documents the upstream SCF conflation (1020 / 1020 identical mappings) and recommends the upstream-fix path. New `iso-27002.json` framework definition (was missing — registry tagged checks with `iso-27002` but no framework JSON existed). New `tests/Behavior/Iso-27001-27002-Mapping-Audit.Tests.ps1` with skip-until-upstream divergence assertion + always-runs informational stats. Follow-up tracker #871 monitors when upstream lands
+- **CIS M365 v6.0.1 mapping audit (#848)** — new `docs/research/cis-m365-v6-audit.md` catalogs section-9 POWERBI-/PBI- merge-artifact duplicates (11/11 clusters all parallel pairs — every Power BI / Fabric check ships twice and inflates coverage counts) + section-4 EXO-* labeling anomaly (4/6 checks are EXO despite section being named "Microsoft Intune"). New `tests/Behavior/Cis-M365-v6-Mapping-Audit.Tests.ps1` with skip-until-upstream regressions on both anomalies + informational stats
+
+### Fixed
+- **SPO- / SHAREPOINT- prefix matching bug in `whyItMatters()` (#854)** — the chain checked `startsWith('SHAREPOINT-')` but the registry uses `SPO-`. **Every SharePoint finding was hitting the generic fallback** since SPO content was added. Now matches correctly with sub-prefix specificity (SHARING/B2B, SITE/ACCESS, SCRIPT/SWAY, SYNC/OD, MALWARE/VERSIONING/LOOP/AUTH/SESSION) plus legacy SHAREPOINT-/20B- catches retained for compatibility
+
 ## [2.9.3] - 2026-04-28
 
 Big patch release covering the v2.7.0 — Deep UX milestone closeout plus the v2.10.0 — Polish & Audits UX work to date. Despite "patch" in the version label, this release ships a substantial new framework-coverage UX (per a Claude Design handoff) and several new capabilities — but no breaking API changes. The 3 remaining audit-flavored items (CIS mapping integrity, ISO 27001/27002, per-control narrative content) ship in v2.10.0 proper.
