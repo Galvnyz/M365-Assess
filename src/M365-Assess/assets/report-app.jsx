@@ -2786,29 +2786,114 @@ function statusTier(status) {
   return 'neutral';
 }
 
+// Issue #854: per-prefix narrative content for the finding-detail "Why It Matters"
+// callout. Order matters — more-specific prefixes MUST come before generic
+// catch-alls (e.g., EXO-FORWARD before EXO-). Sources cited in commit message
+// + docs/research/narrative-content-sources.md.
 function whyItMatters(f) {
   const id = f.checkId;
+
+  // ---- Identity (Entra) ----
   if (id.startsWith('ENTRA-MFA') || id.startsWith('ENTRA-AUTHMETHOD')) return 'Weak authentication methods (SMS, voice, email OTP) are phishable and subject to SIM-swap attacks. Phishing-resistant methods (FIDO2, Windows Hello, certificate) are the modern baseline.';
-  if (id.startsWith('ENTRA-ADMIN') || id.startsWith('ENTRA-CLOUDADMIN')) return 'Global Admin accounts are the crown jewels. Synced on-prem accounts, excess admin count, and admins without phishing-resistant MFA multiply blast radius if any one tier is compromised.';
+  if (id.startsWith('ENTRA-PERUSER')) return 'Per-user MFA is the legacy enforcement model superseded by Conditional Access. Mixed-mode tenants leave gaps where some users are CA-protected and others rely on the legacy switch.';
+  if (id.startsWith('ENTRA-SECDEFAULT')) return 'Security Defaults provide a one-toggle baseline (MFA, blocked legacy auth, admin protection) for tenants without Entra ID P1+. Enabling them OR full Conditional Access is required — never both, and never neither.';
+  if (id.startsWith('ENTRA-SSPR')) return 'Self-Service Password Reset reduces helpdesk load and account-lockout risk, but only when registration is enforced and reset methods exclude SMS for privileged users.';
+  if (id.startsWith('ENTRA-ADMIN') || id.startsWith('ENTRA-CLOUDADMIN') || id.startsWith('ENTRA-SYNCADMIN') || id.startsWith('ENTRA-ADMINROLE') || id.startsWith('ENTRA-ROLEGROUP')) return 'Global Admin accounts are the crown jewels. Synced on-prem accounts, excess admin count, and admins without phishing-resistant MFA multiply blast radius if any one tier is compromised.';
   if (id.startsWith('ENTRA-PIM')) return 'Without PIM (Entra ID P2), privileged roles are permanently assigned. Just-in-time elevation with approval and access reviews is the industry baseline for zero-trust identity.';
+  if (id.startsWith('ENTRA-STALEADMIN') || id.startsWith('ENTRA-DISABLED')) return 'Stale admins and disabled accounts that never sign in still hold privileges or licenses. Any compromise of their credentials yields access with low telemetry.';
+  if (id.startsWith('ENTRA-BREAKGLASS')) return 'Break-glass accounts are the last-resort recovery mechanism. They must be cloud-only, CA-excluded, phishing-resistant, and quarterly-tested.';
   if (id.startsWith('ENTRA-PASSWORD')) return 'Password expiration with MFA causes fatigue and weaker passwords. NIST 800-63B recommends no forced rotation when phishing-resistant MFA is present.';
   if (id.startsWith('ENTRA-CONSENT') || id.startsWith('ENTRA-APPREG')) return 'User-consent and app-registration permissions are the primary vector for OAuth-app phishing and illicit consent grants. Lock both down and route approvals to admins.';
-  if (id.startsWith('ENTRA-DEVICE')) return 'Entra join and device settings define who can enroll devices and who gets local admin rights. Overly permissive defaults bypass Intune-enforced posture.';
-  if (id.startsWith('CA-') || id.startsWith('ENTRA-CA')) return 'Conditional Access is the single control plane that enforces MFA, device compliance, and session policy. Coverage gaps and admin exclusions invalidate the model.';
+  if (id.startsWith('ENTRA-ENTAPP')) return 'Enterprise app governance (assignment required, user consent restrictions, certificate rotation) prevents unsanctioned apps from accumulating tenant-wide permissions and surviving employee turnover.';
+  if (id.startsWith('ENTRA-APPS-002') || id.startsWith('APPS-002')) return 'Apps with Directory.ReadWrite.All or DeviceManagement write permissions can modify users, groups, and devices tenant-wide. Grant only read-only equivalents and monitor.';
+  if (id.startsWith('ENTRA-GUEST') || id.startsWith('ENTRA-LINKEDIN')) return 'Guest access defaults are permissive — guests can read directory data, invite other guests, and persist after collaboration ends. Restrict invitation rights and review guest access regularly.';
+  if (id.startsWith('ENTRA-DEVICE') || id.startsWith('ENTRA-HYBRID')) return 'Entra join and device settings define who can enroll devices and who gets local admin rights. Overly permissive defaults bypass Intune-enforced posture.';
+  if (id.startsWith('ENTRA-GROUP')) return 'Group creation, classification, and ownership govern who can create distribution lists and Microsoft 365 Groups. Unrestricted creation accumulates orphaned groups that grant access nobody is reviewing.';
+  if (id.startsWith('ENTRA-ORGSETTING') || id.startsWith('ENTRA-TENANT')) return 'Organisation-wide settings (account-restrictions allow-list, name change permissions, external collaboration) are the cross-cutting policies that override per-user/per-app config. Defaults often skew permissive.';
+  if (id.startsWith('ENTRA-SESSION') || id.startsWith('ENTRA-SESSIONAUTH')) return 'Session and sign-in controls (token lifetime, sign-in frequency, persistent browser) determine how often a user re-authenticates. Long-lived sessions amplify the impact of a single phished token.';
+  if (id.startsWith('ENTRA-SOD')) return 'Separation-of-duties controls prevent a single account from holding incompatible roles (e.g., Global Admin + Security Admin + Compliance Admin). Detection requires explicit role-pair reviews.';
+
+  // ---- Conditional Access ----
+  if (id.startsWith('CA-EXCLUSION')) return 'Admins excluded from Conditional Access bypass MFA and device-compliance enforcement. Only break-glass accounts should be excluded.';
+  if (id.startsWith('CA-LEGACYAUTH')) return 'Legacy authentication (POP, IMAP, SMTP AUTH, basic auth) bypasses MFA entirely. A single tenant-wide policy blocking legacy protocols is the highest-leverage Conditional Access control.';
+  if (id.startsWith('CA-PHISHRES')) return 'Conditional Access policies that require phishing-resistant MFA for admins are the modern equivalent of "no SMS for privileged accounts." FIDO2 / Windows Hello / certificate-based, scoped to admin roles.';
+  if (id.startsWith('CA-DEVICE') || id.startsWith('CA-INTUNE') || id.startsWith('CA-REMOTEDEVICE')) return 'Device-compliance Conditional Access closes the unmanaged-endpoint gap. Without it, a personal laptop with a phished password reaches the same data as a managed corporate device.';
+  if (id.startsWith('CA-SIGNINRISK') || id.startsWith('CA-RISKPOLICY') || id.startsWith('CA-USERRISK')) return 'Risk-based Conditional Access uses Identity Protection signals (impossible travel, leaked credentials, anomalous sign-in) to step up MFA or block access. Requires Entra ID P2.';
+  if (id.startsWith('CA-NAMEDLOC')) return 'Named locations let CA policies trust corporate IPs as a factor (lower MFA friction inside, hard block from anonymous-proxy regions). Misconfig here either over-trusts or over-blocks.';
+  if (id.startsWith('CA-REPORTONLY')) return 'Report-only CA policies stage rule changes safely, but policies left in report-only past their soak period provide no enforcement. Promote to On or delete.';
+  if (id.startsWith('CA-DEVICECODE')) return 'Device code flow is a known phishing vector — attackers send victims a device code prompt that grants tokens to attacker-controlled devices. Block via CA unless specifically required.';
+  if (id.startsWith('CA-')) return 'Conditional Access is the single control plane that enforces MFA, device compliance, and session policy. Coverage gaps and admin exclusions invalidate the model.';
+
+  // ---- Defender for Office 365 ----
   if (id.startsWith('DEFENDER-ANTIPHISH')) return 'Anti-phishing impersonation, mailbox intelligence, and targeted-user protection stop Business Email Compromise and spoofing attacks that bypass basic filters.';
   if (id.startsWith('DEFENDER-SAFELINKS') || id.startsWith('DEFENDER-SAFEATTACH')) return 'Safe Links rewrites URLs to detonate at click-time; Safe Attachments detonates files in a sandbox. Without both, zero-day phishing links and malware sail through.';
   if (id.startsWith('DEFENDER-OUTBOUND')) return 'Auto-forwarding is a hallmark of compromised mailboxes exfiltrating data. Disabling external auto-forward and alerting on outbound spam is a BEC table stake.';
+  if (id.startsWith('DEFENDER-ZAP')) return 'Zero-Hour Auto Purge removes phish/malware messages already delivered to mailboxes once new threat intel arrives. Disabling ZAP means a known-bad message stays in inboxes indefinitely.';
   if (id.startsWith('DEFENDER-ANTIMALWARE') || id.startsWith('DEFENDER-MALWARE')) return 'The common-attachment filter blocks high-risk file types (dmg, ps1, js, vhd). Missing types are routine initial-access vectors.';
-  if (id.startsWith('DEFENDER-ANTISPAM')) return 'Allow-listing sender domains overrides every downstream filter for those senders. Phishing that spoofs allowed domains goes straight to the inbox.';
+  if (id.startsWith('DEFENDER-ANTISPAM') || id.startsWith('DEFENDER-PRIORITY')) return 'Allow-listing sender domains overrides every downstream filter for those senders. Phishing that spoofs allowed domains goes straight to the inbox.';
+  if (id.startsWith('DEFENDER-SECURESCORE') || id.startsWith('DEFENDER-SECUREMON')) return 'Microsoft Secure Score is the tenant-level telemetry roll-up of identity, device, and email posture. Without monitoring + a baseline target, posture drift is invisible until an incident.';
+  if (id.startsWith('DEFENDER-CLOUDAPPS') || id.startsWith('DEFENDER-CFGDETECT') || id.startsWith('DEFENDER-VULNSCAN') || id.startsWith('DEFENDER-REALTIMESCAN')) return 'Defender for Cloud Apps and the broader detection surface flag risky OAuth grants, anomalous downloads, and unmanaged SaaS use. Disabled signals = blind spots in the SOC playbook.';
+
+  // ---- Exchange Online (specific before generic) ----
+  if (id.startsWith('EXO-FORWARD')) return 'External auto-forwarding is the #1 BEC exfiltration channel — attackers create inbox rules that silently forward financial mail. Block at the org level via Outbound Spam policy AND mailbox transport rules.';
+  if (id.startsWith('EXO-AUDIT')) return 'Mailbox auditing is the forensic record for compromise investigations. Without it, post-incident questions like "did the attacker read these messages?" cannot be answered.';
+  if (id.startsWith('EXO-DKIM')) return 'DKIM signs outbound mail with a tenant-controlled key so receiving servers can verify the sender domain. Without DKIM, your domain is easier to spoof and downstream DMARC enforcement is incomplete.';
+  if (id.startsWith('EXO-OWA')) return 'Outlook on the Web settings (attachment policy, calendar publishing, default app permissions) are the primary surface for accidental data sharing and add-in pivots.';
+  if (id.startsWith('EXO-DIRECTSEND')) return 'Direct send and SMTP relay let internal devices submit mail without auth. Misconfigured relays are routinely abused by attackers as a tenant-trusted spoofing vector.';
+  if (id.startsWith('EXO-AUTH')) return 'Modern authentication (OAuth) is required for MFA-enforced clients. Tenants with basic-auth still enabled have a parallel auth path that ignores Conditional Access.';
+  if (id.startsWith('EXO-EXTTAG')) return 'External email tagging adds a visible "[External]" prefix that helps users spot impersonation. The org-level toggle is one PowerShell command and reduces phishing click-through measurably.';
+  if (id.startsWith('EXO-MAILTIPS')) return 'MailTips warn senders about external recipients, large distribution lists, and out-of-office. Disabled MailTips = lost cheap phishing-and-mistake guardrail.';
+  if (id.startsWith('EXO-TRANSPORT')) return 'Transport rules implement org-wide mail policy (block exfiltration patterns, encrypt outbound, route quarantine). Misconfigured rules can silently bypass downstream filters or break legitimate flow.';
+  if (id.startsWith('EXO-ANTIPHISH')) return 'Anti-phishing protection at the Exchange tier (impersonation users + domains, mailbox intelligence) catches BEC patterns that pure content filters miss. Targeted-user protection covers high-value mailboxes (CFO, payroll).';
+  if (id.startsWith('EXO-SHAREDMBX') || id.startsWith('EXO-HIDDEN')) return 'Shared mailboxes that allow direct sign-in inherit MFA exemptions (no human owner). Disable AccountEnabled or require Conditional Access; hidden mailboxes still surface in Outlook autocomplete.';
+  if (id.startsWith('EXO-CONNFILTER') || id.startsWith('EXO-LOCKBOX') || id.startsWith('EXO-ADDINS') || id.startsWith('EXO-MALWARE') || id.startsWith('EXO-ANTISPAM') || id.startsWith('EXO-SHARING')) return 'Exchange-tier connectors, add-ins, and content-filter overrides are the surface where a single misconfig opens a parallel path that bypasses every other control. Audit them whenever the broader EXO policy changes.';
   if (id.startsWith('EXO-')) return 'Exchange Online config controls mail flow, connectors, and transport rules. Misconfig here bypasses every downstream security filter.';
-  if (id.startsWith('ENTRA-APPS-002') || id.startsWith('APPS-002')) return 'Apps with Directory.ReadWrite.All or DeviceManagement write permissions can modify users, groups, and devices tenant-wide. Grant only read-only equivalents and monitor.';
-  if (id.startsWith('ENTRA-STALEADMIN')) return 'Stale admins that never sign in still hold privileges. Any compromise of their credentials yields Global Admin access with low telemetry.';
-  if (id.startsWith('CA-EXCLUSION')) return 'Admins excluded from Conditional Access bypass MFA and device-compliance enforcement. Only break-glass accounts should be excluded.';
-  if (id.startsWith('ENTRA-BREAKGLASS')) return 'Break-glass accounts are the last-resort recovery mechanism. They must be cloud-only, CA-excluded, phishing-resistant, and quarterly-tested.';
-  if (id.startsWith('INTUNE-') || id.startsWith('ENTRA-DEVICE')) return 'Device management policy controls what can join, stay, and execute. Missing config profiles and encryption leaves endpoints unmanaged.';
-  if (id.startsWith('SHAREPOINT-') || id.startsWith('20B-')) return 'External sharing, anonymous links, and guest access in SharePoint and OneDrive are common data-leakage paths. Lock down sharing scope and link expiration.';
+
+  // ---- DNS (mail authentication) ----
+  if (id.startsWith('DNS-SPF')) return 'SPF lists the IP addresses authorised to send mail for your domain. Missing or misconfigured SPF lets attackers spoof your domain freely; the record must end with -all (hard fail), not ~all.';
+  if (id.startsWith('DNS-DKIM')) return 'DKIM signs outbound mail with a tenant-controlled key so receivers can verify the sender domain cryptographically. Required for downstream DMARC enforcement.';
+  if (id.startsWith('DNS-DMARC')) return 'DMARC tells receiving servers what to do with mail that fails SPF/DKIM (reject, quarantine, or report). p=none provides telemetry only; reject/quarantine is the enforcement target.';
+  if (id.startsWith('DNS-MX') || id.startsWith('DNS-')) return 'DNS misconfiguration is invisible to most M365 admins but shapes the entire inbound mail-security posture. SPF/DKIM/DMARC + MX hygiene is the foundation that Defender for Office sits on top of.';
+
+  // ---- SharePoint / OneDrive (registry uses SPO- prefix, not SHAREPOINT-) ----
+  if (id.startsWith('SPO-SHARING') || id.startsWith('SPO-B2B')) return 'External sharing scope (Anyone, New & Existing Guests, Existing, Only People) controls how SharePoint links can be shared. Anyone-links are public URLs that are forwarded, indexed, and outlive employment.';
+  if (id.startsWith('SPO-SITE') || id.startsWith('SPO-ACCESS') || id.startsWith('SPO-CUIACCESS')) return 'Per-site sharing settings can override tenant defaults — a single team site with permissive sharing leaks data even when the tenant default is strict.';
+  if (id.startsWith('SPO-SCRIPT') || id.startsWith('SPO-SWAY')) return 'Custom scripts on modern sites enable XSS and OAuth-phishing pivots. Disable except where SharePoint Designer or PnP customisation is genuinely required.';
+  if (id.startsWith('SPO-SYNC') || id.startsWith('SPO-OD')) return 'OneDrive sync clients can pull tenant data to unmanaged personal devices. Domain-restricted sync + block sync from non-Entra-joined devices closes the easiest exfiltration path.';
+  if (id.startsWith('SPO-MALWARE') || id.startsWith('SPO-VERSIONING') || id.startsWith('SPO-LOOP') || id.startsWith('SPO-AUTH') || id.startsWith('SPO-SESSION')) return 'SharePoint platform settings (malware quarantine, version retention, Loop component access, idle timeout) are the secondary controls that catch what the primary sharing policy misses.';
+  if (id.startsWith('SPO-') || id.startsWith('SHAREPOINT-') || id.startsWith('20B-')) return 'External sharing, anonymous links, and guest access in SharePoint and OneDrive are common data-leakage paths. Lock down sharing scope and link expiration.';
+
+  // ---- Teams ----
+  if (id.startsWith('TEAMS-EXTACCESS') || id.startsWith('TEAMS-GUEST')) return 'Teams external access and federation control who can chat, call, and share meeting links with your users. Defaults are permissive — restrict to allow-listed domains for high-risk org units.';
+  if (id.startsWith('TEAMS-MEETING')) return 'Meeting policies (lobby, recording, anonymous join) control privacy and recording sprawl. Anonymous join + auto-recording is a compliance landmine in regulated industries.';
+  if (id.startsWith('TEAMS-APPS') || id.startsWith('TEAMS-CLIENT') || id.startsWith('TEAMS-INFO') || id.startsWith('TEAMS-REPORTING')) return 'Teams app permissions and client/reporting policies govern third-party app access and audit data. Default app permissions allow broader access than most orgs realise.';
   if (id.startsWith('TEAMS-')) return 'Teams external access and federation settings control who can message your users and share meeting links. Defaults often allow broader access than required.';
-  if (id.startsWith('DLP-') || id.startsWith('COMPLIANCE-')) return 'Data Loss Prevention and retention policies protect regulated content (PII, PCI, PHI). Missing policies = undetected exfiltration and legal-hold gaps.';
+
+  // ---- Intune ----
+  if (id.startsWith('INTUNE-COMPLIANCE')) return 'Compliance policies define what "managed and healthy" means (encrypted, patched, AV-active, jailbreak-free). Without a compliance policy, Conditional Access has no signal to block unhealthy devices.';
+  if (id.startsWith('INTUNE-ENCRYPTION') || id.startsWith('INTUNE-MOBILEENCRYPT')) return 'Disk encryption (BitLocker / FileVault / Android Work Profile) is the last line of defence for lost or stolen devices. Required for HIPAA, PCI, and most state breach laws.';
+  if (id.startsWith('INTUNE-ENROLL') || id.startsWith('INTUNE-AUTODISC') || id.startsWith('INTUNE-ENROLLMENT')) return 'Enrollment restrictions and auto-discovery (Apple ADE, Windows Autopilot) determine which devices can join. Permissive enrollment lets personal-device sprawl pull tenant data into MDM.';
+  if (id.startsWith('INTUNE-UPDATE') || id.startsWith('INTUNE-SECURITY')) return 'Update rings and security baselines are the patch + hardening control surface. Stale rings keep known-CVE devices in production, often invisibly.';
+  if (id.startsWith('INTUNE-')) return 'Device management policy controls what can join, stay, and execute. Missing config profiles and encryption leaves endpoints unmanaged.';
+
+  // ---- Compliance / Purview ----
+  if (id.startsWith('COMPLIANCE-AUDIT') || id.startsWith('PURVIEW-AUDIT')) return 'Unified audit log is the single forensic source for tenant-wide actions (sign-ins, sharing, role changes, mailbox reads). Disabled or unconfigured audit means incident investigations rely on best-guess inference.';
+  if (id.startsWith('COMPLIANCE-ALERTPOLICY')) return 'Alert policies are the proactive detection layer — they fire on suspicious activity (impossible travel, mass downloads, elevation of privilege). Default policies cover ~30% of high-value scenarios; tenant-specific tuning is required.';
+  if (id.startsWith('COMPLIANCE-DLP') || id.startsWith('DLP-')) return 'Data Loss Prevention prevents regulated content (PII, PCI, PHI) from leaving the tenant via email, SharePoint, or endpoints. Missing or report-only DLP is undetected exfiltration.';
+  if (id.startsWith('PURVIEW-RETENTION') || id.startsWith('COMPLIANCE-LABELS') || id.startsWith('COMPLIANCE-COMMS')) return 'Retention labels and policies meet legal-hold + records-management obligations. Without explicit retention, deleted mail and chat are gone — including data subject to litigation hold.';
+  if (id.startsWith('COMPLIANCE-')) return 'Data Loss Prevention and retention policies protect regulated content (PII, PCI, PHI). Missing policies = undetected exfiltration and legal-hold gaps.';
+
+  // ---- Forms ----
+  if (id.startsWith('FORMS-PHISHING') || id.startsWith('FORMS-CONFIG')) return 'Microsoft Forms is a recurring phishing surface — attackers create credential-harvest forms branded as Microsoft. The phishing-detection toggle + external-share restrictions are the org-level mitigations.';
+
+  // ---- Power BI / Fabric ----
+  if (id.startsWith('POWERBI-GUEST') || id.startsWith('PBI-GUEST') || id.startsWith('PBI-INVITE')) return 'Guest access in Power BI inherits tenant settings, but Power-BI-specific guest sharing toggles (publish to web, external sharing) override at the workspace level. Routinely permissive by default.';
+  if (id.startsWith('POWERBI-SHARING') || id.startsWith('PBI-SHARING') || id.startsWith('PBI-LINK') || id.startsWith('PBI-PUBLISH') || id.startsWith('PBI-CONTENT')) return 'Power BI external sharing and "publish to web" expose datasets to anonymous URLs. Publish-to-web in particular is a one-click public-internet exposure with no expiration.';
+  if (id.startsWith('POWERBI-AUTH') || id.startsWith('PBI-AUTH') || id.startsWith('PBI-API') || id.startsWith('PBI-PROFILE')) return 'Power BI service principal + API access controls govern automation accounts. Tenant-wide API enablement without per-app scoping grants broad service-account power.';
+  if (id.startsWith('POWERBI-INFOPROT') || id.startsWith('PBI-LABELS') || id.startsWith('PBI-SCRIPT')) return 'Sensitivity labels in Power BI flow with exported reports (PDF, Excel) so DLP applies downstream. Without labels, exported tenant data leaves Microsoft 365 Information Protection coverage.';
+  if (id.startsWith('POWERBI-SERVICEPRINCIPAL') || id.startsWith('PBI-TENANT')) return 'Service principal access to Power BI bypasses interactive sign-in controls. Required for embedded scenarios but should be scoped to specific workspaces, not tenant-wide.';
+  if (id.startsWith('POWERBI-') || id.startsWith('PBI-')) return 'Power BI tenant settings govern data flow between workspaces and external recipients. Defaults skew toward sharing — most orgs need to tighten guest, publish, and export controls.';
+
   return 'This control maps to hardening guidance across CIS, NIST, and CMMC. Closing this gap reduces attack surface and tightens compliance posture.';
 }
 
