@@ -1,0 +1,33 @@
+{
+  "frameworkId": "iso-27002",
+  "label": "ISO/IEC 27002:2022",
+  "version": "2022",
+  "description": "Implementation guidance for the Annex A controls listed in ISO/IEC 27001:2022. Provides best-practice recommendations for HOW to implement information security controls. Companion document to 27001 — auditors look here for the technical-detail expectations rather than for ISMS process requirements.",
+  "homepageUrl": "https://www.iso.org/standard/75652.html",
+  "css": "fw-iso",
+  "totalControls": 93,
+  "registryKey": "iso-27002",
+  "csvColumn": "Iso27002",
+  "displayOrder": 5,
+  "scoring": {
+    "method": "control-coverage",
+    "themes": {
+      "5": { "label": "Organizational Controls", "controlCount": 37 },
+      "6": { "label": "People Controls", "controlCount": 8 },
+      "7": { "label": "Physical Controls", "controlCount": 14 },
+      "8": { "label": "Technological Controls", "controlCount": 34 }
+    }
+  },
+  "colors": {
+    "light": { "background": "#f0fdf4", "color": "#14532d" },
+    "dark":  { "background": "#14532D", "color": "#86EFAC" }
+  },
+  "groupBy": "section-prefix",
+  "groupLabel": "section",
+  "groups": {
+    "5": "Organizational Controls (A.5)",
+    "6": "People Controls (A.6)",
+    "7": "Physical Controls (A.7)",
+    "8": "Technological Controls (A.8)"
+  }
+}
