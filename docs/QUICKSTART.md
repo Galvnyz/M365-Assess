@@ -80,7 +80,7 @@ Results land in a timestamped folder (e.g., `M365-Assessment/Assessment_20260330
 | `*_Assessment-Report.html` | React-based HTML report with all findings |
 | `*_Compliance-Matrix.xlsx` | Framework compliance matrix (requires ImportExcel) |
 
-Open the HTML report in any browser to review findings.
+Open the HTML report in any browser to review findings. The report is interactive — see [`REPORT-USER-GUIDE.md`](REPORT-USER-GUIDE.md) for the walkthrough of edit mode, Finalize, theme toggles, sortable/resizable columns, and other controls.
 
 ## What You Need
 
