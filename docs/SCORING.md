@@ -89,6 +89,34 @@ A single composite would force these conversations to reverse-engineer the weigh
 
 ---
 
+## Framework taxonomy strategies (#751, #845)
+
+Each supported framework's expanded panel groups checks by the framework's own native control families/sections — CIS sections, CMMC families, NIST CSF functions, ISO clauses, etc. — rather than by M365-Assess internal domains. Every framework JSON in `src/M365-Assess/controls/frameworks/*.json` either declares a `groupBy` strategy + `groups` map, OR declares `taxonomyDecision: "domain-fallback"` with a documented reason.
+
+The strategy mapping is enumerated in `GROUP_EXTRACTORS` (`src/M365-Assess/assets/report-app.jsx`):
+
+| Strategy | Frameworks using it | controlId shape | Group key |
+|---|---|---|---|
+| `section-prefix` | CIS M365 v6, CIS Controls v8, PCI DSS v4 | `5.2.2.5` | leading numeric section (`5`) |
+| `family-letter-prefix` | CMMC, NIST 800-53 r5, FedRAMP r5 | `AC.L2-3.1.1`, `AC-1` | letter family (`AC`) |
+| `dot-prefix` | NIST CSF 2.0 | `ID.AM-1`, `PR.AC-1` | function letters before first dot (`ID`) |
+| `iso-clause-prefix` | ISO 27001, ISO 27002 | `A.5.1.1` | leading clause (`A.5`) |
+| `hipaa-section` | HIPAA Security Rule | `164.308(a)(1)(ii)(A)` | subsection number (`308`) |
+| `soc2-tsc-prefix` | SOC 2 Trust Services Criteria | `CC1.1`, `PI1.2-POF1` | TSC category — longest-match wins (`CC`/`PI` before `P`) |
+| `essential-eight-practice` | ASD Essential Eight | `ML1-P3` | practice number (`3`) — maturity level intentionally NOT the grouping |
+| `scuba-service` | CISA SCUBA | `MS.AAD.1.1v1` | service prefix (`MS.AAD`) |
+
+### Deliberate fallbacks (no native taxonomy)
+
+| Framework | Reason |
+|---|---|
+| **MITRE ATT&CK** | Technique IDs (`T1078.004`) don't encode tactics. M365-Assess checks map to 100+ techniques each (semicolon-separated controlIds), and a single technique can serve multiple tactics — any per-check tactic grouping is ambiguous. To enable: ship a technique → tactic lookup table + decide how to handle multi-tactic techniques. |
+| **DISA STIG** | Rule IDs (`V-NNNNNN`) are opaque — no product, category, or severity encoded. CAT-I/II/III severity exists in the published XCCDF XML but is not carried per-check in the registry's framework mapping. To enable: extend the registry to carry per-check STIG severity, or maintain a rule-ID → category lookup. |
+
+Both are flagged in their JSON via `taxonomyDecision: "domain-fallback"` + `taxonomyReason`. The Pester regression in `tests/Behavior/Framework-Taxonomy.Tests.ps1` enforces that every framework declares either `groupBy` or `taxonomyDecision: "domain-fallback"` so a future maintainer can't silently drop a taxonomy without an explicit decision.
+
+---
+
 ## Where the math lives
 
 - `src/M365-Assess/assets/report-app.jsx` -- the `SCORING_VIEWS` array near the top defines each view; helpers `computeSecurityRiskScore`, `computeComplianceReadinessScore`, `computeLicenseAdjustedScore`, `getQuickWins`, `getRequiresLicensing`, `getManualValidation` are pure functions of `FINDINGS`.

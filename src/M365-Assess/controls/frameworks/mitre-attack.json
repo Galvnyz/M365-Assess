@@ -67,5 +67,7 @@
     }
   },
   "controlIdFormat": "T{number}[.{sub}]",
-  "note": "totalControls reflects techniques referenced in CheckID mappings, not the full ATT&CK matrix (356+ techniques)."
+  "note": "totalControls reflects techniques referenced in CheckID mappings, not the full ATT&CK matrix (356+ techniques).",
+  "taxonomyDecision": "domain-fallback",
+  "taxonomyReason": "ATT&CK technique IDs (e.g. T1078.004) do not encode tactics. Many M365-Assess checks map to 100+ techniques each (semicolon-separated), and a single technique can serve multiple tactics — making any per-check tactic grouping ambiguous. Native taxonomy intentionally not provided; report falls back to M365-Assess domain breakdown. To enable: ship a technique → tactic lookup table and decide how to handle multi-tactic techniques. See issue #845 + docs/SCORING.md."
 }
