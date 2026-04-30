@@ -8,7 +8,7 @@ The owner-tenant-only allowlist approach was fragile by design — Microsoft add
 
 `src/M365-Assess/controls/microsoft-first-party-appids.json` — a data file with two parallel allowlists:
 
-1. **`appIds[]`** — 13 well-known Microsoft first-party AppIds (Connect-MgGraph SP, Office, SharePoint Online, Exchange Online, Teams, Az PowerShell, Azure CLI, etc.). AppId is the most stable identifier — Microsoft can move an app to a new owner tenant but the AppId stays.
+1. **`appIds[]`** — ~280 known Microsoft first-party AppIds. v1.1 mirrors the canonical Microsoft-published list at [Power Platform admin · Commonly used Microsoft first-party services and portal apps](https://learn.microsoft.com/en-us/power-platform/admin/apps-to-allow) plus a handful of empirically-discovered additions (Connect-MgGraph SP, EXO REST API PowerShell, Graph PowerShell SDK alt — these are SDK-tooling apps not on the Power Platform admin list).
 2. **`ownerTenantIds[]`** — 4 known Microsoft publisher tenant GUIDs (Microsoft Services, Microsoft Corp, the narrower Defender-flavored one, Microsoft Graph Command Line Tools).
 
 ENTRA-ENTAPP-020 now matches **AppId first, owner-tenant second**. Any SP whose AppId is on the list passes through immediately; remaining SPs fall through to the owner-tenant check; only those failing both are candidates for the "impersonator" check (which then applies the displayName-pattern match against `microsoft *`).
@@ -19,15 +19,15 @@ ENTRA-ENTAPP-020 now matches **AppId first, owner-tenant second**. Any SP whose 
 - **AppId list is data, not code.** A new false-positive surfaces → add the AppId to the JSON → ship a patch. No collector code changes needed.
 - **Cross-customer parity.** The AppId list is the same in every tenant. The owner-tenant of an app is also the same in every tenant — but only IF Microsoft hasn't migrated the app since we last observed it.
 
-## Source provenance for the v1 list
+## Source provenance
 
-| Source | Confidence |
-|---|---|
-| Empirical observation in lab tenants (M365-Assess 2026-04-29) | High — confirmed live |
-| Microsoft Graph PowerShell SDK source (well-known constants for SPs and resources) | High — Microsoft-published constants |
-| Community-maintained Microsoft 365 Application IDs lists (e.g., AAD Internals, Roadtools, MSAL constants) | Medium — community curation, kept current by security researchers |
+| Source | Confidence | Coverage |
+|---|---|---|
+| **Microsoft Learn — Power Platform admin docs (`apps-to-allow`)** | High — Microsoft-published, Microsoft-maintained | Bulk of the list (~250 entries) |
+| Empirical observation in lab tenants (M365-Assess 2026-04-29) | High — confirmed live | Discovered the dedicated Microsoft Graph CLI Tools owner tenant + Connect-MgGraph SP |
+| Microsoft Graph PowerShell SDK source (well-known constants for SPs and resources) | High — Microsoft-published constants | Connect-MgGraph SP, EXO REST API PowerShell SP, Graph resource AppId |
 
-The JSON's `calibrationStatus: "preliminary"` flag is honest: this is a starter set, not a comprehensive enumeration. Microsoft maintains many more first-party apps than 13. Expand the list as new false-positives surface in customer reports.
+The JSON's `calibrationStatus: "v1.1 — extended from Microsoft canonical list"` flag is honest: this mirrors Microsoft's own published list as of 2026-04-30. Microsoft updates that page periodically — quarterly re-sync recommended.
 
 ## What this PR does NOT do
 
