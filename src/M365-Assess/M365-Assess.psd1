@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.10.0'
+    ModuleVersion     = '2.10.1'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -242,7 +242,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.10.0 - Polish & Audits milestone (10 of 10 issues closed). ADDED: Per-prefix narrative content for the report finding-detail "Why It Matters" callout (#854) -- expanded coverage from ~22 to ~70 prefix families across SPO/EXO/DNS/DEFENDER/ENTRA/CA/INTUNE/COMPLIANCE/TEAMS/POWERBI/PBI/FORMS, fixing a long-standing prefix-bug where every SharePoint finding fell through to the generic fallback. New docs/research/narrative-content-sources.md captures source-authority by family (Microsoft Learn, CIS M365 v6.0.1, NIST 800-63B/800-53 r5, CISA, M3AAWG). ISO 27001 vs 27002 mapping audit (#858) -- new docs/research/iso-27001-vs-27002-audit.md plus iso-27002.json framework definition; identifies the upstream SCF conflation (1020/1020 identical mappings) and recommends the upstream-fix path. New tests/Behavior/Iso-27001-27002-Mapping-Audit.Tests.ps1 with skip-until-upstream divergence assertion + always-runs informational stats. CIS M365 v6.0.1 mapping audit (#848) -- new docs/research/cis-m365-v6-audit.md catalogs section-9 POWERBI-/PBI- merge-artifact duplicates (11/11 clusters) + section-4 EXO-* labeling anomaly; recommends upstream SCF fixes. New tests/Behavior/Cis-M365-v6-Mapping-Audit.Tests.ps1 with skip-until-upstream regressions + informational stats. Follow-up tracker #871 monitors when upstream lands. CHANGED: None (audit-flavored milestone). FIXED: SPO-/SHAREPOINT- prefix matching bug in whyItMatters() (#854) -- chain checked SHAREPOINT- but registry uses SPO-; every SharePoint finding hit the generic fallback. Now matches correctly with sub-prefix specificity (SHARING/B2B, SITE, SCRIPT/SWAY, SYNC/OD, etc.).'
+            ReleaseNotes = 'v2.10.1 - Patch release: four collector data-quality bugs surfaced during v2.10.0 live test. FIXED: ENTRA-ENTAPP-020 (#880) extended Microsoft first-party allowlist from 1 to 4 known owner-tenant GUIDs (Services + Corp + ea8a4392 + Graph CLI Tools cdc5aeea); Connect-MgGraph SP no longer false-positives as impersonator. ENTRA-PIM-* license detection (#881) now uses AAD_PREMIUM_P2 service plan ID instead of hardcoded SkuIds; catches every E5 variant including Developer Pack, education, government, partner SKUs. ENTRA-ADMIN-003 break-glass detail (#882) now lists matched UPNs + [DISABLED] tag in BOTH Pass and Review branches (was only in Pass), with displayName fallback when UPN is null. SPO-AUTH-001 Legacy Auth Protocols (#883) typo fix: now reads isLegacyAuthProtocolsEnabled (Graph v1.0 property uses is- prefix); previously falsely reported "Not available via API" Review in every tenant. PLUS: also includes #845 closeout (MITRE/STIG taxonomy decision documented + regression test) shipped via #877. Sets the stage for v2.11.0 -- Data Quality & Accuracy milestone covering broader collector audit work surfaced this sprint.'
         }
     }
 }

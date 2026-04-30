@@ -4,6 +4,17 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.10.1] - 2026-04-30
+
+Patch release. Four collector data-quality bugs surfaced during v2.10.0 live-test, plus the #845 taxonomy closeout. No breaking API changes. Sets the stage for v2.11.0 — Data Quality & Accuracy milestone, which covers the broader collector audit work surfaced this sprint (#878 SSPR semantic mismatch, #879 remediation-path rot, #886 PIM logic bug, #888 break-glass duplication, #884 Review/Unknown/Skipped audit).
+
+### Fixed
+- **ENTRA-ENTAPP-020 false-positives Microsoft Graph PowerShell SDK (#880)** — the Microsoft first-party allowlist filtered SPs by a single owner-tenant GUID; Microsoft actually publishes first-party apps from at least 4 tenants. Empirical observation surfaced both Microsoft Corp (`72f988bf...`) and the dedicated Graph Command Line Tools tenant (`cdc5aeea-15c5-4db6-b079-fcadd2505dc2`) as sources missing from the allowlist. Now covers all 4 known owner tenants. Long-term hardening (AppId-based allowlist) tracked in #887
+- **ENTRA-PIM-* false-negatives on E5 Developer + other E5 variants (#881)** — license detection matched against a hardcoded list of 4 SkuIds, missing Developer Pack, education tiers, government tiers, and partner SKUs. Switched to detection by `AAD_PREMIUM_P2` service plan ID (`eec0eb4f-6444-4f95-aba0-50c24d67f998`), which all P2-bundling SKUs resolve to. Same pattern `Get-TeamsSecurityConfig.ps1` already uses for Teams licensing
+- **ENTRA-ADMIN-003 break-glass detail hides matched UPNs in Review state (#882)** — listed account names in the Pass branch but dropped them in the Review branch, the more important branch for the user. Both branches now list matched UPNs + `[DISABLED]` tag, with displayName fallback when UPN is null
+- **SPO-AUTH-001 always returned "Not available via API" Review (#883)** — `Get-SharePointSecurityConfig.ps1` read `$spoSettings['legacyAuthProtocolsEnabled']` but Graph v1.0 `sharepointSettings` exposes the property as `isLegacyAuthProtocolsEnabled` (boolean properties on this resource use the `is-` prefix). Wrong key returned `$null` in every tenant; the check now correctly reports Pass/Fail
+- **MITRE / STIG taxonomy decision documented + regression-guarded (#845, shipped via #877)** — every framework JSON in `controls/frameworks/` now declares either native taxonomy (`groupBy` + groups map) OR an explicit fallback decision (`taxonomyDecision: "domain-fallback"` + `taxonomyReason`). New Pester regression in `tests/Behavior/Framework-Taxonomy.Tests.ps1` enforces it. 13 frameworks have native taxonomy; MITRE ATT&CK + STIG declared deliberate domain-fallback (technique IDs / opaque rule IDs don't carry tactic / category metadata)
+
 ## [2.10.0] - 2026-04-29
 
 The **Polish & Audits** milestone — 10 of 10 issues closed. Three audit-flavored research artifacts (ISO 27001/27002, CIS M365 v6.0.1, per-control narrative content) plus the long-standing SharePoint prefix-bug in the report's "Why It Matters" renderer. No breaking API changes.
