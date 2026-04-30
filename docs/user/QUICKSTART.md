@@ -20,32 +20,21 @@ pwsh --version
 
 > **No winget?** Download the MSI installer from the [PowerShell releases page](https://github.com/PowerShell/PowerShell/releases).
 
-## 2. Install Required Modules
+## 2. Install M365-Assess + Required Modules
 
-Open **pwsh** (not the old `powershell.exe`) and install the assessment dependencies:
+Open **pwsh** (not the old `powershell.exe`).
 
-```powershell
-# Required
-Install-Module Microsoft.Graph -Scope CurrentUser
-Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser
+### A. Core install (always)
 
-# Optional (enables XLSX compliance matrix export)
-Install-Module ImportExcel -Scope CurrentUser
-```
-
-> **Why EXO 3.7.1 specifically?** Versions 3.8.0+ have an MSAL library conflict with the Microsoft Graph SDK. The assessment's pre-flight check will detect and offer to fix this automatically.
-
-## 3. Get the Module
-
-### Option A: PSGallery (recommended)
+#### PSGallery — recommended
 
 ```powershell
 Install-Module M365-Assess -Scope CurrentUser
 ```
 
-Dependencies (Graph SDK, etc.) are declared in the manifest and installed automatically.
+This auto-resolves the 8 Microsoft.Graph.* sub-modules the assessment actually uses (Authentication, Applications, DeviceManagement, Identity.DirectoryManagement, Identity.SignIns, Reports, Security, Users) at version 2.25.0+. **You do NOT need to install the full `Microsoft.Graph` meta-module** — that's 30+ sub-modules and several minutes of install time you don't need.
 
-### Option B: Clone from source
+#### From source
 
 ```powershell
 git clone https://github.com/Galvnyz/M365-Assess.git
@@ -58,7 +47,58 @@ Import-Module ./src/M365-Assess
 > Get-ChildItem -Path .\M365-Assess -Recurse -Filter *.ps1 | Unblock-File
 > ```
 
-## 4. Run Your First Assessment
+For from-source, install only the 8 required Graph sub-modules manually:
+
+```powershell
+$gphSubModules = 'Authentication', 'Applications', 'DeviceManagement',
+                 'Identity.DirectoryManagement', 'Identity.SignIns',
+                 'Reports', 'Security', 'Users'
+foreach ($m in $gphSubModules) {
+    Install-Module "Microsoft.Graph.$m" -MinimumVersion 2.25.0 -Scope CurrentUser
+}
+```
+
+### B. Required for full coverage (default `-Section All`)
+
+These don't auto-resolve via the manifest — install them separately:
+
+```powershell
+# Exchange Online — version-pinned (3.8+ has MSAL conflict with Graph SDK)
+Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser
+
+# Power BI — needed for the PowerBI section
+Install-Module MicrosoftPowerBIMgmt -Scope CurrentUser
+
+# SharePoint Online — needed for SPO-specific checks (SOC2 confidentiality, etc.)
+Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
+```
+
+> **Why EXO 3.7.1 exactly?** Versions 3.8.0+ have an MSAL library conflict with the Microsoft Graph SDK. The assessment's pre-flight check detects this and offers to fix it automatically. Tracked at issue #231.
+
+### C. Optional / opt-in
+
+```powershell
+# XLSX compliance matrix export
+Install-Module ImportExcel -Scope CurrentUser
+
+# Active Directory section (requires Windows + RSAT or domain controller access)
+Add-WindowsCapability -Online -Name 'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0'
+```
+
+### D. Verify your install
+
+```powershell
+Get-Module M365-Assess -ListAvailable | Format-Table Name, Version
+# Expected: Name = M365-Assess, Version = 2.10.1+ (or current)
+
+Get-Module Microsoft.Graph.Authentication, ExchangeOnlineManagement, MicrosoftPowerBIMgmt -ListAvailable |
+    Format-Table Name, Version
+# Each should show a version row
+```
+
+If any expected module is missing, re-run the corresponding install from §A or §B above. See [`../reference/COMPATIBILITY.md`](../reference/COMPATIBILITY.md) for the full version-pin matrix.
+
+## 3. Run Your First Assessment
 
 ```powershell
 # Interactive wizard -- walks you through section selection, auth, and output
@@ -70,7 +110,7 @@ Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com'
 
 A browser window will open for authentication. Sign in with a **Global Reader** or **Global Administrator** account.
 
-## 5. Review the Output
+## 4. Review the Output
 
 Results land in a timestamped folder (e.g., `M365-Assessment/Assessment_20260330_143000_contoso/`):
 
