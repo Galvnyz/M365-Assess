@@ -86,17 +86,24 @@ $hasPimLicense = $false
 try {
     $skus = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
     $skuList = if ($skus -and $skus['value']) { @($skus['value']) } else { @() }
-    $pimSkuIds = @(
-        'eec0eb4f-6444-4f95-aba0-50c24d67f998'  # AAD_PREMIUM_P2
-        '06ebc4ee-1bb5-47dd-8120-11324bc54e06'  # SPE_E5 (M365 E5)
-        'b05e124f-c7cc-45a0-a6aa-8cf78c946968'  # EMSPREMIUM (EMS E5)
-        'cd2925a3-5076-4233-8931-638a8c94f773'  # SPE_E5_NOPSTNCONF
-    )
+    # Detect by service plan, not SKU GUID (#881). Microsoft adds new SKU
+    # bundles constantly (developer packs, education, government, partner-
+    # resold, regional variants); they all resolve to the same service plans.
+    # AAD_PREMIUM_P2 = eec0eb4f-6444-4f95-aba0-50c24d67f998 is the atomic
+    # feature unit that grants PIM access — checking SKU GUIDs misses every
+    # E5 variant outside the mainline commercial bundle. Same pattern used in
+    # Get-TeamsSecurityConfig.ps1 for Teams licensing detection.
+    $aadP2ServicePlanId = 'eec0eb4f-6444-4f95-aba0-50c24d67f998'
     foreach ($sku in $skuList) {
-        if ($sku['skuId'] -in $pimSkuIds -and $sku['capabilityStatus'] -eq 'Enabled') {
-            $hasPimLicense = $true
-            break
+        if ($sku['capabilityStatus'] -ne 'Enabled') { continue }
+        $servicePlans = if ($sku['servicePlans']) { @($sku['servicePlans']) } else { @() }
+        foreach ($sp in $servicePlans) {
+            if ($sp['servicePlanId'] -eq $aadP2ServicePlanId -and $sp['provisioningStatus'] -eq 'Success') {
+                $hasPimLicense = $true
+                break
+            }
         }
+        if ($hasPimLicense) { break }
     }
 }
 catch {
@@ -498,12 +505,28 @@ try {
     $bgCount = $breakGlassAccounts.Count
     $enabledBg = @($breakGlassAccounts | Where-Object { $_['accountEnabled'] -eq $true })
 
+    # #882: list matched accounts + enabled state in BOTH Pass and Review
+    # branches so the user can see WHICH accounts the heuristic matched, not
+    # just how many. Previous code only listed names in the Pass branch.
+    # Fallback to displayName when userPrincipalName is null/empty (the
+    # heuristic matches on displayName too, so we may catch accounts whose
+    # UPN field comes back empty in the Graph response — guests in some
+    # states, service-account-shaped users, etc.).
+    $bgDetail = if ($bgCount -gt 0) {
+        ($breakGlassAccounts | ForEach-Object {
+            $identifier = if ($_['userPrincipalName']) { $_['userPrincipalName'] }
+                          elseif ($_['displayName'])    { $_['displayName'] }
+                          else                          { '<unnamed>' }
+            $enabledTag = if ($_['accountEnabled'] -eq $true) { '' } else { ' [DISABLED]' }
+            "$identifier$enabledTag"
+        }) -join ', '
+    } else { 'none' }
+
     if ($bgCount -ge 2 -and $enabledBg.Count -ge 2) {
-        $bgNames = ($breakGlassAccounts | ForEach-Object { $_['displayName'] }) -join ', '
         $settingParams = @{
             Category         = 'Admin Accounts'
             Setting          = 'Emergency Access Accounts'
-            CurrentValue     = "$bgCount found ($bgNames)"
+            CurrentValue     = "$bgCount found: $bgDetail"
             RecommendedValue = '2+ enabled break-glass accounts'
             Status           = 'Pass'
             CheckId          = 'ENTRA-ADMIN-003'
@@ -515,7 +538,7 @@ try {
         $settingParams = @{
             Category         = 'Admin Accounts'
             Setting          = 'Emergency Access Accounts'
-            CurrentValue     = "$bgCount detected (heuristic: name contains break glass/emergency)"
+            CurrentValue     = "$bgCount detected (heuristic: name contains break glass/emergency): $bgDetail"
             RecommendedValue = '2+ enabled break-glass accounts'
             Status           = 'Review'
             CheckId          = 'ENTRA-ADMIN-003'

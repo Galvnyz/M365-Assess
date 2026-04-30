@@ -31,7 +31,7 @@ Describe 'Get-SharePointSecurityConfig' {
                         emailAttestationRequired        = $true
                         emailAttestationReAuthDays      = 15
                         defaultLinkPermission           = 'view'
-                        legacyAuthProtocolsEnabled      = $false
+                        isLegacyAuthProtocolsEnabled      = $false
                     }
                 }
                 '*/v1.0/policies/activityBasedTimeoutPolicies' {
@@ -223,7 +223,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                         }
                     }
                     '*/v1.0/policies/activityBasedTimeoutPolicies' {
@@ -362,7 +362,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                         }
                     }
                     '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @() } }
@@ -392,7 +392,7 @@ Describe 'Get-SharePointSecurityConfig' {
                 emailAttestationRequired        = $true
                 emailAttestationReAuthDays      = 15
                 defaultLinkPermission           = 'view'
-                legacyAuthProtocolsEnabled      = $false
+                isLegacyAuthProtocolsEnabled      = $false
             }
 
             $sharingCapabilityGuest = $spoSettingsGuest['sharingCapability']
@@ -508,7 +508,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                         }
                     }
                     '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
@@ -635,7 +635,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                         }
                     }
                     '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
@@ -691,7 +691,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                         }
                     }
                     '*/v1.0/policies/activityBasedTimeoutPolicies' { return @{ value = @(@{ id = 'p1'; displayName = 'Idle' }) } }
@@ -748,7 +748,7 @@ Describe 'Get-SharePointSecurityConfig' {
                             emailAttestationRequired        = $true
                             emailAttestationReAuthDays      = 15
                             defaultLinkPermission           = 'view'
-                            legacyAuthProtocolsEnabled      = $false
+                            isLegacyAuthProtocolsEnabled      = $false
                             majorVersionLimit              = 200
                         }
                     }

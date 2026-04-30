@@ -521,7 +521,11 @@ catch {
 # 13. Legacy Authentication Protocols (CIS 7.2.1)
 # ------------------------------------------------------------------
 try {
-    $legacyAuth = $spoSettings['legacyAuthProtocolsEnabled']
+    # #883: Graph v1.0 /admin/sharepoint/settings uses isLegacyAuthProtocolsEnabled
+    # (boolean property names use the 'is' prefix). Without it the lookup returns
+    # $null and the check always falls through to a Review with "Not available
+    # via API" — this property IS available via the v1.0 endpoint.
+    $legacyAuth = $spoSettings['isLegacyAuthProtocolsEnabled']
     if ($null -ne $legacyAuth) {
         $settingParams = @{
             Category         = 'Authentication'
