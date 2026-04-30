@@ -139,35 +139,85 @@ else {
     }
 }
 
-if ($pimAvailable -and $pimRoleAssignments -and $pimRoleAssignments['value']) {
-    # CIS 5.3.1 -- PIM manages privileged roles (no permanent GA assignments)
-    $gaRoleTemplateId = '62e90394-69f5-4237-9190-012177145e10'
-    $permanentGA = @($pimRoleAssignments['value'] | Where-Object {
-        $_['roleDefinitionId'] -eq $gaRoleTemplateId -and
-        $_['assignmentType'] -eq 'Activated' -and
-        (-not $_['endDateTime'] -or $_['endDateTime'] -eq '9999-12-31T23:59:59Z')
-    })
+# CIS 5.3.1 -- PIM manages privileged roles (no permanent GA assignments).
+# #886: previous logic queried only /beta/roleManagement/directory/roleAssignment
+# ScheduleInstances which exposes ONLY PIM-managed assignments. Tenants with
+# direct (non-PIM) Global Admin assignments showed empty results and were
+# falsely Pass'd. The fix: enumerate directoryRoles members (all GAs, direct
+# OR PIM-elevated) and subtract those whose access is JIT-eligible-only via
+# PIM. Anything left = permanent / standing access.
+$gaRoleTemplateId = '62e90394-69f5-4237-9190-012177145e10'
+$gaMembers = @()
+$gaQueryFailed = $false
+try {
+    $gaRoleResp = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles(roleTemplateId='$gaRoleTemplateId')/members" -ErrorAction Stop
+    $gaMembers = if ($gaRoleResp -and $gaRoleResp['value']) { @($gaRoleResp['value']) } else { @() }
+}
+catch {
+    Write-Warning "Could not query Global Admin role members: $($_.Exception.Message)"
+    $gaQueryFailed = $true
+}
+
+$eligiblePrincipalIds = @()
+if ($hasPimLicense -and -not $gaQueryFailed) {
+    # PIM-eligible-only assignments don't equal permanent. Subtract these from
+    # the GA members to find direct/standing assignments. PIM-active-with-end-
+    # date assignments DO appear in directoryRoles members during their active
+    # window, but their principal is also in eligibility schedule — so they're
+    # correctly classified as eligible (not permanent).
+    try {
+        $eligibleResp = Invoke-MgGraphRequest -Method GET -Uri "/beta/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$gaRoleTemplateId'" -ErrorAction Stop
+        if ($eligibleResp -and $eligibleResp['value']) {
+            $eligiblePrincipalIds = @($eligibleResp['value'] | ForEach-Object { $_['principalId'] })
+        }
+    }
+    catch {
+        Write-Warning "Could not query PIM eligibility schedule for GA role: $($_.Exception.Message)"
+    }
+}
+
+if ($gaQueryFailed) {
+    $settingParams = @{
+        Category         = 'Privileged Identity Management'
+        Setting          = 'PIM Manages Privileged Roles'
+        CurrentValue     = 'Could not enumerate Global Admin members'
+        RecommendedValue = 'No permanent Global Admin assignments'
+        Status           = 'Unknown'
+        CheckId          = 'ENTRA-PIM-001'
+        Remediation      = 'Verify RoleManagement.Read.Directory consent. Then re-run the assessment.'
+    }
+    Add-Setting @settingParams
+}
+else {
+    $permanentGAs = @($gaMembers | Where-Object { $_['id'] -notin $eligiblePrincipalIds })
+    $permanentCount = $permanentGAs.Count
+
+    $detail = if ($permanentCount -eq 0) {
+        if ($hasPimLicense) { 'No permanent GA assignments (all GAs are PIM-eligible)' }
+        else                { 'No Global Administrator members detected' }
+    }
+    else {
+        $upns = ($permanentGAs | ForEach-Object {
+            if ($_['userPrincipalName']) { $_['userPrincipalName'] }
+            elseif ($_['displayName'])    { $_['displayName'] }
+            else                          { $_['id'] }
+        } | Select-Object -First 5) -join ', '
+        $more = if ($permanentCount -gt 5) { " (+$($permanentCount - 5) more)" } else { '' }
+        if ($hasPimLicense) {
+            "$permanentCount permanent (non-PIM-eligible) GA assignment(s): $upns$more"
+        } else {
+            "$permanentCount Global Admin(s) — PIM not licensed so all are permanent: $upns$more"
+        }
+    }
 
     $settingParams = @{
         Category         = 'Privileged Identity Management'
         Setting          = 'PIM Manages Privileged Roles'
-        CurrentValue     = $(if ($permanentGA.Count -eq 0) { 'No permanent GA assignments' } else { "$($permanentGA.Count) permanent GA assignment(s) found" })
-        RecommendedValue = 'No permanent Global Admin assignments'
-        Status           = $(if ($permanentGA.Count -eq 0) { 'Pass' } else { 'Fail' })
+        CurrentValue     = $detail
+        RecommendedValue = 'No permanent Global Admin assignments (all GAs PIM-eligible only)'
+        Status           = $(if ($permanentCount -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-PIM-001'
-        Remediation      = 'Entra admin center > Identity Governance > Privileged Identity Management > Microsoft Entra roles > Global Administrator > Remove permanent active assignments. Use eligible assignments with time-bound activation.'
-    }
-    Add-Setting @settingParams
-}
-elseif (-not $pimAvailable) {
-    $settingParams = @{
-        Category         = 'Privileged Identity Management'
-        Setting          = 'PIM Manages Privileged Roles'
-        CurrentValue     = $script:pimMessage
-        RecommendedValue = 'PIM enabled for all privileged roles'
-        Status           = 'Review'
-        CheckId          = 'ENTRA-PIM-001'
-        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Enable PIM at Entra admin center > Identity Governance > Privileged Identity Management.'
+        Remediation      = 'Entra admin center > Identity Governance > Privileged Identity Management > Microsoft Entra roles > Global Administrator > Remove permanent active assignments. Use eligible assignments with time-bound activation. Requires Entra ID P2 (included in M365 E5).'
     }
     Add-Setting @settingParams
 }
