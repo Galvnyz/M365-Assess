@@ -1,0 +1,155 @@
+// Realistic M365-Assess findings for the finding-detail explorations.
+// Shape mirrors the live REPORT_DATA contract: checkId, setting, section, domain,
+// severity, status, current, recommended, remediation, frameworks[], fwMeta{},
+// references[], evidence{...}, intentDesign, lane, effort.
+//
+// Three findings span the dominant content patterns:
+//   1. ENTRA-MFA-001  — boolean toggle, simple current/recommended, multi-fw
+//   2. DEFENDER-SAFELINKS-002 — policy with multiple sub-settings, structured evidence
+//   3. CA-EXCLUSION-001 — list-shaped evidence (excluded users), workflow-heavy
+
+window.MOCK_FINDINGS = [
+  {
+    checkId: 'ENTRA-MFA-001',
+    setting: 'Phishing-resistant MFA required for all Global Admins',
+    section: 'Authentication methods policy',
+    domain: 'Identity & MFA',
+    severity: 'critical',
+    status: 'Fail',
+    lane: 'now',
+    effort: 'small',
+    intentDesign: false,
+    current: 'SMS + Voice + Authenticator app (push) enabled for admin role-assignable group',
+    recommended: 'FIDO2 security key OR Windows Hello for Business OR certificate-based authentication only. Disable SMS, Voice, Email OTP for admins.',
+    remediation: 'Open Entra admin center → Protection → Authentication methods → Policies. For each phishable method (SMS, Voice, Email OTP), set Target → Exclude group → "Admins (role-assignable)". Run: Update-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId Sms -ExcludeTargets @(@{Id="<admin-group-id>"; TargetType="group"}).',
+    frameworks: ['cis-m365-v6', 'nist-800-53', 'cmmc', 'iso-27001', 'nist-csf'],
+    fwMeta: {
+      'cis-m365-v6':  { controlId: '1.1.1', profiles: ['E3-L1', 'E5-L1'] },
+      'nist-800-53':  { controlId: 'IA-2(1), IA-2(11)', profiles: ['Mod', 'High'] },
+      'cmmc':         { controlId: 'IA.L2-3.5.3', profiles: ['L2', 'L3'] },
+      'iso-27001':    { controlId: 'A.8.5', profiles: [] },
+      'nist-csf':     { controlId: 'PR.AA-03', profiles: [] },
+    },
+    references: [
+      { title: 'CISA — Implementing Phishing-Resistant MFA', url: 'https://www.cisa.gov/sites/default/files/publications/fact-sheet-implementing-phishing-resistant-mfa-508c.pdf' },
+      { title: 'Microsoft — Authentication methods policy', url: 'https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods-manage' },
+    ],
+    evidence: {
+      observedValue: 'SMS=enabled, Voice=enabled, MicrosoftAuthenticator=enabled (push+passwordless), Fido2=disabled, WindowsHelloForBusiness=disabled, X509Certificate=disabled',
+      expectedValue: 'Fido2=enabled OR WindowsHelloForBusiness=enabled OR X509Certificate=enabled; SMS, Voice, Email disabled for admin-assignable role group',
+      evidenceSource: 'Graph: GET /policies/authenticationMethodsPolicy',
+      evidenceTimestamp: '2026-04-26T14:32:08Z',
+      collectionMethod: 'graph-readonly',
+      permissionRequired: 'Policy.Read.All',
+      confidence: 1.0,
+      raw: '{"id":"authenticationMethodsPolicy","authenticationMethodConfigurations":[{"id":"Sms","state":"enabled","includeTargets":[{"targetType":"group","id":"all_users"}]},{"id":"Voice","state":"enabled","includeTargets":[{"targetType":"group","id":"all_users"}]},{"id":"Fido2","state":"disabled"}]}',
+    },
+    affectedObjects: { kind: 'admins', count: 7, sample: ['ceo@contoso.com', 'cto@contoso.com', 'gadmin1@contoso.com', '+ 4 more'] },
+    history: [
+      { date: '2026-01-12', status: 'Fail', note: 'Initial baseline' },
+      { date: '2026-02-08', status: 'Fail', note: 'No change' },
+      { date: '2026-04-26', status: 'Fail', note: 'Currently failing' },
+    ],
+    mitre: ['T1078.004 — Cloud Accounts', 'T1556.006 — Modify Auth Process: MFA'],
+    relatedFindings: ['ENTRA-CLOUDADMIN-003', 'CA-EXCLUSION-001', 'ENTRA-BREAKGLASS-002'],
+    owner: null,
+    ticket: null,
+  },
+
+  {
+    checkId: 'DEFENDER-SAFELINKS-002',
+    setting: 'Safe Links policy enabled for Office apps and Teams',
+    section: 'Defender for Office 365 — Safe Links',
+    domain: 'Email Security',
+    severity: 'high',
+    status: 'Warn',
+    lane: 'soon',
+    effort: 'small',
+    intentDesign: false,
+    current: 'Safe Links Email policy: ON. Office apps: OFF. Teams: OFF. Track user clicks: ON. Allow click-through: ON.',
+    recommended: 'Enable Safe Links across Email + Office apps + Teams. Disable click-through on the original URL. Track user clicks. Apply to all recipients.',
+    remediation: 'Microsoft 365 Defender → Email & collaboration → Policies & rules → Safe Links → Edit "Default" policy. Toggle "Office 365 apps" and "Teams" to ON. Uncheck "Let users click through to original URL". Run: Set-SafeLinksPolicy -Identity "Default" -EnableSafeLinksForOffice $true -EnableSafeLinksForTeams $true -AllowClickThrough $false -TrackClicks $true.',
+    frameworks: ['cis-m365-v6', 'nist-800-53', 'iso-27001'],
+    fwMeta: {
+      'cis-m365-v6':  { controlId: '2.1.1', profiles: ['E5-L1'] },
+      'nist-800-53':  { controlId: 'SC-44, SI-8', profiles: ['Mod'] },
+      'iso-27001':    { controlId: 'A.8.7', profiles: [] },
+    },
+    references: [
+      { title: 'Microsoft — Safe Links recommended settings', url: 'https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365' },
+    ],
+    evidence: {
+      observedValue: 'EnableSafeLinksForEmail=true, EnableSafeLinksForOffice=false, EnableSafeLinksForTeams=false, AllowClickThrough=true, TrackClicks=true',
+      expectedValue: 'EnableSafeLinksForEmail=true, EnableSafeLinksForOffice=true, EnableSafeLinksForTeams=true, AllowClickThrough=false, TrackClicks=true',
+      evidenceSource: 'Exchange Online: Get-SafeLinksPolicy "Default"',
+      evidenceTimestamp: '2026-04-26T14:34:51Z',
+      collectionMethod: 'exchange-online-powershell',
+      permissionRequired: 'Security Administrator',
+      confidence: 1.0,
+    },
+    affectedObjects: { kind: 'users', count: 1247, sample: ['All licensed users'] },
+    history: [
+      { date: '2026-01-12', status: 'Fail', note: 'Initial baseline — all off' },
+      { date: '2026-03-04', status: 'Warn', note: 'Email enabled' },
+      { date: '2026-04-26', status: 'Warn', note: 'Office + Teams still off' },
+    ],
+    mitre: ['T1566.002 — Spearphishing Link'],
+    relatedFindings: ['DEFENDER-SAFEATTACH-001', 'DEFENDER-ANTIPHISH-002'],
+    owner: 'Security ops',
+    ticket: { system: 'Jira', id: 'SEC-1421', status: 'In progress' },
+  },
+
+  {
+    checkId: 'CA-EXCLUSION-001',
+    setting: 'Conditional Access — admin role exclusions from MFA policy',
+    section: 'Conditional Access policies',
+    domain: 'Identity & MFA',
+    severity: 'critical',
+    status: 'Fail',
+    lane: 'now',
+    effort: 'medium',
+    intentDesign: false,
+    current: '4 directory roles excluded from "Require MFA for admins" CA policy: Global Administrator (1 user), Privileged Role Administrator (2 users), Helpdesk Administrator (1 user). 1 emergency-access account included (expected).',
+    recommended: 'Only break-glass / emergency-access accounts may be excluded from MFA. All other admin accounts must be enforced. Document break-glass exclusions with quarterly review.',
+    remediation: 'Entra admin center → Protection → Conditional Access → Policies → "Require MFA for admins". Under Users → Exclude → remove all directory roles and individual admin user exclusions. Keep only the dedicated break-glass user(s). Verify with: Get-MgIdentityConditionalAccessPolicy -Filter "displayName eq \'Require MFA for admins\'" | Select-Object -ExpandProperty Conditions.',
+    frameworks: ['cis-m365-v6', 'nist-800-53', 'cmmc'],
+    fwMeta: {
+      'cis-m365-v6':  { controlId: '1.1.3', profiles: ['E3-L1'] },
+      'nist-800-53':  { controlId: 'AC-6(5), IA-2(1)', profiles: ['Mod', 'High'] },
+      'cmmc':         { controlId: 'AC.L2-3.1.5', profiles: ['L2'] },
+    },
+    references: [
+      { title: 'Microsoft — Securing privileged access', url: 'https://learn.microsoft.com/security/privileged-access-workstations/overview' },
+    ],
+    evidence: {
+      observedValue: '[{"role":"Global Administrator","userCount":1,"users":["legacy-svc@contoso.com"]},{"role":"Privileged Role Administrator","userCount":2,"users":["pra1@contoso.com","pra2@contoso.com"]},{"role":"Helpdesk Administrator","userCount":1,"users":["help@contoso.com"]}]',
+      expectedValue: 'Only documented break-glass accounts excluded. Maximum 2 break-glass accounts.',
+      evidenceSource: 'Graph: GET /identity/conditionalAccess/policies/{id}',
+      evidenceTimestamp: '2026-04-26T14:36:22Z',
+      collectionMethod: 'graph-readonly',
+      permissionRequired: 'Policy.Read.All',
+      confidence: 1.0,
+      limitations: 'Excluded users count derived from directory role membership at scan time; may drift if memberships change.',
+    },
+    affectedObjects: { kind: 'admins', count: 4, sample: ['legacy-svc@contoso.com', 'pra1@contoso.com', 'pra2@contoso.com', 'help@contoso.com'] },
+    history: [
+      { date: '2026-01-12', status: 'Fail', note: '6 exclusions' },
+      { date: '2026-03-04', status: 'Fail', note: '5 exclusions (1 removed)' },
+      { date: '2026-04-26', status: 'Fail', note: '4 exclusions remain' },
+    ],
+    mitre: ['T1078.004 — Cloud Accounts', 'T1098 — Account Manipulation'],
+    relatedFindings: ['ENTRA-MFA-001', 'ENTRA-BREAKGLASS-002', 'ENTRA-PIM-001'],
+    owner: 'Identity team',
+    ticket: null,
+  },
+];
+
+window.MOCK_FRAMEWORK_NAMES = {
+  'cis-m365-v6':  'CIS M365 v6',
+  'nist-800-53':  'NIST 800-53',
+  'cmmc':         'CMMC 2.0',
+  'iso-27001':    'ISO 27001',
+  'nist-csf':     'NIST CSF',
+  'pci-dss':      'PCI-DSS',
+  'hipaa':        'HIPAA',
+};

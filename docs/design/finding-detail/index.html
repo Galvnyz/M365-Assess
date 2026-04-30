@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="neon" data-mode="dark" data-density="compact">
+<head>
+<meta charset="UTF-8"/>
+<title>Finding Detail — Handoff</title>
+<link rel="stylesheet" href="report-themes.css"/>
+<link rel="stylesheet" href="report-shell.css"/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+  body { background: #0a0616; }
+  .dc-artboard-inner { background: var(--bg); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="mock-findings.js"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="fd-host.jsx"></script>
+<script type="text/babel" src="direction-d.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+function Frame({ tag, title, blurb, model, children }) {
+  return (
+    <div className="dir-frame">
+      <div className="dir-note">
+        <span className="dir-tag">{tag}</span>
+        <div style={{flex:1}}>
+          <b>{title}</b> — {blurb}
+          {model && <div style={{marginTop:6, fontSize:11.5, color:'var(--muted)', fontFamily:'var(--font-mono)'}}>
+            <b style={{color:'var(--accent-text)'}}>Schema:</b> {model}
+          </div>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Canvas() {
+  const F = window.MOCK_FINDINGS;
+  return (
+    <DesignCanvas
+      title="Finding detail — handoff design"
+      subtitle="The recommended pattern for the expanded finding row, shown rendering three real M365-Assess findings (boolean toggle, multi-setting policy, list-shaped evidence). Built for handoff to Claude Code: every section maps to a discrete data field on the finding object.">
+
+      <DCSection id="d" title="Hybrid finding-detail row">
+        <DCArtboard id="d-1" label="ENTRA-MFA-001 — boolean toggle" width={1180} height={920}>
+          <Frame
+            tag="Handoff"
+            title="Finding detail — full schema"
+            model="{ ...claim, evidence: typed, lane, effort, owner, ticket, history[], affectedObjects, riskNarrative, remediation: { portal, ps, verify }, frameworks, fwMeta, mitre, relatedFindings, references }"
+            blurb="State strip (lane · effort · affected · owner · ticket) → risk narrative with MITRE tags → typed observed/expected/delta with sample chips → tabbed action block (Portal procedure · PowerShell · Verify) → side rail (mappings · trend · related · learn-more) → collapsible provenance footer (source · timestamp · confidence · permission · raw evidence). The simplest finding shape — a single boolean control.">
+            <FdHost finding={F[0]}><DirectionD finding={F[0]}/></FdHost>
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="d-2" label="DEFENDER-SAFELINKS-002 — multi-setting policy + Jira ticket" width={1180} height={920}>
+          <Frame
+            tag="Handoff"
+            title="Finding detail — populated workflow state"
+            blurb="Same component rendering a Warn-status finding with an owner and an in-progress Jira ticket. Trend pips show movement (Fail → Warn → Warn) — the signal a stand-up needs. Typed observed/expected reads as a clean delta of three boolean flips.">
+            <FdHost finding={F[1]}><DirectionD finding={F[1]}/></FdHost>
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="d-3" label="CA-EXCLUSION-001 — list-shaped evidence + related cluster" width={1180} height={960}>
+          <Frame
+            tag="Handoff"
+            title="Finding detail — list-shaped evidence"
+            blurb="List-shaped evidence (4 excluded roles) lives natively in the typed observed/expected table; sample chips show the affected admins. The 'Limitations' note appears in the expanded provenance footer. Related findings card surfaces the identity-hardening cluster.">
+            <FdHost finding={F[2]}><DirectionD finding={F[2]}/></FdHost>
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+    </DesignCanvas>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Canvas/>);
+</script>
+</body>
+</html>

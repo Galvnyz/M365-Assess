@@ -1,0 +1,708 @@
+/* Finding-detail explorations — local styles, layered on report-shell.css */
+
+/* Direction frame chrome (mirrors framework-redesign) */
+.dir-frame {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px; height: 100%; box-sizing: border-box;
+  background: var(--bg);
+}
+.dir-note {
+  font-size: 12px; line-height: 1.55; color: var(--text-soft);
+  padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+}
+.dir-note b { color: var(--text); }
+.dir-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-border);
+  flex-shrink: 0;
+}
+
+/* The fake "table row + expanded panel" container that hosts each direction */
+.fd-host {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fd-host-row {
+  display: grid; grid-template-columns: 90px 1fr 180px 100px 110px 28px;
+  gap: 12px; align-items: center;
+  padding: 12px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); cursor: default;
+}
+.fd-host-row .t { font-weight: 600; font-size: 13.5px; color: var(--text); }
+.fd-host-row .sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.fd-host-row .caret { color: var(--accent); transform: rotate(90deg); }
+
+/* ============================================================ */
+/* Direction A — Diagnosis-first */
+/* ============================================================ */
+.fd-a {
+  padding: 16px 18px 18px;
+  background: var(--subtle);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.fd-a .fda-banner {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 14px; align-items: center;
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--danger) 8%, transparent);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 8px 8px 0;
+}
+.fda-banner .impact-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--danger) 18%, transparent);
+  color: var(--danger-text);
+  font-weight: 700;
+}
+.fda-banner .impact-text { font-size: 13px; line-height: 1.5; color: var(--text); }
+.fda-banner .impact-text b { color: var(--danger-text); }
+.fda-banner .impact-meta {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  font-size: 11px; color: var(--muted);
+}
+.fda-banner .impact-mitre {
+  display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
+}
+.fda-banner .impact-mitre code {
+  font-family: var(--font-mono); font-size: 10.5px;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--surface2); color: var(--text-soft);
+  border: 1px solid var(--border);
+}
+.fd-a .fda-diff {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch;
+  grid-column: 1 / -1;
+}
+.fda-diff-cell {
+  padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.fda-diff-cell.current  { border-left: 3px solid var(--danger); }
+.fda-diff-cell.target { border-left: 3px solid var(--success); }
+.fda-diff-cell .label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fda-diff-cell.current .label { color: var(--danger-text); }
+.fda-diff-cell.target .label { color: var(--success-text); }
+.fda-diff-cell .val {
+  font-family: var(--font-mono); font-size: 12px;
+  line-height: 1.55; color: var(--text); word-break: break-word;
+}
+.fda-diff-arrow {
+  align-self: center; color: var(--muted);
+  font-family: var(--font-mono); font-size: 18px;
+}
+.fd-a .fda-fix {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+}
+.fda-fix-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.fda-fix-tab {
+  padding: 9px 14px; font-size: 12px; font-weight: 600;
+  color: var(--text-soft); background: transparent;
+  border: 0; cursor: pointer; position: relative;
+  border-right: 1px solid var(--border);
+}
+.fda-fix-tab.active { color: var(--accent-text); background: var(--surface); }
+.fda-fix-tab.active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--accent);
+}
+.fda-fix-tab .count {
+  margin-left: 6px; font-size: 10px;
+  background: var(--chip); padding: 1px 6px; border-radius: 999px;
+  color: var(--muted);
+}
+.fda-fix-body { padding: 12px 14px; }
+.fda-fix-body p { margin: 0 0 8px 0; font-size: 13px; line-height: 1.55; color: var(--text); }
+.fda-fix-body pre {
+  margin: 6px 0 0 0; padding: 10px 12px;
+  background: #0c1226; border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border));
+  border-radius: 6px;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+  color: #c4d2ff; white-space: pre-wrap; word-break: break-word;
+  position: relative;
+}
+.fda-fix-body .copy-btn {
+  position: absolute; top: 6px; right: 6px;
+  padding: 3px 8px; font-size: 10px; font-weight: 600;
+  background: rgba(155,135,245,0.18); color: #c4b5fd;
+  border: 1px solid rgba(155,135,245,0.35); border-radius: 4px;
+  cursor: pointer;
+}
+.fd-a .fda-meta {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.fda-meta-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+}
+.fda-meta-card .label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.fda-fw-grid { display: flex; flex-direction: column; gap: 4px; }
+.fda-fw-row {
+  display: grid; grid-template-columns: 92px 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 4px 0; font-size: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+.fda-fw-row:last-child { border-bottom: 0; }
+.fda-fw-row .fw-name { color: var(--text-soft); font-weight: 500; }
+.fda-fw-row code {
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--text); background: var(--chip);
+  padding: 1px 6px; border-radius: 3px;
+}
+.fda-fw-row .levels { display: inline-flex; gap: 3px; }
+.fda-fw-row .lvl {
+  font-size: 9.5px; font-weight: 700; padding: 1px 5px;
+  border-radius: 3px; background: var(--accent-soft);
+  color: var(--accent-text); border: 1px solid var(--accent-border);
+}
+.fda-disclosure {
+  grid-column: 1 / -1;
+  font-size: 12px; color: var(--muted);
+}
+.fda-disclosure summary {
+  cursor: pointer; padding: 6px 0; font-weight: 600; color: var(--text-soft);
+  user-select: none;
+}
+
+/* ============================================================ */
+/* Direction B — Evidence-first */
+/* ============================================================ */
+.fd-b {
+  padding: 0;
+  background: var(--subtle);
+  border-top: 1px solid var(--border);
+}
+.fdb-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 360px;
+}
+.fdb-rail {
+  background: var(--surface2);
+  border-right: 1px solid var(--border);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  font-size: 12px;
+}
+.fdb-rail .stamp {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text);
+}
+.fdb-rail .stamp .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); flex-shrink: 0;
+}
+.fdb-kv {
+  display: grid; grid-template-columns: 96px 1fr;
+  gap: 6px 10px; font-size: 12px;
+  padding: 8px 10px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.fdb-kv dt { color: var(--muted); font-weight: 600; }
+.fdb-kv dd { margin: 0; color: var(--text); word-break: break-word; }
+.fdb-kv code {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text); background: var(--chip);
+  padding: 1px 5px; border-radius: 3px;
+}
+.fdb-confidence {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--text-soft);
+}
+.fdb-confidence .bar {
+  flex: 1; height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden;
+}
+.fdb-confidence .bar i {
+  display: block; height: 100%; background: var(--success); border-radius: 2px;
+}
+.fdb-rail-section {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+  margin: 4px 0 -2px 0;
+}
+
+.fdb-main {
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.fdb-claim {
+  font-size: 14px; line-height: 1.55; color: var(--text);
+  padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+.fdb-claim b { color: var(--accent-text); }
+
+.fdb-diff-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.fdb-diff-table th, .fdb-diff-table td {
+  padding: 8px 12px; text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.fdb-diff-table tr:last-child th, .fdb-diff-table tr:last-child td { border-bottom: 0; }
+.fdb-diff-table th {
+  width: 130px; color: var(--muted); font-weight: 600;
+  background: var(--surface2);
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+}
+.fdb-diff-table td.observed { font-family: var(--font-mono); color: var(--text); border-left: 3px solid var(--danger); }
+.fdb-diff-table td.expected { font-family: var(--font-mono); color: var(--text); border-left: 3px solid var(--success); }
+
+.fdb-block {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+}
+.fdb-block-head {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+.fdb-block p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text); }
+.fdb-block ol { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
+.fdb-block ol li { margin-bottom: 4px; }
+.fdb-block pre {
+  margin: 8px 0 0 0; padding: 10px 12px;
+  background: #0c1226; border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border));
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+  color: #c4d2ff; white-space: pre-wrap; word-break: break-word;
+}
+
+.fdb-raw {
+  font-size: 11.5px; color: var(--muted);
+}
+.fdb-raw summary {
+  cursor: pointer; font-weight: 600; color: var(--text-soft); padding: 4px 0;
+}
+.fdb-raw pre {
+  margin: 6px 0 0 0; padding: 10px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text);
+  white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto;
+}
+
+/* ============================================================ */
+/* Direction C — Workflow-first */
+/* ============================================================ */
+.fd-c {
+  padding: 0;
+  background: var(--subtle);
+}
+.fdc-strip {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 0; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.fdc-strip-cell {
+  padding: 10px 14px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.fdc-strip-cell:last-child { border-right: 0; }
+.fdc-strip-cell .label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fdc-strip-cell .val {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.fdc-strip-cell .val.warn { color: var(--warn-text); }
+.fdc-strip-cell .val.danger { color: var(--danger-text); }
+.fdc-strip-cell .val.muted { color: var(--muted); font-style: italic; font-weight: 500; }
+.fdc-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-border);
+  width: fit-content;
+}
+.fdc-pill.now { background: color-mix(in oklab, var(--danger) 14%, transparent); color: var(--danger-text); border-color: color-mix(in oklab, var(--danger) 35%, transparent); }
+.fdc-pill.next { background: color-mix(in oklab, var(--warn) 14%, transparent); color: var(--warn-text); border-color: color-mix(in oklab, var(--warn) 35%, transparent); }
+.fdc-pill.empty { background: transparent; color: var(--muted); border: 1px dashed var(--border); }
+
+.fdc-body {
+  display: grid; grid-template-columns: 1fr 280px;
+  gap: 14px; padding: 14px 16px;
+}
+.fdc-body-main { display: flex; flex-direction: column; gap: 12px; }
+
+.fdc-summary {
+  font-size: 13px; line-height: 1.55; color: var(--text);
+}
+.fdc-summary .what { display: block; margin-bottom: 6px; }
+.fdc-summary .why  { display: block; color: var(--text-soft); font-size: 12.5px; }
+
+.fdc-diff {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.fdc-diff-card {
+  padding: 8px 10px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  word-break: break-word;
+}
+.fdc-diff-card.current { border-left: 3px solid var(--danger); }
+.fdc-diff-card.target { border-left: 3px solid var(--success); }
+.fdc-diff-card .h {
+  font-family: var(--font-sans); font-size: 10px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); display: block; margin-bottom: 4px;
+}
+
+.fdc-actions {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+}
+.fdc-actions-head {
+  padding: 8px 12px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted);
+}
+.fdc-actions-head .toggle {
+  display: inline-flex; gap: 4px;
+}
+.fdc-actions-head .toggle button {
+  padding: 3px 9px; font-size: 10.5px; font-weight: 600;
+  background: var(--chip); color: var(--text-soft);
+  border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; letter-spacing: 0; text-transform: none;
+}
+.fdc-actions-head .toggle button.active {
+  background: var(--accent); color: var(--bg); border-color: var(--accent);
+}
+.fdc-actions-body { padding: 12px 14px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
+.fdc-actions-body p { margin: 0 0 8px 0; }
+.fdc-actions-body pre {
+  margin: 0; padding: 10px 12px;
+  background: #0c1226; border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border));
+  border-radius: 6px;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+  color: #c4d2ff; white-space: pre-wrap; word-break: break-word;
+}
+
+.fdc-side {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.fdc-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px;
+}
+.fdc-card .h {
+  font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.fdc-card .ownerRow {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text);
+}
+.fdc-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 60%, var(--success)));
+  color: var(--bg); display: grid; place-items: center;
+  font-size: 10px; font-weight: 700;
+}
+.fdc-card .assign {
+  display: inline-block; margin-top: 8px; font-size: 11.5px;
+  color: var(--accent-text); cursor: pointer; text-decoration: underline dotted;
+}
+
+.fdc-history {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.fdc-hist-row {
+  display: grid; grid-template-columns: 80px auto 1fr; gap: 8px;
+  align-items: baseline; font-size: 11.5px;
+}
+.fdc-hist-row .date { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.fdc-hist-row .pip {
+  width: 8px; height: 8px; border-radius: 50%; align-self: center;
+}
+.fdc-hist-row .pip.fail { background: var(--danger); }
+.fdc-hist-row .pip.warn { background: var(--warn); }
+.fdc-hist-row .pip.pass { background: var(--success); }
+.fdc-hist-row .note { color: var(--text-soft); }
+
+.fdc-fws {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fdc-fw-line {
+  display: grid; grid-template-columns: 92px 1fr;
+  gap: 8px; font-size: 11.5px; align-items: center;
+  padding: 3px 0; border-bottom: 1px dashed var(--border);
+}
+.fdc-fw-line:last-child { border-bottom: 0; }
+.fdc-fw-line .nm { color: var(--muted); }
+.fdc-fw-line code {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--chip); padding: 1px 5px; border-radius: 3px; color: var(--text);
+}
+.fdc-related {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fdc-related a {
+  font-size: 11.5px; color: var(--accent-text); text-decoration: none;
+}
+.fdc-related a:hover { text-decoration: underline; }
+
+.fdc-raw {
+  margin-top: 4px; font-size: 11px; color: var(--muted);
+}
+.fdc-raw summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+
+/* ============================================================ */
+/* Direction D — Hybrid (B + C + A) */
+/* ============================================================ */
+.fd-d {
+  background: var(--subtle);
+  display: flex; flex-direction: column;
+}
+.fdd-strip {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.fdd-strip-cell {
+  padding: 10px 14px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fdd-strip-cell:last-child { border-right: 0; }
+.fdd-strip-cell .label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fdd-strip-cell .val {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.fdd-strip-cell .val.warn   { color: var(--warn-text); }
+.fdd-strip-cell .val.danger { color: var(--danger-text); }
+.fdd-strip-cell .val.muted  { color: var(--muted); font-weight: 500; }
+.fdd-strip-cell .val.ownerRow { font-weight: 600; }
+
+.fdd-risk {
+  display: grid; grid-template-columns: 36px 1fr auto;
+  gap: 12px; padding: 12px 16px;
+  background: color-mix(in oklab, var(--danger) 7%, transparent);
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+}
+.fdd-risk-meta {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  min-width: 130px; max-width: 200px;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in oklab, var(--danger) 25%, var(--border));
+  align-self: stretch;
+  justify-content: flex-start;
+}
+.fdd-risk-meta-label {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fdd-risk-lede { color: var(--danger-text); font-weight: 700; }
+.fdd-risk-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: color-mix(in oklab, var(--danger) 22%, transparent);
+  color: var(--danger-text); font-weight: 700;
+  display: grid; place-items: center; align-self: start;
+}
+.fdd-risk-head {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px;
+}
+.fdd-risk-head.danger { color: var(--danger-text); }
+.fdd-risk-section + .fdd-risk-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in oklab, var(--danger) 25%, var(--border));
+}
+.fdd-risk-body p {
+  margin: 0; font-size: 13px; line-height: 1.55; color: var(--text);
+}
+.fdd-mitre {
+  display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
+}
+.fdd-mitre code {
+  font-family: var(--font-mono); font-size: 10.5px;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--surface); color: var(--text-soft);
+  border: 1px solid var(--border);
+}
+
+.fdd-grid {
+  display: grid; grid-template-columns: 1fr 300px;
+  gap: 14px; padding: 14px 16px;
+}
+.fdd-main { display: flex; flex-direction: column; gap: 12px; }
+.fdd-side { display: flex; flex-direction: column; gap: 10px; }
+
+.fdd-fw-line {
+  display: grid; grid-template-columns: 90px 1fr auto;
+  gap: 6px; align-items: center; font-size: 11.5px;
+  padding: 4px 0; border-bottom: 1px dashed var(--border);
+}
+.fdd-fw-line:last-child { border-bottom: 0; }
+.fdd-fw-line .nm { color: var(--muted); }
+.fdd-fw-line code {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--chip); padding: 1px 5px; border-radius: 3px; color: var(--text);
+}
+.fdd-fw-line .lvls { display: inline-flex; gap: 3px; }
+.fdd-fw-line .lvl {
+  font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-border);
+}
+
+.fdd-prov {
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  font-size: 11.5px; color: var(--text-soft);
+}
+.fdd-prov summary {
+  cursor: pointer; padding: 9px 16px;
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  user-select: none; list-style: none;
+}
+.fdd-prov summary::-webkit-details-marker { display: none; }
+.fdd-prov .prov-summary {
+  display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  flex: 1; min-width: 0;
+}
+.fdd-prov .prov-key {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fdd-prov .prov-sep { color: var(--border); }
+.fdd-prov code {
+  font-family: var(--font-mono); font-size: 10.5px;
+  background: var(--chip); padding: 1px 5px; border-radius: 3px; color: var(--text);
+}
+.fdd-prov .prov-toggle {
+  font-size: 11px; font-weight: 600; color: var(--accent-text);
+  white-space: nowrap; flex-shrink: 0;
+}
+.fdd-prov[open] .prov-toggle::after { content: ''; }
+.fdd-prov-body { padding: 0 16px 14px; }
+.fdd-limit {
+  margin: 0 0 8px 0; padding: 8px 10px; font-size: 12px;
+  background: color-mix(in oklab, var(--warn) 10%, transparent);
+  border-left: 3px solid var(--warn); border-radius: 0 6px 6px 0;
+  color: var(--text);
+}
+.fdd-limit b { color: var(--warn-text); }
+.fdd-prov-body pre {
+  margin: 0; padding: 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 200px; overflow: auto;
+}
+
+/* D — Finding claim */
+.fdd-claim {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 10px; align-items: baseline;
+  padding: 10px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  font-size: 13px; line-height: 1.5; color: var(--text);
+}
+.fdd-claim .kicker {
+  font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent-text);
+  white-space: nowrap;
+}
+.fdd-claim b { font-weight: 700; color: var(--text); }
+
+/* D — affected sample chips inside Delta row */
+.fdd-samples {
+  display: inline-flex; flex-wrap: wrap; gap: 4px;
+  margin-left: 8px; vertical-align: middle;
+}
+.fdd-sample {
+  font-family: var(--font-mono); font-size: 10.5px;
+  background: var(--chip); color: var(--text);
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.fdd-sample-more {
+  font-size: 10.5px; color: var(--muted); font-weight: 600;
+  align-self: center;
+}
+
+/* D — numbered remediation procedure */
+.fdd-procedure {
+  margin: 0; padding-left: 22px;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12.5px; line-height: 1.5; color: var(--text);
+}
+.fdd-procedure li::marker {
+  font-weight: 700; color: var(--accent-text);
+}
+
+/* D — confidence bar in provenance summary */
+.fdd-conf {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.fdd-conf-bar {
+  display: inline-block; width: 48px; height: 5px;
+  background: var(--chip); border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.fdd-conf-bar i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 70%, var(--ok) 30%));
+  border-radius: 2px;
+}
+.fdd-conf b { color: var(--text); font-size: 11.5px; }
+
+/* D — provenance meta strip (method, run id, tenant) */
+.fdd-prov-meta {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+}
+.fdd-prov-meta > div {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+}
+.fdd-prov-meta .k {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fdd-prov-meta .v {
+  font-size: 11.5px; color: var(--text); font-weight: 500;
+}
+.fdd-prov-meta code {
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--text); background: transparent; padding: 0;
+}
