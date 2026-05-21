@@ -167,6 +167,20 @@
 #>
 #Requires -Version 7.0
 
+# Self-bootstrap: load dependencies when run directly as a .ps1 (not via Import-Module).
+# When dot-sourced by M365-Assess.psm1, InvocationName is '.' and this block is skipped.
+if ($MyInvocation.InvocationName -ne '.') {
+    Get-ChildItem -Path "$PSScriptRoot\Orchestrator\*.ps1" | ForEach-Object { . $_.FullName }
+    . "$PSScriptRoot\Common\SecurityConfigHelper.ps1"
+    . "$PSScriptRoot\Common\Resolve-DnsRecord.ps1"
+    . "$PSScriptRoot\Common\Resolve-TenantIdentity.ps1"
+    . "$PSScriptRoot\Common\Export-M365Remediation.ps1"
+    . "$PSScriptRoot\Orchestrator\Compare-M365Baseline.ps1"
+    . "$PSScriptRoot\Setup\Grant-M365AssessConsent.ps1"
+    . "$PSScriptRoot\Setup\Save-M365ConnectionProfile.ps1"
+    . "$PSScriptRoot\Setup\Get-M365ConnectionProfile.ps1"
+}
+
 function Invoke-M365Assessment {
 [CmdletBinding(DefaultParameterSetName = 'Interactive')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', 'connectedServices',
