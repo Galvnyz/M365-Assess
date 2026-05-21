@@ -36,8 +36,9 @@ function Resolve-TenantIdentity {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)]
-        [string]$TenantIdInput,
+        [Parameter()]
+        [AllowEmptyString()]
+        [string]$TenantIdInput = '',
 
         [Parameter()]
         [string]$Environment = 'commercial'
