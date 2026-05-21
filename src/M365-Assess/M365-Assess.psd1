@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.10.1'
+    ModuleVersion     = '2.11.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -242,7 +242,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.10.1 - Patch release: four collector data-quality bugs surfaced during v2.10.0 live test. FIXED: ENTRA-ENTAPP-020 (#880) extended Microsoft first-party allowlist from 1 to 4 known owner-tenant GUIDs (Services + Corp + ea8a4392 + Graph CLI Tools cdc5aeea); Connect-MgGraph SP no longer false-positives as impersonator. ENTRA-PIM-* license detection (#881) now uses AAD_PREMIUM_P2 service plan ID instead of hardcoded SkuIds; catches every E5 variant including Developer Pack, education, government, partner SKUs. ENTRA-ADMIN-003 break-glass detail (#882) now lists matched UPNs + [DISABLED] tag in BOTH Pass and Review branches (was only in Pass), with displayName fallback when UPN is null. SPO-AUTH-001 Legacy Auth Protocols (#883) typo fix: now reads isLegacyAuthProtocolsEnabled (Graph v1.0 property uses is- prefix); previously falsely reported "Not available via API" Review in every tenant. PLUS: also includes #845 closeout (MITRE/STIG taxonomy decision documented + regression test) shipped via #877. Sets the stage for v2.11.0 -- Data Quality & Accuracy milestone covering broader collector audit work surfaced this sprint.'
+            ReleaseNotes = 'v2.11.0 - Data Quality & Accuracy milestone closeout. ADDED: Sequence column + filter chips on findings table (#898) make the table self-sufficient as a Now/Next/Later working surface; Copy-finding-as-markdown button (#901) for easy ticket/email handoff; truncated check-id with hover-tooltip (#900) tightens the finding-detail layout. RESEARCH ARTIFACTS: roadmap-vs-findings-table hybrid decision (#899) sets the v3.0 path for the Roadmap section; owner-ticket Phase 5 spec (#903) locks down v1/v2 split for the 7 open design questions; remediation-path-rot decision (#879) chooses MS Learn URLs over hardcoded admin-center breadcrumbs as the primary remediation surface. FIXED: ENTRA-SSPR-001 (#878) was reading the MFA Registration Campaign and labeling it as SSPR enablement; collector now emits Status=Review with manual-verify instruction (the legacy SSPR toggle is not exposed by Microsoft Graph). DATA: CheckID v3.4.0 registry sync brings 200+ control updates and HIPAA Subpart D + E (Breach Notification + Privacy Rule) coverage. DOCS: aggressive consolidation of 19 stub redirects (#905, #906, #907) and a full module install matrix in QUICKSTART (#910). Plus a new REPORT-USER-GUIDE.md (#897, #904) covering edit-mode + finalize + interactive panels.'
         }
     }
 }

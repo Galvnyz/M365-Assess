@@ -13,17 +13,17 @@ Get-ChildItem -Path 'src/M365-Assess' -Recurse -Filter '*.ps1' |
 
 | Status | Emissions | What it should mean |
 |---|---|---|
-| `Review` | 68 | Data was collected but a human needs to interpret the result. |
+| `Review` | 69 | Data was collected but a human needs to interpret the result. |
 | `Skipped` | 28 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
 | `Unknown` | 1 | Data could not be collected; this is different from "Skipped". |
-| **Total** | **97** | |
+| **Total** | **98** | |
 
 Per-collector breakdown:
 
 | Collector | Review | Skipped | Unknown |
 |---|---|---|---|
 | `Entra/EntraUserGroupChecks.ps1` | 0 | 22 | 0 |
-| `Entra/EntraPasswordAuthChecks.ps1` | 7 | 0 | 0 |
+| `Entra/EntraPasswordAuthChecks.ps1` | 8 | 0 | 0 |
 | `Entra/EntraAdminRoleChecks.ps1` | 5 | 0 | 1 |
 | `Collaboration/Get-SharePointSecurityConfig.ps1` | 4 | 0 | 0 |
 | `Exchange-Online/Get-DnsSecurityConfig.ps1` | 4 | 0 | 0 |
@@ -55,16 +55,17 @@ For each emission site, the question is one of three things:
 
 - **`EntraUserGroupChecks.ps1` Skipped emissions (22 sites)** — most are conditional on Graph permissions or specific service-plan licensing. Skipped is the correct status for those scenarios.
 - **EXO checks that depend on Connect-ExchangeOnline** — when EXO module isn't connected, checks Skip. Correct.
+- **ENTRA-SSPR-001** (#878, fixed this PR) — the legacy "Self service password reset enabled" toggle (None / Selected / All) lives in the Entra admin center under Password reset > Properties and is **not exposed by Microsoft Graph** as of the 2026-04 audit. The previous collector read `authenticationMethodsRegistrationCampaign` (the MFA Registration Campaign — a different control) and labeled it as SSPR. Now correctly emits Review with a manual-verify instruction.
 
 ### Triage pending (representative — not exhaustive)
 
-- `EntraPasswordAuthChecks.ps1` — 7 Review emissions; some may be the same shape as ENTRA-SSPR-001 (semantic mismatch with upstream registry name) — see #878.
+- `EntraPasswordAuthChecks.ps1` — 8 Review emissions (was 7; ENTRA-SSPR-001 added per #878 fix above).
 - `Exchange-Online/Get-DnsSecurityConfig.ps1` — 4 Review emissions; verify whether they're genuinely manual-validation or if a Graph endpoint would resolve them.
 - `Get-CASecurityConfig.ps1` — 2 Review emissions; given the CA admin-center reorg + #879 path rot, worth confirming the collector's data path.
 
 ## Lock-down regression
 
-`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (68 / 28 / 1 = 97 total). When a new emission is added the test fails, forcing the contributor to:
+`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 28 / 1 = 98 total). When a new emission is added the test fails, forcing the contributor to:
 
 1. Justify the new emission (genuine limitation? collector bug?)
 2. Update this doc to add the new site to the audit catalogue

@@ -433,6 +433,15 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
+.score-disclaimer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  font-style: italic;
+}
 
 /* KPI strip */
 .kpi-strip {
@@ -769,6 +778,26 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .findings-col-resize:hover {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
+/* #917: column drag-grip handle. Lives at the left of each header cell. */
+.findings-col-drag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 2px;
+  font-size: 10px;
+  letter-spacing: -1px;
+  color: var(--muted);
+  opacity: 0.4;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  transition: opacity .15s, color .15s;
+}
+.findings-col-drag:hover { opacity: 1; color: var(--text); }
+.findings-col-drag:active { cursor: grabbing; }
+.findings-col-head.col-dragging { opacity: 0.4; }
+.findings-col-head.col-drop-target {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 .finding-row {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
@@ -913,6 +942,15 @@ mark.search-hl {
   color: var(--muted);
   letter-spacing: -0.02em;
 }
+/* #900: truncate long controlId strings (MITRE T-codes can be 200+ chars).
+   Hover shows full value via the native title tooltip on the span. */
+.check-id-truncate {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .finding-title {
   min-width: 0;
@@ -1003,6 +1041,23 @@ mark.search-hl {
 .finding-detail.fdd {
   display: block;
   padding: 0;
+  position: relative;
+}
+/* #901: floating copy button in the top-right of the expanded detail panel */
+.fdd-copy-btn {
+  position: absolute;
+  top: 8px; right: 12px;
+  z-index: 2;
+  font-size: 11px; font-weight: 600;
+  padding: 4px 9px; border-radius: 4px;
+  background: var(--surface); color: var(--text-soft);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.fdd-copy-btn:hover {
+  background: var(--chip); color: var(--text);
 }
 .finding-detail.fdd .intent-callout { margin: 16px 16px 0 16px; }
 .finding-detail.fdd .fdd-legacy-block { padding: 0 16px; margin-top: 14px; }

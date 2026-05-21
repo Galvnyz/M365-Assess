@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Generates docs/PERMISSIONS.md from the orchestrator's section-to-scope map
+    Generates docs/reference/PERMISSIONS.md from the orchestrator's section-to-scope map
     and the consent-helper's permission definitions.
 .DESCRIPTION
     Reads two source-of-truth files:
@@ -10,23 +10,23 @@
         permissions, EXO RBAC role groups, Purview/Compliance directory roles)
 
     Inverts the per-permission annotations into a per-section view and emits
-    a markdown matrix at docs/PERMISSIONS.md. CI runs this with -Check to
+    a markdown matrix at docs/reference/PERMISSIONS.md. CI runs this with -Check to
     enforce that the doc never drifts from the source maps.
 
     If you change the section-to-scope map, re-run this script and commit the
-    regenerated docs/PERMISSIONS.md alongside the map change. CI will fail
+    regenerated docs/reference/PERMISSIONS.md alongside the map change. CI will fail
     the PR otherwise.
 .PARAMETER RepoRoot
     Repository root. Defaults to the parent of the script's directory.
 .PARAMETER OutputPath
-    Where to write the doc. Defaults to docs/PERMISSIONS.md under RepoRoot.
+    Where to write the doc. Defaults to docs/reference/PERMISSIONS.md under RepoRoot.
 .PARAMETER Check
     Compare existing OutputPath content against freshly-generated output.
     Exit 0 if they match, exit 1 with a diff summary if they don't.
     Used by CI to enforce the doc-stays-in-sync invariant.
 .EXAMPLE
     PS> ./scripts/Build-PermissionsMatrix.ps1
-    Regenerates docs/PERMISSIONS.md.
+    Regenerates docs/reference/PERMISSIONS.md.
 .EXAMPLE
     PS> ./scripts/Build-PermissionsMatrix.ps1 -Check
     Used by CI; exits 1 if the doc is out of sync.
@@ -44,7 +44,9 @@ param(
 )
 
 if (-not $OutputPath) {
-    $OutputPath = Join-Path -Path $RepoRoot -ChildPath 'docs/PERMISSIONS.md'
+    # docs/reference/PERMISSIONS.md moved to docs/reference/PERMISSIONS.md in #906 (docs
+    # consolidation). Updated default reflects the new canonical location.
+    $OutputPath = Join-Path -Path $RepoRoot -ChildPath 'docs/reference/PERMISSIONS.md'
 }
 
 # ------------------------------------------------------------------
@@ -221,7 +223,7 @@ foreach ($section in $allSections) {
 [void]$sb.AppendLine('pwsh -NoProfile -File ./scripts/Build-PermissionsMatrix.ps1')
 [void]$sb.AppendLine('```')
 [void]$sb.AppendLine()
-[void]$sb.AppendLine('Run this whenever you change the section-to-scope map (`AssessmentMaps.ps1`) or the permission definitions (`PermissionDefinitions.ps1`). Commit the regenerated `docs/PERMISSIONS.md` alongside the source change. CI runs the script with `-Check` and fails the PR if the doc is out of sync.')
+[void]$sb.AppendLine('Run this whenever you change the section-to-scope map (`AssessmentMaps.ps1`) or the permission definitions (`PermissionDefinitions.ps1`). Commit the regenerated `docs/reference/PERMISSIONS.md` alongside the source change. CI runs the script with `-Check` and fails the PR if the doc is out of sync.')
 [void]$sb.AppendLine()
 
 $generated = $sb.ToString()

@@ -65,16 +65,13 @@
     }
   },
   "groupBy": "section-prefix",
-  "groupLabel": "section",
   "sections": {
     "1": "Identity",
     "2": "Defender",
     "3": "Purview",
-    "4": "Microsoft Intune",
     "5": "Entra ID",
     "6": "Exchange Online",
     "7": "SharePoint & OneDrive",
-    "8": "Teams",
-    "9": "Microsoft Fabric"
+    "8": "Teams"
   }
 }
