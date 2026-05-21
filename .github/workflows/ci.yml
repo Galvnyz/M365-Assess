@@ -43,7 +43,6 @@ jobs:
               - 'AUTHENTICATION.md'
               - 'SECURITY.md'
               - 'COMPLIANCE.md'
-              - 'REPORT.md'
               - 'docs/**'
               - 'package.json'
               - 'package-lock.json'

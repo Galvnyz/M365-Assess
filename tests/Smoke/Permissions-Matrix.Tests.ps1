@@ -1,7 +1,7 @@
 BeforeAll {
     $script:repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $script:scriptPath = Join-Path $script:repoRoot 'scripts/Build-PermissionsMatrix.ps1'
-    $script:docPath = Join-Path $script:repoRoot 'docs/PERMISSIONS.md'
+    $script:docPath = Join-Path $script:repoRoot 'docs/reference/PERMISSIONS.md'
 }
 
 Describe 'Build-PermissionsMatrix' {

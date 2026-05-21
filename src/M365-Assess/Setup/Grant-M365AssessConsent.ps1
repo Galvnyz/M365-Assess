@@ -660,6 +660,12 @@ function Grant-M365AssessConsent {
         # Reuses the delegated Graph session from Step 2 -- no reconnection needed
         Write-Step "Assigning Entra ID directory roles for compliance/security access ($($script:RequiredComplianceRoles.Count) roles)..."
 
+        $graphBase = switch ((Get-MgContext).Environment) {
+            'USGov'    { 'https://graph.microsoft.us' }
+            'USGovDoD' { 'https://dod-graph.microsoft.us' }
+            default    { 'https://graph.microsoft.com' }
+        }
+
         foreach ($roleDef in $script:RequiredComplianceRoles) {
             $roleName       = $roleDef.DisplayName
             $roleTemplateId = $roleDef.TemplateId
@@ -698,7 +704,7 @@ function Grant-M365AssessConsent {
             if ($PSCmdlet.ShouldProcess($roleName, "Assign to $spDisplayName")) {
                 try {
                     $memberRef = @{
-                        '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($sp.Id)"
+                        '@odata.id' = "$graphBase/v1.0/directoryObjects/$($sp.Id)"
                     }
                     New-MgDirectoryRoleMemberByRef -DirectoryRoleId $dirRole.Id -BodyParameter $memberRef -ErrorAction Stop
                     Write-OK "$roleName  [$($roleDef.Sections)]"

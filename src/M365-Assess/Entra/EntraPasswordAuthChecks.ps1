@@ -283,31 +283,26 @@ catch {
 
 # ------------------------------------------------------------------
 # 7c. SSPR Enabled for All Users (CIS 5.2.4.1)
+#
+# The legacy "Self service password reset enabled" (None / Selected /
+# All) toggle lives in the Microsoft Entra admin center under Password
+# reset > Properties and is NOT exposed by Microsoft Graph as of the
+# 2026-04 audit. The previous implementation read
+# /policies/authenticationMethodsPolicy.registrationEnforcement
+# .authenticationMethodsRegistrationCampaign, which is the MFA
+# Registration Campaign feature -- a different control surfaced
+# separately. See #878.
 # ------------------------------------------------------------------
-try {
-    if ($sspr) {
-        $campaign = $sspr['registrationEnforcement']['authenticationMethodsRegistrationCampaign']
-        $campaignState = $campaign['state']
-        $includeTargets = $campaign['includeTargets']
-        $targetsAll = $false
-        if ($includeTargets) {
-            $targetsAll = $includeTargets | Where-Object { $_['id'] -eq 'all_users' -or $_['targetType'] -eq 'group' }
-        }
-        $settingParams = @{
-            Category         = 'Password Management'
-            Setting          = 'SSPR Registration Campaign Targets All Users'
-            CurrentValue     = $(if ($campaignState -eq 'enabled' -and $targetsAll) { 'Enabled for all users' } elseif ($campaignState -eq 'enabled') { 'Enabled (limited scope)' } else { 'Disabled' })
-            RecommendedValue = 'Enabled for all users'
-            Status           = $(if ($campaignState -eq 'enabled' -and $targetsAll) { 'Pass' } elseif ($campaignState -eq 'enabled') { 'Warning' } else { 'Fail' })
-            CheckId          = 'ENTRA-SSPR-001'
-            Remediation      = 'Entra admin center > Protection > Authentication methods > Registration campaign > Enable and target All Users.'
-        }
-        Add-Setting @settingParams
-    }
+$settingParams = @{
+    Category         = 'SSPR'
+    Setting          = "Ensure 'Self service password reset enabled' is set to 'All'"
+    CurrentValue     = 'Not auto-measurable via Microsoft Graph'
+    RecommendedValue = 'Enabled for all users'
+    Status           = 'Review'
+    CheckId          = 'ENTRA-SSPR-001'
+    Remediation      = 'Microsoft Entra admin center > Password reset > Properties > Self service password reset enabled: All. See https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr for the full enablement walkthrough.'
 }
-catch {
-    Write-Warning "Could not check SSPR targeting: $_"
-}
+Add-Setting @settingParams
 
 # ------------------------------------------------------------------
 # 8. Password Protection (Banned Passwords)

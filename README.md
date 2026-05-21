@@ -16,7 +16,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-check%20CI-informational)](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml)
 [![PowerShell 7.x](https://img.shields.io/badge/PowerShell-7.x-blue?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 [![Read-Only](https://img.shields.io/badge/Operations-Read--Only-brightgreen)](.)
-[![Version](https://img.shields.io/badge/version-2.10.1-blue)](.)
+[![Version](https://img.shields.io/badge/version-2.11.0-blue)](.)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
@@ -75,7 +75,7 @@ Invoke-M365Assessment -TenantId 'contoso.onmicrosoft.com'
 
 Results land in a timestamped folder with CSV data + HTML report + XLSX compliance matrix.
 
-> **New to M365 Assess?** See the [Quickstart guide](docs/QUICKSTART.md) for step-by-step setup on a fresh Windows machine.
+> **New to M365 Assess?** See the [Quickstart guide](docs/user/QUICKSTART.md) for step-by-step setup on a fresh Windows machine. Once the assessment runs and you've opened the HTML report, the [Report user guide](docs/user/REPORT-USER-GUIDE.md) walks through edit mode, Finalize, theme toggles, sortable/resizable columns, and other interactive controls. For everything else, the [docs index](docs/INDEX.md) is the canonical wayfinding entry.
 
 ## Prerequisites
 
@@ -190,7 +190,7 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 
 When no connection parameters are provided (`-TenantId`, `-SkipConnection`, `-ClientId`, or `-ManagedIdentity`), an interactive wizard prompts for tenant, auth method, and output folder. If `-Section` or `-OutputFolder` are provided on the command line, those wizard steps are skipped automatically.
 
-See [Authentication](AUTHENTICATION.md) for detailed auth examples and App Registration setup. The full per-section permissions matrix (delegated scopes, app roles, EXO RBAC groups, Purview roles) is generated from the runtime maps and lives at [docs/PERMISSIONS.md](docs/PERMISSIONS.md).
+See [Authentication](docs/user/AUTHENTICATION.md) for detailed auth examples and App Registration setup. The full per-section permissions matrix (delegated scopes, app roles, EXO RBAC groups, Purview roles) is generated from the runtime maps and lives at [docs/reference/PERMISSIONS.md](docs/reference/PERMISSIONS.md).
 
 ## Connection Profiles
 
@@ -268,7 +268,7 @@ The orchestrator detects missing or incompatible PowerShell modules **before** c
 In interactive mode, the repair flow presents two tiers of prompts:
 
 1. **Tier 1 -- Install missing modules** -- single prompt to install all missing modules to `CurrentUser` scope
-2. **Tier 2 -- EXO downgrade** -- separate confirmation to uninstall EXO >= 3.8.0 and install 3.7.1 (due to the [MSAL conflict](docs/COMPATIBILITY.md))
+2. **Tier 2 -- EXO downgrade** -- separate confirmation to uninstall EXO >= 3.8.0 and install 3.7.1 (due to the [MSAL conflict](docs/reference/COMPATIBILITY.md))
 
 After repair, modules are re-validated. If issues remain, the exact manual commands are displayed and the script exits.
 
@@ -300,7 +300,7 @@ On Windows, files extracted from a ZIP are tagged with an NTFS Zone.Identifier t
 
 ## Output Structure
 
-> **Handling sensitive output:** assessment files contain UPNs, mailbox metadata, admin role assignments, and policy bodies — treat them as confidential. See [`docs/DATA-HANDLING.md`](docs/DATA-HANDLING.md) for the deep dive on what's collected, secure sharing patterns, retention recommendations, and GDPR/HIPAA/CMMC alignment notes.
+> **Handling sensitive output:** assessment files contain UPNs, mailbox metadata, admin role assignments, and policy bodies — treat them as confidential. See [`docs/reference/DATA-HANDLING.md`](docs/reference/DATA-HANDLING.md) for the deep dive on what's collected, secure sharing patterns, retention recommendations, and GDPR/HIPAA/CMMC alignment notes.
 
 
 ```
@@ -404,14 +404,14 @@ M365-Assess/
 
 | Guide | Description |
 |-------|-------------|
-| [Quickstart](docs/QUICKSTART.md) | Step-by-step setup on a fresh Windows machine |
-| [Authentication](AUTHENTICATION.md) | Interactive, certificate, device code, managed identity, and pre-existing connection methods |
-| [Permissions](docs/PERMISSIONS.md) | Generated per-section matrix: delegated Graph scopes, app permissions, EXO RBAC groups, Purview directory roles |
-| [HTML Report](REPORT.md) | Report features, custom branding, `-NoBranding`, standalone generation |
-| [Compliance](COMPLIANCE.md) | 15 frameworks, XLSX export, CheckId system, control registry |
-| [Compatibility](docs/COMPATIBILITY.md) | Module versions, dependency matrix, known incompatibilities |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common errors, module conflicts, permission issues |
-| [CheckId Guide](docs/CheckId-Guide.md) | CheckId naming convention and mapping reference |
+| [Quickstart](docs/user/QUICKSTART.md) | Step-by-step setup on a fresh Windows machine |
+| [Authentication](docs/user/AUTHENTICATION.md) | Interactive, certificate, device code, managed identity, and pre-existing connection methods |
+| [Permissions](docs/reference/PERMISSIONS.md) | Generated per-section matrix: delegated Graph scopes, app permissions, EXO RBAC groups, Purview directory roles |
+| [HTML Report](docs/user/REPORT-USER-GUIDE.md) | Report features, interactive walkthrough, standalone generation, white-label |
+| [Compliance](docs/user/COMPLIANCE.md) | 15 frameworks, XLSX export, CheckId system, control registry |
+| [Compatibility](docs/reference/COMPATIBILITY.md) | Module versions, dependency matrix, known incompatibilities |
+| [Troubleshooting](docs/user/TROUBLESHOOTING.md) | Common errors, module conflicts, permission issues |
+| [CheckId Guide](docs/dev/CheckId-Guide.md) | CheckId naming convention and mapping reference |
 | [Changelog](CHANGELOG.md) | Release history and version notes |
 | [Security](SECURITY.md) | Vulnerability reporting and security policy |
 

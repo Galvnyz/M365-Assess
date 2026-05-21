@@ -1,8 +1,8 @@
 {
   "frameworkId": "hipaa",
   "label": "HIPAA",
-  "version": "Security Rule",
-  "description": "Health Insurance Portability and Accountability Act — US law governing the protection of protected health information (PHI) across healthcare entities and their business associates.",
+  "version": "Administrative Simplification (Security + Privacy + Breach Notification Rules)",
+  "description": "Health Insurance Portability and Accountability Act — US law governing the protection of protected health information (PHI) across healthcare entities and their business associates. CheckID covers the Administrative Simplification rules in 45 CFR Part 164: Subpart C (Security Rule), Subpart D (Breach Notification Rule), and Subpart E (Privacy Rule).",
   "homepageUrl": "https://www.hhs.gov/hipaa/index.html",
   "css": "fw-hipaa",
   "totalControls": 59,
@@ -12,25 +12,85 @@
   "scoring": {
     "method": "criteria-coverage",
     "criteria": {
+      "§164.306": {
+        "label": "Security Standards: General Rules",
+        "description": "General requirements for the Security Rule — duty to protect electronic PHI confidentiality, integrity, and availability; flexibility of approach; standards and implementation specifications",
+        "subpart": "C — Security Rule"
+      },
       "§164.308": {
         "label": "Administrative Safeguards",
-        "description": "Security management, access management, training, and contingency planning"
+        "description": "Security management process, assigned security responsibility, workforce security, information access management, security awareness and training, security incident procedures, contingency planning, and evaluation",
+        "subpart": "C — Security Rule"
       },
       "§164.310": {
         "label": "Physical Safeguards",
-        "description": "Facility access controls, workstation use, and device/media controls"
+        "description": "Facility access controls, workstation use and security, and device and media controls",
+        "subpart": "C — Security Rule"
       },
       "§164.312": {
         "label": "Technical Safeguards",
-        "description": "Access control, audit controls, integrity, transmission security"
+        "description": "Access control, audit controls, integrity controls, person or entity authentication, and transmission security",
+        "subpart": "C — Security Rule"
       },
       "§164.314": {
         "label": "Organizational Requirements",
-        "description": "Business associate contracts and group health plan requirements"
+        "description": "Business associate contracts and other arrangements; requirements for group health plans",
+        "subpart": "C — Security Rule"
       },
       "§164.316": {
-        "label": "Policies and Procedures",
-        "description": "Documentation requirements and record retention"
+        "label": "Policies and Procedures and Documentation Requirements",
+        "description": "Implement reasonable and appropriate policies and procedures; documentation retention, availability, and updates",
+        "subpart": "C — Security Rule"
+      },
+      "§164.404": {
+        "label": "Notification to Individuals",
+        "description": "Covered entity must notify each affected individual following discovery of a breach of unsecured PHI; timing, content, and method requirements",
+        "subpart": "D — Breach Notification Rule"
+      },
+      "§164.408": {
+        "label": "Notification to the Secretary",
+        "description": "Covered entity must notify the HHS Secretary of breaches of unsecured PHI; immediate notification for breaches affecting 500+ individuals, annual log for smaller breaches",
+        "subpart": "D — Breach Notification Rule"
+      },
+      "§164.412": {
+        "label": "Law Enforcement Delay",
+        "description": "Permits delay of breach notification when a law enforcement official states notice would impede a criminal investigation or cause damage to national security",
+        "subpart": "D — Breach Notification Rule"
+      },
+      "§164.506": {
+        "label": "Uses and Disclosures for Treatment, Payment, and Health Care Operations",
+        "description": "Permitted uses and disclosures of PHI for treatment, payment, and health care operations without authorization",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.508": {
+        "label": "Uses and Disclosures Requiring Authorization",
+        "description": "Required individual authorization for uses and disclosures of PHI not otherwise permitted; authorization content, validity, and revocation",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.510": {
+        "label": "Uses and Disclosures Requiring Opportunity to Agree or Object",
+        "description": "Uses and disclosures (e.g., facility directory, notification of family members) where the individual must be given an opportunity to agree or object",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.512": {
+        "label": "Uses and Disclosures for Which Authorization or Opportunity to Agree Is Not Required",
+        "description": "Permitted uses and disclosures without authorization (e.g., required by law, public health, judicial proceedings, law enforcement, decedents, research, threats to safety)",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.514": {
+        "label": "Other Requirements Relating to Uses and Disclosures of PHI",
+        "description": "De-identification standards, minimum necessary requirements, marketing and fundraising, verification, and other supplemental requirements for uses and disclosures",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.530": {
+        "label": "Administrative Requirements",
+        "description": "Privacy Rule administrative requirements: privacy officer, training, safeguards, complaints process, sanctions, mitigation, refraining from intimidating or retaliatory acts, waiver of rights, and policies and procedures",
+        "subpart": "E — Privacy Rule"
+      },
+      "§164.532": {
+        "label": "Transition Provisions",
+        "description": "Effect of prior consents and authorizations under HIPAA-predecessor regulations and the transition to current Privacy Rule requirements",
+        "subpart": "E — Privacy Rule"
       }
     }
   },

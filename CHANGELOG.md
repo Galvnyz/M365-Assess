@@ -4,6 +4,28 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-05-01
+
+The **Data Quality & Accuracy** milestone — 29 of 30 issues closed (#871 stays blocked on upstream CheckID/SCF). No breaking API changes. Ships several new findings-table capabilities, three research/spec decision artifacts, a misleading-check fix (SSPR semantic mismatch), and the CheckID v3.4.0 registry refresh.
+
+### Added
+- **Sequence column + filter chips on findings table (#898)** — the Now/Next/Later/Done lane is now visible as a colour-coded pill column in the findings table, with filter chips above the table that slice to a single lane. Makes the table self-sufficient for "show me my Now lane" workflows that previously required the Roadmap section.
+- **Copy-finding-as-markdown button (#901)** — per-row Copy button serializes the finding (title, status, recommendation, remediation) to a markdown summary on the clipboard. Designed for fast handoff into tickets or email.
+- **Truncated check-id with hover-tooltip in finding-detail (#900)** — long `controlId` values now ellipsis-truncate with the full value available on hover via `title` attribute, tightening the layout without losing information.
+- **REPORT-USER-GUIDE.md (#897, #904)** — comprehensive walkthrough of the HTML report's interactive features: edit mode, finalize, hide blocks, framework quilt, roadmap lanes, and theme switcher. The missing user-facing companion to `REPORT-INTERNALS.md`.
+- **Roadmap-vs-findings-table hybrid decision (#899)** — `docs/research/roadmap-vs-findings-table.md` sets the v3.0 trajectory: Roadmap stays as a presentation-mode view, interactive capabilities migrate into the findings table, Roadmap goes view-only at v3.0.
+- **Owner / Ticket Phase 5 spec (#903)** — `docs/specs/2026-04-30-owner-ticket-interaction.md` locks down v1/v2 split for the 7 open design questions blocking #863 Phase 5 (free-form owner, single-owner-per-finding, ticket status as free-form dropdown, inline overlay edit, hide on Pass, persistence-on-hide, schemaVersion: 2).
+- **Remediation-path rot decision (#879)** — `docs/research/remediation-path-rot-decision.md` chooses Option A: prefer Microsoft Learn URLs over hardcoded admin-center breadcrumb paths as the primary remediation surface. Implementation phases tracked separately.
+
+### Changed
+- **CheckID v3.4.0 registry sync (#912)** — 200+ control updates, expanded HIPAA coverage to all three Subparts (C Security, D Breach Notification, E Privacy Rule). Local framework taxonomy declarations restored after the sync stripped them; #914 tracks making the sync script preserve them going forward.
+- **Aggressive docs consolidation (#905, #906, #907, #910)** — folder restructure + 19 stub redirects from the v2.10.x docs cleanup, plus a full module install matrix added to QUICKSTART covering all required Microsoft Graph submodules + EXO + SPO + Teams + PnP per OS.
+- **Microsoft Secure Score panel disclaimer** — small italic note at the foot of the score card explaining that Microsoft refreshes the score on a delay (up to 24 hours) and that the value shown reflects Microsoft's last published value at assessment time, not the live tenant state. Surfaced during v2.11.0 live-test as a credibility / expectation-setting gap.
+
+### Fixed
+- **ENTRA-SSPR-001 collector measured the wrong setting (#878)** — was reading `/policies/authenticationMethodsPolicy.registrationEnforcement.authenticationMethodsRegistrationCampaign` (the MFA Registration Campaign) and labeling it as SSPR enablement. The legacy "Self service password reset enabled" (None / Selected / All) toggle is not exposed by Microsoft Graph as of the 2026-04 audit. Collector now emits `Status=Review` with a manual-verify instruction pointing at the current Entra admin center path and the canonical MS Learn enablement walkthrough. Setting name realigned to the upstream registry entry. Filed CheckID upstream issue (Galvnyz/CheckID#399) for the registry's stale `remediation.portal.path` and missing manual-only signal.
+- **Quality Gates "Permissions matrix in sync" gate (#911)** — `docs/PERMISSIONS.md` was moved to `docs/reference/PERMISSIONS.md` in #906 but `scripts/Build-PermissionsMatrix.ps1`'s default `-OutputPath` was not updated; CI's `-Check` step started failing on every PR. Updated default + regenerated the doc.
+
 ## [2.10.1] - 2026-04-30
 
 Patch release. Four collector data-quality bugs surfaced during v2.10.0 live-test, plus the #845 taxonomy closeout. No breaking API changes. Sets the stage for v2.11.0 — Data Quality & Accuracy milestone, which covers the broader collector audit work surfaced this sprint (#878 SSPR semantic mismatch, #879 remediation-path rot, #886 PIM logic bug, #888 break-glass duplication, #884 Review/Unknown/Skipped audit).

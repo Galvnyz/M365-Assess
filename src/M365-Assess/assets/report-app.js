@@ -1113,7 +1113,9 @@ function Posture() {
     className: "score-split-label"
   }, "Customer-earned"), /*#__PURE__*/React.createElement("div", {
     className: "score-split-value"
-  }, fmt(SCORE.CustomerScore), " pts"))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, fmt(SCORE.CustomerScore), " pts"))), /*#__PURE__*/React.createElement("div", {
+    className: "score-disclaimer"
+  }, "Microsoft refreshes Secure Score on a delay \u2014 recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state."))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "kpi-strip",
     style: {
       marginBottom: 10
@@ -2027,7 +2029,7 @@ function AdHybridPanel() {
       marginTop: 6,
       lineHeight: 1.3
     }
-  }, fmtDate(ad.lastSyncTime))), /*#__PURE__*/React.createElement("div", {
+  }, fmtDate(ad.lastSyncTime))), syncOk ? /*#__PURE__*/React.createElement("div", {
     className: 'spo-stat-card' + (phsOk === false ? ' spo-stat-bad' : '')
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -2048,7 +2050,20 @@ function AdHybridPanel() {
     style: {
       color: 'var(--warn-text)'
     }
-  }, "No PHS timestamp - verify in Microsoft Entra Connect or Entra Cloud Sync")), ad.syncErrorCount > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "No PHS timestamp - verify in Microsoft Entra Connect or Entra Cloud Sync")) : /*#__PURE__*/React.createElement("div", {
+    className: "spo-stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Password hash sync"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: 'var(--muted)',
+      marginTop: 6
+    }
+  }, "N/A"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, "Cloud-only tenant \u2014 no on-prem hashes to sync")), ad.syncErrorCount > 0 && /*#__PURE__*/React.createElement("div", {
     className: "spo-stat-card spo-stat-bad"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -3497,13 +3512,17 @@ function FilterBar({
       };
     });
   };
-  const active = filters.status.length + filters.severity.length + filters.framework.length + filters.domain.length + (filters.profile || []).length;
+  const active = filters.status.length + (filters.sequence || []).length + filters.severity.length + filters.framework.length + filters.domain.length + (filters.profile || []).length;
   const hasActiveFilters = search.length > 0 || active > 0;
   const isActive = hasActiveFilters && inFindings;
 
   // [data-value, css-class, optional-display-label]
   const statusChips = [['Fail', 'fail'], ['Warning', 'warn'], ['Review', 'review'], ['Pass', 'pass'], ['Info', 'info'], ['Skipped', 'skipped'], ['Unknown', 'unknown'], ['NotApplicable', 'notapplicable', 'Not Applicable'], ['NotLicensed', 'notlicensed', 'Not Licensed']];
   const sevChips = [['critical', 'crit', 'Critical'], ['high', 'high', 'High'], ['medium', 'med', 'Medium'], ['low', 'low', 'Low']];
+  // #898: sequence chips. Multi-select; matches the table column + state-strip
+  // pill semantics. Lane (now/soon/later) for active remediation; "done" for
+  // Pass status; the "—" / no-sequence case is filtered via "none".
+  const seqChips = [['now', 'now', 'Now'], ['soon', 'next', 'Next'], ['later', 'later', 'Later'], ['done', 'done', 'Done']];
   const DOM_ORDER = ['Entra ID', 'Conditional Access', 'Enterprise Apps', 'Exchange Online', 'Intune', 'Defender', 'Purview / Compliance', 'SharePoint & OneDrive', 'Teams', 'Forms', 'Power BI', 'Active Directory', 'SOC 2', 'Value Opportunity'];
   const domainList = DOM_ORDER.filter(d => counts.domain[d]).concat(Object.keys(counts.domain).filter(d => !DOM_ORDER.includes(d)).sort());
 
@@ -3608,6 +3627,18 @@ function FilterBar({
     className: "filter-group"
   }, /*#__PURE__*/React.createElement("span", {
     className: "filter-group-label"
+  }, "Sequence"), seqChips.filter(([v]) => (counts.sequence?.[v] || 0) > 0 || (filters.sequence || []).includes(v)).map(([v, cls, label]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    className: 'chip ' + cls + ((filters.sequence || []).includes(v) ? ' selected' : ''),
+    onClick: () => update('sequence', v)
+  }, label, /*#__PURE__*/React.createElement("span", {
+    className: "ct"
+  }, counts.sequence?.[v] || 0)))), /*#__PURE__*/React.createElement("div", {
+    className: "filter-divider"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "filter-group"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "filter-group-label"
   }, "Severity"), sevChips.map(([v, cls, label]) => /*#__PURE__*/React.createElement("button", {
     key: v,
     className: 'chip ' + cls + (filters.severity.includes(v) ? ' selected' : ''),
@@ -3695,6 +3726,7 @@ function FilterBar({
     className: "filter-clear filter-clear-inline",
     onClick: () => setFilters({
       status: [],
+      sequence: [],
       severity: [],
       framework: [],
       domain: [],
@@ -3728,43 +3760,58 @@ function Highlight({
 }
 
 // ======================== Findings table ========================
+// #917: Column widths use minmax(min, preferred) so the table can shrink
+// gracefully on narrow viewports instead of overflowing horizontally. The
+// 'finding' column carries the 1fr term so leftover space flows there on
+// wide displays. User-resized widths (colWidths[id]) snap to a px value
+// and override the minmax form for that column.
 const ALL_COLS = [{
   id: 'status',
   label: 'Status',
-  width: '80px'
+  width: 'minmax(60px, 80px)'
 }, {
   id: 'finding',
   label: 'Finding',
-  width: '1.5fr'
+  width: 'minmax(180px, 1.5fr)'
 }, {
   id: 'domain',
   label: 'Domain',
-  width: '140px'
+  width: 'minmax(90px, 140px)'
 }, {
   id: 'controlId',
   label: 'Control #',
-  width: '100px'
+  width: 'minmax(70px, 100px)'
 }, {
   id: 'checkId',
   label: 'CheckID',
-  width: '160px'
+  width: 'minmax(100px, 160px)'
+}, {
+  id: 'sequence',
+  label: 'Sequence',
+  width: 'minmax(70px, 90px)'
 }, {
   id: 'severity',
   label: 'Severity',
-  width: '100px'
+  width: 'minmax(70px, 100px)'
 }, {
   id: 'frameworks',
   label: 'Frameworks',
-  width: '120px'
+  width: 'minmax(80px, 120px)'
 }];
-const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'severity'];
+// #898 + #917: include sequence in default visible columns. Sequence sits
+// immediately to the left of severity per #917 so the workflow signal
+// (Now/Next/Later) reads adjacent to the priority signal (Severity).
+const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'sequence', 'severity'];
 
 // Issue #846: enum orderings for sort. Status uses the "worst first" order
 // that matches the row-color severity ramp; severity uses the standard
 // critical-down ordering.
 const FT_STATUS_ORDER = ['Fail', 'Warning', 'Review', 'Pass', 'Info', 'Skipped', 'Unknown', 'NotApplicable', 'NotLicensed'];
 const FT_SEV_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
-const FT_SORTABLE = new Set(['status', 'finding', 'domain', 'checkId', 'severity']);
+// #898: sequence sort = workflow priority order. Now/Next/Later for active
+// remediation, then Done (Pass), then "—" (everything else).
+const FT_SEQ_ORDER = ['now', 'soon', 'later', 'done', 'none'];
+const FT_SORTABLE = new Set(['status', 'sequence', 'finding', 'domain', 'checkId', 'severity']);
 function FindingsTable({
   filters,
   search,
@@ -3804,6 +3851,26 @@ function FindingsTable({
       return {};
     }
   });
+  // #917: per-user column order. Initialised from DEFAULT_COLS with any
+  // missing IDs (e.g. ones added in a later release) appended in their
+  // ALL_COLS order, and any stale IDs (removed columns) dropped.
+  const [colOrder, setColOrder] = useState(() => {
+    try {
+      const raw = localStorage.getItem(LS('m365-col-order'));
+      const stored = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(stored) && stored.length) {
+        const known = new Set(ALL_COLS.map(c => c.id));
+        const filtered = stored.filter(id => known.has(id));
+        const missing = ALL_COLS.map(c => c.id).filter(id => !filtered.includes(id));
+        return [...filtered, ...missing];
+      }
+    } catch {}
+    return ALL_COLS.map(c => c.id);
+  });
+  // #917: drag-and-drop reorder state. dragColId is the column currently
+  // being dragged; dropTargetId is the column the cursor is over.
+  const [dragColId, setDragColId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
   useEffect(() => {
     try {
       localStorage.setItem(LS('m365-findings-sort'), JSON.stringify(sort));
@@ -3814,6 +3881,44 @@ function FindingsTable({
       localStorage.setItem(LS('m365-col-widths'), JSON.stringify(colWidths));
     } catch {}
   }, [colWidths]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS('m365-col-order'), JSON.stringify(colOrder));
+    } catch {}
+  }, [colOrder]);
+  const onColDragStart = (colId, ev) => {
+    setDragColId(colId);
+    try {
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', colId);
+    } catch {}
+  };
+  const onColDragOver = (colId, ev) => {
+    if (!dragColId || dragColId === colId) return;
+    ev.preventDefault();
+    if (dropTargetId !== colId) setDropTargetId(colId);
+  };
+  const onColDrop = (colId, ev) => {
+    ev.preventDefault();
+    if (!dragColId || dragColId === colId) {
+      setDragColId(null);
+      setDropTargetId(null);
+      return;
+    }
+    setColOrder(o => {
+      const next = o.filter(id => id !== dragColId);
+      const idx = next.indexOf(colId);
+      if (idx < 0) return o;
+      next.splice(idx, 0, dragColId);
+      return next;
+    });
+    setDragColId(null);
+    setDropTargetId(null);
+  };
+  const onColDragEnd = () => {
+    setDragColId(null);
+    setDropTargetId(null);
+  };
 
   // Cycle sort: none → asc → desc → none.
   const cycleSort = key => setSort(s => {
@@ -3907,7 +4012,10 @@ function FindingsTable({
     return () => clearTimeout(timer);
   }, [focusFinding]);
   const toggleCol = id => setVisibleCols(v => v.includes(id) ? v.length > 1 ? v.filter(c => c !== id) : v : [...v, id]);
-  const cols = ALL_COLS.filter(c => visibleCols.includes(c.id));
+
+  // #917: render columns in user-specified colOrder (filtered by visible).
+  const colMap = new Map(ALL_COLS.map(c => [c.id, c]));
+  const cols = colOrder.filter(id => visibleCols.includes(id)).map(id => colMap.get(id)).filter(Boolean);
   // Issue #846: per-column custom widths override the default. fr columns
   // stay fr until the user drags, then they snap to px.
   const gridTpl = cols.map(c => colWidths[c.id] ? colWidths[c.id] + 'px' : c.width).join(' ') + ' 28px';
@@ -3921,6 +4029,11 @@ function FindingsTable({
     return FINDINGS.filter(f => {
       if (!editMode && hiddenFindings?.has(f.checkId)) return false;
       if (filters.status.length && !filters.status.includes(f.status)) return false;
+      if ((filters.sequence || []).length) {
+        // #898: sequence filter — match the same logic as the column pill
+        const seq = f.lane && LANE_LABELS[f.lane] ? f.lane : f.status === 'Pass' ? 'done' : null;
+        if (!seq || !filters.sequence.includes(seq)) return false;
+      }
       if (filters.severity.length && !filters.severity.includes(f.severity)) return false;
       if (filters.framework.length && !f.frameworks.some(fw => filters.framework.includes(fw))) return false;
       if (filters.domain.length && !filters.domain.includes(f.domain)) return false;
@@ -3946,9 +4059,17 @@ function FindingsTable({
     const arr = [...filtered];
     const cmp = (a, b) => {
       let av, bv;
+      const seqRank = f => {
+        if (f.lane && FT_SEQ_ORDER.includes(f.lane)) return FT_SEQ_ORDER.indexOf(f.lane);
+        if (f.status === 'Pass') return FT_SEQ_ORDER.indexOf('done');
+        return FT_SEQ_ORDER.indexOf('none');
+      };
       if (sort.key === 'status') {
         av = FT_STATUS_ORDER.indexOf(a.status);
         bv = FT_STATUS_ORDER.indexOf(b.status);
+      } else if (sort.key === 'sequence') {
+        av = seqRank(a);
+        bv = seqRank(b);
       } else if (sort.key === 'severity') {
         av = FT_SEV_ORDER.indexOf(a.severity);
         bv = FT_SEV_ORDER.indexOf(b.severity);
@@ -4015,6 +4136,33 @@ function FindingsTable({
         }), statusLabel(f.status)), f.intentDesign && /*#__PURE__*/React.createElement("span", {
           className: "badge-intent"
         }, "By Design"));
+      case 'sequence':
+        {
+          // #898: same pill UX as the state strip in #896. Pass→Done, lane→
+          // coloured pill, otherwise muted dash.
+          const isPass = f.status === 'Pass';
+          if (f.lane && LANE_LABELS[f.lane]) {
+            return /*#__PURE__*/React.createElement("div", {
+              key: "sequence"
+            }, /*#__PURE__*/React.createElement("span", {
+              className: 'fdc-pill ' + LANE_CSS[f.lane]
+            }, LANE_LABELS[f.lane]));
+          }
+          if (isPass) {
+            return /*#__PURE__*/React.createElement("div", {
+              key: "sequence"
+            }, /*#__PURE__*/React.createElement("span", {
+              className: "fdc-pill done"
+            }, "Done"));
+          }
+          return /*#__PURE__*/React.createElement("div", {
+            key: "sequence"
+          }, /*#__PURE__*/React.createElement("span", {
+            style: {
+              color: 'var(--muted)'
+            }
+          }, "\u2014"));
+        }
       case 'finding':
         return /*#__PURE__*/React.createElement("div", {
           key: "finding",
@@ -4067,14 +4215,16 @@ function FindingsTable({
             style: {
               display: 'flex',
               flexDirection: 'column',
-              gap: 2
+              gap: 2,
+              minWidth: 0
             }
           }, /*#__PURE__*/React.createElement("span", {
-            className: "check-id",
+            className: "check-id check-id-truncate",
             style: cid ? undefined : {
               color: 'var(--muted)',
               fontStyle: 'italic'
-            }
+            },
+            title: cid || ''
           }, cid || '—'), (lvl || lic) && /*#__PURE__*/React.createElement("span", {
             style: {
               display: 'inline-flex',
@@ -4219,10 +4369,21 @@ function FindingsTable({
   }, cols.map(c => {
     const sortable = FT_SORTABLE.has(c.id);
     const isActive = sort?.key === c.id;
+    const isDragging = dragColId === c.id;
+    const isDropTarget = dropTargetId === c.id && dragColId && dragColId !== c.id;
     return /*#__PURE__*/React.createElement("div", {
       key: c.id,
-      className: "findings-col-head"
-    }, sortable ? /*#__PURE__*/React.createElement("button", {
+      className: 'findings-col-head' + (isDragging ? ' col-dragging' : '') + (isDropTarget ? ' col-drop-target' : ''),
+      onDragOver: ev => onColDragOver(c.id, ev),
+      onDrop: ev => onColDrop(c.id, ev)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "findings-col-drag",
+      draggable: true,
+      onDragStart: ev => onColDragStart(c.id, ev),
+      onDragEnd: onColDragEnd,
+      title: "Drag to reorder column",
+      "aria-label": `Reorder ${c.label} column`
+    }, "\u22EE\u22EE"), sortable ? /*#__PURE__*/React.createElement("button", {
       type: "button",
       className: 'findings-col-sort' + (isActive ? ' active' : ''),
       onClick: () => cycleSort(c.id),
@@ -4260,7 +4421,9 @@ function FindingsTable({
       className: "caret"
     }, /*#__PURE__*/React.createElement(Icon.chevron, null))), isOpen && /*#__PURE__*/React.createElement("div", {
       className: "finding-detail fdd"
-    }, f.intentDesign && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement(FindingCopyButton, {
+      f: f
+    }), f.intentDesign && /*#__PURE__*/React.createElement("div", {
       className: "intent-callout"
     }, /*#__PURE__*/React.createElement("strong", null, "Intentional by design."), f.intentRationale && /*#__PURE__*/React.createElement("span", null, " ", f.intentRationale)), /*#__PURE__*/React.createElement(FindingStateStrip, {
       f: f
@@ -4595,6 +4758,52 @@ function FindingProvenanceFooter({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement("summary", null, "Raw evidence"), /*#__PURE__*/React.createElement("pre", null, rawPretty))));
+}
+
+// Issue #901: per-finding Copy button. Emits a markdown summary that's
+// paste-friendly into ticketing systems / Slack / email when triaging.
+// Visual feedback: button text flips to "Copied ✓" for 2 seconds after
+// successful clipboard write.
+function FindingCopyButton({
+  f
+}) {
+  const [copied, setCopied] = React.useState(false);
+  const onClick = e => {
+    e.stopPropagation();
+    const sev = f.severity ? f.severity[0].toUpperCase() + f.severity.slice(1) : '—';
+    const seq = f.lane ? LANE_LABELS[f.lane] || f.lane : f.status === 'Pass' ? 'Done' : '—';
+    const fwLines = (f.frameworks || []).map(fw => {
+      const meta = f.fwMeta?.[fw];
+      const cid = meta?.controlId ? ` ${meta.controlId}` : '';
+      return `${fw}${cid}`;
+    }).join(' · ');
+    const refUrl = f.references?.[0]?.url ? `\nReference: ${f.references[0].url}` : '';
+    const md = [`**[${f.status}]** ${f.setting} (${f.checkId})`, `${f.domain || '—'} · ${sev} · ${seq}`, fwLines ? `Frameworks: ${fwLines}` : null, '', `Risk: ${whyItMatters(f)}`, '', `Current: ${f.current || '—'}`, `Recommended: ${f.recommended || '—'}`, '', `Remediation: ${f.remediation || '—'}` + refUrl].filter(x => x !== null).join('\n');
+    const writeFn = navigator.clipboard?.writeText ? navigator.clipboard.writeText.bind(navigator.clipboard) : text => {
+      // Fallback for older browsers: temporary textarea + execCommand
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(ta);
+      }
+      return Promise.resolve();
+    };
+    writeFn(md).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return /*#__PURE__*/React.createElement("button", {
+    className: "fdd-copy-btn",
+    onClick: onClick,
+    title: copied ? 'Copied to clipboard' : 'Copy finding as markdown'
+  }, copied ? '✓ Copied' : '⧉ Copy');
 }
 
 // Issue #854: per-prefix narrative content for the finding-detail "Why It Matters"
@@ -5745,6 +5954,7 @@ function App() {
       if (saved && typeof saved === 'object') {
         return {
           status: Array.isArray(saved.status) ? saved.status : [],
+          sequence: Array.isArray(saved.sequence) ? saved.sequence : [],
           severity: Array.isArray(saved.severity) ? saved.severity : [],
           framework: Array.isArray(saved.framework) ? saved.framework : [],
           domain: Array.isArray(saved.domain) ? saved.domain : [],
@@ -5754,6 +5964,7 @@ function App() {
     } catch {}
     return {
       status: [],
+      sequence: [],
       severity: [],
       framework: [],
       domain: [],
@@ -5880,6 +6091,7 @@ function App() {
   const counts = useMemo(() => {
     const c = {
       status: {},
+      sequence: {},
       severity: {},
       framework: {},
       domain: {}
@@ -5889,6 +6101,10 @@ function App() {
       c.severity[f.severity] = (c.severity[f.severity] || 0) + 1;
       c.domain[f.domain] = (c.domain[f.domain] || 0) + 1;
       f.frameworks.forEach(fw => c.framework[fw] = (c.framework[fw] || 0) + 1);
+      // #898: sequence count for the FilterBar group. Same logic as the
+      // column pill: lane → now/soon/later, Pass → done, otherwise no bucket.
+      const seq = f.lane || (f.status === 'Pass' ? 'done' : null);
+      if (seq) c.sequence[seq] = (c.sequence[seq] || 0) + 1;
     });
     return c;
   }, []);
@@ -5950,6 +6166,7 @@ function App() {
   const onViewFinding = useCallback(checkId => {
     setFilters({
       status: [],
+      sequence: [],
       severity: [],
       framework: [],
       domain: [],

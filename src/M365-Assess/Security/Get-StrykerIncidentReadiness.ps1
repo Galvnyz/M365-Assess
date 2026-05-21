@@ -129,7 +129,7 @@ try {
             $chunk = $adminIds[$i..[math]::Min($i + $chunkSize - 1, $adminIds.Count - 1)]
             $idFilter = ($chunk | ForEach-Object { "'$_'" }) -join ','
             try {
-                $uri = "https://graph.microsoft.com/v1.0/users?`$filter=id in ($idFilter)&`$select=id,displayName,userPrincipalName,signInActivity"
+                $uri = "/v1.0/users?`$filter=id in ($idFilter)&`$select=id,displayName,userPrincipalName,signInActivity"
                 $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
                 foreach ($user in $response.value) {
                     $signInData[$user.id] = $user.signInActivity
@@ -323,7 +323,7 @@ try {
         $role = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
         if (-not $role) { continue }
 
-        $members = Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/v1.0/directoryRoles/$($role.Id)/members" -Method GET -ErrorAction SilentlyContinue
+        $members = Invoke-MgGraphRequest -Uri "/v1.0/directoryRoles/$($role.Id)/members" -Method GET -ErrorAction SilentlyContinue
         if (-not $members -or -not $members.value) { continue }
 
         foreach ($member in $members.value) {
@@ -333,7 +333,7 @@ try {
             if ($member.isAssignableToRole -ne $true) {
                 $memberCount = 'unknown'
                 try {
-                    $countUri = "https://graph.microsoft.com/v1.0/groups/$($member.id)/members/`$count"
+                    $countUri = "/v1.0/groups/$($member.id)/members/`$count"
                     $countResponse = Invoke-MgGraphRequest -Uri $countUri -Method GET -Headers @{ 'ConsistencyLevel' = 'eventual' } -ErrorAction Stop
                     $memberCount = $countResponse
                 }
@@ -390,7 +390,7 @@ try {
     }
     $graphAppId = '00000003-0000-0000-c000-000000000000'
 
-    $uri = "https://graph.microsoft.com/v1.0/applications?`$select=id,appId,displayName,requiredResourceAccess&`$top=999"
+    $uri = "/v1.0/applications?`$select=id,appId,displayName,requiredResourceAccess&`$top=999"
     $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
     $apps = $response.value
 
@@ -446,7 +446,7 @@ catch {
 # CHECK 6: INTUNE-MAA-001 — Multi-Admin Approval
 # =====================================================================
 try {
-    $uri = "https://graph.microsoft.com/beta/deviceManagement/operationApprovalPolicies"
+    $uri = "/beta/deviceManagement/operationApprovalPolicies"
     $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
     $policies = $response.value
 
@@ -491,13 +491,13 @@ catch {
 # CHECK 7: INTUNE-RBAC-001 — RBAC Role Assignments Without Scope Tags
 # =====================================================================
 try {
-    $defsUri = "https://graph.microsoft.com/v1.0/deviceManagement/roleDefinitions"
+    $defsUri = "/v1.0/deviceManagement/roleDefinitions"
     $defsResponse = Invoke-MgGraphRequest -Uri $defsUri -Method GET -ErrorAction Stop
 
     $assignments = @()
     foreach ($roleDef in $defsResponse.value) {
         if ($roleDef.isBuiltIn -eq $true -and $roleDef.displayName -eq 'Intune Role Administrator') { continue }
-        $assignUri = "https://graph.microsoft.com/v1.0/deviceManagement/roleDefinitions/$($roleDef.id)/roleAssignments"
+        $assignUri = "/v1.0/deviceManagement/roleDefinitions/$($roleDef.id)/roleAssignments"
         try {
             $assignResponse = Invoke-MgGraphRequest -Uri $assignUri -Method GET -ErrorAction Stop
             foreach ($a in $assignResponse.value) {
@@ -655,7 +655,7 @@ try {
     $lookbackDays = 30
     $startDate = (Get-Date).ToUniversalTime().AddDays(-$lookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?`$filter=activityDateTime ge $startDate and (activityType eq 'Wipe' or activityType eq 'Retire' or activityType eq 'Delete')&`$orderby=activityDateTime desc&`$top=500"
+    $uri = "/v1.0/deviceManagement/auditEvents?`$filter=activityDateTime ge $startDate and (activityType eq 'Wipe' or activityType eq 'Retire' or activityType eq 'Delete')&`$orderby=activityDateTime desc&`$top=500"
     $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
     $wipeEvents = $response.value
 
