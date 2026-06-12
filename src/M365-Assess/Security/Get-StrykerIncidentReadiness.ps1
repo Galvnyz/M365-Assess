@@ -35,6 +35,10 @@ if (-not (Assert-GraphConnection)) { return }
 Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction SilentlyContinue
 Import-Module -Name Microsoft.Graph.Identity.SignIns -ErrorAction SilentlyContinue
 
+# Pagination/retry wrapper (#952) — dot-sourced so standalone and test-harness
+# runs resolve it without the module loader.
+. (Join-Path -Path $PSScriptRoot -ChildPath '..\Common\Invoke-SafeGraphRequest.ps1')
+
 # ── Output collection ────────────────────────────────────────────────
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
 $checkIdCounter = @{}

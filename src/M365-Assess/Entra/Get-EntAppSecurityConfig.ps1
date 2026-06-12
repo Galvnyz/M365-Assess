@@ -42,6 +42,7 @@ if (-not (Assert-GraphConnection)) { return }
 # Load shared security-config helpers
 $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 . (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
+. (Join-Path -Path $_scriptDir -ChildPath '..\Common\Invoke-SafeGraphRequest.ps1')
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings

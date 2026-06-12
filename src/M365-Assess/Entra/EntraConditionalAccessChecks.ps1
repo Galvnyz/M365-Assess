@@ -6,6 +6,10 @@
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 param()
 
+# Pagination/retry wrapper (#952) — dot-sourced here so the fragment resolves it
+# in every load path (module import, parent collector, isolated test harness).
+. (Join-Path -Path $PSScriptRoot -ChildPath '..\Common\Invoke-SafeGraphRequest.ps1')
+
 # ------------------------------------------------------------------
 # 11. Conditional Access Policy Count
 # ------------------------------------------------------------------
