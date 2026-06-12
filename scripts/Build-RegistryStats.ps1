@@ -90,7 +90,9 @@ foreach ($regCheck in $checks) {
         }
         $frameworkStats[$prop.Name].Checks++
         if ($prop.Value.controlId) {
-            foreach ($cid in ([string]$prop.Value.controlId) -split ',') {
+            # Split on the same delimiters as the report's group extractors
+            # (tests/Behavior/Framework-Taxonomy.Tests.ps1 mirrors report-app.jsx)
+            foreach ($cid in ([string]$prop.Value.controlId) -split '[;,]') {
                 $trimmed = $cid.Trim()
                 if ($trimmed) { [void]$frameworkStats[$prop.Name].Controls.Add($trimmed) }
             }
@@ -98,11 +100,21 @@ foreach ($regCheck in $checks) {
     }
 }
 
-# CISA SCuBA product pillars from controlId prefixes (MS.<PRODUCT>.x.y)
+# CISA SCuBA product pillars from controlId prefixes (MS.<PRODUCT>.x.y).
+# Labels come from scoring.products, falling back to the groups map (which the
+# Framework-Taxonomy test guarantees covers every registry-mapped MS.* key).
 $scubaProducts = [ordered]@{}
-if ($frameworkDefs.ContainsKey('cisa-scuba') -and $frameworkDefs['cisa-scuba'].scoring.products) {
-    foreach ($prop in $frameworkDefs['cisa-scuba'].scoring.products.PSObject.Properties) {
-        $scubaProducts[$prop.Name.ToUpperInvariant()] = @{ Label = $prop.Value.label; Mapped = 0 }
+$scubaGroups = @{}
+if ($frameworkDefs.ContainsKey('cisa-scuba')) {
+    if ($frameworkDefs['cisa-scuba'].scoring.products) {
+        foreach ($prop in $frameworkDefs['cisa-scuba'].scoring.products.PSObject.Properties) {
+            $scubaProducts[$prop.Name.ToUpperInvariant()] = @{ Label = $prop.Value.label; Mapped = 0 }
+        }
+    }
+    if ($frameworkDefs['cisa-scuba'].groups) {
+        foreach ($prop in $frameworkDefs['cisa-scuba'].groups.PSObject.Properties) {
+            $scubaGroups[$prop.Name.ToUpperInvariant()] = [string]$prop.Value
+        }
     }
 }
 if ($frameworkStats.ContainsKey('cisa-scuba')) {
@@ -110,7 +122,8 @@ if ($frameworkStats.ContainsKey('cisa-scuba')) {
         if ($cid -match '^MS\.([A-Za-z]+)\.') {
             $product = $Matches[1].ToUpperInvariant()
             if (-not $scubaProducts.Contains($product)) {
-                $scubaProducts[$product] = @{ Label = $product; Mapped = 0 }
+                $label = if ($scubaGroups.ContainsKey("MS.$product")) { $scubaGroups["MS.$product"] } else { $product }
+                $scubaProducts[$product] = @{ Label = $label; Mapped = 0 }
             }
             $scubaProducts[$product].Mapped++
         }
@@ -228,7 +241,8 @@ foreach ($target in $targets) {
     foreach ($blockName in $target.Blocks.Keys) {
         $updated = Update-MarkerBlock -Content $updated -Name $blockName -Replacement $target.Blocks[$blockName] -FilePath $target.Path
     }
-    if ($updated -ne $original) {
+    # -cne: default -ne is case-insensitive and would miss case-only drift
+    if ($updated -cne $original) {
         if ($Check) {
             $drifted.Add($target.Path)
         } else {
@@ -241,7 +255,7 @@ foreach ($target in $targets) {
 $coveragePath = Join-Path -Path $RepoRoot -ChildPath 'docs/reference/COVERAGE.md'
 $coverageText = $coverage.ToString()
 $existingCoverage = if (Test-Path -Path $coveragePath) { Get-Content -Path $coveragePath -Raw } else { '' }
-if ($coverageText -ne $existingCoverage) {
+if ($coverageText -cne $existingCoverage) {
     if ($Check) {
         $drifted.Add('docs/reference/COVERAGE.md')
     } else {

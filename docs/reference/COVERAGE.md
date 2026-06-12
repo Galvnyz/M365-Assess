@@ -16,26 +16,26 @@
 
 | Framework key | Report view | Checks mapped | Distinct controls mapped | Avg checks / control |
 |---|---|---|---|---|
-| `fedramp` | yes | 291 | 168 | 1.7 |
-| `nist-800-53` | yes | 291 | 227 | 1.3 |
-| `soc2` | yes | 291 | 118 | 2.5 |
-| `cmmc` | yes | 284 | 134 | 2.1 |
-| `nist-800-171` | — | 284 | 136 | 2.1 |
-| `pci-dss` | yes | 277 | 133 | 2.1 |
-| `mitre-attack` | yes | 274 | 100 | 2.7 |
-| `iso-27001` | yes | 271 | 104 | 2.6 |
-| `iso-27002` | yes | 271 | 104 | 2.6 |
-| `iso-27017` | — | 263 | 91 | 2.9 |
-| `nist-csf` | yes | 257 | 61 | 4.2 |
-| `cis-controls-v8` | yes | 256 | 106 | 2.4 |
-| `hipaa` | yes | 167 | 49 | 3.4 |
+| `fedramp` | yes | 291 | 153 | 1.9 |
+| `nist-800-53` | yes | 291 | 228 | 1.3 |
+| `soc2` | yes | 291 | 199 | 1.5 |
+| `cmmc` | yes | 284 | 152 | 1.9 |
+| `nist-800-171` | — | 284 | 91 | 3.1 |
+| `pci-dss` | yes | 277 | 198 | 1.4 |
+| `mitre-attack` | yes | 274 | 476 | 0.6 |
+| `iso-27001` | yes | 271 | 70 | 3.9 |
+| `iso-27002` | yes | 271 | 70 | 3.9 |
+| `iso-27017` | — | 263 | 57 | 4.6 |
+| `nist-csf` | yes | 257 | 71 | 3.6 |
+| `cis-controls-v8` | yes | 256 | 108 | 2.4 |
+| `hipaa` | yes | 167 | 188 | 0.9 |
 | `cis-m365-v6` | yes | 166 | 139 | 1.2 |
-| `essential-eight` | yes | 140 | 16 | 8.8 |
-| `nis2` | — | 80 | 15 | 5.3 |
-| `cisa-scuba` | yes | 52 | 42 | 1.2 |
-| `eidsca` | — | 21 | 21 | 1 |
+| `essential-eight` | yes | 140 | 24 | 5.8 |
+| `nis2` | — | 80 | 21 | 3.8 |
+| `cisa-scuba` | yes | 52 | 47 | 1.1 |
+| `eidsca` | — | 21 | 30 | 0.7 |
 | `stig` | yes | 13 | 10 | 1.3 |
-| `gdpr` | — | 11 | 7 | 1.6 |
+| `gdpr` | — | 11 | 8 | 1.4 |
 
 ## CISA SCuBA product pillars
 
@@ -43,13 +43,13 @@ Distinct SCuBA policy IDs mapped, by product prefix (`MS.<PRODUCT>.*`). Products
 
 | Product | Label | Distinct policies mapped |
 |---|---|---|
-| MS.AAD | Entra ID (Azure AD) | 27 |
-| MS.EXO | Exchange Online | 7 |
-| MS.DEFENDER | Microsoft Defender | 5 |
+| MS.AAD | Entra ID (Azure AD) | 28 |
+| MS.EXO | Exchange Online | 8 |
+| MS.DEFENDER | Microsoft Defender | 8 |
 | MS.SHAREPOINT | SharePoint & OneDrive | 0 |
 | MS.TEAMS | Microsoft Teams | 0 |
 | MS.POWERPLATFORM | Power Platform | 0 |
-| MS.INTUNE | INTUNE | 3 |
+| MS.INTUNE | Intune | 3 |
 
 ## Per-collector check counts
 
