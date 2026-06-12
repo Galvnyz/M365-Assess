@@ -289,6 +289,8 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
   color: var(--accent);
 }
 .section-head .hr { flex: 1; height: 1px; background: var(--border); }
+/* #962: optional one-line plain-language subtitle under a section head. */
+.section-sub { font-size: 12.5px; color: var(--muted); margin: -6px 0 14px; }
 /* Issue #737: every section header is now collapsible. The .section-head-toggle
    class is added by the useCollapsibleSection hook for sections that opt in. */
 .section-head-toggle {
@@ -710,6 +712,38 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .filter-clear:hover { color: var(--text); background: var(--hover); }
 
 /* ---------- Findings table ---------- */
+/* Status legend (#962): plain-language key rendered above the findings table. */
+.status-legend {
+  margin: 0 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 12.5px;
+}
+.status-legend summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  color: var(--text-soft);
+  font-weight: 600;
+  user-select: none;
+}
+.status-legend summary:hover { color: var(--text); }
+.status-legend-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 4px 14px 12px;
+}
+.status-legend-desc { color: var(--text-soft); line-height: 1.45; }
+.status-legend-note {
+  margin: 0 14px 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .findings {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1865,6 +1899,9 @@ mark.search-hl {
 .fw-seg.review { background: var(--accent); opacity: 0.7; }
 .fw-seg.info   { background: var(--muted); opacity: 0.4; }
 .fw-seg.skipped{ background: var(--muted); opacity: 0.45; }
+/* #962: "Not assessed" summary bucket. Stripe pattern distinguishes it from
+   the solid-muted Info segment using only the theme's own --muted token. */
+.fw-seg.na     { background: repeating-linear-gradient(45deg, var(--muted) 0 3px, transparent 3px 6px); opacity: 0.55; }
 .fw-seg.empty  { background: var(--border); }
 .quilt-cell .fw-stat {
   display: flex; gap: 10px;
@@ -2191,6 +2228,7 @@ mark.search-hl {
 /* DNS auth panel */
 .dns-auth-panel { padding: 16px 20px; }
 .dns-panel-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+.dns-panel-explainer { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; max-width: 72ch; margin: -8px 0 14px; }
 .dns-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .dns-stat-card { background: var(--hover); border-radius: 6px; padding: 10px 12px; }
 .dns-stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
@@ -2317,6 +2355,7 @@ mark.search-hl {
 .leg-dot.fail { background:var(--danger); }
 .leg-dot.review { background:var(--accent); opacity:.7; }
 .leg-dot.info { background:var(--muted); opacity:.5; }
+.leg-dot.na { background:var(--muted); opacity:.3; }
 
 /* family chart shared by all directions */
 .fw-fam-chart { display:flex; flex-direction:column; gap:4px; }
@@ -2850,4 +2889,71 @@ mark.search-hl {
   background:var(--accent-soft); color:var(--accent-text);
   padding:2px 6px; border-radius:3px; margin-right:8px;
   text-transform:uppercase; letter-spacing:.06em;
+}
+
+/* ======== Executive briefing (#963) ======== */
+.briefing-header { display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.briefing-header-org { font-family:var(--font-display); font-size:24px; font-weight:700; letter-spacing:-.01em; }
+.briefing-header-meta { font-size:12.5px; color:var(--muted); font-family:var(--font-mono); }
+
+.brief-verdict {
+  display:grid; grid-template-columns:auto 1fr; gap:22px; align-items:center;
+  background:var(--surface-hero); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px 24px;
+}
+.brief-verdict-info { min-width:0; }
+.brief-fw-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.brief-fw-chip {
+  font-size:11.5px; padding:3px 10px; border-radius:999px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--text-soft); cursor:pointer; font-family:inherit;
+}
+.brief-fw-chip:hover { border-color:var(--accent); color:var(--text); }
+.brief-fw-chip.selected { background:var(--accent-soft); border-color:var(--accent); color:var(--text); font-weight:600; }
+.brief-verdict-line { font-family:var(--font-display); font-size:26px; font-weight:700; margin-bottom:6px; }
+.brief-verdict-line.pass { color:var(--success-text); }
+.brief-verdict-line.warn { color:var(--warn-text); }
+.brief-verdict-line.fail { color:var(--danger-text); }
+.brief-verdict-sub { font-size:13.5px; color:var(--text-soft); line-height:1.55; max-width:64ch; }
+
+.brief-stat-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:10px; }
+.brief-stat {
+  text-align:left; padding:14px 16px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); color:var(--text); font-family:inherit;
+}
+button.brief-stat { cursor:pointer; }
+button.brief-stat:hover { border-color:var(--accent); }
+.brief-stat.bad { border-left:3px solid var(--danger); }
+.brief-stat.good { border-left:3px solid var(--success); }
+.brief-stat-label { font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:6px; }
+.brief-stat-value { font-size:24px; font-weight:700; font-family:var(--font-display); }
+.brief-stat-hint { font-size:12px; color:var(--text-soft); margin-top:2px; }
+
+.brief-actions { margin-top:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; }
+.brief-actions-title { font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:8px; }
+.brief-action {
+  display:flex; align-items:center; gap:10px; width:100%; padding:8px 2px;
+  background:transparent; border:none; border-bottom:1px solid var(--border);
+  color:var(--text); cursor:pointer; font-family:inherit; font-size:13.5px; text-align:left;
+}
+.brief-action:last-of-type { border-bottom:none; }
+.brief-action:hover .brief-action-name { color:var(--accent); }
+.brief-action-dot { width:8px; height:8px; border-radius:50%; flex:none; background:var(--muted); }
+.brief-action-dot.critical { background:var(--danger); }
+.brief-action-dot.high { background:var(--warn); }
+.brief-action-dot.medium { background:var(--accent); }
+.brief-action-dot.low { background:var(--muted); }
+.brief-action-name { flex:1; min-width:0; }
+.brief-action-effort { font-size:11.5px; color:var(--muted); font-family:var(--font-mono); flex:none; }
+.brief-actions-more { display:inline-block; margin-top:10px; font-size:12.5px; color:var(--accent); text-decoration:none; }
+.brief-actions-more:hover { text-decoration:underline; }
+
+@media (max-width: 720px) {
+  .brief-verdict { grid-template-columns:1fr; justify-items:center; }
+}
+@media print {
+  .brief-fw-chip:not(.selected) { display:none; }
+  .brief-fw-more { display:none; }
+  .brief-verdict, .brief-stat, .brief-actions { break-inside:avoid; }
 }

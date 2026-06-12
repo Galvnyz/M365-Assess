@@ -52,6 +52,21 @@ Describe 'Invoke-M365Assessment - syntax and structure' {
         $param | Should -Not -BeNullOrEmpty
     }
 
+    It 'has a -HeadlineFramework parameter (#963)' {
+        $paramBlock = $script:ast.FindAll(
+            { param($node) $node -is [System.Management.Automation.Language.ParameterAst] },
+            $true
+        )
+        $param = $paramBlock | Where-Object { $_.Name.VariablePath.UserPath -eq 'HeadlineFramework' }
+        $param | Should -Not -BeNullOrEmpty
+    }
+
+    It 'validates -HeadlineFramework ids via Import-FrameworkDefinitions (#963)' {
+        $scriptContent = Get-Content -Path $script:scriptPath -Raw
+        $scriptContent | Should -Match 'Unknown -HeadlineFramework'
+        $scriptContent | Should -Match 'Import-FrameworkDefinitions'
+    }
+
     It 'has a -TenantId parameter' {
         $paramBlock = $script:ast.FindAll(
             { param($node) $node -is [System.Management.Automation.Language.ParameterAst] },

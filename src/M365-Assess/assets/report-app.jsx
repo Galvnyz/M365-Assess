@@ -98,6 +98,16 @@ const FRAMEWORKS = (D.frameworks && D.frameworks.length) ? D.frameworks : [
   { id: 'stig',            full: 'DISA STIG' },
 ];
 
+// #963: headline framework id(s) for the Executive Briefing. Honors the
+// -HeadlineFramework run-time parameter when present, else CIS M365. Always
+// filtered to frameworks that exist in this report's data so a stale id can
+// never blank the verdict card.
+const HEADLINE_FWS = (() => {
+  const ids = [].concat(D.headlineFrameworks || []).filter(id => FRAMEWORKS.some(fw => fw.id === id));
+  if (ids.length > 0) return ids;
+  return FRAMEWORKS.some(fw => fw.id === 'cis-m365-v6') ? ['cis-m365-v6'] : [FRAMEWORKS[0].id];
+})();
+
 const FW_BLURB = {
   'cis-m365-v6':     { desc: 'Prescriptive configuration recommendations for Microsoft 365 services, organized into L1/L2 profiles and E3/E5 licensing tiers. Maintained by the Center for Internet Security.', url: 'https://www.cisecurity.org/benchmark/microsoft_365' },
   'cis-controls-v8': { desc: 'Prioritized set of 18 critical security controls defending against the most pervasive attacks, organized into three Implementation Groups (IG1–IG3) by organizational maturity.', url: 'https://www.cisecurity.org/controls' },
@@ -171,6 +181,37 @@ const STATUS_LABEL = {
 const statusLabel = s => STATUS_LABEL[s] || s;
 const SEV_LABEL = { critical:'Critical', high:'High', medium:'Medium', low:'Low', none:'—', info:'Info' };
 
+// --------------------- Status grouping for summary visuals (#962) ---------------------
+// Summary charts collapse the four "not assessed" statuses into ONE muted bucket so
+// non-expert readers see a single honest category. The FindingsTable, FilterBar chips,
+// Roadmap, and Appendix keep the full nine-status vocabulary (technical layer).
+const NOT_ASSESSED_STATUSES = new Set(['Skipped', 'Unknown', 'NotApplicable', 'NotLicensed']);
+const NOT_ASSESSED_LABEL = 'Not assessed';
+const NOT_ASSESSED_TIP = 'Skipped, could not be collected, not applicable, or not licensed. Never counted in any score.';
+
+// Summary bucket for a status: 'pass' | 'warn' | 'fail' | 'review' | 'info' | 'na'
+const summaryBucket = s => NOT_ASSESSED_STATUSES.has(s) ? 'na' : (STATUS_COLORS[s] || 'na');
+
+// One-sentence explanation per status (legend + badge tooltips).
+// Copy aligned with docs/reference/CHECK-STATUS-MODEL.md.
+const STATUS_TIP = {
+  Pass:          'Verified secure. The tenant setting matches the recommendation.',
+  Fail:          'Verified insecure. This setting needs remediation.',
+  Warning:       'Configured, but in a way that raises a concern worth reviewing.',
+  Review:        'Data was collected; a person must judge whether it is acceptable.',
+  Info:          'Background information only, not a pass/fail judgment.',
+  Skipped:       'Not assessed. This check was intentionally excluded from the run.',
+  Unknown:       'Not assessed. Data could not be collected (often a missing permission).',
+  NotApplicable: 'Not assessed. The tenant does not use the service this check covers.',
+  NotLicensed:   'Not assessed. The tenant lacks the license this feature requires.',
+};
+const SEV_TIP = {
+  critical: 'Exploitable path to tenant takeover or data loss. Fix first, regardless of effort.',
+  high:     'Material risk. Schedule remediation within the month.',
+  medium:   'Closes a common attack path. Batch into planned work.',
+  low:      'Defense-in-depth hardening. Address after higher tiers are clear.',
+};
+
 // --------------------- Helpers ---------------------
 const pct = (n,d) => d ? Math.round((n/d)*100) : 0;
 
@@ -184,7 +225,7 @@ const scoreDenom = arr => (arr || []).filter(f => SCORED_STATUSES.has(f.status))
 const fmt = n => Number(n).toLocaleString();
 
 // ======================== Sidebar ========================
-function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain, onDomainJump, onOverviewClick, navOpen, onClose }) {
+function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain, onDomainJump, onBriefingClick, navOpen, onClose }) {
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [domainNavOpen, setDomainNavOpen] = useState(false);
   const [domainsCollapsed, setDomainsCollapsed] = useState(true);
@@ -201,6 +242,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
     Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort()
   );
   const exec = [
+    { id: 'briefing', label: 'Executive briefing' },
     { id: 'overview', label: 'Overview' },
     { id: 'posture',  label: 'Posture score' },
     { id: 'frameworks', label: 'Frameworks' },
@@ -230,7 +272,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
           {exec.map(it => (
             <React.Fragment key={it.id}>
               <a href={`#${it.id}`}
-                 onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
+                 onClick={e => { if (it.id === 'briefing') { e.preventDefault(); onBriefingClick(); } closeIfMobile(); }}
                  className={'nav-item' + (active===it.id?' active':'')}>
                 <span>{it.label}</span>
                 {it.id === 'identity' && (
@@ -292,7 +334,8 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
                         return (
                           <a href="#findings-anchor" key={d}
                              onClick={(e)=>{ e.preventDefault(); onDomainJump(d); closeIfMobile(); }}
-                             className={'nav-subitem' + (activeDomain===d?' active':'')}>
+                             className={'nav-subitem' + (activeDomain===d?' active':'')}
+                             title={fails ? `${fails} failing of ${total} checks` : `${total} checks, none failing`}>
                             <span>{d}</span>
                             <span className={'count' + (fails ? ' pill-fail' : '')}>{fails || total}</span>
                           </a>
@@ -341,11 +384,11 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
               <span className="sc-title">MFA</span>
               <span className="sc-sub">· COVERAGE</span>
             </div>
-            {MFA_STATS.phishResistant > 0 && <div className="sc-row"><span>phish-res</span><span>{fmt(MFA_STATS.phishResistant)}</span></div>}
+            {MFA_STATS.phishResistant > 0 && <div className="sc-row"><span title="Phishing-resistant MFA (FIDO2 keys, Windows Hello, certificates)">phish-res</span><span>{fmt(MFA_STATS.phishResistant)}</span></div>}
             {MFA_STATS.standard > 0     && <div className="sc-row"><span>standard</span><span>{fmt(MFA_STATS.standard)}</span></div>}
             {MFA_STATS.weak > 0         && <div className="sc-row"><span>weak</span><span className="sc-warn">{fmt(MFA_STATS.weak)}</span></div>}
             <div className="sc-row"><span>none</span><span className={MFA_STATS.none > 0 ? 'sc-danger' : ''}>{fmt(MFA_STATS.none)}</span></div>
-            {MFA_STATS.adminsWithoutMfa > 0 && <div className="sc-row"><span>adm gap</span><span className="sc-danger">{fmt(MFA_STATS.adminsWithoutMfa)}</span></div>}
+            {MFA_STATS.adminsWithoutMfa > 0 && <div className="sc-row"><span title="Admin accounts not enrolled in MFA">adm gap</span><span className="sc-danger">{fmt(MFA_STATS.adminsWithoutMfa)}</span></div>}
           </div>
         </div>
       </aside>
@@ -507,22 +550,23 @@ const getManualValidation  = arr => (arr || []).filter(f => f.status === 'Review
 
 const SCORING_VIEWS = [
   { id: 'security-risk',     label: 'Security Risk',           kind: 'score', compute: computeSecurityRiskScore,
-    blurb: 'Strict rule: Pass / (Pass + Fail + Warning). Matches the headline.' },
+    blurb: 'The strict rule: passes divided by everything that could pass or fail. Matches the headline score.' },
   { id: 'compliance',        label: 'Compliance Readiness',    kind: 'score', compute: computeComplianceReadinessScore,
-    blurb: 'Counts Review-status findings as ready (auditor will accept with attestation).' },
+    blurb: 'Counts Review findings as ready. Auditors usually accept them with written attestation.' },
   { id: 'license-adjusted',  label: 'License-Adjusted',        kind: 'score', compute: computeLicenseAdjustedScore,
-    blurb: 'Excludes NotLicensed from both numerator and denominator -- fair to SMBs without E5.' },
+    blurb: 'Sets aside checks that require licenses the tenant does not own.' },
   { id: 'quick-wins',        label: 'Quick Wins',              kind: 'list',  collect: getQuickWins,
-    blurb: 'Failing controls with small remediation effort, sorted by severity.' },
+    blurb: 'Failing checks that take little effort to fix. The fastest score improvements.' },
   { id: 'requires-licensing',label: 'Requires Licensing',      kind: 'list',  collect: getRequiresLicensing,
-    blurb: 'Findings blocked by missing license SKUs -- candidates for upgrade discussion.' },
+    blurb: 'Checks that cannot be enabled on current licensing. Input for a license upgrade conversation.' },
   { id: 'manual-validation', label: 'Manual Validation',       kind: 'list',  collect: getManualValidation,
-    blurb: 'Review-status findings that need human verification (audit log review, evidence collection).' },
+    blurb: 'Findings a person must verify (evidence collection, log review) before they can pass.' },
 ];
 
-function ScoringViews() {
-  const [active, setActive] = useState('security-risk');
-  const view = SCORING_VIEWS.find(v => v.id === active) || SCORING_VIEWS[0];
+// #963: tab state lives in App so the Briefing's "Quick wins" tile can
+// deep-link straight to the quick-wins view (plain useState, no persistence).
+function ScoringViews({ view: activeId, setView }) {
+  const view = SCORING_VIEWS.find(v => v.id === activeId) || SCORING_VIEWS[0];
   let body;
   if (view.kind === 'score') {
     const value = view.compute(FINDINGS);
@@ -575,9 +619,9 @@ function ScoringViews() {
       <div className="scoring-views">
         <div className="scoring-views-tabs" role="tablist">
           {SCORING_VIEWS.map(v => (
-            <button key={v.id} role="tab" aria-selected={v.id === active}
-              className={'scoring-views-tab' + (v.id === active ? ' active' : '')}
-              onClick={() => setActive(v.id)}>
+            <button key={v.id} role="tab" aria-selected={v.id === view.id}
+              className={'scoring-views-tab' + (v.id === view.id ? ' active' : '')}
+              onClick={() => setView(v.id)}>
               {v.label}
             </button>
           ))}
@@ -635,6 +679,149 @@ function PermissionsPanel() {
   );
 }
 
+// ======================== Executive briefing (#963) ========================
+// Compliance-led first screen: a verdict for the headline framework, three
+// plain-language stat tiles, and the top "do first" actions. Language policy:
+// no CheckIds, no status vocabulary, no unexpanded acronyms on this screen.
+// The technical layers below keep full fidelity.
+const EFFORT_HUMAN = { small: 'under an hour', low: 'under an hour', medium: 'a few hours', large: 'a longer project' };
+const BRIEF_SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, none: 4, info: 5 };
+const BRIEF_EFFORT_ORDER = { small: 0, low: 0, medium: 1, large: 2 };
+
+function BriefingVerdictCard({ fwId, setFwId }) {
+  const [showAllFw, setShowAllFw] = useState(false);
+  const data = useMemo(() => buildFrameworkData(fwId, []), [fwId]);
+  if (!data) return null;
+  const pctVal = fwCoveragePct(data.counts);
+  const readiness = fwReadinessLabel(pctVal);
+  // "Applicable" excludes the not-assessed bucket; the donut % keeps the
+  // standard fwCoveragePct formula so Briefing and FrameworkQuilt always agree.
+  const applicable = data.counts.total - (data.counts.na || 0);
+  const qwInFw = getQuickWins(FINDINGS).filter(f => (f.frameworks || []).includes(fwId));
+  const projected = qwInFw.length > 0
+    ? fwCoveragePct({ ...data.counts, pass: data.counts.pass + qwInFw.length, fail: Math.max(0, data.counts.fail - qwInFw.length) })
+    : pctVal;
+  const meta = FRAMEWORKS.find(fw => fw.id === fwId);
+  const chipIds = showAllFw
+    ? FRAMEWORKS.map(fw => fw.id)
+    : HEADLINE_FWS.concat(HEADLINE_FWS.includes(fwId) ? [] : [fwId]);
+  return (
+    <div className="brief-verdict">
+      <ScoreDonut counts={data.counts} animKey={fwId} size={120} stroke={14}/>
+      <div className="brief-verdict-info">
+        <div className="brief-fw-chips">
+          {chipIds.map(id => {
+            const fw = FRAMEWORKS.find(x => x.id === id);
+            return fw ? (
+              <button key={id} className={'brief-fw-chip' + (id === fwId ? ' selected' : '')} onClick={() => setFwId(id)}>
+                {fw.full}
+              </button>
+            ) : null;
+          })}
+          {!showAllFw && FRAMEWORKS.length > chipIds.length && (
+            <button className="brief-fw-chip brief-fw-more" onClick={() => setShowAllFw(true)}>
+              + {FRAMEWORKS.length - chipIds.length} more
+            </button>
+          )}
+        </div>
+        <div className={'brief-verdict-line ' + readiness.tone}>{readiness.label}</div>
+        <div className="brief-verdict-sub">
+          {data.counts.pass} of {applicable} applicable {meta ? meta.full : fwId} controls are in place.
+          {qwInFw.length > 0 && projected > pctVal &&
+            ` Fixing the ${qwInFw.length} quick win${qwInFw.length === 1 ? '' : 's'} below would bring coverage to ${projected}%.`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefingStatRow({ onShowCritical, onShowQuickWins }) {
+  // Actionable criticals only: critical-severity findings that still need
+  // remediation. The Posture KPI counts ALL critical-severity findings
+  // (including passing ones), so these two numbers can legitimately differ.
+  const critical = FINDINGS.filter(f => f.severity === 'critical' && !NON_REMEDIATION_STATUSES.has(f.status)).length;
+  const quickWins = getQuickWins(FINDINGS).length;
+  const score = parseFloat(SCORE.Percentage);
+  const avg = parseFloat(SCORE.AverageComparativeScore);
+  return (
+    <div className="brief-stat-row">
+      <button className={'brief-stat ' + (critical > 0 ? 'bad' : 'good')} onClick={onShowCritical}>
+        <div className="brief-stat-label">Needs attention now</div>
+        <div className="brief-stat-value">{critical}</div>
+        <div className="brief-stat-hint">{critical > 0 ? (critical === 1 ? 'issue to fix this week' : 'issues to fix this week') : 'no critical issues open'}</div>
+      </button>
+      <button className="brief-stat" onClick={onShowQuickWins}>
+        <div className="brief-stat-label">Quick wins</div>
+        <div className="brief-stat-value">{quickWins}</div>
+        <div className="brief-stat-hint">{quickWins === 1 ? 'fix takes under an hour' : 'fixes take under an hour each'}</div>
+      </button>
+      {Number.isFinite(score) && (
+        <div className="brief-stat">
+          <div className="brief-stat-label">Microsoft secure score</div>
+          <div className="brief-stat-value">{score.toFixed(1)}%</div>
+          <div className="brief-stat-hint">
+            {Number.isFinite(avg) && avg > 0
+              ? (score >= avg ? `above the peer average of ${avg.toFixed(1)}%` : `below the peer average of ${avg.toFixed(1)}%`)
+              : 'as last published by Microsoft'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BriefingActions({ onViewFinding }) {
+  const actions = FINDINGS
+    .filter(f => f.lane === 'now' && !NON_REMEDIATION_STATUSES.has(f.status))
+    .sort((a, b) =>
+      ((BRIEF_SEV_ORDER[a.severity] ?? 9) - (BRIEF_SEV_ORDER[b.severity] ?? 9)) ||
+      ((BRIEF_EFFORT_ORDER[a.effort] ?? 3) - (BRIEF_EFFORT_ORDER[b.effort] ?? 3)))
+    .slice(0, 5);
+  if (actions.length === 0) return null;
+  return (
+    <div className="brief-actions">
+      <div className="brief-actions-title">What to do first</div>
+      {actions.map(f => (
+        <button key={f.checkId} className="brief-action" onClick={() => onViewFinding(f.checkId)}>
+          <span className={'brief-action-dot ' + (f.severity || 'medium')}/>
+          <span className="brief-action-name">{f.setting}</span>
+          {EFFORT_HUMAN[f.effort] && <span className="brief-action-effort">{EFFORT_HUMAN[f.effort]}</span>}
+        </button>
+      ))}
+      <a className="brief-actions-more" href="#roadmap" onClick={e => { e.preventDefault(); document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+        See the full remediation plan
+      </a>
+    </div>
+  );
+}
+
+function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
+  const [fwId, setFwId] = useState(HEADLINE_FWS[0]);
+  const assessedRaw = D.assessedAt || SCORE.CreatedDateTime;
+  const assessedDate = assessedRaw ? new Date(assessedRaw) : null;
+  const assessedOk = assessedDate && !isNaN(assessedDate.getTime());
+  return (
+    <section className="block" id="briefing">
+      <div className="briefing-header">
+        <span className="briefing-header-org">{TENANT.OrgDisplayName || 'Microsoft 365 tenant'}</span>
+        <span className="briefing-header-meta">
+          {assessedOk ? `Assessed ${assessedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · ` : ''}
+          {FINDINGS.length} settings checked
+        </span>
+      </div>
+      <HideableBlock hideKey="briefing-verdict" label="Briefing verdict card">
+        <BriefingVerdictCard fwId={fwId} setFwId={setFwId}/>
+      </HideableBlock>
+      <HideableBlock hideKey="briefing-stats" label="Briefing stat tiles">
+        <BriefingStatRow onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
+      </HideableBlock>
+      <HideableBlock hideKey="briefing-actions" label="Briefing action list">
+        <BriefingActions onViewFinding={onViewFinding}/>
+      </HideableBlock>
+    </section>
+  );
+}
+
 // ======================== Posture hero ========================
 function Posture() {
   const score = parseFloat(SCORE.Percentage);
@@ -645,8 +832,8 @@ function Posture() {
   const fail = FINDINGS.filter(f=>f.status==='Fail').length;
   const warn = FINDINGS.filter(f=>f.status==='Warning').length;
   const pass = FINDINGS.filter(f=>f.status==='Pass').length;
-  const review = FINDINGS.filter(f=>f.status==='Review').length;
   const critical = FINDINGS.filter(f=>f.severity==='critical').length;
+  const notAssessed = FINDINGS.filter(f=>NOT_ASSESSED_STATUSES.has(f.status)).length;
 
   return (
     <section className="block" id="posture">
@@ -699,7 +886,7 @@ function Posture() {
             <div className={'kpi ' + (critical?'bad':'good')}>
               <div className="kpi-label">Critical findings</div>
               <div className="kpi-value">{critical}<span className="kpi-suffix">open</span></div>
-              <div className="kpi-hint">Admin, PIM & break-glass exposure</div>
+              <div className="kpi-hint">Admins, privileged roles (PIM) & emergency accounts</div>
               <div className="tiny-bar"><span style={{width: Math.min(100, critical*15)+'%', background:'var(--danger)'}}/></div>
             </div>
             </HideableBlock>
@@ -707,7 +894,7 @@ function Posture() {
             <div className="kpi bad">
               <div className="kpi-label">Fails</div>
               <div className="kpi-value">{fail}</div>
-              <div className="kpi-hint">of {FINDINGS.length} checks</div>
+              <div className="kpi-hint">of {scoreDenom(FINDINGS)} scored checks</div>
               <div className="tiny-bar"><span style={{width: pct(fail, scoreDenom(FINDINGS))+'%', background:'var(--danger)'}}/></div>
             </div>
             </HideableBlock>
@@ -727,24 +914,23 @@ function Posture() {
               <div className="tiny-bar"><span style={{width: pct(pass, scoreDenom(FINDINGS))+'%', background:'var(--success)'}}/></div>
             </div>
             </HideableBlock>
+            {notAssessed > 0 && (
+              <HideableBlock hideKey="kpi-notassessed" label="Not assessed KPI">
+              <div className="kpi" title={NOT_ASSESSED_TIP}>
+                <div className="kpi-label">Not assessed</div>
+                <div className="kpi-value">{notAssessed}</div>
+                <div className="kpi-hint">Skipped, no data, N/A, or unlicensed</div>
+                <div className="tiny-bar"><span style={{width: pct(notAssessed, FINDINGS.length)+'%', background:'var(--muted)'}}/></div>
+              </div>
+              </HideableBlock>
+            )}
           </div>
           <MFABreakdown />
         </div>
       </div>
       <ExecSummaryRow/>
-      {critical > 0 && (
-        <div className="banner">
-          <div className="banner-icon">!</div>
-          <div>
-            <strong>{critical} critical finding{critical===1?'':'s'}</strong> require immediate remediation.
-            {MFA_STATS.adminsWithoutMfa > 0 && ` ${MFA_STATS.adminsWithoutMfa} admin${MFA_STATS.adminsWithoutMfa===1?' is':' are'} not MFA-enrolled.`}
-            {' '}Prioritized using CISA KEV and CIS Critical Controls guidance.{' '}
-            <a href="#findings-anchor" onClick={e=>{e.preventDefault();document.getElementById('findings-anchor')?.scrollIntoView({behavior:'smooth',block:'start'});}}>
-              Review in findings table →
-            </a>
-          </div>
-        </div>
-      )}
+      {/* #963: the critical banner moved to the Executive Briefing, which leads
+          with a "Needs attention now" tile and the top remediation actions. */}
     </section>
   );
 }
@@ -793,9 +979,9 @@ function ExecSummaryRow() {
     const state = dmarcEnf === dnsTotal ? 'good' : dmarcEnf > 0 ? 'warn' : 'bad';
     tiles.push({
       label: 'Email authentication',
-      primary: `${dmarcEnf}/${dnsTotal}`,
-      suffix: 'enforced',
-      hint: `DMARC p=reject or quarantine across ${dnsTotal} domain${dnsTotal===1?'':'s'}`,
+      primary: pct(dmarcEnf, dnsTotal),
+      suffix: '%',
+      hint: `${dmarcEnf} of ${dnsTotal} domain${dnsTotal===1?'':'s'} enforce DMARC (reject or quarantine)`,
       state,
     });
   }
@@ -976,7 +1162,7 @@ function MFABreakdown() {
     <div className="mfa-breakdown">
       <div>
         <div className="lbl">Phish-resistant</div>
-        <div className="val">{s.phishResistant}<small> / {fmt(s.total)}</small></div>
+        <div className="val">{s.phishResistant}<small> of {fmt(s.total)} users</small></div>
         <div className="prog"><i className="pr-good" style={{width: pct(s.phishResistant, denomH)+'%'}}/></div>
       </div>
       <div>
@@ -1009,9 +1195,9 @@ function DnsAuthPanel() {
   const dmarcMiss  = dns.filter(r => !r.DMARC || r.DMARC.includes('Not') || !r.DMARCPolicy).length;
   const n = dns.length;
   const statCards = [
-    { label: 'SPF',           pass: spfPass,  total: n },
-    { label: 'DKIM',          pass: dkimPass, total: n },
-    { label: 'DMARC enforced',pass: dmarcEnf, total: n },
+    { label: 'SPF',           pass: spfPass,  total: n, tip: 'Sender Policy Framework: lists the servers allowed to send mail for the domain' },
+    { label: 'DKIM',          pass: dkimPass, total: n, tip: 'DomainKeys Identified Mail: cryptographically signs outbound mail so receivers can verify it' },
+    { label: 'DMARC enforced',pass: dmarcEnf, total: n, tip: 'Domain-based Message Authentication, Reporting & Conformance: tells receivers to reject or quarantine mail that fails SPF/DKIM' },
   ];
   const policyClass = p => p === 'reject' || p === 'quarantine' ? 'pass' : p && p.includes('none') ? 'warn' : 'fail';
   const risks = [
@@ -1023,11 +1209,12 @@ function DnsAuthPanel() {
   return (
     <div className="card dns-auth-panel" style={{gridColumn:'1 / -1', marginTop:14}}>
       <div className="dns-panel-label">Email authentication posture</div>
+      <div className="dns-panel-explainer">SPF, DKIM, and DMARC are DNS records that prove mail really came from your domain, and tell receiving servers what to do with mail that fails the check.</div>
       <div className="dns-stat-row">
         {statCards.map(s => (
           <div key={s.label} className="dns-stat-card">
-            <div className="dns-stat-label">{s.label}</div>
-            <div className="dns-stat-val">{s.pass}<span>/{s.total}</span></div>
+            <div className="dns-stat-label" title={s.tip}>{s.label}</div>
+            <div className="dns-stat-val">{s.pass}<span> of {s.total}</span></div>
             <div className="dns-stat-bar dns-stat-bar-segments">
               {Array.from({length: s.total}).map((_, i) => (
                 <span key={i} className={i < s.pass ? 'seg seg-pass' : 'seg seg-fail'}/>
@@ -1115,7 +1302,7 @@ function IntuneCategoryGrid() {
           <div key={b.id} className={'intune-cat-card' + (b.fail>0?' has-fail':b.warn>0?' has-warn':' all-pass')}>
             <div className="icat-label">{b.label}</div>
             <div className="icat-score">{b.score}<span className="icat-pct">%</span></div>
-            <div className="icat-meta">{b.pass}P · {b.fail}F · {b.fs.length}</div>
+            <div className="icat-meta">{b.pass} pass · {b.fail} fail · {b.fs.length} checks</div>
             <div className="dc-bar" style={{height:4, marginTop:6}}>
               {b.pass>0 && <i className="pass-seg" style={{flex:b.pass}}/>}
               {b.warn>0 && <i className="warn-seg" style={{flex:b.warn}}/>}
@@ -1194,7 +1381,7 @@ function SharePointSummaryPanel() {
         <div className="spo-stat-card">
           <div className="kpi-label">Pass rate</div>
           <div className="kpi-value">{pct(pass, scoreDenom(spo))}<span style={{fontSize:14}}>%</span></div>
-          <div className="kpi-hint">{pass} of {spo.length} checks</div>
+          <div className="kpi-hint">{pass} of {scoreDenom(spo)} scored checks</div>
           <div className="tiny-bar"><span style={{width: pct(pass, scoreDenom(spo))+'%', background:'var(--success)'}}/></div>
         </div>
         <div className={'spo-stat-card' + (fail>0?' spo-stat-bad':'')}>
@@ -1341,6 +1528,7 @@ function DomainRollup({ onJump }) {
       </div>
       {open && (
         <>
+          <p className="section-sub">One card per Microsoft 365 service area.</p>
           <div className="domain-grid">
             {DOMAIN_ORDER.map(name => {
               const d = DOMAIN_STATS[name];
@@ -1362,8 +1550,8 @@ function DomainRollup({ onJump }) {
                     {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
                     {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
                     {(() => {
-                      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-                      return skipped > 0 ? <i className="skipped-seg" style={{flex: skipped}}/> : null;
+                      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+                      return notAssessed > 0 ? <i className="skipped-seg" style={{flex: notAssessed}} title={NOT_ASSESSED_TIP}/> : null;
                     })()}
                   </div>
                   <div className="dc-meta">
@@ -1372,8 +1560,8 @@ function DomainRollup({ onJump }) {
                     <span className="dc-fail"><b>{d.fail}</b> fail</span>
                     {d.review>0 && <span className="dc-review"><b>{d.review}</b> review</span>}
                     {(() => {
-                      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-                      return skipped > 0 ? <span className="dc-skipped" title="Skipped — prerequisite unmet or not assessable"><b>{skipped}</b> skipped</span> : null;
+                      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+                      return notAssessed > 0 ? <span className="dc-skipped" title={NOT_ASSESSED_TIP}><b>{notAssessed}</b> not assessed</span> : null;
                     })()}
                   </div>
                 </div>
@@ -1499,7 +1687,7 @@ function buildFrameworkData(fwId, activeProfiles) {
   const meta = FRAMEWORKS.find(f => f.id === fwId);
   if (!meta) return null;
   const tokens = activeProfiles || [];
-  const counts = { pass:0, warn:0, fail:0, review:0, info:0, total:0 };
+  const counts = { pass:0, warn:0, fail:0, review:0, info:0, na:0, total:0 };
   const familiesMap = {};
   const profileSets = { L1: new Set(), L2: new Set(), L3: new Set(), E3: new Set(), E5only: new Set(), Low: new Set(), Mod: new Set(), High: new Set() };
   const extract = meta.groupBy ? GROUP_EXTRACTORS[meta.groupBy] : null;
@@ -1509,8 +1697,10 @@ function buildFrameworkData(fwId, activeProfiles) {
     const profs = [].concat(f.fwMeta?.[fwId]?.profiles || []);
     if (tokens.length > 0 && !tokens.some(t => matchProfileToken(profs, t))) return;
     counts.total++;
-    const k = STATUS_COLORS[f.status];
-    if (k) counts[k]++;
+    // summaryBucket folds Skipped/Unknown/NotApplicable/NotLicensed into 'na' —
+    // previously STATUS_COLORS produced keys the counter never initialised (NaN).
+    const k = summaryBucket(f.status);
+    counts[k]++;
     const hasE3 = profs.some(p => p.startsWith('E3'));
     profs.forEach(p => {
       if (p.includes('L1')) profileSets.L1.add(idx);
@@ -1529,9 +1719,9 @@ function buildFrameworkData(fwId, activeProfiles) {
       cids.forEach(cid => { const code = extract(cid); if (code) groups.add(code); });
       if (groups.size === 0) groups.add('OTHER');
       groups.forEach(code => {
-        if (!familiesMap[code]) familiesMap[code] = { code, name: groupNames[code] || (code === 'OTHER' ? 'Other' : code), pass:0, warn:0, fail:0, review:0, info:0, total:0 };
+        if (!familiesMap[code]) familiesMap[code] = { code, name: groupNames[code] || (code === 'OTHER' ? 'Other' : code), pass:0, warn:0, fail:0, review:0, info:0, na:0, total:0 };
         familiesMap[code].total++;
-        if (k) familiesMap[code][k]++;
+        familiesMap[code][k]++;
       });
     }
   });
@@ -1592,6 +1782,7 @@ function ScoreDonut({ counts, size = 168, stroke = 18, animKey }) {
     { key: 'fail', v: counts.fail, color: 'var(--danger)' },
     { key: 'review', v: counts.review, color: 'var(--accent)' },
     { key: 'info', v: counts.info, color: 'var(--muted)' },
+    { key: 'na', v: counts.na || 0, color: 'var(--muted)', op: 0.35 },
   ].filter(s => s.v > 0);
   const total = counts.total || 1;
   const r = (size - stroke) / 2;
@@ -1620,7 +1811,7 @@ function ScoreDonut({ counts, size = 168, stroke = 18, animKey }) {
           const gap = segs.length > 1 ? 1.5 : 0;
           return (
             <circle key={s.key} cx={cx} cy={cy} r={r} fill="none"
-              stroke={s.color} strokeWidth={stroke} strokeLinecap="butt"
+              stroke={s.color} strokeWidth={stroke} strokeLinecap="butt" strokeOpacity={s.op || 1}
               strokeDasharray={`${Math.max(0, dash - gap)} ${c}`}
               strokeDashoffset={offset}
               transform={`rotate(-90 ${cx} ${cy})`}
@@ -1630,7 +1821,7 @@ function ScoreDonut({ counts, size = 168, stroke = 18, animKey }) {
       </svg>
       <div className="fw-donut-center">
         <div className={'fw-donut-pct ' + tone}>{Math.round(animatedPct)}<span>%</span></div>
-        <div className="fw-donut-sub">{counts.pass}/{counts.total}</div>
+        <div className="fw-donut-sub">{counts.pass} of {counts.total}</div>
       </div>
     </div>
   );
@@ -1769,6 +1960,7 @@ function FamilyChartM({ families, focused, onFocus }) {
                 {fam.fail>0   && <div className="fw-seg fail"   style={{flex:fam.fail}}/>}
                 {fam.review>0 && <div className="fw-seg review" style={{flex:fam.review}}/>}
                 {fam.info>0   && <div className="fw-seg info"   style={{flex:fam.info}}/>}
+                {fam.na>0     && <div className="fw-seg na"     style={{flex:fam.na}} title={NOT_ASSESSED_TIP}/>}
               </div>
             </div>
             <div className={'fw-fam-stat ' + (ok ? 'pass' : fam.fail > 2 ? 'fail' : 'warn')}>
@@ -1800,7 +1992,8 @@ function CoverageChart({ frameworks, focused, onFocus }) {
           const isFocused = focused === fw.id;
           const tip = `${fw.counts.pass} pass · ${fw.counts.warn} warn · ${fw.counts.fail} fail` +
             (fw.counts.review > 0 ? ` · ${fw.counts.review} review` : '') +
-            (fw.counts.info > 0 ? ` · ${fw.counts.info} info` : '');
+            (fw.counts.info > 0 ? ` · ${fw.counts.info} info` : '') +
+            (fw.counts.na > 0 ? ` · ${fw.counts.na} not assessed` : '');
           return (
             <button key={fw.id} className={'fw-cov-row' + (isFocused ? ' focused' : '')} onClick={()=>onFocus(fw.id)} title={tip}>
               <div className="fw-cov-name">{fw.full}</div>
@@ -1811,6 +2004,7 @@ function CoverageChart({ frameworks, focused, onFocus }) {
                   {fw.counts.fail>0   && <div className="fw-seg fail"   style={{flex:fw.counts.fail}}/>}
                   {fw.counts.review>0 && <div className="fw-seg review" style={{flex:fw.counts.review}}/>}
                   {fw.counts.info>0   && <div className="fw-seg info"   style={{flex:fw.counts.info}}/>}
+                  {fw.counts.na>0     && <div className="fw-seg na"     style={{flex:fw.counts.na}}/>}
                 </div>
                 <div className="fw-cov-marker" style={{left: `${pct}%`}}>
                   <span className={'fw-cov-marker-pct ' + r.tone}>{pct}%</span>
@@ -1829,6 +2023,7 @@ function CoverageChart({ frameworks, focused, onFocus }) {
         <span><i className="leg-dot fail"/>Fail</span>
         <span><i className="leg-dot review"/>Review</span>
         <span><i className="leg-dot info"/>Info</span>
+        <span title={NOT_ASSESSED_TIP}><i className="leg-dot na"/>Not assessed</span>
       </div>
     </div>
   );
@@ -1877,7 +2072,7 @@ function CompareTableM({ frameworks, focused, onFocus, onRemove }) {
             </div>
             <div className="fw-cmp-pct-cell">
               <div className={'fw-cmp-pct ' + r.tone}>{pct}%</div>
-              <div className="fw-cmp-pct-sub">{fw.counts.pass}/{fw.counts.total}</div>
+              <div className="fw-cmp-pct-sub">{fw.counts.pass} of {fw.counts.total}</div>
             </div>
             <div><span className={'fw-readiness-pill ' + r.tone}>{r.label}</span></div>
             <div className="fw-cmp-gaps">
@@ -1891,6 +2086,7 @@ function CompareTableM({ frameworks, focused, onFocus, onRemove }) {
                 {fw.counts.fail>0   && <div className="fw-seg fail"   style={{flex:fw.counts.fail}}/>}
                 {fw.counts.review>0 && <div className="fw-seg review" style={{flex:fw.counts.review}}/>}
                 {fw.counts.info>0   && <div className="fw-seg info"   style={{flex:fw.counts.info}}/>}
+                {fw.counts.na>0     && <div className="fw-seg na"     style={{flex:fw.counts.na}}/>}
               </div>
             </div>
             <div className="fw-cmp-act">
@@ -1921,8 +2117,10 @@ function GapsCTA({ count, onClick }) {
 // ======================== Framework quilt (#855 redesign) ========================
 function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles }) {
   const { open, headProps } = useCollapsibleSection();
-  const [visibleIds, setVisibleIds] = useState(['cis-m365-v6']);
-  const [focusedId, setFocusedId] = useState('cis-m365-v6');
+  // #963: open on the headline framework so the quilt and the Executive
+  // Briefing tell the same story by default.
+  const [visibleIds, setVisibleIds] = useState([HEADLINE_FWS[0]]);
+  const [focusedId, setFocusedId] = useState(HEADLINE_FWS[0]);
   const [family, setFamily] = useState(null);
 
   useEffect(() => { setFamily(null); }, [focusedId]);
@@ -1932,7 +2130,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
   }, [visibleIds]);
 
   useEffect(() => {
-    const expand = () => { if (visibleIds.length === 0) setVisibleIds([FRAMEWORKS[0]?.id || 'cis-m365-v6']); };
+    const expand = () => { if (visibleIds.length === 0) setVisibleIds([HEADLINE_FWS[0]]); };
     window.addEventListener('beforeprint', expand);
     return () => window.removeEventListener('beforeprint', expand);
   }, [visibleIds]);
@@ -2014,7 +2212,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
                   <div className="fw-merged-score-org" style={{fontFamily:'var(--font-mono)', fontSize:11, color:'var(--muted)'}}>{focused.id}</div>
                   <div style={{display:'flex', gap:8, alignItems:'center', marginTop:8, marginBottom:14}}>
                     <span className={'fw-readiness-pill ' + fwReadinessLabel(fwCoveragePct(focused.counts)).tone}>{fwReadinessLabel(fwCoveragePct(focused.counts)).label}</span>
-                    <span style={{fontSize:12, color:'var(--muted)', fontFamily:'var(--font-mono)'}}>{focused.counts.pass}/{focused.counts.total} controls passing</span>
+                    <span style={{fontSize:12, color:'var(--muted)', fontFamily:'var(--font-mono)'}}>{focused.counts.pass} of {focused.counts.total} controls passing</span>
                   </div>
                   <div className="fw-bar fw-tb-score-bar">
                     {focused.counts.pass>0   && <div className="fw-seg pass"   style={{flex:focused.counts.pass}}/>}
@@ -2022,6 +2220,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
                     {focused.counts.fail>0   && <div className="fw-seg fail"   style={{flex:focused.counts.fail}}/>}
                     {focused.counts.review>0 && <div className="fw-seg review" style={{flex:focused.counts.review}}/>}
                     {focused.counts.info>0   && <div className="fw-seg info"   style={{flex:focused.counts.info}}/>}
+                    {focused.counts.na>0     && <div className="fw-seg na"     style={{flex:focused.counts.na}}/>}
                   </div>
                   <div className="fw-tb-score-legend" style={{marginTop:10}}>
                     <span><i className="leg-dot pass"/>{focused.counts.pass} pass</span>
@@ -2029,6 +2228,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
                     <span><i className="leg-dot fail"/>{focused.counts.fail} fail</span>
                     {focused.counts.review > 0 && <span><i className="leg-dot review"/>{focused.counts.review} review</span>}
                     {focused.counts.info > 0 && <span><i className="leg-dot info"/>{focused.counts.info} info</span>}
+                    {focused.counts.na > 0 && <span title={NOT_ASSESSED_TIP}><i className="leg-dot na"/>{focused.counts.na} not assessed</span>}
                   </div>
                 </div>
                 <div className="fw-merged-score-cta">
@@ -2067,7 +2267,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
                     <div className="fw-merged-score-name" style={{fontSize:20}}>{focused.full}</div>
                     <div style={{display:'flex', gap:8, alignItems:'center', marginTop:8, marginBottom:10}}>
                       <span className={'fw-readiness-pill ' + fwReadinessLabel(fwCoveragePct(focused.counts)).tone}>{fwReadinessLabel(fwCoveragePct(focused.counts)).label}</span>
-                      <span style={{fontSize:12, color:'var(--muted)', fontFamily:'var(--font-mono)'}}>{focused.counts.pass}/{focused.counts.total}</span>
+                      <span style={{fontSize:12, color:'var(--muted)', fontFamily:'var(--font-mono)'}}>{focused.counts.pass} of {focused.counts.total}</span>
                     </div>
                     {focused.profileType && <ProfileChipsM data={focused} active={activeProfiles || []} onChange={handleProfilesChange} compact/>}
                   </div>
@@ -2217,7 +2417,7 @@ function FilterBar({ filters, setFilters, counts, total, search, setSearch, inFi
           {statusChips
             .filter(([v]) => (counts.status[v] || 0) > 0 || filters.status.includes(v))
             .map(([v,cls,label])=>(
-              <button key={v} className={'chip '+cls+(filters.status.includes(v)?' selected':'')} onClick={()=>update('status',v)}>
+              <button key={v} className={'chip '+cls+(filters.status.includes(v)?' selected':'')} onClick={()=>update('status',v)} title={STATUS_TIP[v]}>
                 <span className="dot"/>{label || v}<span className="ct">{counts.status[v]||0}</span>
               </button>
             ))}
@@ -2318,6 +2518,46 @@ function Highlight({ text, query }) {
 // 'finding' column carries the 1fr term so leftover space flows there on
 // wide displays. User-resized widths (colWidths[id]) snap to a px value
 // and override the minmax form for that column.
+// --------------------- Status legend (#962) ---------------------
+// Plain-language key for the table's full nine-status vocabulary. The note
+// line explains how summary charts group the last four as "Not assessed" so
+// the two layers never read as contradictory. beforeprint forces it open so
+// printed/PDF copies always include the key.
+function StatusLegend() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const expand = () => setOpen(true);
+    window.addEventListener('beforeprint', expand);
+    return () => window.removeEventListener('beforeprint', expand);
+  }, []);
+  const statusOrder = ['Pass','Fail','Warning','Review','Info','Skipped','Unknown','NotApplicable','NotLicensed'];
+  const sevOrder = ['critical','high','medium','low'];
+  return (
+    <details className="status-legend" open={open} onToggle={e => setOpen(e.target.open)}>
+      <summary>How to read this table</summary>
+      <div className="status-legend-grid">
+        {statusOrder.map(s => (
+          <React.Fragment key={s}>
+            <span><span className={'status-badge ' + STATUS_COLORS[s]}><span className="dot"/>{statusLabel(s)}</span></span>
+            <span className="status-legend-desc">{STATUS_TIP[s]}</span>
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="status-legend-note">
+        Only Pass, Fail, and Warning count toward scores. The last four statuses appear in full here and are grouped as a single muted "{NOT_ASSESSED_LABEL}" entry in the summary charts above.
+      </div>
+      <div className="status-legend-grid">
+        {sevOrder.map(s => (
+          <React.Fragment key={s}>
+            <span><span className={'sev-badge ' + s}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[s]}</span></span></span>
+            <span className="status-legend-desc">{SEV_TIP[s]}</span>
+          </React.Fragment>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 const ALL_COLS = [
   { id: 'status',    label: 'Status',    width: 'minmax(60px, 80px)'      },
   { id: 'finding',   label: 'Finding',   width: 'minmax(180px, 1.5fr)'    },
@@ -2331,7 +2571,10 @@ const ALL_COLS = [
 // #898 + #917: include sequence in default visible columns. Sequence sits
 // immediately to the left of severity per #917 so the workflow signal
 // (Now/Next/Later) reads adjacent to the priority signal (Severity).
-const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'sequence', 'severity'];
+// #962: checkId ships hidden — internal identifiers overwhelm non-technical
+// readers. Still listed in ALL_COLS, so the Columns picker can re-enable it
+// (per-session; visibility is deliberately not persisted).
+const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'sequence', 'severity'];
 
 // Issue #846: enum orderings for sort. Status uses the "worst first" order
 // that matches the row-color severity ramp; severity uses the standard
@@ -2600,7 +2843,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
     switch (colId) {
       case 'status': return (
         <div key="status" style={{display:'flex',flexDirection:'column',gap:3}}>
-          <span className={'status-badge ' + STATUS_COLORS[f.status]}>
+          <span className={'status-badge ' + STATUS_COLORS[f.status]} title={STATUS_TIP[f.status]}>
             <span className="dot"/>{statusLabel(f.status)}
           </span>
           {f.intentDesign && <span className="badge-intent">By Design</span>}
@@ -2722,6 +2965,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
       </div>
 
       {sectionOpen && <div className="findings">
+        <StatusLegend/>
         <div className="findings-head" style={{gridTemplateColumns: gridTpl}}>
           {cols.map(c => {
             const sortable = FT_SORTABLE.has(c.id);
@@ -3365,7 +3609,7 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
         <button className="task-head-btn" onClick={()=>setOpen(isOpen?null:key)} aria-expanded={isOpen}>
           <div className="task-head">
             <span>{t.setting}{isCustom && <span className="task-custom-badge">custom</span>}</span>
-            <span className={'status-badge ' + STATUS_COLORS[t.status]}><span className="dot"/>{statusLabel(t.status)}</span>
+            <span className={'status-badge ' + STATUS_COLORS[t.status]} title={STATUS_TIP[t.status]}><span className="dot"/>{statusLabel(t.status)}</span>
           </div>
           <div className="task-id">{t.checkId} · {t.domain}</div>
           <div className="task-tags">
@@ -3516,7 +3760,7 @@ function StrykerBlock() {
   return (
     <section className="block" id="stryker">
       <div {...headProps}>
-        <span className="eyebrow">01b · Targeted</span>
+        <span className="eyebrow">01b · Critical exposure</span>
         <h2>Critical exposure analysis</h2>
         <span className="section-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
         <div className="hr"/>
@@ -3543,7 +3787,7 @@ function StrykerBlock() {
         </div>
         {stryker.map((f,i) => (
           <div key={i} className="finding-row" style={{cursor:'default'}}>
-            <div><span className={'status-badge '+STATUS_COLORS[f.status]}><span className="dot"/>{statusLabel(f.status)}</span></div>
+            <div><span className={'status-badge '+STATUS_COLORS[f.status]} title={STATUS_TIP[f.status]}><span className="dot"/>{statusLabel(f.status)}</span></div>
             <div className="finding-title"><div className="t">{f.setting}</div><div className="sub">{f.section}</div></div>
             <div className="check-id">{f.checkId}</div>
             <div><span className={'sev-badge '+f.severity}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[f.severity]}</span></span></div>
@@ -3749,15 +3993,15 @@ function Appendix() {
               <tbody>
                 <tr style={rowStyle}>
                   <td style={cellStyle}>SPF passing</td>
-                  <td style={{...cellStyle,...monoRight,color:spfPass===dnsTotal?'var(--success-text)':spfPass>0?'var(--warn-text)':'var(--danger-text)'}}>{spfPass}/{dnsTotal}</td>
+                  <td style={{...cellStyle,...monoRight,color:spfPass===dnsTotal?'var(--success-text)':spfPass>0?'var(--warn-text)':'var(--danger-text)'}}>{spfPass} of {dnsTotal}</td>
                 </tr>
                 <tr style={rowStyle}>
                   <td style={cellStyle}>DKIM passing</td>
-                  <td style={{...cellStyle,...monoRight,color:dkimPass===dnsTotal?'var(--success-text)':dkimPass>0?'var(--warn-text)':'var(--danger-text)'}}>{dkimPass}/{dnsTotal}</td>
+                  <td style={{...cellStyle,...monoRight,color:dkimPass===dnsTotal?'var(--success-text)':dkimPass>0?'var(--warn-text)':'var(--danger-text)'}}>{dkimPass} of {dnsTotal}</td>
                 </tr>
                 <tr style={rowStyle}>
                   <td style={cellStyle}>DMARC enforced</td>
-                  <td style={{...cellStyle,...monoRight,color:dmarcEnf===dnsTotal?'var(--success-text)':dmarcEnf>0?'var(--warn-text)':'var(--danger-text)'}}>{dmarcEnf}/{dnsTotal}</td>
+                  <td style={{...cellStyle,...monoRight,color:dmarcEnf===dnsTotal?'var(--success-text)':dmarcEnf>0?'var(--warn-text)':'var(--danger-text)'}}>{dmarcEnf} of {dnsTotal}</td>
                 </tr>
               </tbody>
             </table>
@@ -3870,7 +4114,9 @@ function App() {
     } catch {}
     return { status:[], sequence:[], severity:[], framework:[], domain:[], profile:[] };
   });
-  const [active, setActive] = useState('overview');
+  const [active, setActive] = useState('briefing');
+  // #963: ScoringViews tab state (lifted so the Briefing can deep-link).
+  const [scoringView, setScoringView] = useState('security-risk');
   const [activeSubsection, setActiveSubsection] = useState(null);
   const [showTweaks, setShowTweaks] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -4024,9 +4270,9 @@ function App() {
     setFilters(f => ({ ...f, domain: d ? [d] : [] }));
     if (d) document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const onOverviewClick = () => {
+  const onBriefingClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setActive('overview');
+    setActive('briefing');
     onDomainJump(null);
   };
   const onViewFinding = useCallback((checkId) => {
@@ -4035,11 +4281,21 @@ function App() {
     setFocusFinding(checkId);
     document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+  // #963: Briefing tile deep-links.
+  const onShowCritical = useCallback(() => {
+    setFilters({ status:[], sequence:[], severity:['critical'], framework:[], domain:[], profile:[] });
+    setSearch('');
+    document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const onShowQuickWins = useCallback(() => {
+    setScoringView('quick-wins');
+    document.getElementById('scoring')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <EditModeContext.Provider value={editModeCtx}>
     <div className="app">
-      <Sidebar active={active} activeSubsection={activeSubsection} counts={navCounts} domainCounts={domainCounts} activeDomain={filters.domain.length===1 ? filters.domain[0] : null} onDomainJump={onDomainJump} onOverviewClick={onOverviewClick} navOpen={navOpen} onClose={()=>setNavOpen(false)}/>
+      <Sidebar active={active} activeSubsection={activeSubsection} counts={navCounts} domainCounts={domainCounts} activeDomain={filters.domain.length===1 ? filters.domain[0] : null} onDomainJump={onDomainJump} onBriefingClick={onBriefingClick} navOpen={navOpen} onClose={()=>setNavOpen(false)}/>
       <main className="main">
         <Topbar
           search={search} setSearch={setSearch}
@@ -4057,9 +4313,10 @@ function App() {
           onReset={handleResetAll}
           hiddenCount={hiddenFindings.size + hiddenElements.size}
         />
+        <Briefing onViewFinding={onViewFinding} onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
         <Overview/>
         <Posture/>
-        <ScoringViews/>
+        <ScoringViews view={scoringView} setView={setScoringView}/>
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>
         <DomainRollup onJump={onDomainJump}/>
