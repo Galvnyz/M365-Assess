@@ -4,6 +4,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Fixed
+- **CIS M365 v6 sections rendered as raw numbers in the framework breakdown (#948)** — `cis-m365-v6.json` was missing section labels for `4` (Intune) and `9` (Fabric / Power BI), so checks mapped to those sections displayed the bare section number as the group name. Same fix applied to `cisa-scuba.json`, which was missing the `MS.INTUNE` service label. A new regression test cross-checks every group key derivable from registry controlIds against each framework's group map so a registry sync can no longer reintroduce unlabeled groups silently.
+
 ## [2.11.0] - 2026-05-01
 
 The **Data Quality & Accuracy** milestone — 29 of 30 issues closed (#871 stays blocked on upstream CheckID/SCF). No breaking API changes. Ships several new findings-table capabilities, three research/spec decision artifacts, a misleading-check fix (SSPR semantic mismatch), and the CheckID v3.4.0 registry refresh.

@@ -49,6 +49,7 @@
     "MS.AAD":           "Azure AD / Entra ID",
     "MS.EXO":           "Exchange Online",
     "MS.DEFENDER":      "Microsoft Defender",
+    "MS.INTUNE":        "Intune",
     "MS.POWERPLATFORM": "Power Platform",
     "MS.SHAREPOINT":    "SharePoint",
     "MS.TEAMS":         "Teams"
