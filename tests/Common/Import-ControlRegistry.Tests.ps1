@@ -143,6 +143,23 @@ Describe 'Import-ControlRegistry' {
             }
         }
 
+        It 'compliance check <CheckId> accepts the verified plan name <Plan> (#980)' -ForEach @(
+            # The 2026-06-12 GCC High run skipped all three checks on a G5 tenant that has
+            # the features. The original overlay names were a SKU id, a nonexistent name,
+            # and a retired name. Gate is ANY-of, so verified names are added as alternates.
+            @{ CheckId = 'COMPLIANCE-DLP-002';    Plan = 'COMMUNICATIONS_DLP' }
+            @{ CheckId = 'COMPLIANCE-LABELS-002'; Plan = 'RMS_S_PREMIUM2' }
+            @{ CheckId = 'COMPLIANCE-LABELS-002'; Plan = 'MIP_S_CLP2' }
+            @{ CheckId = 'COMPLIANCE-COMMS-001';  Plan = 'MICROSOFT_COMMUNICATION_COMPLIANCE' }
+        ) {
+            $registry = Import-ControlRegistry -ControlsPath $testRoot
+            $entry = $registry[$CheckId]
+            if ($null -ne $entry) {
+                $entry.licensing.requiredServicePlans | Should -Contain $Plan `
+                    -Because "the ANY-of license gate needs '$Plan' to recognize tenants whose Graph response uses the current plan name"
+            }
+        }
+
         It 'E3 checks have empty requiredServicePlans' {
             $registry = Import-ControlRegistry -ControlsPath $testRoot
             # ENTRA-ADMIN-001 is a core E3 check with no licensing gate
