@@ -26,7 +26,8 @@ src/M365-Assess/
 ├── SharePoint/                 # SPO, Teams checks
 ├── Purview/                    # Compliance checks
 └── controls/
-    ├── registry.json            # 253 checks (222 CheckID upstream + 31 local extensions)
+    ├── registry.json            # 292 M365-scoped checks (CheckID upstream + 5 local extensions)
+    ├── sync-scope.json          # M365 collector allowlist — sync filters WIN-*/AZ-* out
     ├── licensing-overlay.json   # Maps CheckID E3/E5 minimum → exact service plan IDs
     ├── risk-severity.json       # Risk scores per checkId
     └── frameworks/              # 15 framework JSON files (auto-discovered)
@@ -44,9 +45,15 @@ Status values: `Pass` | `Fail` | `Warning` | `Review` | `Info` | `Skipped`
 `registry.json` is synced from CheckID pinned releases (CI: `sync-checkid` cron, weekly).
 **Never load from CheckID main branch** — always use a tagged release.
 
-Local extension checks (31 total) are M365-Assess-specific checks not yet in CheckID
-upstream. **The sync script must preserve them by checkId prefix or explicit list.**
-When adding new local extension checks, register them in the sync preservation list.
+The upstream registry also carries Windows-endpoint (`WIN-*`) and Azure-subscription
+(`AZ-*`) checks that no collector here emits. The sync workflow partitions the registry
+to the collectors in `controls/sync-scope.json`; `Import-ControlRegistry` enforces the
+same scope at load time. **Never commit an unpartitioned registry.**
+
+Local extension checks (5 total, in `local-extensions.json`) are M365-Assess-specific
+checks not yet in CheckID upstream. **The sync script must preserve them by checkId
+prefix or explicit list.** When adding new local extension checks, register them in
+the sync preservation list.
 
 ### DNS Collector
 DNS checks run **after all other sections** — domains are prefetched from Graph at
@@ -87,6 +94,7 @@ pwsh -NoProfile -Command "Invoke-ScriptAnalyzer -Path '.' -Recurse -Severity War
 | **NEVER force-push main** | Protected branch; PRs required |
 | **Version lives in 4 locations** | See `.claude/rules/versions.md` |
 | **Preserve local extensions on registry sync** | Sync overwrites — list them explicitly |
+| **No "claude" in branch names, PR titles/bodies, or commit messages** | Maintainer preference — keep AI-tooling references out of git artifacts |
 
 ## Key File Paths
 | File | Purpose |

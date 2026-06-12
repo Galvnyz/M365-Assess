@@ -198,6 +198,7 @@
         'controls\role-tiers.json'
         'controls\sku-feature-map.json'
         'controls\registry.json'
+        'controls\sync-scope.json'
         'controls\licensing-overlay.json'
         'controls\risk-severity.json'
         'controls\learn-more.json'
