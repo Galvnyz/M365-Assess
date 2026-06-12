@@ -96,19 +96,14 @@ Describe 'Framework group maps cover all registry-mapped groups (#948)' {
             }
         }
 
-        # Pre-existing gaps that predate this test and need content decisions
-        # beyond a label (tracked separately — do NOT grow this list to silence
-        # a failure; add the missing label to the framework JSON instead):
-        #   hipaa     — the CheckID v3.4.0 sync (#912) expanded registry coverage
-        #               to the Breach Notification (404-412) and Privacy Rule
-        #               (506-532) subparts, but hipaa.json's groups map still
-        #               only labels the Security Rule sections.
-        #   iso-27002 — ISO 27002:2022 has no clauses 9/10; registry controlIds
-        #               '9.1', '10.1' look like 2013-edition ids from upstream.
-        $script:knownGroupGaps = @{
-            'hipaa'     = @('404', '408', '412', '506', '508', '510', '512', '514', '530', '532')
-            'iso-27002' = @('9', '10')
-        }
+        # No exceptions: when this fails on a registry sync, add the missing
+        # label to the framework JSON rather than weakening the assertion.
+        # Note: iso-27002.json labels groups 9/10 ("Performance Evaluation",
+        # "Improvement") even though ISO 27002:2022 has no clauses 9/10 — the
+        # registry currently maps iso-27001 and iso-27002 identically (#858 /
+        # #871), so ISO 27001 management-clause ids leak into iso-27002 until
+        # the upstream CheckID/SCF divergence lands. Drop those two labels
+        # when #871 closes.
     }
 
     It 'every group key extracted from registry controlIds has a display name' {
@@ -126,7 +121,6 @@ Describe 'Framework group maps cover all registry-mapped groups (#948)' {
             $known = @($groupsMap.PSObject.Properties.Name)
 
             $registryKey = if ($fw.registryKey) { [string]$fw.registryKey } else { [string]$fw.frameworkId }
-            $allowedGaps = @($script:knownGroupGaps[$registryKey])
 
             $missing = [System.Collections.Generic.SortedSet[string]]::new()
             foreach ($check in $script:registry.checks) {
@@ -136,7 +130,7 @@ Describe 'Framework group maps cover all registry-mapped groups (#948)' {
                     $cid = $cid.Trim()
                     if (-not $cid) { continue }
                     $key = & $extract $cid
-                    if ($key -and $known -notcontains $key -and $allowedGaps -notcontains $key) {
+                    if ($key -and $known -notcontains $key) {
                         $null = $missing.Add($key)
                     }
                 }

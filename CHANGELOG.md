@@ -5,7 +5,7 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ## [Unreleased]
 
 ### Fixed
-- **CIS M365 v6 sections rendered as raw numbers in the framework breakdown (#948)** — `cis-m365-v6.json` was missing section labels for `4` (Intune) and `9` (Fabric / Power BI), so checks mapped to those sections displayed the bare section number as the group name. Same fix applied to `cisa-scuba.json`, which was missing the `MS.INTUNE` service label. A new regression test cross-checks every group key derivable from registry controlIds against each framework's group map so a registry sync can no longer reintroduce unlabeled groups silently.
+- **Framework group keys rendered as raw codes in the framework breakdown (#948)** — several framework group maps were missing labels for groups the registry maps checks into, so those groups displayed the bare section number/prefix as the group name: `cis-m365-v6.json` sections `4` (Intune) and `9` (Fabric / Power BI), `cisa-scuba.json` service `MS.INTUNE`, `hipaa.json` the ten Breach Notification + Privacy Rule sections added by the CheckID v3.4.0 sync (#912), and `iso-27002.json` groups `9`/`10` (ISO 27001 management-clause ids that leak in via the upstream 27001/27002 mapping conflation, #871 — labels mirror `iso-27001.json` and can be dropped when upstream diverges the mappings). A new regression test cross-checks every group key derivable from registry controlIds against each framework's group map so a registry sync can no longer reintroduce unlabeled groups silently.
 
 ## [2.11.0] - 2026-05-01
 
