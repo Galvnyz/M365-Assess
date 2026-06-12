@@ -378,6 +378,37 @@ const SEV_LABEL = {
   info: 'Info'
 };
 
+// --------------------- Status grouping for summary visuals (#962) ---------------------
+// Summary charts collapse the four "not assessed" statuses into ONE muted bucket so
+// non-expert readers see a single honest category. The FindingsTable, FilterBar chips,
+// Roadmap, and Appendix keep the full nine-status vocabulary (technical layer).
+const NOT_ASSESSED_STATUSES = new Set(['Skipped', 'Unknown', 'NotApplicable', 'NotLicensed']);
+const NOT_ASSESSED_LABEL = 'Not assessed';
+const NOT_ASSESSED_TIP = 'Skipped, could not be collected, not applicable, or not licensed. Never counted in any score.';
+
+// Summary bucket for a status: 'pass' | 'warn' | 'fail' | 'review' | 'info' | 'na'
+const summaryBucket = s => NOT_ASSESSED_STATUSES.has(s) ? 'na' : STATUS_COLORS[s] || 'na';
+
+// One-sentence explanation per status (legend + badge tooltips).
+// Copy aligned with docs/reference/CHECK-STATUS-MODEL.md.
+const STATUS_TIP = {
+  Pass: 'Verified secure. The tenant setting matches the recommendation.',
+  Fail: 'Verified insecure. This setting needs remediation.',
+  Warning: 'Configured, but in a way that raises a concern worth reviewing.',
+  Review: 'Data was collected; a person must judge whether it is acceptable.',
+  Info: 'Background information only, not a pass/fail judgment.',
+  Skipped: 'Not assessed. This check was intentionally excluded from the run.',
+  Unknown: 'Not assessed. Data could not be collected (often a missing permission).',
+  NotApplicable: 'Not assessed. The tenant does not use the service this check covers.',
+  NotLicensed: 'Not assessed. The tenant lacks the license this feature requires.'
+};
+const SEV_TIP = {
+  critical: 'Exploitable path to tenant takeover or data loss. Fix first, regardless of effort.',
+  high: 'Material risk. Schedule remediation within the month.',
+  medium: 'Closes a common attack path. Batch into planned work.',
+  low: 'Defense-in-depth hardening. Address after higher tiers are clear.'
+};
+
 // --------------------- Helpers ---------------------
 const pct = (n, d) => d ? Math.round(n / d * 100) : 0;
 
@@ -559,7 +590,8 @@ function Sidebar({
         onDomainJump(d);
         closeIfMobile();
       },
-      className: 'nav-subitem' + (activeDomain === d ? ' active' : '')
+      className: 'nav-subitem' + (activeDomain === d ? ' active' : ''),
+      title: fails ? `${fails} failing of ${total} checks` : `${total} checks, none failing`
     }, /*#__PURE__*/React.createElement("span", null, d), /*#__PURE__*/React.createElement("span", {
       className: 'count' + (fails ? ' pill-fail' : '')
     }, fails || total));
@@ -638,7 +670,9 @@ function Sidebar({
     className: "sc-sub"
   }, "\xB7 COVERAGE")), MFA_STATS.phishResistant > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
-  }, /*#__PURE__*/React.createElement("span", null, "phish-res"), /*#__PURE__*/React.createElement("span", null, fmt(MFA_STATS.phishResistant))), MFA_STATS.standard > 0 && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", {
+    title: "Phishing-resistant MFA (FIDO2 keys, Windows Hello, certificates)"
+  }, "phish-res"), /*#__PURE__*/React.createElement("span", null, fmt(MFA_STATS.phishResistant))), MFA_STATS.standard > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "standard"), /*#__PURE__*/React.createElement("span", null, fmt(MFA_STATS.standard))), MFA_STATS.weak > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
@@ -650,7 +684,9 @@ function Sidebar({
     className: MFA_STATS.none > 0 ? 'sc-danger' : ''
   }, fmt(MFA_STATS.none))), MFA_STATS.adminsWithoutMfa > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
-  }, /*#__PURE__*/React.createElement("span", null, "adm gap"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", {
+    title: "Admin accounts not enrolled in MFA"
+  }, "adm gap"), /*#__PURE__*/React.createElement("span", {
     className: "sc-danger"
   }, fmt(MFA_STATS.adminsWithoutMfa)))))));
 }
@@ -885,37 +921,37 @@ const SCORING_VIEWS = [{
   label: 'Security Risk',
   kind: 'score',
   compute: computeSecurityRiskScore,
-  blurb: 'Strict rule: Pass / (Pass + Fail + Warning). Matches the headline.'
+  blurb: 'The strict rule: passes divided by everything that could pass or fail. Matches the headline score.'
 }, {
   id: 'compliance',
   label: 'Compliance Readiness',
   kind: 'score',
   compute: computeComplianceReadinessScore,
-  blurb: 'Counts Review-status findings as ready (auditor will accept with attestation).'
+  blurb: 'Counts Review findings as ready. Auditors usually accept them with written attestation.'
 }, {
   id: 'license-adjusted',
   label: 'License-Adjusted',
   kind: 'score',
   compute: computeLicenseAdjustedScore,
-  blurb: 'Excludes NotLicensed from both numerator and denominator -- fair to SMBs without E5.'
+  blurb: 'Sets aside checks that require licenses the tenant does not own.'
 }, {
   id: 'quick-wins',
   label: 'Quick Wins',
   kind: 'list',
   collect: getQuickWins,
-  blurb: 'Failing controls with small remediation effort, sorted by severity.'
+  blurb: 'Failing checks that take little effort to fix. The fastest score improvements.'
 }, {
   id: 'requires-licensing',
   label: 'Requires Licensing',
   kind: 'list',
   collect: getRequiresLicensing,
-  blurb: 'Findings blocked by missing license SKUs -- candidates for upgrade discussion.'
+  blurb: 'Checks that cannot be enabled on current licensing. Input for a license upgrade conversation.'
 }, {
   id: 'manual-validation',
   label: 'Manual Validation',
   kind: 'list',
   collect: getManualValidation,
-  blurb: 'Review-status findings that need human verification (audit log review, evidence collection).'
+  blurb: 'Findings a person must verify (evidence collection, log review) before they can pass.'
 }];
 function ScoringViews() {
   const [active, setActive] = useState('security-risk');
@@ -1058,8 +1094,8 @@ function Posture() {
   const fail = FINDINGS.filter(f => f.status === 'Fail').length;
   const warn = FINDINGS.filter(f => f.status === 'Warning').length;
   const pass = FINDINGS.filter(f => f.status === 'Pass').length;
-  const review = FINDINGS.filter(f => f.status === 'Review').length;
   const critical = FINDINGS.filter(f => f.severity === 'critical').length;
+  const notAssessed = FINDINGS.filter(f => NOT_ASSESSED_STATUSES.has(f.status)).length;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "posture"
@@ -1133,7 +1169,7 @@ function Posture() {
     className: "kpi-suffix"
   }, "open")), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, "Admin, PIM & break-glass exposure"), /*#__PURE__*/React.createElement("div", {
+  }, "Admins, privileged roles (PIM) & emergency accounts"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -1151,7 +1187,7 @@ function Posture() {
     className: "kpi-value"
   }, fail), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, "of ", FINDINGS.length, " checks"), /*#__PURE__*/React.createElement("div", {
+  }, "of ", scoreDenom(FINDINGS), " scored checks"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -1193,6 +1229,25 @@ function Posture() {
     style: {
       width: pct(pass, scoreDenom(FINDINGS)) + '%',
       background: 'var(--success)'
+    }
+  })))), notAssessed > 0 && /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "kpi-notassessed",
+    label: "Not assessed KPI"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi",
+    title: NOT_ASSESSED_TIP
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, "Not assessed"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-value"
+  }, notAssessed), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-hint"
+  }, "Skipped, no data, N/A, or unlicensed"), /*#__PURE__*/React.createElement("div", {
+    className: "tiny-bar"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: pct(notAssessed, FINDINGS.length) + '%',
+      background: 'var(--muted)'
     }
   }))))), /*#__PURE__*/React.createElement(MFABreakdown, null))), /*#__PURE__*/React.createElement(ExecSummaryRow, null), critical > 0 && /*#__PURE__*/React.createElement("div", {
     className: "banner"
@@ -1247,9 +1302,9 @@ function ExecSummaryRow() {
     const state = dmarcEnf === dnsTotal ? 'good' : dmarcEnf > 0 ? 'warn' : 'bad';
     tiles.push({
       label: 'Email authentication',
-      primary: `${dmarcEnf}/${dnsTotal}`,
-      suffix: 'enforced',
-      hint: `DMARC p=reject or quarantine across ${dnsTotal} domain${dnsTotal === 1 ? '' : 's'}`,
+      primary: pct(dmarcEnf, dnsTotal),
+      suffix: '%',
+      hint: `${dmarcEnf} of ${dnsTotal} domain${dnsTotal === 1 ? '' : 's'} enforce DMARC (reject or quarantine)`,
       state
     });
   }
@@ -1503,7 +1558,7 @@ function MFABreakdown() {
     className: "lbl"
   }, "Phish-resistant"), /*#__PURE__*/React.createElement("div", {
     className: "val"
-  }, s.phishResistant, /*#__PURE__*/React.createElement("small", null, " / ", fmt(s.total))), /*#__PURE__*/React.createElement("div", {
+  }, s.phishResistant, /*#__PURE__*/React.createElement("small", null, " of ", fmt(s.total), " users")), /*#__PURE__*/React.createElement("div", {
     className: "prog"
   }, /*#__PURE__*/React.createElement("i", {
     className: "pr-good",
@@ -1559,15 +1614,18 @@ function DnsAuthPanel() {
   const statCards = [{
     label: 'SPF',
     pass: spfPass,
-    total: n
+    total: n,
+    tip: 'Sender Policy Framework: lists the servers allowed to send mail for the domain'
   }, {
     label: 'DKIM',
     pass: dkimPass,
-    total: n
+    total: n,
+    tip: 'DomainKeys Identified Mail: cryptographically signs outbound mail so receivers can verify it'
   }, {
     label: 'DMARC enforced',
     pass: dmarcEnf,
-    total: n
+    total: n,
+    tip: 'Domain-based Message Authentication, Reporting & Conformance: tells receivers to reject or quarantine mail that fails SPF/DKIM'
   }];
   const policyClass = p => p === 'reject' || p === 'quarantine' ? 'pass' : p && p.includes('none') ? 'warn' : 'fail';
   const risks = [n - spfPass > 0 && {
@@ -1592,15 +1650,18 @@ function DnsAuthPanel() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "dns-panel-label"
   }, "Email authentication posture"), /*#__PURE__*/React.createElement("div", {
+    className: "dns-panel-explainer"
+  }, "SPF, DKIM, and DMARC are DNS records that prove mail really came from your domain, and tell receiving servers what to do with mail that fails the check."), /*#__PURE__*/React.createElement("div", {
     className: "dns-stat-row"
   }, statCards.map(s => /*#__PURE__*/React.createElement("div", {
     key: s.label,
     className: "dns-stat-card"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "dns-stat-label"
+    className: "dns-stat-label",
+    title: s.tip
   }, s.label), /*#__PURE__*/React.createElement("div", {
     className: "dns-stat-val"
-  }, s.pass, /*#__PURE__*/React.createElement("span", null, "/", s.total)), /*#__PURE__*/React.createElement("div", {
+  }, s.pass, /*#__PURE__*/React.createElement("span", null, " of ", s.total)), /*#__PURE__*/React.createElement("div", {
     className: "dns-stat-bar dns-stat-bar-segments"
   }, Array.from({
     length: s.total
@@ -1764,7 +1825,7 @@ function IntuneCategoryGrid() {
     className: "icat-pct"
   }, "%")), /*#__PURE__*/React.createElement("div", {
     className: "icat-meta"
-  }, b.pass, "P \xB7 ", b.fail, "F \xB7 ", b.fs.length), /*#__PURE__*/React.createElement("div", {
+  }, b.pass, " pass \xB7 ", b.fail, " fail \xB7 ", b.fs.length, " checks"), /*#__PURE__*/React.createElement("div", {
     className: "dc-bar",
     style: {
       height: 4,
@@ -1899,7 +1960,7 @@ function SharePointSummaryPanel() {
     }
   }, "%")), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, pass, " of ", spo.length, " checks"), /*#__PURE__*/React.createElement("div", {
+  }, pass, " of ", scoreDenom(spo), " scored checks"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -2139,7 +2200,9 @@ function DomainRollup({
     "aria-hidden": "true"
   }, open ? '\u25be' : '\u25b8')), /*#__PURE__*/React.createElement("div", {
     className: "hr"
-  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "section-sub"
+  }, "One card per Microsoft 365 service area."), /*#__PURE__*/React.createElement("div", {
     className: "domain-grid"
   }, DOMAIN_ORDER.map(name => {
     const d = DOMAIN_STATS[name];
@@ -2186,12 +2249,13 @@ function DomainRollup({
         flex: d.info
       }
     }), (() => {
-      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-      return skipped > 0 ? /*#__PURE__*/React.createElement("i", {
+      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+      return notAssessed > 0 ? /*#__PURE__*/React.createElement("i", {
         className: "skipped-seg",
         style: {
-          flex: skipped
-        }
+          flex: notAssessed
+        },
+        title: NOT_ASSESSED_TIP
       }) : null;
     })()), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
@@ -2204,11 +2268,11 @@ function DomainRollup({
     }, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", {
       className: "dc-review"
     }, /*#__PURE__*/React.createElement("b", null, d.review), " review"), (() => {
-      const skipped = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-      return skipped > 0 ? /*#__PURE__*/React.createElement("span", {
+      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+      return notAssessed > 0 ? /*#__PURE__*/React.createElement("span", {
         className: "dc-skipped",
-        title: "Skipped \u2014 prerequisite unmet or not assessable"
-      }, /*#__PURE__*/React.createElement("b", null, skipped), " skipped") : null;
+        title: NOT_ASSESSED_TIP
+      }, /*#__PURE__*/React.createElement("b", null, notAssessed), " not assessed") : null;
     })()));
   })), FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("div", {
     id: "identity-intune"
@@ -2317,6 +2381,7 @@ function buildFrameworkData(fwId, activeProfiles) {
     fail: 0,
     review: 0,
     info: 0,
+    na: 0,
     total: 0
   };
   const familiesMap = {};
@@ -2337,8 +2402,10 @@ function buildFrameworkData(fwId, activeProfiles) {
     const profs = [].concat(f.fwMeta?.[fwId]?.profiles || []);
     if (tokens.length > 0 && !tokens.some(t => matchProfileToken(profs, t))) return;
     counts.total++;
-    const k = STATUS_COLORS[f.status];
-    if (k) counts[k]++;
+    // summaryBucket folds Skipped/Unknown/NotApplicable/NotLicensed into 'na' —
+    // previously STATUS_COLORS produced keys the counter never initialised (NaN).
+    const k = summaryBucket(f.status);
+    counts[k]++;
     const hasE3 = profs.some(p => p.startsWith('E3'));
     profs.forEach(p => {
       if (p.includes('L1')) profileSets.L1.add(idx);
@@ -2370,10 +2437,11 @@ function buildFrameworkData(fwId, activeProfiles) {
           fail: 0,
           review: 0,
           info: 0,
+          na: 0,
           total: 0
         };
         familiesMap[code].total++;
-        if (k) familiesMap[code][k]++;
+        familiesMap[code][k]++;
       });
     }
   });
@@ -2476,6 +2544,11 @@ function ScoreDonut({
     key: 'info',
     v: counts.info,
     color: 'var(--muted)'
+  }, {
+    key: 'na',
+    v: counts.na || 0,
+    color: 'var(--muted)',
+    op: 0.35
   }].filter(s => s.v > 0);
   const total = counts.total || 1;
   const r = (size - stroke) / 2;
@@ -2528,6 +2601,7 @@ function ScoreDonut({
       stroke: s.color,
       strokeWidth: stroke,
       strokeLinecap: "butt",
+      strokeOpacity: s.op || 1,
       strokeDasharray: `${Math.max(0, dash - gap)} ${c}`,
       strokeDashoffset: offset,
       transform: `rotate(-90 ${cx} ${cy})`,
@@ -2541,7 +2615,7 @@ function ScoreDonut({
     className: 'fw-donut-pct ' + tone
   }, Math.round(animatedPct), /*#__PURE__*/React.createElement("span", null, "%")), /*#__PURE__*/React.createElement("div", {
     className: "fw-donut-sub"
-  }, counts.pass, "/", counts.total)));
+  }, counts.pass, " of ", counts.total)));
 }
 function FwManageButton({
   allFw,
@@ -2829,6 +2903,12 @@ function FamilyChartM({
       style: {
         flex: fam.info
       }
+    }), fam.na > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg na",
+      style: {
+        flex: fam.na
+      },
+      title: NOT_ASSESSED_TIP
     }))), /*#__PURE__*/React.createElement("div", {
       className: 'fw-fam-stat ' + (ok ? 'pass' : fam.fail > 2 ? 'fail' : 'warn')
     }, fam.fail > 0 ? `${fam.fail} gap${fam.fail !== 1 ? 's' : ''}` : `${fam.pass} pass`), /*#__PURE__*/React.createElement("div", {
@@ -2868,7 +2948,7 @@ function CoverageChart({
     const pct = fwCoveragePct(fw.counts);
     const r = fwReadinessLabel(pct);
     const isFocused = focused === fw.id;
-    const tip = `${fw.counts.pass} pass · ${fw.counts.warn} warn · ${fw.counts.fail} fail` + (fw.counts.review > 0 ? ` · ${fw.counts.review} review` : '') + (fw.counts.info > 0 ? ` · ${fw.counts.info} info` : '');
+    const tip = `${fw.counts.pass} pass · ${fw.counts.warn} warn · ${fw.counts.fail} fail` + (fw.counts.review > 0 ? ` · ${fw.counts.review} review` : '') + (fw.counts.info > 0 ? ` · ${fw.counts.info} info` : '') + (fw.counts.na > 0 ? ` · ${fw.counts.na} not assessed` : '');
     return /*#__PURE__*/React.createElement("button", {
       key: fw.id,
       className: 'fw-cov-row' + (isFocused ? ' focused' : ''),
@@ -2905,6 +2985,11 @@ function CoverageChart({
       style: {
         flex: fw.counts.info
       }
+    }), fw.counts.na > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg na",
+      style: {
+        flex: fw.counts.na
+      }
     })), /*#__PURE__*/React.createElement("div", {
       className: "fw-cov-marker",
       style: {
@@ -2927,7 +3012,11 @@ function CoverageChart({
     className: "leg-dot review"
   }), "Review"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "leg-dot info"
-  }), "Info")));
+  }), "Info"), /*#__PURE__*/React.createElement("span", {
+    title: NOT_ASSESSED_TIP
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot na"
+  }), "Not assessed")));
 }
 function CompareTableM({
   frameworks,
@@ -3026,7 +3115,7 @@ function CompareTableM({
       className: 'fw-cmp-pct ' + r.tone
     }, pct, "%"), /*#__PURE__*/React.createElement("div", {
       className: "fw-cmp-pct-sub"
-    }, fw.counts.pass, "/", fw.counts.total)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    }, fw.counts.pass, " of ", fw.counts.total)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
       className: 'fw-readiness-pill ' + r.tone
     }, r.label)), /*#__PURE__*/React.createElement("div", {
       className: "fw-cmp-gaps"
@@ -3070,6 +3159,11 @@ function CompareTableM({
       className: "fw-seg info",
       style: {
         flex: fw.counts.info
+      }
+    }), fw.counts.na > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "fw-seg na",
+      style: {
+        flex: fw.counts.na
       }
     }))), /*#__PURE__*/React.createElement("div", {
       className: "fw-cmp-act"
@@ -3290,7 +3384,7 @@ function FrameworkQuilt({
       color: 'var(--muted)',
       fontFamily: 'var(--font-mono)'
     }
-  }, focused.counts.pass, "/", focused.counts.total, " controls passing")), /*#__PURE__*/React.createElement("div", {
+  }, focused.counts.pass, " of ", focused.counts.total, " controls passing")), /*#__PURE__*/React.createElement("div", {
     className: "fw-bar fw-tb-score-bar"
   }, focused.counts.pass > 0 && /*#__PURE__*/React.createElement("div", {
     className: "fw-seg pass",
@@ -3317,6 +3411,11 @@ function FrameworkQuilt({
     style: {
       flex: focused.counts.info
     }
+  }), focused.counts.na > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fw-seg na",
+    style: {
+      flex: focused.counts.na
+    }
   })), /*#__PURE__*/React.createElement("div", {
     className: "fw-tb-score-legend",
     style: {
@@ -3332,7 +3431,11 @@ function FrameworkQuilt({
     className: "leg-dot review"
   }), focused.counts.review, " review"), focused.counts.info > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "leg-dot info"
-  }), focused.counts.info, " info"))), /*#__PURE__*/React.createElement("div", {
+  }), focused.counts.info, " info"), focused.counts.na > 0 && /*#__PURE__*/React.createElement("span", {
+    title: NOT_ASSESSED_TIP
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "leg-dot na"
+  }), focused.counts.na, " not assessed"))), /*#__PURE__*/React.createElement("div", {
     className: "fw-merged-score-cta"
   }, focused.profileType && /*#__PURE__*/React.createElement(ProfileChipsM, {
     data: focused,
@@ -3415,7 +3518,7 @@ function FrameworkQuilt({
       color: 'var(--muted)',
       fontFamily: 'var(--font-mono)'
     }
-  }, focused.counts.pass, "/", focused.counts.total)), focused.profileType && /*#__PURE__*/React.createElement(ProfileChipsM, {
+  }, focused.counts.pass, " of ", focused.counts.total)), focused.profileType && /*#__PURE__*/React.createElement(ProfileChipsM, {
     data: focused,
     active: activeProfiles || [],
     onChange: handleProfilesChange,
@@ -3616,7 +3719,8 @@ function FilterBar({
   }, "Status"), statusChips.filter(([v]) => (counts.status[v] || 0) > 0 || filters.status.includes(v)).map(([v, cls, label]) => /*#__PURE__*/React.createElement("button", {
     key: v,
     className: 'chip ' + cls + (filters.status.includes(v) ? ' selected' : ''),
-    onClick: () => update('status', v)
+    onClick: () => update('status', v),
+    title: STATUS_TIP[v]
   }, /*#__PURE__*/React.createElement("span", {
     className: "dot"
   }), label || v, /*#__PURE__*/React.createElement("span", {
@@ -3765,6 +3869,48 @@ function Highlight({
 // 'finding' column carries the 1fr term so leftover space flows there on
 // wide displays. User-resized widths (colWidths[id]) snap to a px value
 // and override the minmax form for that column.
+// --------------------- Status legend (#962) ---------------------
+// Plain-language key for the table's full nine-status vocabulary. The note
+// line explains how summary charts group the last four as "Not assessed" so
+// the two layers never read as contradictory. beforeprint forces it open so
+// printed/PDF copies always include the key.
+function StatusLegend() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const expand = () => setOpen(true);
+    window.addEventListener('beforeprint', expand);
+    return () => window.removeEventListener('beforeprint', expand);
+  }, []);
+  const statusOrder = ['Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown', 'NotApplicable', 'NotLicensed'];
+  const sevOrder = ['critical', 'high', 'medium', 'low'];
+  return /*#__PURE__*/React.createElement("details", {
+    className: "status-legend",
+    open: open,
+    onToggle: e => setOpen(e.target.open)
+  }, /*#__PURE__*/React.createElement("summary", null, "How to read this table"), /*#__PURE__*/React.createElement("div", {
+    className: "status-legend-grid"
+  }, statusOrder.map(s => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: s
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: 'status-badge ' + STATUS_COLORS[s]
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot"
+  }), statusLabel(s))), /*#__PURE__*/React.createElement("span", {
+    className: "status-legend-desc"
+  }, STATUS_TIP[s])))), /*#__PURE__*/React.createElement("div", {
+    className: "status-legend-note"
+  }, "Only Pass, Fail, and Warning count toward scores. The last four statuses appear in full here and are grouped as a single muted \"", NOT_ASSESSED_LABEL, "\" entry in the summary charts above."), /*#__PURE__*/React.createElement("div", {
+    className: "status-legend-grid"
+  }, sevOrder.map(s => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: s
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: 'sev-badge ' + s
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "bar"
+  }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[s]))), /*#__PURE__*/React.createElement("span", {
+    className: "status-legend-desc"
+  }, SEV_TIP[s])))));
+}
 const ALL_COLS = [{
   id: 'status',
   label: 'Status',
@@ -3801,7 +3947,10 @@ const ALL_COLS = [{
 // #898 + #917: include sequence in default visible columns. Sequence sits
 // immediately to the left of severity per #917 so the workflow signal
 // (Now/Next/Later) reads adjacent to the priority signal (Severity).
-const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'checkId', 'sequence', 'severity'];
+// #962: checkId ships hidden — internal identifiers overwhelm non-technical
+// readers. Still listed in ALL_COLS, so the Columns picker can re-enable it
+// (per-session; visibility is deliberately not persisted).
+const DEFAULT_COLS = ['status', 'finding', 'domain', 'controlId', 'sequence', 'severity'];
 
 // Issue #846: enum orderings for sort. Status uses the "worst first" order
 // that matches the row-color severity ramp; severity uses the standard
@@ -4130,7 +4279,8 @@ function FindingsTable({
             gap: 3
           }
         }, /*#__PURE__*/React.createElement("span", {
-          className: 'status-badge ' + STATUS_COLORS[f.status]
+          className: 'status-badge ' + STATUS_COLORS[f.status],
+          title: STATUS_TIP[f.status]
         }, /*#__PURE__*/React.createElement("span", {
           className: "dot"
         }), statusLabel(f.status)), f.intentDesign && /*#__PURE__*/React.createElement("span", {
@@ -4361,7 +4511,7 @@ function FindingsTable({
     className: "hr"
   })), sectionOpen && /*#__PURE__*/React.createElement("div", {
     className: "findings"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(StatusLegend, null), /*#__PURE__*/React.createElement("div", {
     className: "findings-head",
     style: {
       gridTemplateColumns: gridTpl
@@ -5044,7 +5194,8 @@ function Roadmap({
     }, /*#__PURE__*/React.createElement("span", null, t.setting, isCustom && /*#__PURE__*/React.createElement("span", {
       className: "task-custom-badge"
     }, "custom")), /*#__PURE__*/React.createElement("span", {
-      className: 'status-badge ' + STATUS_COLORS[t.status]
+      className: 'status-badge ' + STATUS_COLORS[t.status],
+      title: STATUS_TIP[t.status]
     }, /*#__PURE__*/React.createElement("span", {
       className: "dot"
     }), statusLabel(t.status))), /*#__PURE__*/React.createElement("div", {
@@ -5310,7 +5461,7 @@ function StrykerBlock() {
     id: "stryker"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01b \xB7 Targeted"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("span", {
+  }, "01b \xB7 Critical exposure"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
@@ -5398,7 +5549,8 @@ function StrykerBlock() {
       cursor: 'default'
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
-    className: 'status-badge ' + STATUS_COLORS[f.status]
+    className: 'status-badge ' + STATUS_COLORS[f.status],
+    title: STATUS_TIP[f.status]
   }, /*#__PURE__*/React.createElement("span", {
     className: "dot"
   }), statusLabel(f.status))), /*#__PURE__*/React.createElement("div", {
@@ -5761,7 +5913,7 @@ function Appendix() {
       ...monoRight,
       color: spfPass === dnsTotal ? 'var(--success-text)' : spfPass > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
     }
-  }, spfPass, "/", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
+  }, spfPass, " of ", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
     style: rowStyle
   }, /*#__PURE__*/React.createElement("td", {
     style: cellStyle
@@ -5771,7 +5923,7 @@ function Appendix() {
       ...monoRight,
       color: dkimPass === dnsTotal ? 'var(--success-text)' : dkimPass > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
     }
-  }, dkimPass, "/", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
+  }, dkimPass, " of ", dnsTotal)), /*#__PURE__*/React.createElement("tr", {
     style: rowStyle
   }, /*#__PURE__*/React.createElement("td", {
     style: cellStyle
@@ -5781,7 +5933,7 @@ function Appendix() {
       ...monoRight,
       color: dmarcEnf === dnsTotal ? 'var(--success-text)' : dmarcEnf > 0 ? 'var(--warn-text)' : 'var(--danger-text)'
     }
-  }, dmarcEnf, "/", dnsTotal)))))), ad && /*#__PURE__*/React.createElement(HideableBlock, {
+  }, dmarcEnf, " of ", dnsTotal)))))), ad && /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "appendix-hybrid-sync",
     label: "Hybrid sync card"
   }, /*#__PURE__*/React.createElement("div", {
