@@ -39,14 +39,16 @@ Run a single command to produce CSV reports, a branded HTML assessment report, a
 **292 automated security checks** mapped across **15 compliance frameworks** — counts generated from [`controls/registry.json`](src/M365-Assess/controls/registry.json); per-framework coverage in [docs/reference/COVERAGE.md](docs/reference/COVERAGE.md).
 <!-- registry-stats:summary:end -->
 
-## What's New in v2.6.0
+## What's New in v2.12.0
 
 | Feature | Description |
 |---------|-------------|
-| **Smart Search in Findings** | Press Enter in the findings filter to cycle through matches (Shift+Enter reverses), with an inline `N/M` counter showing position. Active match auto-expands and scrolls into view; previously cycled rows auto-collapse to keep the table tidy |
-| **Collapsible Report Sections** | Every top-level section header (Posture trend, Framework coverage, Findings, Roadmap, Stryker, Appendix) now collapses to focus the view. Print/PDF exports automatically expand all sections so nothing is lost |
-| **XLSX Roadmap Sheet + Horizon Column** | The compliance matrix XLSX gains a dedicated **Remediation Roadmap** sheet (one row per actionable finding, grouped Now/Next/Later) plus a color-coded **Horizon** column on the matrix sheet — closes the parity gap with the HTML report's roadmap |
-| **CMMC L2 / L3 + CIS E3 / E5 Profile Filtering** | Clickable profile chips in the Framework Quilt panel filter findings by license tier; the same filter is mirrored in the FilterBar so selections in either place stay in sync |
+| **Executive Briefing First Screen** | The report opens with a compliance verdict for your headline framework (pick it with `-HeadlineFramework`): readiness label, plain-English coverage sentence, quick-win projection, and a "What to do first" list that deep-links into the findings table |
+| **Report Clarity Pass** | Summary visuals group not-assessed statuses into one muted bucket so every chart sums to its total; new "How to read this table" legend with status tooltips; numbers standardized to "N of M"; jargon expanded on first use |
+| **Registry Partitioned to M365 Scope** | The shipped registry now contains exactly the 292 checks this tool can assess (down from the full upstream set), and every published check count is generated from the registry with a CI gate that blocks drift |
+| **Complete Severity Ratings** | All 292 checks carry an explicit severity rating — `-QuickScan` (Critical + High) now selects ~40 more checks than before |
+| **Scale-Safe Graph Collection** | New pagination + throttling-retry helper means tenants with thousands of apps, service principals, or policies get complete results instead of the first page |
+| **EXO Side-by-Side Support** | ExchangeOnlineManagement 3.8+ no longer has to be uninstalled — install 3.7.1 alongside it and the assessment session pins the compatible version automatically |
 
 ## Installation
 

@@ -16,6 +16,26 @@ When in doubt, bump conservatively (lean toward MINOR over PATCH).
 
 ---
 
+## Versions vs. milestones
+
+**Milestones are named by theme, never by version number** (e.g. "Sovereign Cloud",
+"Trust at Scale" — not "v2.13.0 — Sovereign Cloud"). The version number is assigned
+at **release time** from what actually shipped, per the semver rules above.
+
+Why: work rarely ships in the order milestones were planned. v2.12.0 shipped the
+content of the milestone formerly named "v2.14.0 — Report Clarity & Executive
+Briefing" plus part of "Trust at Scale", while the milestone formerly named
+"v2.12.0 — Solution Documentation" was still open — pre-assigned numbers collide
+with reality.
+
+The mapping from tag to milestones is recorded where people actually look:
+
+1. The CHANGELOG version intro names the milestone(s) the release completes or advances
+2. The GitHub release notes inherit that intro (they're pasted from the CHANGELOG section)
+3. The milestone gets closed with its description noting "Shipped in vX.Y.Z"
+
+---
+
 ## The 4 version locations
 
 Bump every one in a single PR. CI's version-consistency gate fails if they drift.

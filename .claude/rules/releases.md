@@ -17,7 +17,7 @@ Wait for explicit approval before touching any version location listed in `.clau
 
 When the user approves a version bump, follow this sequence:
 
-1. **Update all version locations** listed in `.claude/rules/versions.md` (all 14 locations in a single pass)
+1. **Update all version locations** listed in `.claude/rules/versions.md` (all 4 locations in a single pass)
 2. **Update CHANGELOG.md** with a new section for the version, documenting all changes since the last release
 3. **Commit** the version bump and changelog update; open a PR
 4. **WAIT for live tenant verification** (see next section) — do not merge yet
