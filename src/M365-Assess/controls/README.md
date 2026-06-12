@@ -63,3 +63,22 @@ M365-Assess repo
 $lookup = Import-ControlRegistry -ControlsPath ./controls
 $lookup['ENTRA-MFA-001']  # Returns check metadata with framework mappings
 ```
+
+## Severity Rating Rubric
+
+`risk-severity.json` is the local (non-upstream) severity overlay consumed by `-QuickScan`
+selection, Now/Next/Later lane bucketing, and report/XLSX severity badges. Two provenance
+tiers:
+
+- **Curated** — M365-context judgment calls that deliberately override the upstream
+  CheckID `impactRating.severity` where tenant blast radius differs (example: admin MFA
+  escalated High → Critical; an unauthenticated-attacker path to Global Admin is always
+  Critical regardless of upstream weighting).
+- **Seeded (#956)** — entries adopted verbatim from upstream `impactRating.severity`
+  (`Informational` maps to `Info`). Seeded values are honest defaults, not final word —
+  re-curate when a check's M365 blast radius diverges from the generic upstream rating,
+  and prefer escalation over demotion when in doubt.
+
+Every check in `registry.json` must have an entry here — `Import-ControlRegistry` exposes
+`severityRated` and the generated `docs/reference/COVERAGE.md` publishes the count, so a
+new check without a rating shows up immediately in the stats gate.
