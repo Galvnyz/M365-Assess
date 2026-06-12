@@ -108,6 +108,12 @@
     baselines exist for the tenant. Off by default — baselines still auto-save
     for drift comparison, but the trend section appears only when the user
     explicitly opts in to longitudinal posture tracking.
+.PARAMETER HeadlineFramework
+    Framework id(s) that headline the report's Executive Briefing first screen
+    (e.g. 'cis-m365-v6', 'cmmc'). Validated against the framework definitions
+    discovered in controls/frameworks/*.json; unknown ids abort the run with
+    the list of valid ids. When omitted, the report defaults to CIS Microsoft
+    365 (cis-m365-v6). Viewers can still switch frameworks inside the report.
 .PARAMETER DryRun
     Show a dry-run preview of what the assessment would do (sections,
     services, Graph scopes, check counts) without connecting or collecting
@@ -293,6 +299,25 @@ param(
     [Parameter()]
     [switch]$Redact,
 
+    # #963 -- framework id(s) that headline the Executive Briefing first screen.
+    # Completer offers the JSON basenames (= framework ids by convention);
+    # hard validation against Import-FrameworkDefinitions happens in the body.
+    [Parameter()]
+    [ArgumentCompleter({
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+        $root = Split-Path -Parent $PSCommandPath
+        $fwPath = Join-Path -Path $root -ChildPath 'controls/frameworks'
+        if (Test-Path -Path $fwPath) {
+            Get-ChildItem -Path $fwPath -Filter '*.json' |
+                ForEach-Object { $_.BaseName } |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+        }
+    })]
+    [string[]]$HeadlineFramework,
+
     [Parameter(ParameterSetName = 'ConnectionProfile', Mandatory)]
     [ArgumentCompleter({
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
@@ -319,6 +344,16 @@ $ErrorActionPreference = 'Stop'
 # ------------------------------------------------------------------
 $projectRoot = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { $PSScriptRoot }
 $script:AssessmentVersion = (Import-PowerShellDataFile -Path "$projectRoot/M365-Assess.psd1").ModuleVersion
+
+# #963: fail fast on unknown -HeadlineFramework ids, before any connection work
+if ($HeadlineFramework) {
+    . (Join-Path -Path $projectRoot -ChildPath 'Common/Import-FrameworkDefinitions.ps1')
+    $validHeadlineIds = @((Import-FrameworkDefinitions -FrameworksPath (Join-Path -Path $projectRoot -ChildPath 'controls/frameworks')).frameworkId)
+    $unknownHeadline = @($HeadlineFramework | Where-Object { $_ -notin $validHeadlineIds })
+    if ($unknownHeadline.Count -gt 0) {
+        throw "Unknown -HeadlineFramework id(s): $($unknownHeadline -join ', '). Valid ids: $($validHeadlineIds -join ', ')"
+    }
+}
 
 
 # When invoked directly (not via module), load internal dependencies
@@ -1391,6 +1426,7 @@ if (Test-Path -Path $reportScriptPath) {
         if ($OpenReport)        { $reportParams['OpenReport']        = $true }
         if ($QuickScan)         { $reportParams['QuickScan']         = $true }
         if ($IncludeTrend)      { $reportParams['IncludeTrend']      = $true }
+        if ($HeadlineFramework) { $reportParams['HeadlineFramework'] = $HeadlineFramework }
         if ($driftReport.Count -gt 0 -or $driftBaselineLabel) {
             $reportParams['DriftReport']            = $driftReport
             $reportParams['DriftBaselineLabel']     = $driftBaselineLabel

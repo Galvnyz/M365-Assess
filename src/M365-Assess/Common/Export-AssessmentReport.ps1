@@ -32,6 +32,11 @@
     Baseline label string — retained for downstream compatibility.
 .PARAMETER DriftBaselineTimestamp
     Baseline timestamp string — retained for downstream compatibility.
+.PARAMETER HeadlineFramework
+    Framework id(s) that headline the report's Executive Briefing first screen.
+    Unknown ids are dropped with a warning (Invoke-M365Assessment validates with
+    a hard throw before calling this script). When empty, the React app defaults
+    to CIS Microsoft 365 (cis-m365-v6).
 .EXAMPLE
     PS> .\Common\Export-AssessmentReport.ps1 -AssessmentFolder '.\M365-Assessment\Assessment_20260306_195618'
 .NOTES
@@ -81,7 +86,11 @@ param(
     [string]$DriftBaselineLabel = '',
 
     [Parameter()]
-    [string]$DriftBaselineTimestamp = ''
+    [string]$DriftBaselineTimestamp = '',
+
+    [Parameter()]
+    [AllowEmptyCollection()]
+    [string[]]$HeadlineFramework = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,6 +106,17 @@ $controlRegistry = Import-ControlRegistry -ControlsPath $controlsPath -CisFramew
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Import-FrameworkDefinitions.ps1')
 $allFrameworks = Import-FrameworkDefinitions -FrameworksPath (Join-Path -Path $projectRoot -ChildPath 'controls/frameworks')
+
+# #963: drop unknown headline framework ids (defence for direct callers --
+# Invoke-M365Assessment validates with a hard throw before calling this script).
+if ($HeadlineFramework.Count -gt 0) {
+    $validHeadlineIds = @($allFrameworks | ForEach-Object { $_.frameworkId })
+    $unknownHeadline  = @($HeadlineFramework | Where-Object { $_ -notin $validHeadlineIds })
+    if ($unknownHeadline.Count -gt 0) {
+        Write-Warning "Ignoring unknown -HeadlineFramework id(s): $($unknownHeadline -join ', ')"
+        $HeadlineFramework = @($HeadlineFramework | Where-Object { $_ -in $validHeadlineIds })
+    }
+}
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Import-CmmcHandoff.ps1')
 $cmmcHandoff = Import-CmmcHandoff -ControlsPath $controlsPath
@@ -182,16 +202,20 @@ if (Test-Path -Path $deficitPath) {
     }
 }
 
-$reportJson = Build-ReportDataJson `
-    -AllFindings    $allCisFindings `
-    -SectionData    $sectionData `
-    -RegistryData   $controlRegistry `
-    -WhiteLabel:    $WhiteLabel `
-    -XlsxFileName   $xlsxName `
-    -FrameworkDefs  $allFrameworks `
-    -CmmcHandoff    $cmmcHandoff `
-    -IncludeTrend:  $IncludeTrend `
-    -PermissionDeficits $permissionDeficits
+$reportJsonParams = @{
+    AllFindings        = $allCisFindings
+    SectionData        = $sectionData
+    RegistryData       = $controlRegistry
+    WhiteLabel         = $WhiteLabel
+    XlsxFileName       = $xlsxName
+    FrameworkDefs      = $allFrameworks
+    CmmcHandoff        = $cmmcHandoff
+    IncludeTrend       = $IncludeTrend
+    PermissionDeficits = $permissionDeficits
+    HeadlineFrameworks = $HeadlineFramework
+    AssessedAt         = $assessedAt
+}
+$reportJson = Build-ReportDataJson @reportJsonParams
 
 # ------------------------------------------------------------------
 # Assemble HTML and write output

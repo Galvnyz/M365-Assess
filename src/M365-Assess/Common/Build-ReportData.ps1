@@ -64,6 +64,14 @@ function Build-ReportDataJson {
     .PARAMETER XlsxFileName
         Relative filename of the companion XLSX (e.g., "MyClient_Assessment-Report.xlsx").
         Embedded as REPORT_DATA.xlsxFileName for the download anchor in the report.
+    .PARAMETER HeadlineFrameworks
+        Framework id(s) that headline the Executive Briefing first screen. Emitted
+        verbatim as REPORT_DATA.headlineFrameworks; validation happens upstream.
+        The React app owns the cis-m365-v6 default so data files generated without
+        this parameter render identically to pre-#963 reports.
+    .PARAMETER AssessedAt
+        Assessment run timestamp (from the assessment log's Started line), shown on
+        the Executive Briefing header as REPORT_DATA.assessedAt.
     .EXAMPLE
         $json = Build-ReportDataJson -AllFindings $allCisFindings -SectionData $sectionData `
             -RegistryData $controlRegistry -FrameworkDefs $allFrameworks `
@@ -103,7 +111,15 @@ function Build-ReportDataJson {
         # Permissions panel. Loaded from <AssessmentFolder>/_PermissionDeficits.json
         # by Export-AssessmentReport when present.
         [Parameter()]
-        [object]$PermissionDeficits = $null
+        [object]$PermissionDeficits = $null,
+
+        # #963 -- Executive Briefing headline framework id(s) + run timestamp.
+        [Parameter()]
+        [AllowEmptyCollection()]
+        [string[]]$HeadlineFrameworks = @(),
+
+        [Parameter()]
+        [string]$AssessedAt = ''
     )
 
     # ------------------------------------------------------------------
@@ -446,6 +462,8 @@ function Build-ReportDataJson {
         cmmcHandoff    = $CmmcHandoff
         cmmcCoverage   = $cmmcCoverage
         permissions    = $PermissionDeficits
+        headlineFrameworks = @($HeadlineFrameworks)
+        assessedAt     = $AssessedAt
     }
 
     # ------------------------------------------------------------------
@@ -456,6 +474,8 @@ function Build-ReportDataJson {
     $json = $json -replace '"frameworks":\s*null',      '"frameworks": []'
     $json = $json -replace '"profiles":\s*null',        '"profiles": []'
     $json = $json -replace '"profiles":\s*"([^"]*)"',   '"profiles": ["$1"]'
+    $json = $json -replace '"headlineFrameworks":\s*null',      '"headlineFrameworks": []'
+    $json = $json -replace '"headlineFrameworks":\s*"([^"]*)"', '"headlineFrameworks": ["$1"]'
     $json = $json -replace '</script>', '<\/script>'
     return "window.REPORT_DATA = $json;"
 }
