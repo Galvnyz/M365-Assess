@@ -23,9 +23,17 @@ Graph submodules (e.g., `Microsoft.Graph.Users`, `Microsoft.Graph.Groups`) are l
 
 | Module | Minimum | Maximum | Tested | Notes |
 |--------|---------|---------|--------|-------|
-| ExchangeOnlineManagement | 3.5.0 | 3.7.x | 3.7.1 | **Do not install 3.8.0+** |
+| ExchangeOnlineManagement | 3.5.0 | 3.7.x | 3.7.1 | 3.8.0+ may be installed **side-by-side** but is never loaded |
 
-**Why the ceiling?** EXO 3.8.0 ships a version of `Microsoft.Identity.Client` (MSAL) that conflicts with Graph SDK 2.x, causing silent auth failures. The orchestrator blocks EXO >= 3.8.0 at startup.
+**Why the ceiling?** EXO 3.8.0+ ships a version of `Microsoft.Identity.Client` (MSAL) that conflicts with Graph SDK 2.x in the same PowerShell session, causing silent auth failures. Upstream tracking: [msgraph-sdk-powershell#3576](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3576) — still unresolved as of EXO 3.10.0 (June 2026).
+
+**Side-by-side support (#231):** you do *not* need to uninstall newer EXO versions you use for other tooling. Install 3.7.1 alongside them:
+
+```powershell
+Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser -Force
+```
+
+The orchestrator detects the compatible version and pins its import for the assessment session (`Import-Module -RequiredVersion`), leaving newer versions untouched. Only when **no** version below 3.8.0 is installed does the module helper prompt — and the repair installs 3.7.1 side-by-side rather than uninstalling anything.
 
 ### Optional Modules
 
@@ -58,6 +66,6 @@ The orchestrator's built-in module helper detects missing or incompatible module
 
 | Combination | Symptom | Fix |
 |-------------|---------|-----|
-| EXO >= 3.8.0 + Graph SDK 2.x | Silent auth failures, `msalruntime.dll` not found | Downgrade EXO to 3.7.1 |
+| EXO >= 3.8.0 + Graph SDK 2.x | Silent auth failures, `msalruntime.dll` not found | Install 3.7.1 side-by-side (the session pins it automatically) |
 | PowerShell 5.1 | Module load failures | Use PowerShell 7.0+ |
 | Graph SDK 1.x | Cmdlet name changes | Upgrade to Graph SDK 2.x |

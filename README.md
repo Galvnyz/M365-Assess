@@ -265,14 +265,14 @@ The orchestrator detects missing or incompatible PowerShell modules **before** c
 |--------|-----------|----------|--------|
 | Microsoft.Graph.Authentication | Not installed | Required | Install latest |
 | ExchangeOnlineManagement | Not installed | Required | Install pinned 3.7.1 |
-| ExchangeOnlineManagement | Version >= 3.8.0 | Required | Downgrade to 3.7.1 |
+| ExchangeOnlineManagement | Version >= 3.8.0 and no <= 3.7.x installed | Required | Install 3.7.1 side-by-side (newer versions stay) |
 | msalruntime.dll | Missing (Windows + EXO 3.8.0+) | Required | Auto-copy from module path |
 | MicrosoftPowerBIMgmt | Not installed | Optional | Skip PowerBI section |
 
 In interactive mode, the repair flow presents two tiers of prompts:
 
 1. **Tier 1 -- Install missing modules** -- single prompt to install all missing modules to `CurrentUser` scope
-2. **Tier 2 -- EXO downgrade** -- separate confirmation to uninstall EXO >= 3.8.0 and install 3.7.1 (due to the [MSAL conflict](docs/reference/COMPATIBILITY.md))
+2. **Tier 2 -- EXO side-by-side install** -- separate confirmation to install 3.7.1 alongside any EXO >= 3.8.0 (which stays installed for other tooling); the session pins the compatible version at connect time (due to the [MSAL conflict](docs/reference/COMPATIBILITY.md))
 
 After repair, modules are re-validated. If issues remain, the exact manual commands are displayed and the script exits.
 

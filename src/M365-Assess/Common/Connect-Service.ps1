@@ -180,6 +180,18 @@ try {
         }
 
         'ExchangeOnline' {
+            # #231: EXO 3.8.0+ bundles an MSAL that conflicts with the Graph SDK
+            # in-session. Connect-ExchangeOnline auto-loads the HIGHEST installed
+            # version, so when a compatible (< 3.8.0) version is installed
+            # side-by-side, pin the import to it before connecting.
+            if (-not (Get-Module -Name ExchangeOnlineManagement)) {
+                $compatibleExo = if (Get-Command -Name Get-CompatibleExoModule -ErrorAction SilentlyContinue) { Get-CompatibleExoModule } else { $null }
+                if ($compatibleExo) {
+                    Import-Module -Name ExchangeOnlineManagement -RequiredVersion $compatibleExo.Version -ErrorAction Stop
+                    Write-Verbose "Pinned ExchangeOnlineManagement $($compatibleExo.Version) for this session"
+                }
+            }
+
             $connectParams = @{
                 ShowBanner = $false
             }
@@ -211,6 +223,16 @@ try {
         }
 
         'Purview' {
+            # Connect-IPPSSession ships in ExchangeOnlineManagement — same #231
+            # side-by-side pin applies (see the ExchangeOnline case above).
+            if (-not (Get-Module -Name ExchangeOnlineManagement)) {
+                $compatibleExo = if (Get-Command -Name Get-CompatibleExoModule -ErrorAction SilentlyContinue) { Get-CompatibleExoModule } else { $null }
+                if ($compatibleExo) {
+                    Import-Module -Name ExchangeOnlineManagement -RequiredVersion $compatibleExo.Version -ErrorAction Stop
+                    Write-Verbose "Pinned ExchangeOnlineManagement $($compatibleExo.Version) for this session"
+                }
+            }
+
             $connectParams = @{}
             if ($TenantId) { $connectParams['Organization'] = $TenantId }
 

@@ -1,3 +1,29 @@
+function Get-CompatibleExoModule {
+    <#
+    .SYNOPSIS
+        Returns the newest installed ExchangeOnlineManagement version that is
+        compatible with the Graph SDK in the same session, or $null.
+    .DESCRIPTION
+        EXO 3.8.0+ bundles an MSAL (Microsoft.Identity.Client) that conflicts
+        with Graph SDK 2.x when both load in one PowerShell session — tracked
+        upstream (msgraph-sdk-powershell#3576, still unfixed as of EXO 3.10.0)
+        and locally as #231. Versions below 3.8.0 can be installed side-by-side
+        with newer ones; this helper picks the newest compatible install so the
+        connector can pin its import instead of forcing an uninstall.
+    .EXAMPLE
+        $exo = Get-CompatibleExoModule
+        if ($exo) { Import-Module ExchangeOnlineManagement -RequiredVersion $exo.Version }
+    #>
+    [CmdletBinding()]
+    [OutputType([object])]
+    param()
+
+    Get-Module -Name ExchangeOnlineManagement -ListAvailable -ErrorAction SilentlyContinue |
+        Where-Object { $_.Version -lt [version]'3.8.0' } |
+        Sort-Object -Property Version -Descending |
+        Select-Object -First 1
+}
+
 function Test-ModuleCompatibility {
     [CmdletBinding()]
     param(
@@ -23,38 +49,50 @@ function Test-ModuleCompatibility {
     # Detect installed module versions
     $exoModule = Get-Module -Name ExchangeOnlineManagement -ListAvailable -ErrorAction SilentlyContinue |
         Sort-Object -Property Version -Descending | Select-Object -First 1
+    $exoCompatible = Get-CompatibleExoModule
     $graphModule = Get-Module -Name Microsoft.Graph.Authentication -ListAvailable -ErrorAction SilentlyContinue |
         Sort-Object -Property Version -Descending | Select-Object -First 1
 
-    # EXO 3.8.0+ MSAL conflict ΓÇö must downgrade (only if EXO is needed)
+    # EXO 3.8.0+ MSAL conflict (only if EXO is needed). A compatible (< 3.8.0)
+    # version installed side-by-side satisfies the requirement: the connector
+    # pins its import to it, and newer versions stay installed for other
+    # tooling (#231). Only when NO compatible version exists do we ask for a
+    # side-by-side 3.7.1 install — never an uninstall.
     if ($needsExo -and $exoModule -and $exoModule.Version -ge [version]'3.8.0') {
-        $repairActions.Add([PSCustomObject]@{
-            Module          = 'ExchangeOnlineManagement'
-            Issue           = "Version $($exoModule.Version) has MSAL conflicts (need <= 3.7.1)"
-            Severity        = 'Required'
-            Tier            = 'Downgrade'
-            RequiredVersion = '3.7.1'
-            InstallCmd      = 'Uninstall-Module ExchangeOnlineManagement -AllVersions -Force; Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser'
-            Description     = "ExchangeOnlineManagement $($exoModule.Version) ΓÇö MSAL conflict (need <= 3.7.1)"
-        })
+        if ($exoCompatible) {
+            Write-AssessmentLog -Level INFO -Message "ExchangeOnlineManagement $($exoModule.Version) is MSAL-conflicting; session pins $($exoCompatible.Version) installed side-by-side" -Section 'Setup'
+            Write-Host "    i ExchangeOnlineManagement $($exoCompatible.Version) will be used this session ($($exoModule.Version) stays installed for other tooling)" -ForegroundColor DarkGray
+        }
+        else {
+            $repairActions.Add([PSCustomObject]@{
+                Module          = 'ExchangeOnlineManagement'
+                Issue           = "Version $($exoModule.Version) has MSAL conflicts (need <= 3.7.1 installed side-by-side)"
+                Severity        = 'Required'
+                Tier            = 'Downgrade'
+                RequiredVersion = '3.7.1'
+                InstallCmd      = 'Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser -Force'
+                Description     = "ExchangeOnlineManagement $($exoModule.Version) ΓÇö MSAL conflict (3.7.1 will be installed side-by-side)"
+            })
 
-        # msalruntime.dll ΓÇö Windows only, EXO 3.8.0+
-        if ($IsWindows -or $null -eq $IsWindows) {
-            $exoNetCorePath = Join-Path -Path $exoModule.ModuleBase -ChildPath 'netCore'
-            $msalDllDirect = Join-Path -Path $exoNetCorePath -ChildPath 'msalruntime.dll'
-            $msalDllNested = Join-Path -Path $exoNetCorePath -ChildPath 'runtimes\win-x64\native\msalruntime.dll'
-            if (-not (Test-Path -Path $msalDllDirect) -and (Test-Path -Path $msalDllNested)) {
-                $repairActions.Add([PSCustomObject]@{
-                    Module          = 'ExchangeOnlineManagement'
-                    Issue           = 'msalruntime.dll missing from load path'
-                    Severity        = 'Required'
-                    Tier            = 'FileCopy'
-                    RequiredVersion = $null
-                    InstallCmd      = "Copy-Item '$msalDllNested' '$msalDllDirect'"
-                    Description     = 'msalruntime.dll ΓÇö missing from EXO module load path'
-                    SourcePath      = $msalDllNested
-                    DestPath        = $msalDllDirect
-                })
+            # msalruntime.dll ΓÇö Windows only, EXO 3.8.0+ (only relevant while a
+            # conflicting version is the sole install)
+            if ($IsWindows -or $null -eq $IsWindows) {
+                $exoNetCorePath = Join-Path -Path $exoModule.ModuleBase -ChildPath 'netCore'
+                $msalDllDirect = Join-Path -Path $exoNetCorePath -ChildPath 'msalruntime.dll'
+                $msalDllNested = Join-Path -Path $exoNetCorePath -ChildPath 'runtimes\win-x64\native\msalruntime.dll'
+                if (-not (Test-Path -Path $msalDllDirect) -and (Test-Path -Path $msalDllNested)) {
+                    $repairActions.Add([PSCustomObject]@{
+                        Module          = 'ExchangeOnlineManagement'
+                        Issue           = 'msalruntime.dll missing from load path'
+                        Severity        = 'Required'
+                        Tier            = 'FileCopy'
+                        RequiredVersion = $null
+                        InstallCmd      = "Copy-Item '$msalDllNested' '$msalDllDirect'"
+                        Description     = 'msalruntime.dll ΓÇö missing from EXO module load path'
+                        SourcePath      = $msalDllNested
+                        DestPath        = $msalDllDirect
+                    })
+                }
             }
         }
     }
@@ -213,23 +251,23 @@ function Test-ModuleCompatibility {
                 }
             }
 
-            # Step 3: Tier 2 ΓÇö EXO downgrade (separate confirmation)
+            # Step 3: Tier 2 ΓÇö EXO compatible-version install (separate confirmation).
+            # Side-by-side: installs 3.7.1 WITHOUT uninstalling newer versions, so
+            # other tooling that needs EXO 3.8+ keeps working (#231).
             $downgradeActions = @($repairActions | Where-Object { $_.Tier -eq 'Downgrade' })
             foreach ($action in $downgradeActions) {
                 Write-Host ''
                 Write-Host "  ΓÜá $($action.Module) $($action.Issue)" -ForegroundColor Yellow
-                Write-Host "    This will uninstall ALL versions and install $($action.RequiredVersion)." -ForegroundColor Yellow
-                $response = Read-Host '  Proceed with EXO downgrade? [Y/n]'
+                Write-Host "    This installs $($action.RequiredVersion) side-by-side; newer versions stay installed." -ForegroundColor Yellow
+                $response = Read-Host "  Install $($action.Module) $($action.RequiredVersion) alongside? [Y/n]"
                 if ($response -match '^[Yy]?$') {
                     try {
-                        Write-Host "    Removing $($action.Module)..." -ForegroundColor Cyan
-                        Uninstall-Module -Name $action.Module -AllVersions -Force -ErrorAction Stop
                         Write-Host "    Installing $($action.Module) $($action.RequiredVersion)..." -ForegroundColor Cyan
                         Install-Module -Name $action.Module -RequiredVersion $action.RequiredVersion -Scope CurrentUser -Force -ErrorAction Stop
-                        Write-Host "    Γ£ô $($action.Module) $($action.RequiredVersion) installed" -ForegroundColor Green
+                        Write-Host "    Γ£ô $($action.Module) $($action.RequiredVersion) installed (side-by-side)" -ForegroundColor Green
                     }
                     catch {
-                        Write-Host "    Γ£ù EXO downgrade failed: $_" -ForegroundColor Red
+                        Write-Host "    Γ£ù EXO $($action.RequiredVersion) install failed: $_" -ForegroundColor Red
                         $failedRepairs.Add($action)
                     }
                 }
@@ -282,6 +320,7 @@ function Test-ModuleCompatibility {
             # Re-detect modules
             $exoModule = Get-Module -Name ExchangeOnlineManagement -ListAvailable -ErrorAction SilentlyContinue |
                 Sort-Object -Property Version -Descending | Select-Object -First 1
+            $exoCompatible = Get-CompatibleExoModule
             $graphModule = Get-Module -Name Microsoft.Graph.Authentication -ListAvailable -ErrorAction SilentlyContinue |
                 Sort-Object -Property Version -Descending | Select-Object -First 1
 
@@ -289,14 +328,14 @@ function Test-ModuleCompatibility {
             if ($needsGraph -and -not $graphModule) {
                 $stillBroken += 'Install-Module -Name Microsoft.Graph.Authentication -Scope CurrentUser -Force'
             }
-            if ($needsExo -and -not $exoModule) {
+            if ($needsExo -and -not $exoCompatible) {
+                # Covers both "not installed at all" and "only MSAL-conflicting
+                # versions installed" — the fix is the same side-by-side install.
                 $stillBroken += 'Install-Module -Name ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser -Force'
             }
-            if ($needsExo -and $exoModule -and $exoModule.Version -ge [version]'3.8.0') {
-                $stillBroken += 'Uninstall-Module ExchangeOnlineManagement -AllVersions -Force; Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser'
-            }
-            # Re-check msalruntime.dll after any EXO install/downgrade
-            if ($needsExo -and $exoModule -and $exoModule.Version -ge [version]'3.8.0' -and ($IsWindows -or $null -eq $IsWindows)) {
+            # Re-check msalruntime.dll ΓÇö only relevant while a conflicting EXO
+            # version remains the sole install
+            if ($needsExo -and -not $exoCompatible -and $exoModule -and $exoModule.Version -ge [version]'3.8.0' -and ($IsWindows -or $null -eq $IsWindows)) {
                 $exoNetCorePath = Join-Path -Path $exoModule.ModuleBase -ChildPath 'netCore'
                 $msalDllDirect = Join-Path -Path $exoNetCorePath -ChildPath 'msalruntime.dll'
                 $msalDllNested = Join-Path -Path $exoNetCorePath -ChildPath 'runtimes\win-x64\native\msalruntime.dll'
@@ -329,8 +368,14 @@ function Test-ModuleCompatibility {
             $versionTable = @()
             $modChecks = @('Microsoft.Graph.Authentication', 'ExchangeOnlineManagement', 'MicrosoftPowerBIMgmt', 'ImportExcel')
             foreach ($modName in $modChecks) {
-                $mod = Get-Module -Name $modName -ListAvailable -ErrorAction SilentlyContinue |
-                    Sort-Object -Property Version -Descending | Select-Object -First 1
+                # EXO reports the version the session will actually pin, not the
+                # highest installed (newer MSAL-conflicting versions may coexist)
+                $mod = if ($modName -eq 'ExchangeOnlineManagement') {
+                    Get-CompatibleExoModule
+                } else {
+                    Get-Module -Name $modName -ListAvailable -ErrorAction SilentlyContinue |
+                        Sort-Object -Property Version -Descending | Select-Object -First 1
+                }
                 $versionTable += [PSCustomObject]@{
                     Module  = $modName
                     Version = if ($mod) { $mod.Version.ToString() } else { '(not installed)' }
