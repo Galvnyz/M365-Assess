@@ -7,8 +7,8 @@
     "build": "babel src/M365-Assess/assets/report-app.jsx --presets @babel/preset-react --out-file src/M365-Assess/assets/report-app.js"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.0",
-    "@babel/core": "^7.28.0",
-    "@babel/preset-react": "^7.28.0"
+    "@babel/cli": "^7.29.7",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-react": "^7.29.7"
   }
 }
