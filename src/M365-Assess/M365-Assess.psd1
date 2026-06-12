@@ -77,6 +77,7 @@
         'Orchestrator\Compare-AssessmentBaseline.ps1'
         'Orchestrator\Compare-M365Baseline.ps1'
         'Common\SecurityConfigHelper.ps1'
+        'Common\Invoke-SafeGraphRequest.ps1'
         'Common\Connect-Service.ps1'
         'Common\Resolve-DnsRecord.ps1'
         'Common\Resolve-TenantIdentity.ps1'

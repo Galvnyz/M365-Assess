@@ -5,6 +5,7 @@ Get-ChildItem -Path "$PSScriptRoot\Orchestrator\*.ps1" | ForEach-Object { . $_.F
 
 # Dot-source shared helpers needed by public cmdlets
 . "$PSScriptRoot\Common\SecurityConfigHelper.ps1"
+. "$PSScriptRoot\Common\Invoke-SafeGraphRequest.ps1"
 . "$PSScriptRoot\Common\Resolve-DnsRecord.ps1"
 . "$PSScriptRoot\Common\Resolve-TenantIdentity.ps1"
 . "$PSScriptRoot\Common\Export-M365Remediation.ps1"
