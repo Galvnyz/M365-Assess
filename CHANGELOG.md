@@ -4,7 +4,16 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Added
+- **Executive Briefing first screen (#963)**: the report now opens with a compliance-led briefing built for decision-makers. A verdict card answers "are we compliant?" for the headline framework (readiness label, donut, plain-English coverage sentence with a quick-win projection, framework switcher chips), three stat tiles cover actionable criticals / quick wins / Microsoft Secure Score (demoted from hero), and a "What to do first" list deep-links the top Now-lane actions into the findings table. No CheckIDs, status vocabulary, or unexpanded acronyms appear on this screen. The old critical banner is superseded by the "Needs attention now" tile.
+- **`-HeadlineFramework` parameter (#963)**: sets which framework(s) headline the Executive Briefing (tab-completes from `controls/frameworks/*.json`; unknown ids fail fast with the valid list). Defaults to CIS Microsoft 365. The FrameworkQuilt opens on the same headline framework so both sections tell one story. `REPORT_DATA` gains `headlineFrameworks` and `assessedAt`.
+
+### Changed
+- **Report clarity pass (#962)**: summary visuals now group Skipped/Unknown/NotApplicable/NotLicensed as one muted "Not assessed" bucket (donut, framework bars, domain cards, conditional KPI tile); the findings table, filter chips, and appendix keep the full nine-status vocabulary. CheckID column ships hidden by default (re-enable via Columns). New "How to read this table" legend with one-sentence tooltips on every status badge. Number formats standardized to "N of M". Jargon sweep: PIM/SPF/DKIM/DMARC expanded on first use, plain-language scoring blurbs, "Targeted" eyebrow renamed "Critical exposure".
+
 ### Fixed
+- **NaN counts for not-assessed statuses in framework math (#962)**: `buildFrameworkData` incremented count keys it never initialised for the four exotic statuses, producing `NaN` and a silent donut gap. Counting now routes through one `summaryBucket()` helper.
+- **Mismatched denominators in two KPI hints (#962)**: the Fails KPI hint said "of all checks" and the SharePoint pass-rate hint counted unscored checks, while their bars used the scored-check denominator. Both now say "of N scored checks".
 - **Framework group keys rendered as raw codes in the framework breakdown (#948)** — several framework group maps were missing labels for groups the registry maps checks into, so those groups displayed the bare section number/prefix as the group name: `cis-m365-v6.json` sections `4` (Intune) and `9` (Fabric / Power BI), `cisa-scuba.json` service `MS.INTUNE`, `hipaa.json` the ten Breach Notification + Privacy Rule sections added by the CheckID v3.4.0 sync (#912), and `iso-27002.json` groups `9`/`10` (ISO 27001 management-clause ids that leak in via the upstream 27001/27002 mapping conflation, #871 — labels mirror `iso-27001.json` and can be dropped when upstream diverges the mappings). A new regression test cross-checks every group key derivable from registry controlIds against each framework's group map so a registry sync can no longer reintroduce unlabeled groups silently.
 
 ## [2.11.0] - 2026-05-01

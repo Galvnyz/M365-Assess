@@ -29,6 +29,10 @@ Describe 'Export-AssessmentReport.ps1 — pipeline contract' {
         It 'declares DriftReport parameter' {
             $script:content | Should -Match '\$DriftReport'
         }
+
+        It 'declares HeadlineFramework string array parameter (#963)' {
+            $script:content | Should -Match '\[string\[\]\]\$HeadlineFramework'
+        }
     }
 
     Context 'v2.0 pipeline — dot-sources and function calls' {
@@ -46,6 +50,15 @@ Describe 'Export-AssessmentReport.ps1 — pipeline contract' {
 
         It 'calls Build-ReportDataJson' {
             $script:content | Should -Match 'Build-ReportDataJson'
+        }
+
+        It 'passes HeadlineFrameworks and AssessedAt to Build-ReportDataJson (#963)' {
+            $script:content | Should -Match 'HeadlineFrameworks\s*=\s*\$HeadlineFramework'
+            $script:content | Should -Match 'AssessedAt\s*=\s*\$assessedAt'
+        }
+
+        It 'filters unknown HeadlineFramework ids with a warning (#963)' {
+            $script:content | Should -Match 'Ignoring unknown -HeadlineFramework'
         }
 
         It 'calls Get-ReportTemplate' {

@@ -98,6 +98,16 @@ const FRAMEWORKS = (D.frameworks && D.frameworks.length) ? D.frameworks : [
   { id: 'stig',            full: 'DISA STIG' },
 ];
 
+// #963: headline framework id(s) for the Executive Briefing. Honors the
+// -HeadlineFramework run-time parameter when present, else CIS M365. Always
+// filtered to frameworks that exist in this report's data so a stale id can
+// never blank the verdict card.
+const HEADLINE_FWS = (() => {
+  const ids = [].concat(D.headlineFrameworks || []).filter(id => FRAMEWORKS.some(fw => fw.id === id));
+  if (ids.length > 0) return ids;
+  return FRAMEWORKS.some(fw => fw.id === 'cis-m365-v6') ? ['cis-m365-v6'] : [FRAMEWORKS[0].id];
+})();
+
 const FW_BLURB = {
   'cis-m365-v6':     { desc: 'Prescriptive configuration recommendations for Microsoft 365 services, organized into L1/L2 profiles and E3/E5 licensing tiers. Maintained by the Center for Internet Security.', url: 'https://www.cisecurity.org/benchmark/microsoft_365' },
   'cis-controls-v8': { desc: 'Prioritized set of 18 critical security controls defending against the most pervasive attacks, organized into three Implementation Groups (IG1–IG3) by organizational maturity.', url: 'https://www.cisecurity.org/controls' },
@@ -215,7 +225,7 @@ const scoreDenom = arr => (arr || []).filter(f => SCORED_STATUSES.has(f.status))
 const fmt = n => Number(n).toLocaleString();
 
 // ======================== Sidebar ========================
-function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain, onDomainJump, onOverviewClick, navOpen, onClose }) {
+function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain, onDomainJump, onBriefingClick, navOpen, onClose }) {
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [domainNavOpen, setDomainNavOpen] = useState(false);
   const [domainsCollapsed, setDomainsCollapsed] = useState(true);
@@ -232,6 +242,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
     Object.keys(domainCounts.total).filter(d => !DOM_ORDER.includes(d)).sort()
   );
   const exec = [
+    { id: 'briefing', label: 'Executive briefing' },
     { id: 'overview', label: 'Overview' },
     { id: 'posture',  label: 'Posture score' },
     { id: 'frameworks', label: 'Frameworks' },
@@ -261,7 +272,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
           {exec.map(it => (
             <React.Fragment key={it.id}>
               <a href={`#${it.id}`}
-                 onClick={e => { if (it.id === 'overview') { e.preventDefault(); onOverviewClick(); } closeIfMobile(); }}
+                 onClick={e => { if (it.id === 'briefing') { e.preventDefault(); onBriefingClick(); } closeIfMobile(); }}
                  className={'nav-item' + (active===it.id?' active':'')}>
                 <span>{it.label}</span>
                 {it.id === 'identity' && (
@@ -552,9 +563,10 @@ const SCORING_VIEWS = [
     blurb: 'Findings a person must verify (evidence collection, log review) before they can pass.' },
 ];
 
-function ScoringViews() {
-  const [active, setActive] = useState('security-risk');
-  const view = SCORING_VIEWS.find(v => v.id === active) || SCORING_VIEWS[0];
+// #963: tab state lives in App so the Briefing's "Quick wins" tile can
+// deep-link straight to the quick-wins view (plain useState, no persistence).
+function ScoringViews({ view: activeId, setView }) {
+  const view = SCORING_VIEWS.find(v => v.id === activeId) || SCORING_VIEWS[0];
   let body;
   if (view.kind === 'score') {
     const value = view.compute(FINDINGS);
@@ -607,9 +619,9 @@ function ScoringViews() {
       <div className="scoring-views">
         <div className="scoring-views-tabs" role="tablist">
           {SCORING_VIEWS.map(v => (
-            <button key={v.id} role="tab" aria-selected={v.id === active}
-              className={'scoring-views-tab' + (v.id === active ? ' active' : '')}
-              onClick={() => setActive(v.id)}>
+            <button key={v.id} role="tab" aria-selected={v.id === view.id}
+              className={'scoring-views-tab' + (v.id === view.id ? ' active' : '')}
+              onClick={() => setView(v.id)}>
               {v.label}
             </button>
           ))}
@@ -664,6 +676,149 @@ function PermissionsPanel() {
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ======================== Executive briefing (#963) ========================
+// Compliance-led first screen: a verdict for the headline framework, three
+// plain-language stat tiles, and the top "do first" actions. Language policy:
+// no CheckIds, no status vocabulary, no unexpanded acronyms on this screen.
+// The technical layers below keep full fidelity.
+const EFFORT_HUMAN = { small: 'under an hour', low: 'under an hour', medium: 'a few hours', large: 'a longer project' };
+const BRIEF_SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, none: 4, info: 5 };
+const BRIEF_EFFORT_ORDER = { small: 0, low: 0, medium: 1, large: 2 };
+
+function BriefingVerdictCard({ fwId, setFwId }) {
+  const [showAllFw, setShowAllFw] = useState(false);
+  const data = useMemo(() => buildFrameworkData(fwId, []), [fwId]);
+  if (!data) return null;
+  const pctVal = fwCoveragePct(data.counts);
+  const readiness = fwReadinessLabel(pctVal);
+  // "Applicable" excludes the not-assessed bucket; the donut % keeps the
+  // standard fwCoveragePct formula so Briefing and FrameworkQuilt always agree.
+  const applicable = data.counts.total - (data.counts.na || 0);
+  const qwInFw = getQuickWins(FINDINGS).filter(f => (f.frameworks || []).includes(fwId));
+  const projected = qwInFw.length > 0
+    ? fwCoveragePct({ ...data.counts, pass: data.counts.pass + qwInFw.length, fail: Math.max(0, data.counts.fail - qwInFw.length) })
+    : pctVal;
+  const meta = FRAMEWORKS.find(fw => fw.id === fwId);
+  const chipIds = showAllFw
+    ? FRAMEWORKS.map(fw => fw.id)
+    : HEADLINE_FWS.concat(HEADLINE_FWS.includes(fwId) ? [] : [fwId]);
+  return (
+    <div className="brief-verdict">
+      <ScoreDonut counts={data.counts} animKey={fwId} size={120} stroke={14}/>
+      <div className="brief-verdict-info">
+        <div className="brief-fw-chips">
+          {chipIds.map(id => {
+            const fw = FRAMEWORKS.find(x => x.id === id);
+            return fw ? (
+              <button key={id} className={'brief-fw-chip' + (id === fwId ? ' selected' : '')} onClick={() => setFwId(id)}>
+                {fw.full}
+              </button>
+            ) : null;
+          })}
+          {!showAllFw && FRAMEWORKS.length > chipIds.length && (
+            <button className="brief-fw-chip brief-fw-more" onClick={() => setShowAllFw(true)}>
+              + {FRAMEWORKS.length - chipIds.length} more
+            </button>
+          )}
+        </div>
+        <div className={'brief-verdict-line ' + readiness.tone}>{readiness.label}</div>
+        <div className="brief-verdict-sub">
+          {data.counts.pass} of {applicable} applicable {meta ? meta.full : fwId} controls are in place.
+          {qwInFw.length > 0 && projected > pctVal &&
+            ` Fixing the ${qwInFw.length} quick win${qwInFw.length === 1 ? '' : 's'} below would bring coverage to ${projected}%.`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefingStatRow({ onShowCritical, onShowQuickWins }) {
+  // Actionable criticals only: critical-severity findings that still need
+  // remediation. The Posture KPI counts ALL critical-severity findings
+  // (including passing ones), so these two numbers can legitimately differ.
+  const critical = FINDINGS.filter(f => f.severity === 'critical' && !NON_REMEDIATION_STATUSES.has(f.status)).length;
+  const quickWins = getQuickWins(FINDINGS).length;
+  const score = parseFloat(SCORE.Percentage);
+  const avg = parseFloat(SCORE.AverageComparativeScore);
+  return (
+    <div className="brief-stat-row">
+      <button className={'brief-stat ' + (critical > 0 ? 'bad' : 'good')} onClick={onShowCritical}>
+        <div className="brief-stat-label">Needs attention now</div>
+        <div className="brief-stat-value">{critical}</div>
+        <div className="brief-stat-hint">{critical > 0 ? (critical === 1 ? 'issue to fix this week' : 'issues to fix this week') : 'no critical issues open'}</div>
+      </button>
+      <button className="brief-stat" onClick={onShowQuickWins}>
+        <div className="brief-stat-label">Quick wins</div>
+        <div className="brief-stat-value">{quickWins}</div>
+        <div className="brief-stat-hint">{quickWins === 1 ? 'fix takes under an hour' : 'fixes take under an hour each'}</div>
+      </button>
+      {Number.isFinite(score) && (
+        <div className="brief-stat">
+          <div className="brief-stat-label">Microsoft secure score</div>
+          <div className="brief-stat-value">{score.toFixed(1)}%</div>
+          <div className="brief-stat-hint">
+            {Number.isFinite(avg) && avg > 0
+              ? (score >= avg ? `above the peer average of ${avg.toFixed(1)}%` : `below the peer average of ${avg.toFixed(1)}%`)
+              : 'as last published by Microsoft'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BriefingActions({ onViewFinding }) {
+  const actions = FINDINGS
+    .filter(f => f.lane === 'now' && !NON_REMEDIATION_STATUSES.has(f.status))
+    .sort((a, b) =>
+      ((BRIEF_SEV_ORDER[a.severity] ?? 9) - (BRIEF_SEV_ORDER[b.severity] ?? 9)) ||
+      ((BRIEF_EFFORT_ORDER[a.effort] ?? 3) - (BRIEF_EFFORT_ORDER[b.effort] ?? 3)))
+    .slice(0, 5);
+  if (actions.length === 0) return null;
+  return (
+    <div className="brief-actions">
+      <div className="brief-actions-title">What to do first</div>
+      {actions.map(f => (
+        <button key={f.checkId} className="brief-action" onClick={() => onViewFinding(f.checkId)}>
+          <span className={'brief-action-dot ' + (f.severity || 'medium')}/>
+          <span className="brief-action-name">{f.setting}</span>
+          {EFFORT_HUMAN[f.effort] && <span className="brief-action-effort">{EFFORT_HUMAN[f.effort]}</span>}
+        </button>
+      ))}
+      <a className="brief-actions-more" href="#roadmap" onClick={e => { e.preventDefault(); document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+        See the full remediation plan
+      </a>
+    </div>
+  );
+}
+
+function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
+  const [fwId, setFwId] = useState(HEADLINE_FWS[0]);
+  const assessedRaw = D.assessedAt || SCORE.CreatedDateTime;
+  const assessedDate = assessedRaw ? new Date(assessedRaw) : null;
+  const assessedOk = assessedDate && !isNaN(assessedDate.getTime());
+  return (
+    <section className="block" id="briefing">
+      <div className="briefing-header">
+        <span className="briefing-header-org">{TENANT.OrgDisplayName || 'Microsoft 365 tenant'}</span>
+        <span className="briefing-header-meta">
+          {assessedOk ? `Assessed ${assessedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · ` : ''}
+          {FINDINGS.length} settings checked
+        </span>
+      </div>
+      <HideableBlock hideKey="briefing-verdict" label="Briefing verdict card">
+        <BriefingVerdictCard fwId={fwId} setFwId={setFwId}/>
+      </HideableBlock>
+      <HideableBlock hideKey="briefing-stats" label="Briefing stat tiles">
+        <BriefingStatRow onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
+      </HideableBlock>
+      <HideableBlock hideKey="briefing-actions" label="Briefing action list">
+        <BriefingActions onViewFinding={onViewFinding}/>
+      </HideableBlock>
+    </section>
   );
 }
 
@@ -774,19 +929,8 @@ function Posture() {
         </div>
       </div>
       <ExecSummaryRow/>
-      {critical > 0 && (
-        <div className="banner">
-          <div className="banner-icon">!</div>
-          <div>
-            <strong>{critical} critical finding{critical===1?'':'s'}</strong> require immediate remediation.
-            {MFA_STATS.adminsWithoutMfa > 0 && ` ${MFA_STATS.adminsWithoutMfa} admin${MFA_STATS.adminsWithoutMfa===1?' is':' are'} not MFA-enrolled.`}
-            {' '}Prioritized using CISA KEV and CIS Critical Controls guidance.{' '}
-            <a href="#findings-anchor" onClick={e=>{e.preventDefault();document.getElementById('findings-anchor')?.scrollIntoView({behavior:'smooth',block:'start'});}}>
-              Review in findings table →
-            </a>
-          </div>
-        </div>
-      )}
+      {/* #963: the critical banner moved to the Executive Briefing, which leads
+          with a "Needs attention now" tile and the top remediation actions. */}
     </section>
   );
 }
@@ -1973,8 +2117,10 @@ function GapsCTA({ count, onClick }) {
 // ======================== Framework quilt (#855 redesign) ========================
 function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles }) {
   const { open, headProps } = useCollapsibleSection();
-  const [visibleIds, setVisibleIds] = useState(['cis-m365-v6']);
-  const [focusedId, setFocusedId] = useState('cis-m365-v6');
+  // #963: open on the headline framework so the quilt and the Executive
+  // Briefing tell the same story by default.
+  const [visibleIds, setVisibleIds] = useState([HEADLINE_FWS[0]]);
+  const [focusedId, setFocusedId] = useState(HEADLINE_FWS[0]);
   const [family, setFamily] = useState(null);
 
   useEffect(() => { setFamily(null); }, [focusedId]);
@@ -1984,7 +2130,7 @@ function FrameworkQuilt({ onSelect, selected, onProfileSelect, activeProfiles })
   }, [visibleIds]);
 
   useEffect(() => {
-    const expand = () => { if (visibleIds.length === 0) setVisibleIds([FRAMEWORKS[0]?.id || 'cis-m365-v6']); };
+    const expand = () => { if (visibleIds.length === 0) setVisibleIds([HEADLINE_FWS[0]]); };
     window.addEventListener('beforeprint', expand);
     return () => window.removeEventListener('beforeprint', expand);
   }, [visibleIds]);
@@ -3968,7 +4114,9 @@ function App() {
     } catch {}
     return { status:[], sequence:[], severity:[], framework:[], domain:[], profile:[] };
   });
-  const [active, setActive] = useState('overview');
+  const [active, setActive] = useState('briefing');
+  // #963: ScoringViews tab state (lifted so the Briefing can deep-link).
+  const [scoringView, setScoringView] = useState('security-risk');
   const [activeSubsection, setActiveSubsection] = useState(null);
   const [showTweaks, setShowTweaks] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -4122,9 +4270,9 @@ function App() {
     setFilters(f => ({ ...f, domain: d ? [d] : [] }));
     if (d) document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const onOverviewClick = () => {
+  const onBriefingClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setActive('overview');
+    setActive('briefing');
     onDomainJump(null);
   };
   const onViewFinding = useCallback((checkId) => {
@@ -4133,11 +4281,21 @@ function App() {
     setFocusFinding(checkId);
     document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+  // #963: Briefing tile deep-links.
+  const onShowCritical = useCallback(() => {
+    setFilters({ status:[], sequence:[], severity:['critical'], framework:[], domain:[], profile:[] });
+    setSearch('');
+    document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const onShowQuickWins = useCallback(() => {
+    setScoringView('quick-wins');
+    document.getElementById('scoring')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <EditModeContext.Provider value={editModeCtx}>
     <div className="app">
-      <Sidebar active={active} activeSubsection={activeSubsection} counts={navCounts} domainCounts={domainCounts} activeDomain={filters.domain.length===1 ? filters.domain[0] : null} onDomainJump={onDomainJump} onOverviewClick={onOverviewClick} navOpen={navOpen} onClose={()=>setNavOpen(false)}/>
+      <Sidebar active={active} activeSubsection={activeSubsection} counts={navCounts} domainCounts={domainCounts} activeDomain={filters.domain.length===1 ? filters.domain[0] : null} onDomainJump={onDomainJump} onBriefingClick={onBriefingClick} navOpen={navOpen} onClose={()=>setNavOpen(false)}/>
       <main className="main">
         <Topbar
           search={search} setSearch={setSearch}
@@ -4155,9 +4313,10 @@ function App() {
           onReset={handleResetAll}
           hiddenCount={hiddenFindings.size + hiddenElements.size}
         />
+        <Briefing onViewFinding={onViewFinding} onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
         <Overview/>
         <Posture/>
-        <ScoringViews/>
+        <ScoringViews view={scoringView} setView={setScoringView}/>
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>
         <DomainRollup onJump={onDomainJump}/>

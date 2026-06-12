@@ -72,6 +72,41 @@ Describe 'Build-ReportData' {
     }
 
     # ------------------------------------------------------------------
+    Context 'headline frameworks (#963)' {
+        It 'should emit an empty headlineFrameworks array by default' {
+            # Pins the ConvertTo-Json null fixup: [string[]]@() serializes as null without it.
+            $result = Build-ReportDataJson
+            $result | Should -Match '"headlineFrameworks":\s*\[\]'
+        }
+
+        It 'should keep a single id as an array' {
+            # Pins the single-element unwrap fixup.
+            $result = Build-ReportDataJson -HeadlineFrameworks @('cis-m365-v6')
+            $d = ConvertFrom-ReportDataJson $result
+            @($d.headlineFrameworks).Count | Should -Be 1
+            @($d.headlineFrameworks)[0] | Should -Be 'cis-m365-v6'
+        }
+
+        It 'should preserve order for multiple ids' {
+            $result = Build-ReportDataJson -HeadlineFrameworks @('cmmc', 'cis-m365-v6')
+            $d = ConvertFrom-ReportDataJson $result
+            @($d.headlineFrameworks)[0] | Should -Be 'cmmc'
+            @($d.headlineFrameworks)[1] | Should -Be 'cis-m365-v6'
+        }
+
+        It 'should round-trip assessedAt verbatim' {
+            # Assert on the raw JSON: ConvertFrom-Json coerces ISO strings to [datetime].
+            $result = Build-ReportDataJson -AssessedAt '2026-06-12T00:00:00Z'
+            $result | Should -Match '"assessedAt":\s*"2026-06-12T00:00:00Z"'
+        }
+
+        It 'should emit empty assessedAt by default' {
+            $result = Build-ReportDataJson
+            $result | Should -Match '"assessedAt":\s*""'
+        }
+    }
+
+    # ------------------------------------------------------------------
     Context 'field mapping' {
         It 'should map CurrentValue to current' {
             $f = New-Finding -CurrentValue 'some value'
