@@ -236,7 +236,10 @@ $drifted = [System.Collections.Generic.List[string]]::new()
 
 foreach ($target in $targets) {
     $fullPath = Join-Path -Path $RepoRoot -ChildPath $target.Path
-    $original = Get-Content -Path $fullPath -Raw
+    # Normalize CRLF -> LF: .gitattributes 'text=auto' gives Windows runners a
+    # CRLF working tree while the generated replacement blocks use LF; without
+    # normalization the -Check gate reports pure line-ending noise as drift.
+    $original = (Get-Content -Path $fullPath -Raw).Replace("`r`n", "`n")
     $updated = $original
     foreach ($blockName in $target.Blocks.Keys) {
         $updated = Update-MarkerBlock -Content $updated -Name $blockName -Replacement $target.Blocks[$blockName] -FilePath $target.Path
@@ -253,8 +256,10 @@ foreach ($target in $targets) {
 }
 
 $coveragePath = Join-Path -Path $RepoRoot -ChildPath 'docs/reference/COVERAGE.md'
-$coverageText = $coverage.ToString()
-$existingCoverage = if (Test-Path -Path $coveragePath) { Get-Content -Path $coveragePath -Raw } else { '' }
+# StringBuilder.AppendLine uses the platform newline (CRLF on Windows); pin to
+# LF so the generated file is identical regardless of where it was produced.
+$coverageText = $coverage.ToString().Replace("`r`n", "`n")
+$existingCoverage = if (Test-Path -Path $coveragePath) { (Get-Content -Path $coveragePath -Raw).Replace("`r`n", "`n") } else { '' }
 if ($coverageText -cne $existingCoverage) {
     if ($Check) {
         $drifted.Add('docs/reference/COVERAGE.md')
