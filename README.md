@@ -33,7 +33,11 @@
 
 ---
 
-Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines. **274 security checks** mapped across **15 compliance frameworks**.
+Run a single command to produce CSV reports, a branded HTML assessment report, and an XLSX compliance matrix covering identity, email, security, devices, collaboration, and compliance baselines.
+
+<!-- registry-stats:summary:begin -->
+**292 automated security checks** mapped across **15 compliance frameworks** — counts generated from [`controls/registry.json`](src/M365-Assess/controls/registry.json); per-framework coverage in [docs/reference/COVERAGE.md](docs/reference/COVERAGE.md).
+<!-- registry-stats:summary:end -->
 
 ## What's New in v2.6.0
 

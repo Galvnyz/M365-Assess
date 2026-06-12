@@ -27,7 +27,8 @@ M365-Assess repo
 
 | File | Purpose |
 |------|---------|
-| `registry.json` | 244 security checks with framework mappings across 14 frameworks |
+| `registry.json` | M365-scoped security checks with inline framework mappings (counts below) |
+| `sync-scope.json` | Collector allowlist applied when syncing the registry from CheckID |
 | `frameworks/cis-controls-v8.json` | CIS Controls v8 mappings |
 | `frameworks/cis-m365-v6.json` | CIS M365 v6 profile definitions (E3/E5, L1/L2) |
 | `frameworks/cisa-scuba.json` | CISA SCuBA baseline definitions |
@@ -42,6 +43,10 @@ M365-Assess repo
 | `frameworks/pci-dss-v4.json` | PCI DSS v4.0.1 requirement definitions |
 | `frameworks/soc2-tsc.json` | SOC 2 Trust Services Criteria |
 | `frameworks/stig.json` | DISA STIG M365 rules |
+
+<!-- registry-stats:files:begin -->
+`registry.json` currently contains **292 checks** across **15 collector families**, including **5 local extension checks**. Mappings span **20 framework keys**, 15 of which have report-view definitions in `frameworks/`.
+<!-- registry-stats:files:end -->
 
 ## Updating Registry Data
 
