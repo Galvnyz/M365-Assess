@@ -1,0 +1,20 @@
+{
+  "$comment": "M365 collector scope for the CheckID registry sync. The upstream CheckID registry serves multiple assessment scopes (M365, Windows endpoint via WIN-*, Azure subscription via AZ-*). M365-Assess ships only checks its collectors can emit: sync-checkid.yml filters registry.json to the collectors listed here, and Import-ControlRegistry excludes anything outside this list as a runtime guard. When CheckID upstream introduces a new M365 collector family that this module implements, add it here. 'Backup' is a known-but-unimplemented collector (BACKUP-ENABLED-001, Microsoft 365 Backup) kept in scope pending a src/M365-Assess/Backup/ collector.",
+  "collectors": [
+    "Backup",
+    "CAEvaluator",
+    "Compliance",
+    "DNS",
+    "Defender",
+    "EntApp",
+    "Entra",
+    "ExchangeOnline",
+    "Forms",
+    "Intune",
+    "PowerBI",
+    "PurviewRetention",
+    "SharePoint",
+    "StrykerReadiness",
+    "Teams"
+  ]
+}

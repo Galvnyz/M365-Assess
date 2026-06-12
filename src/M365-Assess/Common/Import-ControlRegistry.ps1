@@ -22,6 +22,12 @@
 .OUTPUTS
     [hashtable] - Keys are CheckIds, values are registry entry objects.
     Special key '__cisReverseLookup' maps CIS control IDs to CheckIds.
+    Each entry carries severityRated ($true when risk-severity.json has an
+    explicit rating; $false means riskSeverity is the 'Medium' default).
+.NOTES
+    When controls/sync-scope.json is present, checks whose collector is not in
+    its allowlist are excluded at load time (defense-in-depth behind the sync
+    workflow's M365 partition).
 #>
 function Import-ControlRegistry {
     [CmdletBinding()]
@@ -43,6 +49,25 @@ function Import-ControlRegistry {
     $checks = @($raw.checks)
     $schemaVersion = if ($raw.PSObject.Properties.Name -contains 'schemaVersion') { $raw.schemaVersion } else { '1.x' }
     Write-Verbose "Loaded $($checks.Count) checks from registry.json (schema $schemaVersion, data $($raw.dataVersion))"
+
+    # Scope guard: registry.json is partitioned to M365-scoped collectors at sync
+    # time (sync-checkid.yml). If an unpartitioned registry slips through (manual
+    # edit, sync filter failure), exclude out-of-scope checks here so check counts,
+    # progress totals, and report denominators stay honest. Controls directories
+    # without sync-scope.json (e.g. test fixtures) load unfiltered.
+    $scopePath = Join-Path -Path $ControlsPath -ChildPath 'sync-scope.json'
+    if (Test-Path -Path $scopePath) {
+        $scopeData = Get-Content -Path $scopePath -Raw | ConvertFrom-Json
+        $allowedCollectors = @($scopeData.collectors)
+        if ($allowedCollectors.Count -gt 0) {
+            $inScope = @($checks | Where-Object { -not $_.collector -or $allowedCollectors -contains $_.collector })
+            $outOfScope = $checks.Count - $inScope.Count
+            if ($outOfScope -gt 0) {
+                Write-Warning "Import-ControlRegistry: excluded $outOfScope registry entries outside the M365 collector scope (see controls/sync-scope.json). Re-run the CheckID sync to repartition registry.json."
+                $checks = $inScope
+            }
+        }
+    }
 
     # Load licensing overlay (M365-Assess-specific service plan gating)
     $licensingOverlay = @{}
@@ -93,6 +118,7 @@ function Import-ControlRegistry {
         }
 
         $entry.riskSeverity = 'Medium'  # default, overridden from risk-severity.json below
+        $entry.severityRated = $false   # flipped to $true when risk-severity.json has an explicit rating
         $lookup[$check.checkId] = $entry
 
         # Build CIS reverse lookup (parameterized for version upgrades)
@@ -111,6 +137,7 @@ function Import-ControlRegistry {
         foreach ($prop in $severityData.checks.PSObject.Properties) {
             if ($lookup.ContainsKey($prop.Name)) {
                 $lookup[$prop.Name].riskSeverity = $prop.Value
+                $lookup[$prop.Name].severityRated = $true
             }
         }
     }

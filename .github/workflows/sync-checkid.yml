@@ -8,6 +8,12 @@ name: Sync CheckID on Release
 #
 # Triggered by CheckID tag push via repository_dispatch, or manually via
 # workflow_dispatch.
+#
+# Scope: the upstream registry serves multiple assessment scopes (M365, Windows
+# endpoint WIN-*, Azure subscription AZ-*). This workflow partitions the registry
+# to the M365 collectors listed in controls/sync-scope.json before committing —
+# out-of-scope checks stay in the upstream CheckID release (the canonical source)
+# and are never shipped in this module.
 
 on:
   repository_dispatch:
@@ -90,6 +96,32 @@ jobs:
               if fixed != raw:
                   open(path, 'wb').write(fixed)
                   print(f'Encoding fixed: {path}')
+          EOF
+
+      - name: Filter registry to M365 collector scope
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          with open('src/M365-Assess/controls/sync-scope.json', encoding='utf-8') as f:
+              scope = set(json.load(f)['collectors'])
+
+          path = 'src/M365-Assess/controls/registry.json'
+          with open(path, encoding='utf-8') as f:
+              reg = json.load(f)
+
+          before = len(reg['checks'])
+          # Keep checks whose collector is in scope; checks without a collector
+          # field are kept (they cannot be classified as out-of-scope).
+          reg['checks'] = [c for c in reg['checks']
+                           if c.get('collector') is None or c['collector'] in scope]
+          dropped = before - len(reg['checks'])
+
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(reg, f, indent=2, ensure_ascii=False)
+              f.write('\n')
+
+          print(f"Registry scoped to M365: kept {len(reg['checks'])}, dropped {dropped} out-of-scope checks")
           EOF
 
       - name: Merge local extension checks

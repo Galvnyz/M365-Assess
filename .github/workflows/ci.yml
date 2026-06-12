@@ -177,6 +177,15 @@ jobs:
           # without regenerating the doc.
           ./scripts/Build-PermissionsMatrix.ps1 -Check
 
+      - name: Registry stats in sync
+        shell: pwsh
+        run: |
+          # Public check counts and framework coverage stats (README,
+          # controls/README, COMPLIANCE.md, docs/reference/COVERAGE.md) are
+          # generated from controls/registry.json. Fail any PR that changes
+          # registry data without regenerating the docs.
+          ./scripts/Build-RegistryStats.ps1 -Check
+
       - name: Version consistency
         shell: pwsh
         run: |

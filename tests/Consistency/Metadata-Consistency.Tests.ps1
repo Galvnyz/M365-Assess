@@ -92,18 +92,23 @@ Describe 'Metadata Consistency' {
     }
 
     Context 'Registry integrity' {
-        It 'Should have all automated checks reference a valid collector' {
-            # 'Backup' is a known-but-unimplemented collector: CheckID v2.22.1+ registers
-            # BACKUP-ENABLED-001 for the Microsoft 365 Backup service, but M365-Assess has
-            # not yet built a src/M365-Assess/Backup/ collector. Accepting the name here
-            # keeps the registry consistency gate green; actual collector implementation
-            # is tracked as a feature backlog item.
-            $validCollectors = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'Intune', 'SharePoint', 'Teams', 'PowerBI', 'Forms', 'PurviewRetention', 'EntApp', 'StrykerReadiness', 'AzAssess', 'Backup')
+        It 'Should have all automated checks reference a collector in sync-scope.json' {
+            # controls/sync-scope.json is the single source of truth for which
+            # collector families ship in this module. The sync workflow partitions
+            # the upstream CheckID registry (which also carries WIN-*/AZ-* scopes)
+            # to this list, so any collector outside it appearing here means the
+            # partition was bypassed. 'Backup' is a known-but-unimplemented
+            # collector (BACKUP-ENABLED-001, Microsoft 365 Backup) kept in scope
+            # pending a src/M365-Assess/Backup/ collector.
+            $scopeJson = Get-Content -Path "$moduleRoot/controls/sync-scope.json" -Raw | ConvertFrom-Json
+            $validCollectors = @($scopeJson.collectors)
+            $validCollectors.Count | Should -BeGreaterThan 0 -Because 'sync-scope.json must define the collector allowlist'
+
             $automated = @($registry.checks | Where-Object { $_.hasAutomatedCheck -eq $true })
             $automated.Count | Should -BeGreaterThan 0 -Because 'registry should contain automated checks'
 
             foreach ($check in $automated) {
-                $check.collector | Should -BeIn $validCollectors -Because "$($check.checkId) references collector '$($check.collector)' which is not in the known collector list"
+                $check.collector | Should -BeIn $validCollectors -Because "$($check.checkId) references collector '$($check.collector)' which is not in controls/sync-scope.json"
             }
         }
 
@@ -114,7 +119,12 @@ Describe 'Metadata Consistency' {
         }
 
         It 'Should have COMPLIANCE.md mention the current registry check count' {
-            $compliancePath = Join-Path $projectRoot.Path 'COMPLIANCE.md'
+            # COMPLIANCE.md moved to docs/user/ in the #906 docs consolidation;
+            # check the canonical location first so this assertion actually runs.
+            $compliancePath = Join-Path $projectRoot.Path 'docs/user/COMPLIANCE.md'
+            if (-not (Test-Path -Path $compliancePath)) {
+                $compliancePath = Join-Path $projectRoot.Path 'COMPLIANCE.md'
+            }
             if (-not (Test-Path -Path $compliancePath)) {
                 Set-ItResult -Skipped -Because 'COMPLIANCE.md does not exist in this repo'
                 return

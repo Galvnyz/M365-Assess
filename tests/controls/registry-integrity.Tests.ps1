@@ -66,4 +66,16 @@ Describe 'Control Registry Integrity' {
             }
         }
     }
+
+    It 'Contains only checks within the M365 collector scope (sync-scope.json)' {
+        # The upstream CheckID registry also carries WIN-* (Windows endpoint) and
+        # AZ-* (Azure subscription) checks that no collector in this module emits.
+        # sync-checkid.yml partitions the registry to controls/sync-scope.json at
+        # sync time; this test fails if an unpartitioned registry is committed.
+        $scopePath = "$PSScriptRoot/../../src/M365-Assess/controls/sync-scope.json"
+        $scope = @((Get-Content -Path $scopePath -Raw | ConvertFrom-Json).collectors)
+        $outOfScope = @($checks | Where-Object { $_.collector -and $scope -notcontains $_.collector })
+        $outOfScope | Should -BeNullOrEmpty `
+            -Because "registry.json must be partitioned to M365 collectors at sync time; out-of-scope: $(@($outOfScope.checkId) -join ', ')"
+    }
 }
