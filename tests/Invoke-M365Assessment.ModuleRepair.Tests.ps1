@@ -85,8 +85,14 @@ Describe 'Module repair flow' {
             $src | Should -Match 'Install missing modules to CurrentUser scope'
         }
 
-        It 'Should prompt separately for EXO downgrade' {
-            $src | Should -Match 'Proceed with EXO downgrade'
+        It 'Should prompt separately for the EXO side-by-side install (#231)' {
+            $src | Should -Match 'alongside\? \[Y/n\]'
+        }
+
+        It 'Should never uninstall existing EXO versions (#231)' {
+            # The repair installs 3.7.1 side-by-side; newer versions stay
+            # installed for other tooling and the session pins the import.
+            $src | Should -Not -Match 'Uninstall-Module'
         }
 
         It 'Should call Install-Module directly with splatted params' {
