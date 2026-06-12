@@ -7,7 +7,7 @@
 - **Checks:** 292 (290 automated)
 - **Collector families:** 15 (see `controls/sync-scope.json`)
 - **Local extension checks:** 5 (pending upstream CheckID adoption)
-- **Severity-rated:** 206 of 292 (86 unrated checks display the default Medium severity)
+- **Severity-rated:** 292 of 292 (0 unrated checks display the default Medium severity)
 - **Learn-more links:** 31 of 292
 
 ## Per-framework mapping coverage
@@ -55,18 +55,18 @@ Distinct SCuBA policy IDs mapped, by product prefix (`MS.<PRODUCT>.*`). Products
 
 | Collector | Checks | Severity-rated | Learn-more links |
 |---|---|---|---|
-| Backup | 1 | 0 | 0 |
-| CAEvaluator | 23 | 15 | 7 |
-| Compliance | 10 | 9 | 0 |
-| Defender | 19 | 13 | 0 |
-| DNS | 4 | 3 | 0 |
+| Backup | 1 | 1 | 0 |
+| CAEvaluator | 23 | 23 | 7 |
+| Compliance | 10 | 10 | 0 |
+| Defender | 19 | 19 | 0 |
+| DNS | 4 | 4 | 0 |
 | EntApp | 24 | 24 | 6 |
-| Entra | 79 | 54 | 10 |
-| ExchangeOnline | 23 | 18 | 2 |
+| Entra | 79 | 79 | 10 |
+| ExchangeOnline | 23 | 23 | 2 |
 | Forms | 6 | 6 | 0 |
-| Intune | 17 | 2 | 0 |
-| PowerBI | 26 | 11 | 3 |
+| Intune | 17 | 17 | 0 |
+| PowerBI | 26 | 26 | 3 |
 | PurviewRetention | 4 | 4 | 0 |
-| SharePoint | 27 | 19 | 1 |
+| SharePoint | 27 | 27 | 1 |
 | StrykerReadiness | 9 | 9 | 2 |
-| Teams | 20 | 19 | 0 |
+| Teams | 20 | 20 | 0 |

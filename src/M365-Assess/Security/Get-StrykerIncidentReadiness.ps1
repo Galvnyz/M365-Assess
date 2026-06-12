@@ -35,6 +35,10 @@ if (-not (Assert-GraphConnection)) { return }
 Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction SilentlyContinue
 Import-Module -Name Microsoft.Graph.Identity.SignIns -ErrorAction SilentlyContinue
 
+# Pagination/retry wrapper (#952) — dot-sourced so standalone and test-harness
+# runs resolve it without the module loader.
+. (Join-Path -Path $PSScriptRoot -ChildPath '..\Common\Invoke-SafeGraphRequest.ps1')
+
 # ── Output collection ────────────────────────────────────────────────
 $settings = [System.Collections.Generic.List[PSCustomObject]]::new()
 $checkIdCounter = @{}
@@ -391,7 +395,7 @@ try {
     $graphAppId = '00000003-0000-0000-c000-000000000000'
 
     $uri = "/v1.0/applications?`$select=id,appId,displayName,requiredResourceAccess&`$top=999"
-    $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
+    $response = Invoke-SafeGraphRequest -Uri $uri
     $apps = $response.value
 
     $graphSp = Get-MgServicePrincipal -Filter "appId eq '$graphAppId'" -ErrorAction Stop

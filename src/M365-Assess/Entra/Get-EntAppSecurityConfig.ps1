@@ -42,6 +42,7 @@ if (-not (Assert-GraphConnection)) { return }
 # Load shared security-config helpers
 $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 . (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
+. (Join-Path -Path $_scriptDir -ChildPath '..\Common\Invoke-SafeGraphRequest.ps1')
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
@@ -128,17 +129,8 @@ try {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching service principals..."
     $spUri = '/v1.0/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,servicePrincipalType,keyCredentials,passwordCredentials,accountEnabled&$top=999'
-    $spResponse = Invoke-MgGraphRequest -Method GET -Uri $spUri -ErrorAction Stop
+    $spResponse = Invoke-SafeGraphRequest -Uri $spUri
     $allServicePrincipals = if ($spResponse -and $spResponse['value']) { @($spResponse['value']) } else { @() }
-
-    $nextLink = $spResponse['@odata.nextLink']
-    while ($nextLink) {
-        $spResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
-        if ($spResponse -and $spResponse['value']) {
-            $allServicePrincipals += @($spResponse['value'])
-        }
-        $nextLink = $spResponse['@odata.nextLink']
-    }
     $sw.Stop()
     Write-Verbose "Fetched $($allServicePrincipals.Count) service principals in $($sw.Elapsed.TotalSeconds.ToString('F1'))s"
 }
@@ -158,17 +150,8 @@ try {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching directory role assignments for service principals..."
     $roleAssignUri = '/v1.0/roleManagement/directory/roleAssignments?$top=999'
-    $roleResponse = Invoke-MgGraphRequest -Method GET -Uri $roleAssignUri -ErrorAction Stop
+    $roleResponse = Invoke-SafeGraphRequest -Uri $roleAssignUri
     $allRoleAssignments = if ($roleResponse -and $roleResponse['value']) { @($roleResponse['value']) } else { @() }
-
-    $nextLink = $roleResponse['@odata.nextLink']
-    while ($nextLink) {
-        $roleResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
-        if ($roleResponse -and $roleResponse['value']) {
-            $allRoleAssignments += @($roleResponse['value'])
-        }
-        $nextLink = $roleResponse['@odata.nextLink']
-    }
 
     foreach ($assignment in $allRoleAssignments) {
         $principalId = $assignment['principalId']
@@ -211,17 +194,8 @@ $spOAuth2Map = @{}
 try {
     Write-Verbose "Bulk-fetching oauth2 permission grants..."
     $oauthUri = '/v1.0/oauth2PermissionGrants?$top=999'
-    $oauthResponse = Invoke-MgGraphRequest -Method GET -Uri $oauthUri -ErrorAction Stop
+    $oauthResponse = Invoke-SafeGraphRequest -Uri $oauthUri
     $allOAuth2 = if ($oauthResponse -and $oauthResponse['value']) { @($oauthResponse['value']) } else { @() }
-
-    $nextLink = $oauthResponse['@odata.nextLink']
-    while ($nextLink) {
-        $oauthResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
-        if ($oauthResponse -and $oauthResponse['value']) {
-            $allOAuth2 += @($oauthResponse['value'])
-        }
-        $nextLink = $oauthResponse['@odata.nextLink']
-    }
 
     foreach ($grant in $allOAuth2) {
         $grantClientId = $grant['clientId']
@@ -246,17 +220,8 @@ try {
     $graphSpIdValue = $graphSpValue['id']
     if ($graphSpIdValue) {
         $araUri = "/v1.0/servicePrincipals/$graphSpIdValue/appRoleAssignedTo?`$top=999"
-        $araResponse = Invoke-MgGraphRequest -Method GET -Uri $araUri -ErrorAction Stop
+        $araResponse = Invoke-SafeGraphRequest -Uri $araUri
         $allAssigned = if ($araResponse -and $araResponse['value']) { @($araResponse['value']) } else { @() }
-
-        $nextLink = $araResponse['@odata.nextLink']
-        while ($nextLink) {
-            $araResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
-            if ($araResponse -and $araResponse['value']) {
-                $allAssigned += @($araResponse['value'])
-            }
-            $nextLink = $araResponse['@odata.nextLink']
-        }
 
         foreach ($a in $allAssigned) {
             $principalId = $a['principalId']
@@ -277,17 +242,8 @@ $allAppRegistrations = @()
 try {
     Write-Verbose "Fetching app registrations..."
     $appUri = "/v1.0/applications?`$select=id,appId,displayName,signInAudience,web,spa,publicClient&`$top=999"
-    $appResponse = Invoke-MgGraphRequest -Method GET -Uri $appUri -ErrorAction Stop
+    $appResponse = Invoke-SafeGraphRequest -Uri $appUri
     $allAppRegistrations = if ($appResponse -and $appResponse['value']) { @($appResponse['value']) } else { @() }
-
-    $nextLink = $appResponse['@odata.nextLink']
-    while ($nextLink) {
-        $appResponse = Invoke-MgGraphRequest -Method GET -Uri $nextLink -ErrorAction Stop
-        if ($appResponse -and $appResponse['value']) {
-            $allAppRegistrations += @($appResponse['value'])
-        }
-        $nextLink = $appResponse['@odata.nextLink']
-    }
     Write-Verbose "Fetched $($allAppRegistrations.Count) app registrations"
 }
 catch {
