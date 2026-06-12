@@ -4,6 +4,13 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Changed
+- **Registry partitioned to M365 collector scope** — `controls/registry.json` previously carried the entire upstream CheckID registry, including 814 Windows-endpoint (`WIN-*`) and Azure-subscription (`AZ-*`) checks that no collector in this module can emit. The registry is now filtered to the 15 M365 collector families declared in the new `controls/sync-scope.json` (292 checks, including the 5 local extensions), shrinking the shipped registry from ~7.0 MB to ~3.0 MB and making every check count and framework statistic reflect what the tool actually assesses. The `sync-checkid` workflow applies the same partition on every upstream sync; out-of-scope content remains available in the upstream CheckID release. `Import-ControlRegistry` enforces the scope at load time as defense-in-depth and warns if an unpartitioned registry is detected.
+- **Registry entries now expose `severityRated`** — `Import-ControlRegistry` marks whether a check's `riskSeverity` came from an explicit rating in `risk-severity.json` (`$true`) or is the `Medium` fallback (`$false`), so downstream consumers can distinguish rated findings from defaulted ones. Display behavior is unchanged; 206 of 292 checks currently carry explicit ratings.
+
+### Fixed
+- **Stale check counts in docs** — `docs/user/COMPLIANCE.md` cited three conflicting registry sizes (294, 1106, and 270); all now state the real M365-scoped count (292). The Metadata-Consistency test that guards the COMPLIANCE.md count pointed at a file location retired in the #906 docs consolidation and silently skipped; it now checks `docs/user/COMPLIANCE.md` and actually enforces the count. The registry-integrity suite gained a test that fails if an unpartitioned registry is ever committed, and the valid-collector test now derives its allowlist from `controls/sync-scope.json` instead of a hardcoded copy.
+
 ## [2.11.0] - 2026-05-01
 
 The **Data Quality & Accuracy** milestone — 29 of 30 issues closed (#871 stays blocked on upstream CheckID/SCF). No breaking API changes. Ships several new findings-table capabilities, three research/spec decision artifacts, a misleading-check fix (SSPR semantic mismatch), and the CheckID v3.4.0 registry refresh.

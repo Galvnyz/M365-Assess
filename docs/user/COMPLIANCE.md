@@ -69,11 +69,11 @@ ENTRA-ADMIN-001.1    First setting assessed under ENTRA-ADMIN-001
 ENTRA-ADMIN-001.2    Second setting assessed under ENTRA-ADMIN-001
 ```
 
-The assessment suite includes **294 security checks** across 16 security config collectors (Entra, CA Evaluator, EntApp, EXO, DNS, Defender, Compliance, Stryker Readiness, Intune, SharePoint, Teams, Power BI, Forms, Purview Retention, SOC2, AzAssess), each mapped to one or more compliance frameworks.
+The assessment suite includes **292 security checks** across 15 collector families (Entra, CA Evaluator, EntApp, EXO, DNS, Defender, Compliance, Stryker Readiness, Intune, SharePoint, Teams, Power BI, Forms, Purview Retention, Backup), each mapped to one or more compliance frameworks.
 
 ## Control Registry
 
-Framework mappings are defined in `controls/registry.json`, which contains **1106 control entries** (CheckID v2.21.0 upstream + ENTRA-DISABLED-001). Each entry specifies the check ID, description, and mappings to all applicable frameworks.
+Framework mappings are defined in `controls/registry.json`, which contains **292 control entries** — the M365-scoped subset of the upstream CheckID registry plus local extension checks. (CheckID upstream also carries Windows-endpoint `WIN-*` and Azure-subscription `AZ-*` checks; the sync workflow filters those out via `controls/sync-scope.json` because no collector in this module can emit them.) Each entry specifies the check ID, description, and mappings to all applicable frameworks.
 
 To view or edit mappings:
 
@@ -86,7 +86,8 @@ Framework mappings are stored in two locations:
 
 ```
 controls/
-  registry.json              # Master registry (270 entries) -- contains all framework mappings inline
+  registry.json              # Master registry (292 entries) -- contains all framework mappings inline
+  sync-scope.json            # M365 collector allowlist applied by the CheckID sync
   frameworks/
     cis-m365-v6.json         # CIS M365 v6.0.1 benchmark profiles
     soc2-tsc.json            # SOC 2 Trust Services Criteria
