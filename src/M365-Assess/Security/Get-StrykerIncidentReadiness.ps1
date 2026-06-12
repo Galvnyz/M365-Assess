@@ -391,7 +391,7 @@ try {
     $graphAppId = '00000003-0000-0000-c000-000000000000'
 
     $uri = "/v1.0/applications?`$select=id,appId,displayName,requiredResourceAccess&`$top=999"
-    $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
+    $response = Invoke-SafeGraphRequest -Uri $uri
     $apps = $response.value
 
     $graphSp = Get-MgServicePrincipal -Filter "appId eq '$graphAppId'" -ErrorAction Stop

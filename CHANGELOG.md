@@ -5,6 +5,7 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ## [Unreleased]
 
 ### Added
+- **`Invoke-SafeGraphRequest` — Graph pagination + throttling retry (#952)** — new shared helper in `Common/` that follows `@odata.nextLink` until collections are exhausted (bounded by a page cap that warns instead of truncating silently) and retries 429/503/504 responses with Retry-After-aware exponential backoff. First migrations: `Get-EntAppSecurityConfig` (replaces five hand-rolled pagination loops), the Stryker risky-apps query, and the Conditional Access policy fetch — tenants beyond one Graph page of apps/service principals/grants/policies now get complete results. Remaining call sites migrate incrementally under #952.
 - **Generated registry statistics with CI drift gate** — public check counts and framework coverage numbers are now generated from `controls/registry.json` by `scripts/Build-RegistryStats.ps1` into marker blocks in README.md, `controls/README.md`, and `docs/user/COMPLIANCE.md`, plus a new fully-generated `docs/reference/COVERAGE.md` (per-framework mapping coverage, CISA SCuBA product-pillar coverage, per-collector counts, severity-rating and learn-more completeness). A new "Registry stats in sync" CI quality gate runs the script with `-Check` and fails any PR that changes registry data without regenerating the docs — hand-typed check counts can no longer drift from the shipped registry.
 
 ### Changed

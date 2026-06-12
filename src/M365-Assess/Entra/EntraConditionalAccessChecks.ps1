@@ -11,12 +11,7 @@ param()
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Counting conditional access policies..."
-    $graphParams = @{
-        Method      = 'GET'
-        Uri         = '/v1.0/identity/conditionalAccess/policies'
-        ErrorAction = 'Stop'
-    }
-    $caPolicies = Invoke-MgGraphRequest @graphParams
+    $caPolicies = Invoke-SafeGraphRequest -Uri '/v1.0/identity/conditionalAccess/policies'
     $policyList = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     $caCount = $policyList.Count
     $enabledCount = @($policyList | Where-Object { $_['state'] -eq 'enabled' }).Count
