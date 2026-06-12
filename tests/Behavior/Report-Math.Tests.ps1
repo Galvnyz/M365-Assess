@@ -59,3 +59,21 @@ Describe 'Report math denominator (C5 #784, #802 enforcement)' {
         }
     }
 }
+
+Describe 'Report data contract — Secure Score absent (#967)' {
+
+    Context 'when SectionData contains no score rows' {
+        It 'should emit score as an empty array so the React guard can safely skip the card' {
+            # Posture() in report-app.jsx does D.score[0] || {} then parseFloat(SCORE.Percentage).
+            # When score is absent (SecurityEvents.Read.All not granted), the PS layer must
+            # emit score:[] -- an empty array, not null or undefined -- so the JSX
+            # Number.isFinite guard can branch correctly without a runtime error.
+            $json = Build-ReportDataJson -AllFindings @()
+            $stripped = $json -replace '^window\.REPORT_DATA = ', '' -replace ';$', ''
+            $data = $stripped | ConvertFrom-Json
+
+            $data.PSObject.Properties.Name | Should -Contain 'score'
+            @($data.score).Count | Should -Be 0
+        }
+    }
+}

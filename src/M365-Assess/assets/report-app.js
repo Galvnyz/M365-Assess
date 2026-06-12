@@ -906,14 +906,6 @@ const computeComplianceReadinessScore = arr => {
   const ready = items.filter(f => f.status === 'Pass' || f.status === 'Review').length;
   return Math.round(ready / items.length * 100);
 };
-const computeLicenseAdjustedScore = arr => {
-  // Strips out NotLicensed entirely from BOTH numerator and denominator. SMBs
-  // without E5 don't get penalised for E5-only controls they cannot enable.
-  const items = (arr || []).filter(f => SCORED_STATUSES.has(f.status) && f.status !== 'NotLicensed');
-  if (items.length === 0) return null;
-  const pass = items.filter(f => f.status === 'Pass').length;
-  return Math.round(pass / items.length * 100);
-};
 // 3 list views (return an array of findings, sorted/filtered for the workflow):
 const getQuickWins = arr => {
   // Fail status × low effort, sorted by severity (critical > high > medium > low > none).
@@ -941,12 +933,6 @@ const SCORING_VIEWS = [{
   kind: 'score',
   compute: computeComplianceReadinessScore,
   blurb: 'Counts Review findings as ready. Auditors usually accept them with written attestation.'
-}, {
-  id: 'license-adjusted',
-  label: 'License-Adjusted',
-  kind: 'score',
-  compute: computeLicenseAdjustedScore,
-  blurb: 'Sets aside checks that require licenses the tenant does not own.'
 }, {
   id: 'quick-wins',
   label: 'Quick Wins',
@@ -1293,8 +1279,10 @@ function Briefing({
 function Posture() {
   const score = parseFloat(SCORE.Percentage);
   const avg = parseFloat(SCORE.AverageComparativeScore);
-  const delta = (score - avg).toFixed(1);
-  const deltaPos = parseFloat(delta) >= 0;
+  const scoreAvailable = Number.isFinite(score);
+  const avgAvailable = Number.isFinite(avg) && avg > 0;
+  const delta = scoreAvailable && avgAvailable ? (score - avg).toFixed(1) : null;
+  const deltaPos = delta !== null && parseFloat(delta) >= 0;
   const fail = FINDINGS.filter(f => f.status === 'Fail').length;
   const warn = FINDINGS.filter(f => f.status === 'Warning').length;
   const pass = FINDINGS.filter(f => f.status === 'Pass').length;
@@ -1308,7 +1296,7 @@ function Posture() {
   }, /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "posture-score-card",
     label: "Microsoft Secure Score card"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, scoreAvailable ? /*#__PURE__*/React.createElement("div", {
     className: "score-card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "score-eyebrow"
@@ -1318,17 +1306,17 @@ function Posture() {
     className: "score-num"
   }, score.toFixed(1)), /*#__PURE__*/React.createElement("span", {
     className: "score-denom"
-  }, "/ 100%"), /*#__PURE__*/React.createElement("span", {
+  }, "/ 100%"), delta !== null && /*#__PURE__*/React.createElement("span", {
     className: 'score-delta ' + (deltaPos ? '' : 'neg')
-  }, deltaPos ? '▲' : '▼', " ", Math.abs(delta), " pts vs peers")), /*#__PURE__*/React.createElement("div", {
+  }, deltaPos ? '▲' : '▼', " ", Math.abs(parseFloat(delta)), " pts vs peers")), /*#__PURE__*/React.createElement("div", {
     className: "score-label"
-  }, fmt(SCORE.CurrentScore), " of ", fmt(SCORE.MaxScore), " points achieved. Peer average is ", avg.toFixed(1), "%."), /*#__PURE__*/React.createElement("div", {
+  }, fmt(SCORE.CurrentScore), " of ", fmt(SCORE.MaxScore), " points achieved.", avgAvailable && ` Peer average is ${avg.toFixed(1)}%.`), /*#__PURE__*/React.createElement("div", {
     className: "score-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
       width: score + '%'
     }
-  }), /*#__PURE__*/React.createElement("div", {
+  }), avgAvailable && /*#__PURE__*/React.createElement("div", {
     className: "bench",
     style: {
       left: avg + '%'
@@ -1336,7 +1324,7 @@ function Posture() {
     title: `Peer avg ${avg}%`
   })), /*#__PURE__*/React.createElement("div", {
     className: "score-footnote"
-  }, /*#__PURE__*/React.createElement("span", null, "0"), /*#__PURE__*/React.createElement("span", null, "Peer avg \xB7 ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
+  }, /*#__PURE__*/React.createElement("span", null, "0"), avgAvailable && /*#__PURE__*/React.createElement("span", null, "Peer avg \xB7 ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
     scores: D.score,
     avg: avg
   }), SCORE.MicrosoftScore != null && SCORE.CustomerScore != null && SCORE.MicrosoftScore > 0 && /*#__PURE__*/React.createElement("div", {
@@ -1355,7 +1343,13 @@ function Posture() {
     className: "score-split-value"
   }, fmt(SCORE.CustomerScore), " pts"))), /*#__PURE__*/React.createElement("div", {
     className: "score-disclaimer"
-  }, "Microsoft refreshes Secure Score on a delay \u2014 recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state."))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "Microsoft refreshes Secure Score on a delay \u2014 recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state.")) : /*#__PURE__*/React.createElement("div", {
+    className: "score-card score-card--unavailable"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "score-eyebrow"
+  }, "Microsoft Secure Score"), /*#__PURE__*/React.createElement("div", {
+    className: "score-unavailable"
+  }, "Secure Score unavailable for this run. The SecurityEvents.Read.All permission may not have been granted at collection time."))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "kpi-strip",
     style: {
       marginBottom: 10

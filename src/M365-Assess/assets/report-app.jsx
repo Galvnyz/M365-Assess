@@ -529,14 +529,6 @@ const computeComplianceReadinessScore = arr => {
   const ready = items.filter(f => f.status === 'Pass' || f.status === 'Review').length;
   return Math.round((ready / items.length) * 100);
 };
-const computeLicenseAdjustedScore = arr => {
-  // Strips out NotLicensed entirely from BOTH numerator and denominator. SMBs
-  // without E5 don't get penalised for E5-only controls they cannot enable.
-  const items = (arr || []).filter(f => SCORED_STATUSES.has(f.status) && f.status !== 'NotLicensed');
-  if (items.length === 0) return null;
-  const pass = items.filter(f => f.status === 'Pass').length;
-  return Math.round((pass / items.length) * 100);
-};
 // 3 list views (return an array of findings, sorted/filtered for the workflow):
 const getQuickWins = arr => {
   // Fail status × low effort, sorted by severity (critical > high > medium > low > none).
@@ -553,9 +545,7 @@ const SCORING_VIEWS = [
     blurb: 'The strict rule: passes divided by everything that could pass or fail. Matches the headline score.' },
   { id: 'compliance',        label: 'Compliance Readiness',    kind: 'score', compute: computeComplianceReadinessScore,
     blurb: 'Counts Review findings as ready. Auditors usually accept them with written attestation.' },
-  { id: 'license-adjusted',  label: 'License-Adjusted',        kind: 'score', compute: computeLicenseAdjustedScore,
-    blurb: 'Sets aside checks that require licenses the tenant does not own.' },
-  { id: 'quick-wins',        label: 'Quick Wins',              kind: 'list',  collect: getQuickWins,
+{ id: 'quick-wins',        label: 'Quick Wins',              kind: 'list',  collect: getQuickWins,
     blurb: 'Failing checks that take little effort to fix. The fastest score improvements.' },
   { id: 'requires-licensing',label: 'Requires Licensing',      kind: 'list',  collect: getRequiresLicensing,
     blurb: 'Checks that cannot be enabled on current licensing. Input for a license upgrade conversation.' },
@@ -826,8 +816,10 @@ function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
 function Posture() {
   const score = parseFloat(SCORE.Percentage);
   const avg = parseFloat(SCORE.AverageComparativeScore);
-  const delta = (score - avg).toFixed(1);
-  const deltaPos = parseFloat(delta) >= 0;
+  const scoreAvailable = Number.isFinite(score);
+  const avgAvailable = Number.isFinite(avg) && avg > 0;
+  const delta = scoreAvailable && avgAvailable ? (score - avg).toFixed(1) : null;
+  const deltaPos = delta !== null && parseFloat(delta) >= 0;
 
   const fail = FINDINGS.filter(f=>f.status==='Fail').length;
   const warn = FINDINGS.filter(f=>f.status==='Warning').length;
@@ -839,26 +831,29 @@ function Posture() {
     <section className="block" id="posture">
       <div className="posture-grid">
         <HideableBlock hideKey="posture-score-card" label="Microsoft Secure Score card">
+        {scoreAvailable ? (
         <div className="score-card">
           <div className="score-eyebrow">Microsoft Secure Score</div>
           <div className="score-headline">
             <span className="score-num">{score.toFixed(1)}</span>
             <span className="score-denom">/ 100%</span>
-            <span className={'score-delta ' + (deltaPos?'':'neg')}>
-              {deltaPos?'▲':'▼'} {Math.abs(delta)} pts vs peers
-            </span>
+            {delta !== null && (
+              <span className={'score-delta ' + (deltaPos?'':'neg')}>
+                {deltaPos?'▲':'▼'} {Math.abs(parseFloat(delta))} pts vs peers
+              </span>
+            )}
           </div>
           <div className="score-label">
             {fmt(SCORE.CurrentScore)} of {fmt(SCORE.MaxScore)} points achieved.
-            Peer average is {avg.toFixed(1)}%.
+            {avgAvailable && ` Peer average is ${avg.toFixed(1)}%.`}
           </div>
           <div className="score-bar">
             <span style={{width: score + '%'}} />
-            <div className="bench" style={{left: avg + '%'}} title={`Peer avg ${avg}%`} />
+            {avgAvailable && <div className="bench" style={{left: avg + '%'}} title={`Peer avg ${avg}%`} />}
           </div>
           <div className="score-footnote">
             <span>0</span>
-            <span>Peer avg · {avg.toFixed(1)}%</span>
+            {avgAvailable && <span>Peer avg · {avg.toFixed(1)}%</span>}
             <span>100</span>
           </div>
           <Sparkline scores={D.score} avg={avg} />
@@ -878,6 +873,12 @@ function Posture() {
             Microsoft refreshes Secure Score on a delay — recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state.
           </div>
         </div>
+        ) : (
+        <div className="score-card score-card--unavailable">
+          <div className="score-eyebrow">Microsoft Secure Score</div>
+          <div className="score-unavailable">Secure Score unavailable for this run. The SecurityEvents.Read.All permission may not have been granted at collection time.</div>
+        </div>
+        )}
         </HideableBlock>
 
         <div>
