@@ -49,9 +49,14 @@ if ($isAppOnly) {
 # 400/404 errors, producing misleading warnings in the assessment log.
 try {
     $subscribedSkus = Get-MgSubscribedSku -ErrorAction Stop
+    # Service plan IDs from Microsoft's licensing-service-plan-reference. Sovereign
+    # clouds ship Teams under cloud-specific plans — checking only TEAMS1 false-negatives
+    # on every government tenant (observed live on a GCC High G5 tenant, #940).
     $teamsServicePlanIds = @(
-        '57ff2da0-773e-42df-b2af-ffb7a2317929'  # TEAMS1 (standard Teams service plan)
-        '4a51bca5-1eff-43f5-878c-177680f191af'  # TEAMS1 (Gov)
+        '57ff2da0-773e-42df-b2af-ffb7a2317929'  # TEAMS1 (commercial)
+        '304767db-7d23-49e8-a945-4a7eb65f9f28'  # TEAMS_GOV (GCC)
+        '9953b155-8aef-4c56-92f3-72b0487fce41'  # TEAMS_AR_GCCHIGH (GCC High)
+        'fd500458-c24c-478e-856c-a6067a8376cd'  # TEAMS_AR_DOD (DoD)
     )
     $hasTeams = $false
     foreach ($sku in $subscribedSkus) {

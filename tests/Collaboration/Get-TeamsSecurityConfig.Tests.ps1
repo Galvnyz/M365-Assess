@@ -213,6 +213,71 @@ Describe 'Get-TeamsSecurityConfig - App-Only Auth Early Exit' {
     }
 }
 
+Describe 'Get-TeamsSecurityConfig - Sovereign Cloud Teams Licenses (#940 gate)' {
+    # The 2026-06-12 GCC High live run showed the license gate false-negativing on a
+    # tenant with 5 assigned SPE_E5_USGOV_GCCHIGH seats: the gate only knew the
+    # commercial TEAMS1 plan id (plus a GUID that is actually WHITEBOARD_PLAN3).
+    # Sovereign clouds use distinct Teams service plans, verified against Microsoft's
+    # licensing-service-plan-reference CSV:
+    #   GCC      TEAMS_GOV         304767db-7d23-49e8-a945-4a7eb65f9f28
+    #   GCC High TEAMS_AR_GCCHIGH  9953b155-8aef-4c56-92f3-72b0487fce41
+    #   DoD      TEAMS_AR_DOD      fd500458-c24c-478e-856c-a6067a8376cd
+
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{
+                TenantId = 'test-tenant-id'
+                AuthType = 'Delegated'
+                Account  = 'admin@contoso.com'
+            }
+        }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            return @{ value = @() }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+    }
+
+    It 'should proceed with Teams checks when the tenant has <CloudName> licensing' -ForEach @(
+        @{ CloudName = 'GCC';      SkuPart = 'M365_G5_GOV';          PlanId = '304767db-7d23-49e8-a945-4a7eb65f9f28' }
+        @{ CloudName = 'GCC High'; SkuPart = 'SPE_E5_USGOV_GCCHIGH'; PlanId = '9953b155-8aef-4c56-92f3-72b0487fce41' }
+        @{ CloudName = 'DoD';      SkuPart = 'SPE_E5_USGOV_DOD';     PlanId = 'fd500458-c24c-478e-856c-a6067a8376cd' }
+    ) {
+        $localSkuPart = $SkuPart
+        $localPlanId  = $PlanId
+        function global:Get-MgSubscribedSku {
+            return @(
+                @{
+                    SkuPartNumber = $localSkuPart
+                    ConsumedUnits = 5
+                    ServicePlans  = @(
+                        @{ ServicePlanId = $localPlanId; ProvisioningStatus = 'Success' }
+                    )
+                }
+            )
+        }
+
+        $output = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1"
+
+        # The license gate must not skip — the collector should reach the checks
+        # and emit settings (mocked Graph responses produce Review/Fail results).
+        @($output).Count | Should -BeGreaterThan 0 `
+            -Because "a $CloudName tenant with an assigned Teams service plan must not be skipped"
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgSubscribedSku -ErrorAction SilentlyContinue
+    }
+}
+
 Describe 'Get-TeamsSecurityConfig - No Teams License' {
     BeforeAll {
         function global:Update-CheckProgress {
