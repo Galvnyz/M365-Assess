@@ -186,6 +186,51 @@ Describe 'Get-FormsSecurityConfig - Insecure Settings Fail' {
     }
 }
 
+Describe 'Get-FormsSecurityConfig - Sovereign Cloud API Gap (#941)' {
+    # The /beta/admin/forms/settings endpoint returns BadRequest in GCC High
+    # (live run 2026-06-12). Before the fix the collector emitted only a bare
+    # Write-Warning and recorded no result, so the check vanished from the report.
+    # It should instead emit a Skipped row so the gap is visible in the
+    # not-assessed group.
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{
+                TenantId    = 'test-tenant-id'
+                AuthType    = 'Delegated'
+                Account     = 'admin@contoso.onmicrosoft.us'
+                Environment = 'USGov'
+            }
+        }
+
+        Mock Invoke-MgGraphRequest {
+            throw 'Response status code does not indicate success: BadRequest (Bad Request).'
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-FormsSecurityConfig.ps1"
+    }
+
+    It 'emits a Skipped Forms check instead of silently warning' {
+        $formsCheck = $settings | Where-Object { $_.CheckId -like 'FORMS-CONFIG-001*' }
+        $formsCheck | Should -Not -BeNullOrEmpty
+        $formsCheck.Status | Should -Be 'Skipped'
+    }
+
+    It 'names the sovereign cloud in the skipped message' {
+        $formsCheck = $settings | Where-Object { $_.CheckId -like 'FORMS-CONFIG-001*' }
+        $formsCheck.CurrentValue | Should -Match 'USGov|sovereign|not available'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+    }
+}
+
 Describe 'Get-FormsSecurityConfig - Not Connected' {
     BeforeAll {
         function global:Update-CheckProgress {

@@ -242,3 +242,94 @@ Describe 'EntraAdminRoleChecks - Too Many Admins' {
         Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'EntraAdminRoleChecks - PIM policy endpoint unavailable (#978)' {
+    # GCC High returns 400 MissingProvider on /beta/policies/roleManagementPolicies
+    # even though the tenant has P2 and roleAssignmentScheduleInstances succeeds.
+    # Before the fix the non-403 catch only Write-Warning'd without setting
+    # pimAvailable=$false, so ENTRA-PIM-004/005 were silently dropped (neither
+    # the data branch nor the graceful elseif fired). They must still emit Review.
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id' }
+        }
+
+        Mock Import-Module { }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri, $Headers, $ErrorAction)
+            switch -Wildcard ($Uri) {
+                '*/directoryRoles?*Global Administrator*' {
+                    return @{ value = @(@{ id = 'ga-role-id'; displayName = 'Global Administrator' }) }
+                }
+                '*/directoryRoles/ga-role-id/members' {
+                    return @{ value = @(
+                        @{ id = 'u1'; displayName = 'Admin One'; userPrincipalName = 'admin1@contoso.us'; '@odata.type' = '#microsoft.graph.user' }
+                    )}
+                }
+                # P2 present so PIM is considered available and the policy call is reached
+                '*/subscribedSkus' {
+                    return @{ value = @(
+                        @{ skuPartNumber = 'SPE_E5_USGOV_GCCHIGH'; capabilityStatus = 'Enabled'
+                           servicePlans = @(
+                               @{ servicePlanId = 'eec0eb4f-6444-4f95-aba0-50c24d67f998'; provisioningStatus = 'Success' }
+                           ) }
+                    )}
+                }
+                # roleAssignments succeeds — keeps pimAvailable=$true into the policy block
+                '*/beta/roleManagement/directory/roleAssignmentScheduleInstances*' {
+                    return @{ value = @() }
+                }
+                # the GCC High failure: provider missing on the policy endpoint
+                '*/beta/policies/roleManagementPolicies*' {
+                    throw 'GET https://graph.microsoft.us/beta/policies/roleManagementPolicies?$expand=rules HTTP 400 Bad Request MissingProvider The provider is missing.'
+                }
+                default { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        $ctx            = Initialize-SecurityConfig
+        $settings       = $ctx.Settings
+        $checkIdCounter = $ctx.CheckIdCounter
+
+        function Add-Setting {
+            param([string]$Category, [string]$Setting, [string]$CurrentValue,
+                  [string]$RecommendedValue, [string]$Status,
+                  [string]$CheckId = '', [string]$Remediation = '')
+            Add-SecuritySetting -Settings $settings -CheckIdCounter $checkIdCounter `
+                -Category $Category -Setting $Setting -CurrentValue $CurrentValue `
+                -RecommendedValue $RecommendedValue -Status $Status `
+                -CheckId $CheckId -Remediation $Remediation
+        }
+
+        $authPolicy = @{ restrictNonAdminUsers = $true }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraAdminRoleChecks.ps1"
+    }
+
+    It 'still emits ENTRA-PIM-004 as Review rather than dropping it' {
+        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-004*' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Review'
+    }
+
+    It 'still emits ENTRA-PIM-005 as Review rather than dropping it' {
+        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-005*' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Review'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
+    }
+}

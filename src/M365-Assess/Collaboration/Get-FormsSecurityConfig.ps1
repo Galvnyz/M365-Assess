@@ -38,6 +38,10 @@ $ErrorActionPreference = 'Continue'
 # Verify Graph connection
 if (-not (Assert-GraphConnection)) { return }
 
+# Capture the connected cloud so a sovereign-cloud API gap can be reported
+# precisely. 'USGov' = GCC High, 'USGovDoD' = DoD (#941).
+$graphEnvironment = try { (Get-MgContext).Environment } catch { $null }
+
 # Load shared security-config helpers
 $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 . (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
@@ -169,6 +173,29 @@ catch {
             Status           = 'Review'
             CheckId          = 'FORMS-CONFIG-001'
             Remediation      = 'Reconnect with the OrgSettings-Forms.Read.All permission scope to check Microsoft Forms settings.'
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($_.Exception.Message -match '400|BadRequest|MissingProvider') {
+        # The /beta/admin/forms/settings endpoint returns BadRequest in sovereign
+        # clouds where Forms admin APIs are not served (#941). Record a Skipped
+        # result so the gap surfaces in the report's not-assessed group instead of
+        # silently vanishing.
+        $cloudNote = if ($graphEnvironment -in @('USGov', 'USGovDoD')) {
+            "Microsoft Forms admin settings are not available in the $graphEnvironment sovereign cloud."
+        }
+        else {
+            'Microsoft Forms admin settings endpoint returned BadRequest; the API may be unavailable in this environment.'
+        }
+        Write-Warning $cloudNote
+        $settingParams = @{
+            Category         = 'External Sharing'
+            Setting          = 'External Users Can Respond to Forms'
+            CurrentValue     = $cloudNote
+            RecommendedValue = 'False'
+            Status           = 'Skipped'
+            CheckId          = 'FORMS-CONFIG-001'
+            Remediation      = 'No action available -- the Microsoft Forms admin settings API is not served in this cloud. Verify Forms sharing settings manually in the Microsoft 365 admin center.'
         }
         Add-Setting @settingParams
     }

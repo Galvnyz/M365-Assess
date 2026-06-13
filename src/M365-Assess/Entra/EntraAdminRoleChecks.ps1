@@ -314,11 +314,18 @@ if ($pimAvailable) {
         $roleManagementPolicies = Invoke-MgGraphRequest @graphParams
     }
     catch {
+        # Set pimAvailable=$false on ANY failure so the graceful elseif below still
+        # emits ENTRA-PIM-004/005 as Review. Previously the non-403 path only
+        # warned, leaving pimAvailable=$true and roleManagementPolicies=$null, so
+        # both checks were silently dropped — observed in GCC High where this
+        # endpoint returns 400 MissingProvider (#978).
+        $pimAvailable = $false
         if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
-            $pimAvailable = $false
+            $script:pimMessage = 'PIM is available but role-management policies could not be read (permission or licensing)'
         }
         else {
             Write-Warning "Could not check PIM policies: $_"
+            $script:pimMessage = "PIM activation policies unavailable in this environment (roleManagementPolicies): $($_.Exception.Message)"
         }
     }
 }

@@ -171,6 +171,16 @@ Describe 'Get-RecommendedAction' {
         $result | Should -Match 'WAM broker'
     }
 
+    It 'should give portal.azure.us redirect-uri guidance for the GCC High Power BI WAM error (#943)' {
+        # The live GCC High Power BI failure carries both "WAM Error" and the
+        # redirect-uri text. The redirect-uri pattern must win over the generic
+        # WAM pattern and point the user at the sovereign portal.
+        $msg = 'Error Acquiring Token: WAM Error ... IncorrectConfiguration ... Invalid redirect uri - ensure you have configured the following url in the application registration in Azure Portal: ms-appx-web://microsoft.aad.brokerplugin/23d8f6bd'
+        $result = Get-RecommendedAction -ErrorMessage $msg
+        $result | Should -Match 'portal\.azure\.us'
+        $result | Should -Match 'redirect'
+    }
+
     It 'should match 401 Unauthorized errors' {
         $result = Get-RecommendedAction -ErrorMessage '401 Unauthorized: insufficient scope'
         $result | Should -Match 'Re-authenticate'
