@@ -243,12 +243,13 @@ Describe 'EntraAdminRoleChecks - Too Many Admins' {
     }
 }
 
-Describe 'EntraAdminRoleChecks - PIM policy endpoint unavailable (#978)' {
-    # GCC High returns 400 MissingProvider on /beta/policies/roleManagementPolicies
-    # even though the tenant has P2 and roleAssignmentScheduleInstances succeeds.
-    # Before the fix the non-403 catch only Write-Warning'd without setting
-    # pimAvailable=$false, so ENTRA-PIM-004/005 were silently dropped (neither
-    # the data branch nor the graceful elseif fired). They must still emit Review.
+Describe 'EntraAdminRoleChecks - PIM approval via roleManagementPolicyAssignments (#978)' {
+    # The old call /beta/policies/roleManagementPolicies?$expand=rules omitted the
+    # REQUIRED $filter and used beta, so GCC High returned 400 MissingProvider and
+    # the displayName match never resolved a role. The documented, GCC-High-GA path
+    # is /v1.0/policies/roleManagementPolicyAssignments filtered by roleDefinitionId
+    # with $expand=policy($expand=rules). GA requires approval here (Pass), PRA does
+    # not (Fail).
     BeforeAll {
         function global:Update-CheckProgress {
             param($CheckId, $Setting, $Status)
@@ -271,7 +272,7 @@ Describe 'EntraAdminRoleChecks - PIM policy endpoint unavailable (#978)' {
                         @{ id = 'u1'; displayName = 'Admin One'; userPrincipalName = 'admin1@contoso.us'; '@odata.type' = '#microsoft.graph.user' }
                     )}
                 }
-                # P2 present so PIM is considered available and the policy call is reached
+                # P2 present so PIM is considered available and the policy calls run
                 '*/subscribedSkus' {
                     return @{ value = @(
                         @{ skuPartNumber = 'SPE_E5_USGOV_GCCHIGH'; capabilityStatus = 'Enabled'
@@ -280,13 +281,24 @@ Describe 'EntraAdminRoleChecks - PIM policy endpoint unavailable (#978)' {
                            ) }
                     )}
                 }
-                # roleAssignments succeeds — keeps pimAvailable=$true into the policy block
                 '*/beta/roleManagement/directory/roleAssignmentScheduleInstances*' {
                     return @{ value = @() }
                 }
-                # the GCC High failure: provider missing on the policy endpoint
-                '*/beta/policies/roleManagementPolicies*' {
-                    throw 'GET https://graph.microsoft.us/beta/policies/roleManagementPolicies?$expand=rules HTTP 400 Bad Request MissingProvider The provider is missing.'
+                # GA (62e90394...) policy: approval IS required -> Pass
+                '*roleManagementPolicyAssignments*62e90394*' {
+                    return @{ value = @(@{
+                        policy = @{ rules = @(
+                            @{ '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule'; setting = @{ isApprovalRequired = $true } }
+                        )}
+                    })}
+                }
+                # PRA (e8611ab8...) policy: approval NOT required -> Fail
+                '*roleManagementPolicyAssignments*e8611ab8*' {
+                    return @{ value = @(@{
+                        policy = @{ rules = @(
+                            @{ '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule'; setting = @{ isApprovalRequired = $false } }
+                        )}
+                    })}
                 }
                 default { return @{ value = @() } }
             }
@@ -315,16 +327,20 @@ Describe 'EntraAdminRoleChecks - PIM policy endpoint unavailable (#978)' {
         . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraAdminRoleChecks.ps1"
     }
 
-    It 'still emits ENTRA-PIM-004 as Review rather than dropping it' {
+    It 'ENTRA-PIM-004 passes when GA activation requires approval' {
+        # Pass here can only come from parsing the approval rule returned by the
+        # roleManagementPolicyAssignments call keyed on the GA roleDefinitionId,
+        # proving the corrected v1.0 + filter endpoint was queried.
         $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-004*' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Review'
+        $check.Status | Should -Be 'Pass'
+        $check.CurrentValue | Should -Be 'Yes'
     }
 
-    It 'still emits ENTRA-PIM-005 as Review rather than dropping it' {
+    It 'ENTRA-PIM-005 fails when PRA activation does not require approval' {
         $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-005*' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Review'
+        $check.Status | Should -Be 'Fail'
     }
 
     AfterAll {

@@ -94,4 +94,36 @@ Describe 'Connect-Service' {
             ($warningVar -join ' ') | Should -Not -Match '(?i)client secret'
         }
     }
+
+    Context 'Power BI sovereign-cloud environment routing (#943)' {
+        BeforeAll {
+            if (-not (Get-Command -Name Connect-PowerBIServiceAccount -ErrorAction SilentlyContinue)) {
+                function global:Connect-PowerBIServiceAccount { param() }
+            }
+            Mock Get-Module { @{ Name = 'MicrosoftPowerBIMgmt' } }
+            Mock Connect-PowerBIServiceAccount { }
+        }
+
+        AfterAll {
+            Remove-Item -Path 'function:global:Connect-PowerBIServiceAccount' -ErrorAction SilentlyContinue
+        }
+
+        It 'routes <Cloud> to the Power BI <PbiEnv> environment' -ForEach @(
+            @{ Cloud = 'gcc';      PbiEnv = 'USGov' }
+            @{ Cloud = 'gcchigh';  PbiEnv = 'USGovHigh' }
+            @{ Cloud = 'dod';      PbiEnv = 'USGovMil' }
+        ) {
+            & $script:scriptPath -Service 'PowerBI' -M365Environment $Cloud -WarningAction SilentlyContinue
+            Should -Invoke Connect-PowerBIServiceAccount -ParameterFilter {
+                $Environment -eq $PbiEnv
+            }
+        }
+
+        It 'does not pass an Environment for commercial' {
+            & $script:scriptPath -Service 'PowerBI' -M365Environment 'commercial' -WarningAction SilentlyContinue
+            Should -Invoke Connect-PowerBIServiceAccount -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('Environment')
+            }
+        }
+    }
 }
