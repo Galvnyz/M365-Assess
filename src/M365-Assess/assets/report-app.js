@@ -5736,7 +5736,7 @@ function CriticalExposureBlock() {
     className: "findings ce-findings"
   }, /*#__PURE__*/React.createElement("div", {
     className: "findings-head"
-  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Check"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null, "Frameworks"), /*#__PURE__*/React.createElement("div", null)), items.map((f, i) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Check"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null)), items.map((f, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "finding-row",
     style: {
@@ -5759,15 +5759,7 @@ function CriticalExposureBlock() {
     className: 'sev-badge ' + f.severity
   }, /*#__PURE__*/React.createElement("span", {
     className: "bar"
-  }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity]))), /*#__PURE__*/React.createElement("div", {
-    className: "fw-list"
-  }, f.frameworks.slice(0, 8).map(fw => /*#__PURE__*/React.createElement("span", {
-    key: fw,
-    className: "fw-pill"
-  }, fw)), f.frameworks.length > 8 && /*#__PURE__*/React.createElement("span", {
-    className: "fw-pill fw-pill-more",
-    title: f.frameworks.join(', ')
-  }, "+", f.frameworks.length - 8)), /*#__PURE__*/React.createElement("div", null))))));
+  }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity]))), /*#__PURE__*/React.createElement("div", null))))));
 }
 
 // ======================== Overview (tenant + summary) ========================
@@ -6593,7 +6585,7 @@ function App() {
     onViewFinding: onViewFinding,
     onShowCritical: onShowCritical,
     onShowQuickWins: onShowQuickWins
-  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(CriticalExposureBlock, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(ScoringViews, {
+  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(CriticalExposureBlock, null), /*#__PURE__*/React.createElement(ScoringViews, {
     view: scoringView,
     setView: setScoringView
   }), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {

@@ -1007,19 +1007,15 @@ mark.search-hl {
   background: var(--chip); color: var(--text-soft);
   border: 1px solid var(--border);
 }
-.fw-pill-more { color: var(--muted); cursor: default; }
-
-/* #968 follow-up: the Critical exposure section reuses the findings grid but is a
-   compact, non-expandable summary whose checks are unusually framework-dense
-   (13-16 each). On desktop give it a wider, flexible Frameworks column and
-   top-align cells, so short cells don't float beside a tall wrapped pill stack.
-   Markup caps the pills to 8 + a "+N" overflow. Left untouched <=720px so the
-   section still collapses with the shared mobile rule. */
+/* #968: the Critical exposure section is a compact 4-column summary (Status,
+   Check, Check ID, Severity) with no frameworks column — the section's framing
+   already conveys that these are a small, high-priority set. Override the shared
+   findings grid so the cells fill the row instead of leaving empty trailing
+   columns. Scoped >=721px so the section still collapses with the shared mobile rule. */
 @media (min-width: 721px) {
   .ce-findings .findings-head,
   .ce-findings .finding-row {
-    grid-template-columns: 80px minmax(0, 1.6fr) 150px 110px minmax(0, 1.5fr) 28px;
-    align-items: start;
+    grid-template-columns: 80px minmax(0, 1fr) 200px 130px 28px;
   }
 }
 
