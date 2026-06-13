@@ -196,7 +196,7 @@ Invoke-M365Assessment -Section Tenant,Identity,Licensing,Email,Intune,Security,C
 
 When no connection parameters are provided (`-TenantId`, `-SkipConnection`, `-ClientId`, or `-ManagedIdentity`), an interactive wizard prompts for tenant, auth method, and output folder. If `-Section` or `-OutputFolder` are provided on the command line, those wizard steps are skipped automatically.
 
-See [Authentication](docs/user/AUTHENTICATION.md) for detailed auth examples and App Registration setup. The full per-section permissions matrix (delegated scopes, app roles, EXO RBAC groups, Purview roles) is generated from the runtime maps and lives at [docs/reference/PERMISSIONS.md](docs/reference/PERMISSIONS.md).
+See [Authentication](docs/user/AUTHENTICATION.md) for detailed auth examples and App Registration setup. The full per-section permissions matrix (delegated scopes, app roles, EXO RBAC groups, Purview roles) is generated from the runtime maps and lives at [docs/reference/PERMISSIONS.md](docs/reference/PERMISSIONS.md). Running against GCC High? See the [GCC High setup guide](docs/user/GCC-HIGH-SETUP.md).
 
 ## Connection Profiles
 

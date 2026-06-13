@@ -16,6 +16,7 @@ For consultants running assessments and consuming the report.
 | [`user/QUICKSTART.md`](user/QUICKSTART.md) | Step-by-step setup on a fresh Windows machine — install module, prereqs, first run |
 | [`user/RUN.md`](user/RUN.md) | Orchestration details — section selection, auth methods, output folders |
 | [`user/AUTHENTICATION.md`](user/AUTHENTICATION.md) | Interactive, certificate, device code, managed identity, and pre-existing connection methods |
+| [`user/GCC-HIGH-SETUP.md`](user/GCC-HIGH-SETUP.md) | GCC High setup - app registration (portal.azure.us), consent, Power BI, and known sovereign gaps |
 | [`user/REPORT-USER-GUIDE.md`](user/REPORT-USER-GUIDE.md) | Interactive features in the HTML report — edit mode, finalize, themes, sortable/resizable columns |
 | [`user/UNDERSTANDING-RESULTS.md`](user/UNDERSTANDING-RESULTS.md) | What each status (Pass / Fail / Review / Warning / Skipped / etc.) means and what to do |
 | [`user/FIRST-REMEDIATION.md`](user/FIRST-REMEDIATION.md) | Worked example: take one Fail finding from initial state through remediation through re-verification |

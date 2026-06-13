@@ -33,13 +33,13 @@ Most sections are marked **Expected** outside Commercial — the underlying APIs
 | Section | Commercial | GCC | GCC High | DoD |
 |---|---|---|---|---|
 | **Tenant** (org info, domains, basic identity) | Tested | Expected | Expected | Expected |
-| **Identity** (users, MFA, admin roles, CA, app registrations) | Tested | Expected | Expected | Expected |
+| **Identity** (users, MFA, admin roles, CA, app registrations) | Tested | Expected | Tested | Expected |
 | **Licensing** (SKU summary, per-user assignments) | Tested | Expected | Expected | Expected |
 | **Email** (mailbox summary, mail flow, EXO security config, DNS auth) | Tested | Expected | Expected | Expected |
 | **Intune** (device summary, compliance, config profiles, Defender for Endpoint policies) | Tested | Expected | Partial — some Defender features delayed in DoD | Partial |
-| **Security** (Secure Score, Defender for Office 365 policies, DLP, Purview, Stryker readiness) | Tested | Expected | Partial — Defender feature parity varies | Partial — some MDO P2 features unavailable |
-| **Collaboration** (SharePoint, OneDrive, Teams, Forms tenant settings) | Tested | Expected | Expected | Expected |
-| **PowerBI** (Power BI tenant settings, capacities) | Tested | Expected | Expected | Unsupported — Power BI service not generally available in DoD |
+| **Security** (Secure Score, Defender for Office 365 policies, DLP, Purview, Stryker readiness) | Tested | Expected | Tested - Secure Score verified; Defender P2 parity still varies | Partial - some MDO P2 features unavailable |
+| **Collaboration** (SharePoint, OneDrive, Teams, Forms tenant settings) | Tested | Expected | Partial - Teams client-config/meeting-policy + Forms not served (Skipped) | Partial |
+| **PowerBI** (Power BI tenant settings, capacities) | Tested | Expected | Tested | Unsupported — Power BI service not generally available in DoD |
 | **Hybrid** (on-prem sync, password hash sync, agent versions) | Tested | Expected | Expected | Expected |
 | **Inventory** (mailbox/group/Teams/SharePoint enumeration) | Tested | Expected | Expected | Expected |
 | **ActiveDirectory** (DC health, replication, AD security — runs on a domain-joined machine) | Tested | Tested | Tested | Tested |
@@ -64,6 +64,20 @@ Intune service availability matches Defender — most features land in commercia
 ### Power BI
 
 Power BI service is **not generally available in DoD** as of this document's date. The PowerBI section in M365 Assess will likely return early with no data on DoD tenants. Don't pass `-Section PowerBI` against DoD; the orchestrator skips gracefully but it's a wasted Connect attempt.
+
+### Collaboration (Teams / Forms)
+
+Two Teams configuration sources and the Forms settings endpoint are **beta-only Graph
+endpoints with no v1.0 equivalent**, and they are not served in GCC High / DoD (they
+return HTTP 400 there). Verified on a GCC High tenant:
+
+- `/beta/teamwork/teamsClientConfiguration` - external access, third-party storage, channel email, federation (CIS 8.1.x / 8.2.x). The 6 dependent checks emit `Skipped`.
+- `/beta/teamwork/teamsMeetingPolicy` - lobby, anonymous join, presenter role, recording (CIS 8.5.x). The 9 dependent checks emit `Skipped`.
+- Microsoft Forms tenant settings (`/beta/admin/forms/settings`) - emits `Skipped`.
+
+The v1.0 Teams endpoints (`teamsAppSettings`, `teamwork`) and SharePoint/OneDrive
+settings work normally. The Skipped controls can be verified manually in the Teams
+admin center. See [`GCC-HIGH-SETUP.md`](../user/GCC-HIGH-SETUP.md).
 
 ### Purview / Compliance
 
@@ -118,6 +132,7 @@ If a new sovereign cloud is added (e.g., a future regional GCC variant):
 
 ## Related
 
+- [`GCC-HIGH-SETUP.md`](../user/GCC-HIGH-SETUP.md) - step-by-step GCC High setup (app reg, consent, known gaps)
 - `Common/Connect-Service.ps1` — `$envConfig` hashtable (per-cloud endpoints)
 - `Invoke-M365Assessment.ps1` — `-M365Environment` parameter validation
 - [`AUTHENTICATION.md`](../user/AUTHENTICATION.md) — auth methods per cloud
