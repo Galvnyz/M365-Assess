@@ -40,27 +40,7 @@ $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocati
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
-$checkIdCounter = $ctx.CheckIdCounter
 
-function Add-Setting {
-    param(
-        [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
-    )
-    $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-    }
-    Add-SecuritySetting @p
-}
 
 $remediationText = 'Intune admin center > Devices > Configuration > Create profile > Windows 10 and later > Device restrictions > General > Removable storage: Block. Assign the profile to device or user groups.'
 

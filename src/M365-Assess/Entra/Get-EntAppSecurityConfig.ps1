@@ -46,29 +46,7 @@ $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocati
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
-$checkIdCounter = $ctx.CheckIdCounter
 
-function Add-Setting {
-    param(
-        [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = '',
-        [PSCustomObject]$Evidence = $null
-    )
-    $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-        Evidence         = $Evidence
-    }
-    Add-SecuritySetting @p
-}
 
 # ------------------------------------------------------------------
 # Dangerous permissions -- loaded from tiered classification file
