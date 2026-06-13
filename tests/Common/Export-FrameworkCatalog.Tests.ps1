@@ -100,6 +100,32 @@ Describe 'Export-FrameworkCatalog - Scoring Engine' {
             $result = Export-FrameworkCatalog -Findings $findings -Framework $fw -ControlRegistry $registry -Mode Grouped
             $result.Groups | Should -Not -BeNullOrEmpty
         }
+
+        It 'criteria keys are bare CFR section numbers, not section-sign prefixed' {
+            # Regression guard: the hipaa.json keys must stay bare ("164.308") so they
+            # match the registry controlIds (which carry no symbol). A section-sign
+            # prefix ("§164.308") silently broke coverage matching.
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'hipaa' }
+            $findings = @(New-MockFinding -CheckId 'ENTRA-CLOUDADMIN-001')
+            $result = Export-FrameworkCatalog -Findings $findings -Framework $fw -ControlRegistry $registry -Mode Grouped
+            $sectionGroups = $result.Groups | Where-Object { $_.Key -ne 'All' }
+            $sectionGroups | Should -Not -BeNullOrEmpty
+            $sectionGroups | ForEach-Object {
+                $_.Key | Should -Match '^\d+\.\d+$' -Because "HIPAA criteria key '$($_.Key)' must be a bare CFR number"
+            }
+        }
+
+        It 'maps a finding into its 164.308 section bucket (matching actually works)' {
+            # ENTRA-SECDEFAULT-001 carries HIPAA controlId 164.308(a)(3)(ii)(C); the
+            # section split ("164.308") must match the bucket key. With the old
+            # section-sign keys this matched nothing and Covered stayed 0.
+            $fw = $allFrameworks | Where-Object { $_.frameworkId -eq 'hipaa' }
+            $findings = @(New-MockFinding -CheckId 'ENTRA-SECDEFAULT-001' -Status 'Pass')
+            $result = Export-FrameworkCatalog -Findings $findings -Framework $fw -ControlRegistry $registry -Mode Grouped
+            $section308 = $result.Groups | Where-Object { $_.Key -eq '164.308' }
+            $section308 | Should -Not -BeNullOrEmpty
+            $section308.Covered | Should -BeGreaterThan 0
+        }
     }
 
     Context 'requirement-compliance (PCI DSS)' {

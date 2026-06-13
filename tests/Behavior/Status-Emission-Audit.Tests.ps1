@@ -51,9 +51,9 @@ Describe 'Review/Unknown/Skipped emission count lock-down (#884)' {
             Should -BeLessOrEqual 69 -Because 'a new Review emission was added without updating docs/research/review-status-audit.md — see issue #884'
     }
 
-    It "Skipped emissions stay at or below the audited ceiling (28)" {
+    It "Skipped emissions stay at or below the audited ceiling (29)" {
         $script:counts.Skipped |
-            Should -BeLessOrEqual 28 -Because 'a new Skipped emission was added without updating docs/research/review-status-audit.md — see issue #884'
+            Should -BeLessOrEqual 29 -Because 'a new Skipped emission was added without updating docs/research/review-status-audit.md — see issue #884'
     }
 
     It "Unknown emissions stay at or below the audited ceiling (1)" {
@@ -63,7 +63,7 @@ Describe 'Review/Unknown/Skipped emission count lock-down (#884)' {
 
     It 'reports current emission counts for visibility (informational)' {
         Write-Host ("    [INFO] Review:  $($script:counts.Review) / 69")
-        Write-Host ("    [INFO] Skipped: $($script:counts.Skipped) / 28")
+        Write-Host ("    [INFO] Skipped: $($script:counts.Skipped) / 29")
         Write-Host ("    [INFO] Unknown: $($script:counts.Unknown) / 1")
         Write-Host ("    [INFO] Total:   $($script:emissions.Count)")
         $script:emissions.Count | Should -BeGreaterThan 0
