@@ -41,31 +41,10 @@ if (-not (Assert-GraphConnection)) { return }
 $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 . (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
 
+# Initialize-SecurityConfig records the active context; the shared Add-Setting from
+# SecurityConfigHelper.ps1 reads it, so no local wrapper is needed (#958).
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
-$checkIdCounter = $ctx.CheckIdCounter
-
-function Add-Setting {
-    param(
-        [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = '',
-        [PSCustomObject]$Evidence = $null
-    )
-    $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-        Evidence         = $Evidence
-    }
-    Add-SecuritySetting @p
-}
 
 # ------------------------------------------------------------------
 # Retrieve SharePoint tenant settings

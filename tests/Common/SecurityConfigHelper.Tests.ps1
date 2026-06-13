@@ -38,6 +38,41 @@ Describe 'Add-SecuritySetting - remediation fallback' {
     }
 }
 
+Describe 'Add-Setting - centralized wrapper (#958)' {
+    BeforeEach {
+        $ctx = Initialize-SecurityConfig
+    }
+
+    It 'adds a finding to the active context set by Initialize-SecurityConfig' {
+        Add-Setting -Category 'Test' -Setting 'Shared wrapper' -CurrentValue 'x' `
+            -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001'
+        $ctx.Settings.Count       | Should -Be 1
+        $ctx.Settings[0].Setting  | Should -Be 'Shared wrapper'
+        $ctx.Settings[0].CheckId  | Should -Be 'TEST-001.1'
+    }
+
+    It 'sub-numbers repeated CheckIds like the canonical helper' {
+        Add-Setting -Category 'T' -Setting 'a' -CurrentValue 'x' -RecommendedValue 'y' -Status 'Pass' -CheckId 'TEST-001'
+        Add-Setting -Category 'T' -Setting 'b' -CurrentValue 'x' -RecommendedValue 'y' -Status 'Fail' -CheckId 'TEST-001'
+        $ctx.Settings[0].CheckId | Should -Be 'TEST-001.1'
+        $ctx.Settings[1].CheckId | Should -Be 'TEST-001.2'
+    }
+
+    It 'forwards structured evidence fields to the canonical helper' {
+        Add-Setting -Category 'T' -Setting 'e' -CurrentValue 'x' -RecommendedValue 'y' `
+            -Status 'Pass' -CheckId 'TEST-001' -ObservedValue 'true' -EvidenceSource '/x'
+        $ctx.Settings[0].ObservedValue  | Should -Be 'true'
+        $ctx.Settings[0].EvidenceSource | Should -Be '/x'
+    }
+
+    It 'throws a clear error when called before Initialize-SecurityConfig' {
+        Remove-Variable -Name ActiveSecurityConfig -Scope Script -ErrorAction SilentlyContinue
+        {
+            Add-Setting -Category 'T' -Setting 'orphan' -CurrentValue 'x' -RecommendedValue 'y' -Status 'Pass'
+        } | Should -Throw -ExpectedMessage '*Initialize-SecurityConfig*'
+    }
+}
+
 Describe 'Add-SecuritySetting - status taxonomy (#774)' {
     BeforeEach {
         $ctx = Initialize-SecurityConfig
