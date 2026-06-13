@@ -97,25 +97,23 @@ Describe 'Connect-Service' {
 
     Context 'Power BI sovereign-cloud environment routing (#943)' {
         BeforeAll {
-            # On CI the MicrosoftPowerBIMgmt module isn't installed, so stub the
-            # cmdlet WITH the parameters the collector passes -- a bare param()
-            # stub fails -Environment binding before the mock records the call,
-            # which is invisible locally where the real module supplies -Environment.
-            if (-not (Get-Command -Name Connect-PowerBIServiceAccount -ErrorAction SilentlyContinue)) {
-                function global:Connect-PowerBIServiceAccount {
-                    [CmdletBinding()]
-                    param(
-                        $Environment, $Tenant, [switch]$ServicePrincipal,
-                        $ApplicationId, $CertificateThumbprint, $Credential
-                    )
-                }
+            # Define the stub UNCONDITIONALLY with the parameters the collector
+            # passes. On CI (no MicrosoftPowerBIMgmt module) the earlier client-
+            # secret context leaves a param()-less residual command, so a
+            # conditional `if (-not Get-Command)` stub would never be created and
+            # the collector's -Environment arg would fail to bind before the mock
+            # recorded the call -- invisible locally where the real module supplies
+            # -Environment. Forcing our own param-ful stub makes binding (and the
+            # ParameterFilter) reliable in both environments.
+            function global:Connect-PowerBIServiceAccount {
+                [CmdletBinding()]
+                param(
+                    $Environment, $Tenant, [switch]$ServicePrincipal,
+                    $ApplicationId, $CertificateThumbprint, $Credential
+                )
             }
             Mock Get-Module { @{ Name = 'MicrosoftPowerBIMgmt' } }
             Mock Connect-PowerBIServiceAccount { }
-        }
-
-        AfterAll {
-            Remove-Item -Path 'function:global:Connect-PowerBIServiceAccount' -ErrorAction SilentlyContinue
         }
 
         AfterAll {
