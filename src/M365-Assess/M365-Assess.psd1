@@ -3,7 +3,7 @@
     # Generated: 2026-03-08
 
     RootModule        = 'M365-Assess.psm1'
-    ModuleVersion     = '2.12.0'
+    ModuleVersion     = '2.13.0'
     GUID              = 'f7e3b2a1-4c5d-6e8f-9a0b-1c2d3e4f5a6b'
     Author            = 'Galvnyz'
     CompanyName       = 'Community'
@@ -244,7 +244,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.12.0 - Report clarity + scale trust. ADDED: Executive Briefing first screen (#963) opens the report with a compliance verdict card, actionable-criticals/quick-wins/Secure Score tiles, and a What-to-do-first list; -HeadlineFramework parameter (#963) picks the framework that headlines it; Invoke-SafeGraphRequest (#952) adds Graph pagination + Retry-After-aware 429/503/504 retry, first wired into enterprise app, Stryker risky-apps, and Conditional Access collection; generated registry statistics with a CI drift gate keep every published check count in sync with controls/registry.json. CHANGED: report clarity pass (#962) groups not-assessed statuses into one muted bucket, ships the CheckID column hidden by default, adds a status legend with tooltips, standardizes N-of-M number formats, and expands jargon on first use; registry partitioned to M365 collector scope (292 checks, ~3.0 MB, down from the full upstream registry); all 292 checks now carry explicit severity ratings (#956) - note -QuickScan selects ~40 more checks; EXO 3.8.0+ no longer needs to be uninstalled (#231) - install 3.7.1 side-by-side and the session pins it automatically. FIXED: NaN counts and mismatched denominators in report math (#962); framework group keys rendering as raw codes (#948); stale check counts in docs.'
+            ReleaseNotes = 'v2.13.0 - Sovereign Cloud. Verified end-to-end against a GCC High tenant. FIXED (sovereign cloud): PIM role-policy checks now use the v1.0 roleManagementPolicyAssignments API (filtered by roleDefinitionId) instead of a beta call that 400d in GCC High, returning real Pass/Fail (#978); Power BI routes to the USGovHigh environment with M365Environment threaded into the isolated child process, clearing the WAM redirect-URI error - no portal change needed (#943); Forms and the two beta Teams endpoints (teamsClientConfiguration, teamsMeetingPolicy) have no v1.0 equivalent in GCC High and now emit Skipped for their dependent checks instead of vanishing silently (#941, #940); the Teams license gate recognizes sovereign service plans (TEAMS_GOV/AR_GCCHIGH/AR_DOD) so Teams checks run on government tenants (#940); the compliance licensing overlay uses real service-plan names so DLP/labels/communication-compliance checks no longer false-skip (#980); hardcoded graph.microsoft.com URIs replaced with relative paths (#945); Secure Score confirmed working in GCC High (#939). FIXED (report): the Posture score card no longer renders NaN when Secure Score data is absent (#967); the no-op License-Adjusted scoring tab is removed (#966); the Critical exposure section is revived and the Stryker codename dropped (#968). DOCS: new GCC High setup guide (#944); README trimmed to a landing page with detail moved to RUN.md (#923); architecture diagrams refreshed to current code (#918). No breaking API changes.'
         }
     }
 }
