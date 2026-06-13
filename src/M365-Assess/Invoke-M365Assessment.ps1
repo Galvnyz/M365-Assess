@@ -1022,6 +1022,13 @@ foreach ($sectionName in $Section) {
                 # Mandatory param block that would prompt for input).
                 $scriptLines.Add("`$connectParams = @{ Service = 'PowerBI' }")
                 if ($TenantId)              { $scriptLines.Add("`$connectParams['TenantId'] = '$TenantId'") }
+                # Thread the cloud through to the child so Connect-Service can route
+                # Power BI to the sovereign environment (gcchigh->USGovHigh, etc.).
+                # Without this the child defaults to commercial and the WAM broker
+                # uses the commercial redirect URI -> IncorrectConfiguration (#943).
+                if ($M365Environment -and $M365Environment -ne 'commercial') {
+                    $scriptLines.Add("`$connectParams['M365Environment'] = '$M365Environment'")
+                }
                 if ($ClientId -and $CertificateThumbprint) {
                     $scriptLines.Add("`$connectParams['ClientId'] = '$ClientId'")
                     $scriptLines.Add("`$connectParams['CertificateThumbprint'] = '$CertificateThumbprint'")
