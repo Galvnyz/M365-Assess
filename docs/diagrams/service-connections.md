@@ -39,7 +39,7 @@ graph TD
             CACol["Conditional Access<br/>(CA-*)"]
             EntAppCol["Enterprise Apps<br/>(ENTAPP-*)"]
             IntuneCol["Intune Security Config<br/>(INTUNE-*)"]
-            SPCol["SharePoint Security Config<br/>(SHAREPOINT-*)"]
+            SPCol["SharePoint Security Config<br/>(SPO-*)"]
             TeamsCol["Teams Security Config<br/>(TEAMS-*)"]
         end
 
@@ -82,7 +82,6 @@ graph TD
     classDef purview fill:#e0e7ff,stroke:#6366f1,color:#000
     classDef graph fill:#d1fae5,stroke:#10b981,color:#000
     classDef child fill:#fed7aa,stroke:#ea580c,color:#000
-    classDef legacy fill:#fecaca,stroke:#dc2626,color:#000
     classDef background fill:#e2e8f0,stroke:#64748b,color:#000,stroke-dasharray:5 5
     classDef conflict fill:#fee2e2,stroke:#ef4444,color:#b91c1c
     classDef info fill:#f1f5f9,stroke:#94a3b8,color:#64748b
@@ -93,6 +92,5 @@ graph TD
     class PurviewConn,PurviewCollectors,PurviewNote purview
     class EntraCol,CACol,EntAppCol,IntuneCol,SPCol,TeamsCol graph
     class PBIConn,PBICollector,PBIReason child
-    class ScubaConn,ScubaRun,ScubaReason legacy
     class DnsPrefetch,DnsJobs,DnsRecords,DnsWait background
 ```

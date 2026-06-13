@@ -8,7 +8,7 @@ sequenceDiagram
 
     participant CID as CheckID Repo<br/>(Galvnyz/CheckID)
     participant GHA as GitHub Actions<br/>(sync-checkid.yml)
-    participant CTL as controls/<br/>(registry.json +<br/>14 framework JSONs)
+    participant CTL as controls/<br/>(registry.json +<br/>15 framework JSONs)
     participant ORC as Invoke-M365Assessment
     participant REG as Import-ControlRegistry
     participant FWD as Import-FrameworkDefinitions
@@ -21,14 +21,15 @@ sequenceDiagram
 
     CID->>GHA: Tag push / repository_dispatch /<br/>workflow_dispatch
     GHA->>CTL: curl registry.json from<br/>raw.githubusercontent.com/<tag>
-    GHA->>CTL: curl 14 framework JSONs<br/>(cis-m365-v6, nist-800-53-r5, ...)
+    GHA->>CTL: curl 15 framework JSONs<br/>(cis-m365-v6, nist-800-53-r5, ...)
+    GHA->>GHA: Partition to sync-scope.json<br/>(M365 collectors only; drop WIN-*/AZ-*)<br/>+ preserve local-extensions.json
     GHA->>GHA: Detect drift from local copies
     GHA-->>CTL: Create PR if changes detected
 
     note over ORC,OUT: Assessment Runtime
 
     ORC->>REG: Load controls/registry.json
-    REG->>REG: Build hashtable<br/>(307 entries keyed by CheckId)
+    REG->>REG: Build hashtable<br/>(292 entries keyed by CheckId)
     REG->>REG: Merge risk-severity.json<br/>(Critical/High/Medium/Low)
     REG->>REG: Build __cisReverseLookup<br/>(CIS control ID → CheckId)
     REG-->>ORC: Return progressRegistry
@@ -50,7 +51,7 @@ sequenceDiagram
     ORC->>RPT: Generate report from<br/>assessment folder
 
     RPT->>REG: Reload registry.json
-    RPT->>FWD: Load 14 framework JSONs<br/>(auto-discover from controls/frameworks/)
+    RPT->>FWD: Load 15 framework JSONs<br/>(auto-discover from controls/frameworks/)
     RPT->>CSV: Read all section CSVs
 
     RPT->>RPT: Enrich findings:<br/>CheckId → registry entry →<br/>framework mappings + risk severity

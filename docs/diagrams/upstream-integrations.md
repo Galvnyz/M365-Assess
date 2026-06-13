@@ -25,8 +25,9 @@ graph LR
 
     subgraph Controls["controls/"]
         direction TB
-        Registry["registry.json<br/>(307 checks)"]
-        Frameworks["frameworks/*.json<br/>(14 frameworks)"]
+        Registry["registry.json<br/>(292 checks)"]
+        Frameworks["frameworks/*.json<br/>(15 frameworks)"]
+        LocalExt["local-extensions.json<br/>(M365-Assess-specific checks,<br/>preserved across sync)"]
         RiskSev["risk-severity.json"]
         MITREMap["mitre-technique-map.json"]
         RoleTiers["role-tiers.json"]
@@ -49,7 +50,7 @@ graph LR
             IntuneColl["Intune<br/>(INTUNE-*)"]
             DefenderColl["Defender<br/>(DEFENDER-*)"]
             ComplianceColl["Compliance<br/>(COMPLIANCE-*)"]
-            SPColl["SharePoint<br/>(SHAREPOINT-*)"]
+            SPColl["SharePoint<br/>(SPO-*)"]
             TeamsColl["Teams<br/>(TEAMS-*)"]
         end
 
@@ -75,6 +76,7 @@ graph LR
     CheckID -->|"weekly sync +<br/>on-demand dispatch"| SyncWorkflow
     SyncWorkflow -->|"curl raw content<br/>by release tag"| Registry
     SyncWorkflow -->|"curl raw content<br/>by release tag"| Frameworks
+    LocalExt -->|"preserved + merged<br/>at sync time"| Registry
 
     %% Static data
     MITRE --> MITREMap
@@ -124,7 +126,7 @@ graph LR
 
     class CheckID,GraphAPI,EXOService,PurviewService,DNS,PSGallery,MITRE,AD external
     class CIWorkflow,SyncWorkflow,ReleaseWorkflow cicd
-    class Registry,Frameworks,RiskSev,MITREMap,RoleTiers controls
+    class Registry,Frameworks,LocalExt,RiskSev,MITREMap,RoleTiers controls
     class Orchestrator,ConnService,ImportReg,ImportFw,EntraColl,CAColl,EntAppColl,EXOColl,DNSColl,IntuneColl,DefenderColl,ComplianceColl,SPColl,TeamsColl,ExportReport,ExportOverview,ExportCatalog,ExportMatrix core
     class HTML,XLSXOut,CatalogHTML,CSVs,SummaryCSV output
     class AuthNote,CloudNote note
