@@ -5733,7 +5733,7 @@ function CriticalExposureBlock() {
       fontWeight: 700
     }
   }, items.length)))), /*#__PURE__*/React.createElement("div", {
-    className: "findings"
+    className: "findings ce-findings"
   }, /*#__PURE__*/React.createElement("div", {
     className: "findings-head"
   }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Check"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null, "Frameworks"), /*#__PURE__*/React.createElement("div", null)), items.map((f, i) => /*#__PURE__*/React.createElement("div", {
@@ -5761,10 +5761,13 @@ function CriticalExposureBlock() {
     className: "bar"
   }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity]))), /*#__PURE__*/React.createElement("div", {
     className: "fw-list"
-  }, f.frameworks.map(fw => /*#__PURE__*/React.createElement("span", {
+  }, f.frameworks.slice(0, 8).map(fw => /*#__PURE__*/React.createElement("span", {
     key: fw,
     className: "fw-pill"
-  }, fw))), /*#__PURE__*/React.createElement("div", null))))));
+  }, fw)), f.frameworks.length > 8 && /*#__PURE__*/React.createElement("span", {
+    className: "fw-pill fw-pill-more",
+    title: f.frameworks.join(', ')
+  }, "+", f.frameworks.length - 8)), /*#__PURE__*/React.createElement("div", null))))));
 }
 
 // ======================== Overview (tenant + summary) ========================

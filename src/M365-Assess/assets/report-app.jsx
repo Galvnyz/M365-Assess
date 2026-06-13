@@ -3787,7 +3787,7 @@ function CriticalExposureBlock() {
           <div><div style={{fontSize:12,color:'var(--muted)'}}>Total</div><div style={{fontWeight:700}}>{items.length}</div></div>
         </div>
       </div>
-      <div className="findings">
+      <div className="findings ce-findings">
         <div className="findings-head">
           <div>Status</div><div>Check</div><div>Check ID</div><div>Severity</div><div>Frameworks</div><div/>
         </div>
@@ -3797,7 +3797,10 @@ function CriticalExposureBlock() {
             <div className="finding-title"><div className="t">{f.setting}</div><div className="sub">{f.section}</div></div>
             <div className="check-id">{f.checkId}</div>
             <div><span className={'sev-badge '+f.severity}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[f.severity]}</span></span></div>
-            <div className="fw-list">{f.frameworks.map(fw => <span key={fw} className="fw-pill">{fw}</span>)}</div>
+            <div className="fw-list">
+              {f.frameworks.slice(0, 8).map(fw => <span key={fw} className="fw-pill">{fw}</span>)}
+              {f.frameworks.length > 8 && <span className="fw-pill fw-pill-more" title={f.frameworks.join(', ')}>+{f.frameworks.length - 8}</span>}
+            </div>
             <div/>
           </div>
         ))}

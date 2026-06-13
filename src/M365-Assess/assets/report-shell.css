@@ -1007,6 +1007,21 @@ mark.search-hl {
   background: var(--chip); color: var(--text-soft);
   border: 1px solid var(--border);
 }
+.fw-pill-more { color: var(--muted); cursor: default; }
+
+/* #968 follow-up: the Critical exposure section reuses the findings grid but is a
+   compact, non-expandable summary whose checks are unusually framework-dense
+   (13-16 each). On desktop give it a wider, flexible Frameworks column and
+   top-align cells, so short cells don't float beside a tall wrapped pill stack.
+   Markup caps the pills to 8 + a "+N" overflow. Left untouched <=720px so the
+   section still collapses with the shared mobile rule. */
+@media (min-width: 721px) {
+  .ce-findings .findings-head,
+  .ce-findings .finding-row {
+    grid-template-columns: 80px minmax(0, 1.6fr) 150px 110px minmax(0, 1.5fr) 28px;
+    align-items: start;
+  }
+}
 
 .caret {
   color: var(--muted); transition: transform .15s;
