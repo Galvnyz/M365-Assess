@@ -45,7 +45,7 @@ M365-Assess repo
 | `frameworks/stig.json` | DISA STIG M365 rules |
 
 <!-- registry-stats:files:begin -->
-`registry.json` currently contains **292 checks** across **15 collector families**, including **5 local extension checks**. Mappings span **20 framework keys**, 15 of which have report-view definitions in `frameworks/`.
+`registry.json` currently contains **292 checks** across **16 collector families**, including **5 local extension checks**. Mappings span **20 framework keys**, 15 of which have report-view definitions in `frameworks/`.
 <!-- registry-stats:files:end -->
 
 ## Updating Registry Data

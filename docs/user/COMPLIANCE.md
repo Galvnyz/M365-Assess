@@ -70,7 +70,7 @@ ENTRA-ADMIN-001.2    Second setting assessed under ENTRA-ADMIN-001
 ```
 
 <!-- registry-stats:checks:begin -->
-The assessment suite includes **292 security checks** across **15 collector families** (Backup, CAEvaluator, Compliance, Defender, DNS, EntApp, Entra, ExchangeOnline, Forms, Intune, PowerBI, PurviewRetention, SharePoint, StrykerReadiness, Teams), each mapped to one or more compliance frameworks.
+The assessment suite includes **292 security checks** across **16 collector families** (Backup, CAEvaluator, Compliance, CriticalExposure, Defender, DNS, EntApp, Entra, ExchangeOnline, Forms, Intune, PowerBI, PurviewRetention, SharePoint, StrykerReadiness, Teams), each mapped to one or more compliance frameworks.
 <!-- registry-stats:checks:end -->
 
 ## Control Registry

@@ -5,7 +5,7 @@
 ## Registry summary
 
 - **Checks:** 292 (290 automated)
-- **Collector families:** 15 (see `controls/sync-scope.json`)
+- **Collector families:** 16 (see `controls/sync-scope.json`)
 - **Local extension checks:** 5 (pending upstream CheckID adoption)
 - **Severity-rated:** 292 of 292 (0 unrated checks display the default Medium severity)
 - **Learn-more links:** 31 of 292
@@ -58,6 +58,7 @@ Distinct SCuBA policy IDs mapped, by product prefix (`MS.<PRODUCT>.*`). Products
 | Backup | 1 | 1 | 0 |
 | CAEvaluator | 23 | 23 | 7 |
 | Compliance | 10 | 10 | 0 |
+| CriticalExposure | 0 | 0 | 0 |
 | Defender | 19 | 19 | 0 |
 | DNS | 4 | 4 | 0 |
 | EntApp | 24 | 24 | 6 |
