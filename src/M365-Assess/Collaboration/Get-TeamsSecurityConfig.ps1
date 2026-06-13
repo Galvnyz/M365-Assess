@@ -239,6 +239,30 @@ try {
 }
 catch {
     Write-Warning "Teams client configuration endpoint unavailable: $($_.Exception.Message)"
+    # The /beta/teamwork/teamsClientConfiguration endpoint is beta-only with no v1.0
+    # equivalent and is not served in sovereign clouds (GCC High/DoD), where it 400s.
+    # Emit Skipped for the dependent checks so they surface in the report's
+    # not-assessed group instead of silently vanishing (#940).
+    $clientConfigGapChecks = @(
+        @{ CheckId = 'TEAMS-EXTACCESS-001'; Category = 'External Access';      Setting = 'Communication with Unmanaged Teams Users' }
+        @{ CheckId = 'TEAMS-EXTACCESS-002'; Category = 'External Access';      Setting = 'External Unmanaged Users Can Initiate Conversations' }
+        @{ CheckId = 'TEAMS-CLIENT-001';    Category = 'Client Configuration'; Setting = 'Third-Party Cloud Storage' }
+        @{ CheckId = 'TEAMS-CLIENT-002';    Category = 'Client Configuration'; Setting = 'Email Into Channel' }
+        @{ CheckId = 'TEAMS-EXTACCESS-003'; Category = 'External Access';      Setting = 'External Domain Access' }
+        @{ CheckId = 'TEAMS-EXTACCESS-004'; Category = 'External Access';      Setting = 'Skype for Business/Consumer Interop' }
+    )
+    foreach ($gap in $clientConfigGapChecks) {
+        $skipParams = @{
+            Category         = $gap.Category
+            Setting          = $gap.Setting
+            CurrentValue     = 'Not assessed'
+            RecommendedValue = 'n/a'
+            Status           = 'Skipped'
+            CheckId          = $gap.CheckId
+            Remediation      = 'The Teams client configuration endpoint (/beta/teamwork/teamsClientConfiguration) is not available in this cloud environment. Sovereign clouds (GCC High/DoD) do not serve it and there is no v1.0 equivalent. Verify manually in Teams admin center > Users > External access.'
+        }
+        Add-Setting @skipParams
+    }
 }
 
 # ------------------------------------------------------------------
@@ -376,6 +400,32 @@ try {
 }
 catch {
     Write-Warning "Teams meeting policy endpoint unavailable: $($_.Exception.Message)"
+    # /beta/teamwork/teamsMeetingPolicy is beta-only with no v1.0 equivalent and is
+    # not served in sovereign clouds (GCC High/DoD), where it 400s. Emit Skipped for
+    # the dependent checks so they surface in the report's not-assessed group (#940).
+    $meetingPolicyGapChecks = @(
+        @{ CheckId = 'TEAMS-MEETING-001'; Setting = 'Anonymous Users Can Join Meeting' }
+        @{ CheckId = 'TEAMS-MEETING-002'; Setting = 'Anonymous Users Can Start Meeting' }
+        @{ CheckId = 'TEAMS-MEETING-003'; Setting = 'Auto-Admitted Users (Lobby Bypass)' }
+        @{ CheckId = 'TEAMS-MEETING-004'; Setting = 'Dial-in Users Bypass Lobby' }
+        @{ CheckId = 'TEAMS-MEETING-005'; Setting = 'External Participants Can Give/Request Control' }
+        @{ CheckId = 'TEAMS-MEETING-006'; Setting = 'Meeting Chat for Anonymous Users' }
+        @{ CheckId = 'TEAMS-MEETING-007'; Setting = 'Default Presenter Role' }
+        @{ CheckId = 'TEAMS-MEETING-008'; Setting = 'External Meeting Chat (Non-Trusted)' }
+        @{ CheckId = 'TEAMS-MEETING-009'; Setting = 'Cloud Recording' }
+    )
+    foreach ($gap in $meetingPolicyGapChecks) {
+        $skipParams = @{
+            Category         = 'Meeting Policy'
+            Setting          = $gap.Setting
+            CurrentValue     = 'Not assessed'
+            RecommendedValue = 'n/a'
+            Status           = 'Skipped'
+            CheckId          = $gap.CheckId
+            Remediation      = 'The Teams meeting policy endpoint (/beta/teamwork/teamsMeetingPolicy) is not available in this cloud environment. Sovereign clouds (GCC High/DoD) do not serve it and there is no v1.0 equivalent. Verify manually in Teams admin center > Meetings > Meeting policies.'
+        }
+        Add-Setting @skipParams
+    }
 }
 
 # ------------------------------------------------------------------
