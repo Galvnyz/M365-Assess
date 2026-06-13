@@ -97,11 +97,25 @@ Describe 'Connect-Service' {
 
     Context 'Power BI sovereign-cloud environment routing (#943)' {
         BeforeAll {
+            # On CI the MicrosoftPowerBIMgmt module isn't installed, so stub the
+            # cmdlet WITH the parameters the collector passes -- a bare param()
+            # stub fails -Environment binding before the mock records the call,
+            # which is invisible locally where the real module supplies -Environment.
             if (-not (Get-Command -Name Connect-PowerBIServiceAccount -ErrorAction SilentlyContinue)) {
-                function global:Connect-PowerBIServiceAccount { param() }
+                function global:Connect-PowerBIServiceAccount {
+                    [CmdletBinding()]
+                    param(
+                        $Environment, $Tenant, [switch]$ServicePrincipal,
+                        $ApplicationId, $CertificateThumbprint, $Credential
+                    )
+                }
             }
             Mock Get-Module { @{ Name = 'MicrosoftPowerBIMgmt' } }
             Mock Connect-PowerBIServiceAccount { }
+        }
+
+        AfterAll {
+            Remove-Item -Path 'function:global:Connect-PowerBIServiceAccount' -ErrorAction SilentlyContinue
         }
 
         AfterAll {
