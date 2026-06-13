@@ -184,6 +184,73 @@ Describe 'Get-TeamsSecurityConfig' {
     }
 }
 
+Describe 'Get-TeamsSecurityConfig - sovereign-cloud endpoint gaps emit Skipped (#940)' {
+    # In GCC High the beta /teamwork/teamsClientConfiguration and
+    # /teamwork/teamsMeetingPolicy endpoints return 400 (no v1.0 equivalent exists,
+    # confirmed against Microsoft's Graph v1.0 Teams API reference). Rather than
+    # WARN-and-omit, the dependent checks must emit Skipped so they appear in the
+    # report's not-assessed group. The v1.0 endpoints (teamsAppSettings, teamwork)
+    # still return data and their checks must still run.
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id'; AuthType = 'Delegated'; Account = 'admin@contoso.com' }
+        }
+        function global:Get-MgSubscribedSku {
+            return @(
+                @{
+                    SkuPartNumber = 'SPE_E5_USGOV_GCCHIGH'
+                    ConsumedUnits = 5
+                    ServicePlans  = @(
+                        @{ ServicePlanId = '9953b155-8aef-4c56-92f3-72b0487fce41'; ProvisioningStatus = 'Success' }
+                    )
+                }
+            )
+        }
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            switch -Wildcard ($Uri) {
+                '*teamsClientConfiguration*' { throw 'Response status code does not indicate success: BadRequest (Bad Request).' }
+                '*teamsMeetingPolicy*'       { throw 'Response status code does not indicate success: BadRequest (Bad Request).' }
+                '*/v1.0/teamwork/teamsAppSettings' { return @{ isChatResourceSpecificConsentEnabled = $false } }
+                '*/v1.0/teamwork'                  { return @{ id = 'teamwork' } }
+                default                            { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1"
+    }
+
+    It 'emits Skipped for every meeting-policy check when the endpoint 400s' {
+        $meeting = $settings | Where-Object { $_.CheckId -like 'TEAMS-MEETING-*' }
+        $meeting | Should -Not -BeNullOrEmpty
+        ($meeting | Where-Object { $_.Status -ne 'Skipped' }) | Should -BeNullOrEmpty
+    }
+
+    It 'emits Skipped for every client-configuration check when the endpoint 400s' {
+        $clientChecks = $settings | Where-Object {
+            $_.CheckId -like 'TEAMS-EXTACCESS-*' -or $_.CheckId -like 'TEAMS-CLIENT-*'
+        }
+        $clientChecks | Should -Not -BeNullOrEmpty
+        ($clientChecks | Where-Object { $_.Status -ne 'Skipped' }) | Should -BeNullOrEmpty
+    }
+
+    It 'still runs checks from v1.0 endpoints that work (teamsAppSettings -> Pass)' {
+        $apps = $settings | Where-Object { $_.CheckId -like 'TEAMS-APPS-001*' }
+        $apps | Should -Not -BeNullOrEmpty
+        $apps.Status | Should -Be 'Pass'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgSubscribedSku -ErrorAction SilentlyContinue
+    }
+}
+
 Describe 'Get-TeamsSecurityConfig - App-Only Auth Early Exit' {
     BeforeAll {
         function global:Update-CheckProgress {

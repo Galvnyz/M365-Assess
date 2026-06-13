@@ -14,7 +14,7 @@ Get-ChildItem -Path 'src/M365-Assess' -Recurse -Filter '*.ps1' |
 | Status | Emissions | What it should mean |
 |---|---|---|
 | `Review` | 69 | Data was collected but a human needs to interpret the result. |
-| `Skipped` | 29 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
+| `Skipped` | 31 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
 | `Unknown` | 1 | Data could not be collected; this is different from "Skipped". |
 | **Total** | **98** | |
 
@@ -57,6 +57,7 @@ For each emission site, the question is one of three things:
 - **EXO checks that depend on Connect-ExchangeOnline** — when EXO module isn't connected, checks Skip. Correct.
 - **ENTRA-SSPR-001** (#878, fixed this PR) — the legacy "Self service password reset enabled" toggle (None / Selected / All) lives in the Entra admin center under Password reset > Properties and is **not exposed by Microsoft Graph** as of the 2026-04 audit. The previous collector read `authenticationMethodsRegistrationCampaign` (the MFA Registration Campaign — a different control) and labeled it as SSPR. Now correctly emits Review with a manual-verify instruction.
 - **FORMS-CONFIG-001 Skipped emission** (#941, ceiling 28 -> 29) — the `/beta/admin/forms/settings` Graph endpoint that the Forms collector reads is beta-only (no v1.0 endpoint exists) and is not served in GCC High / sovereign clouds, where it returns BadRequest. The collector now emits Skipped naming the cloud, surfaced in the report's not-assessed group. Genuine limitation: there is no correct call to substitute on these tenants.
+- **Teams client-config + meeting-policy Skipped emissions** (#940, ceiling 29 -> 31) — `/beta/teamwork/teamsClientConfiguration` (6 checks: TEAMS-EXTACCESS-001/002/003/004, TEAMS-CLIENT-001/002) and `/beta/teamwork/teamsMeetingPolicy` (9 checks: TEAMS-MEETING-001..009) are beta-only with no v1.0 equivalent (confirmed against Microsoft's Graph v1.0 Teams API reference) and 400 in sovereign clouds. The collector now emits Skipped for the 15 dependent checks via two data-driven loops (so +2 static emissions, not +15) instead of WARN-and-omit. Genuine limitation; the underlying data is only reachable via the MicrosoftTeams PS module (Get-CsTeamsClientConfiguration / Get-CsTeamsMeetingPolicy), a separate dependency out of scope here.
 
 ### Triage pending (representative — not exhaustive)
 
@@ -66,7 +67,7 @@ For each emission site, the question is one of three things:
 
 ## Lock-down regression
 
-`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 29 / 1 = 99 total). When a new emission is added the test fails, forcing the contributor to:
+`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 31 / 1 = 101 total). When a new emission is added the test fails, forcing the contributor to:
 
 1. Justify the new emission (genuine limitation? collector bug?)
 2. Update this doc to add the new site to the audit catalogue
