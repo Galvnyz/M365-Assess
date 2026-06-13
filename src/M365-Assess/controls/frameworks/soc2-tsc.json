@@ -103,14 +103,5 @@
       "background": "#1E3A5F",
       "color": "#60A5FA"
     }
-  },
-  "groupBy": "soc2-tsc-prefix",
-  "groupLabel": "criteria",
-  "groups": {
-    "CC": "Common Criteria (Security)",
-    "A":  "Availability",
-    "C":  "Confidentiality",
-    "P":  "Privacy",
-    "PI": "Processing Integrity"
   }
 }

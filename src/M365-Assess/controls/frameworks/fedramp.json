@@ -47,29 +47,5 @@
       "background": "#1E3A5F",
       "color": "#93C5FD"
     }
-  },
-  "groupBy": "family-letter-prefix",
-  "groupLabel": "family",
-  "groups": {
-    "AC": "Access Control",
-    "AT": "Awareness & Training",
-    "AU": "Audit & Accountability",
-    "CA": "Assessment, Authorization & Monitoring",
-    "CM": "Configuration Management",
-    "CP": "Contingency Planning",
-    "IA": "Identification & Authentication",
-    "IR": "Incident Response",
-    "MA": "Maintenance",
-    "MP": "Media Protection",
-    "PE": "Physical & Environmental Protection",
-    "PL": "Planning",
-    "PM": "Program Management",
-    "PS": "Personnel Security",
-    "PT": "PII Processing & Transparency",
-    "RA": "Risk Assessment",
-    "SA": "System & Services Acquisition",
-    "SC": "System & Communications Protection",
-    "SI": "System & Information Integrity",
-    "SR": "Supply Chain Risk Management"
   }
 }

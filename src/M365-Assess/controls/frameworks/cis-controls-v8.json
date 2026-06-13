@@ -42,8 +42,6 @@
       "color": "#60A5FA"
     }
   },
-  "groupBy": "section-prefix",
-  "groupLabel": "control",
   "controls": {
     "1": "Inventory and Control of Enterprise Assets",
     "2": "Inventory and Control of Software Assets",

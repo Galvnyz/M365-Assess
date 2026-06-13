@@ -59,21 +59,5 @@
       "background": "#7F1D1D",
       "color": "#FCA5A5"
     }
-  },
-  "groupBy": "section-prefix",
-  "groupLabel": "requirement",
-  "groups": {
-    "1": "Network Security Controls",
-    "2": "Secure Configurations",
-    "3": "Protect Stored Account Data",
-    "4": "Protect Cardholder Data in Transit",
-    "5": "Protect Against Malicious Software",
-    "6": "Develop & Maintain Secure Systems",
-    "7": "Restrict Access by Need-to-Know",
-    "8": "Identify Users & Authenticate Access",
-    "9": "Restrict Physical Access",
-    "10": "Log & Monitor All Access",
-    "11": "Test Security Regularly",
-    "12": "Information Security Policy"
   }
 }

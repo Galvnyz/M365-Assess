@@ -47,15 +47,5 @@
       "background": "#78350F",
       "color": "#FCD34D"
     }
-  },
-  "groupBy": "dot-prefix",
-  "groupLabel": "function",
-  "groups": {
-    "GV": "Govern",
-    "ID": "Identify",
-    "PR": "Protect",
-    "DE": "Detect",
-    "RS": "Respond",
-    "RC": "Recover"
   }
 }

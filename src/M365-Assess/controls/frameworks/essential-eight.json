@@ -85,17 +85,5 @@
       "background": "#713F12",
       "color": "#FDE047"
     }
-  },
-  "groupBy": "essential-eight-practice",
-  "groupLabel": "strategy",
-  "groups": {
-    "1": "Application Control",
-    "2": "Patch Applications",
-    "3": "Configure MS Office Macros",
-    "4": "User Application Hardening",
-    "5": "Restrict Administrative Privileges",
-    "6": "Patch Operating Systems",
-    "7": "Multi-Factor Authentication",
-    "8": "Regular Backups"
   }
 }

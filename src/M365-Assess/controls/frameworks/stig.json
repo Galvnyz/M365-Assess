@@ -36,7 +36,5 @@
       "color": "#C4B5FD"
     }
   },
-  "controlIdFormat": "V-{number}",
-  "taxonomyDecision": "domain-fallback",
-  "taxonomyReason": "STIG rule IDs (V-NNNNNN) are opaque — they don't encode product, category, or severity. CAT-I/II/III severity is published in the STIG XCCDF XML but not carried per-check in the registry's framework mapping. Native taxonomy intentionally not provided; report falls back to M365-Assess domain breakdown. To enable: extend the registry to carry per-check STIG severity, or maintain a rule-ID → category lookup. See issue #845 + docs/SCORING.md."
+  "controlIdFormat": "V-{number}"
 }
