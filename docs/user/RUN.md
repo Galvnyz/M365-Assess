@@ -254,6 +254,126 @@ Use `-UseDeviceCode` for device code flow, or `-UserPrincipalName admin@contoso.
 Get-ChildItem -Path .\M365-Assess\src -Recurse -Filter *.ps1 | Unblock-File
 ```
 
+## Available Sections
+
+| Section | Collectors | What It Covers |
+|---------|-----------|----------------|
+| **Tenant** | Tenant Info | Organization profile, verified domains, security defaults |
+| **Identity** | User Summary, MFA Report, Admin Roles, Conditional Access, App Registrations, Password Policy, Entra Security Config | User accounts, MFA status, RBAC, CA policies, app registrations, consent settings, password protection |
+| **Licensing** | License Summary | SKU allocation and assignment counts |
+| **Email** | Mailbox Summary, Mail Flow, Email Security, EXO Security Config, DNS Authentication | Mailbox types, transport rules, anti-spam/phishing, modern auth, audit settings, external sender tagging, SPF/DKIM/DMARC |
+| **Intune** | Device Summary, Compliance Policies, Config Profiles, Intune Security Config, Mobile Encryption, Port Storage, App Control, FIPS, Device Inventory, Auto Discovery, Removable Media | Managed devices, compliance state, configuration profiles, CMMC L2 security controls. Includes an Intune Overview dashboard with device metrics and category coverage grid. |
+| **Security** | Secure Score, Improvement Actions, Defender Policies, Defender Security Config, DLP Policies, Critical Exposure | Microsoft Secure Score, Defender for Office 365, anti-phishing/spam/malware, Safe Links/Attachments, data loss prevention, critical exposure checks (stale admins, CA exclusions, break-glass, device wipe audit) |
+| **Collaboration** | SharePoint & OneDrive, SharePoint Security Config, Teams Access, Teams Security Config, Forms Security Config | Sharing settings, external sharing controls, sync restrictions, Teams meeting policies, third-party app restrictions, Forms phishing/data sharing settings |
+| **Hybrid** | Hybrid Sync | Microsoft Entra Connect sync status and domain configuration |
+| **PowerBI** | Power BI Security Config | 11 CIS 9.1.x tenant setting checks: guest access, external sharing, publish to web, sensitivity labels, service principal restrictions. Requires MicrosoftPowerBIMgmt module. |
+| **Inventory** *(opt-in)* | Mailbox, Group, Teams, SharePoint, OneDrive Inventory | Per-object M&A inventory: mailboxes, distribution lists, M365 groups, Teams, SharePoint sites, OneDrive accounts |
+| **ActiveDirectory** *(opt-in)* | AD Domain & Forest, AD DC Health, AD Replication, AD Security | Domain/forest topology, DC health via dcdiag, replication partners and lag, password policies, privileged group membership. Includes a hybrid sync dashboard panel in the report home view. Requires RSAT or domain controller access. |
+| **SOC2** *(opt-in)* | Security Controls, Confidentiality Controls, Audit Evidence, Readiness Checklist | SOC 2 Trust Services Criteria assessment: security and confidentiality controls, 30-day audit log evidence collection, organizational readiness checklist for non-automatable criteria (CC1-CC5, CC8-CC9) |
+| **ValueOpportunity** *(opt-in)* | License Utilization, Feature Adoption, Feature Readiness | Analyzes license utilization and feature adoption to identify features your tenant pays for but does not use. Produces an adoption roadmap with quick wins. |
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ActiveDirectory`, `SOC2`, `ValueOpportunity` opt-in sections. Use `All` to run every section. |
+| `-TenantId` | string | *(wizard prompt)* | Tenant ID or `*.onmicrosoft.com` domain |
+| `-OutputFolder` | string | `.\M365-Assessment` | Base output directory |
+| `-SkipConnection` | switch | | Skip service connections (use pre-existing) |
+| `-ClientId` | string | | App Registration client ID for certificate auth |
+| `-CertificateThumbprint` | string | | Certificate thumbprint for app-only auth |
+| `-ClientSecret` | SecureString | | App Registration client secret for app-only auth |
+| `-UserPrincipalName` | string | | UPN for interactive auth (avoids WAM broker issues) |
+| `-UseDeviceCode` | switch | | Use device code flow for headless environments |
+| `-ManagedIdentity` | switch | | Use Azure managed identity auth (VMs, App Service, Functions) |
+| `-ConnectionProfile` | string | | Name of a saved connection profile (per-user app-data; legacy `.m365assess.json` at module root still readable) |
+| `-NonInteractive` | switch | | Skip all interactive prompts; log errors and exit on required module issues, skip sections for optional ones |
+| `-M365Environment` | string | `commercial` | Cloud environment: `commercial`, `gcc`, `gcchigh`, `dod` |
+| `-QuickScan` | switch | | Run only Critical and High severity checks for faster CI/CD or daily monitoring |
+| `-CompactReport` | switch | | Generate a compact report (omits cover page, executive summary, and compliance overview) |
+| `-WhiteLabel` | switch | | Hide M365 Assess GitHub link and Galvnyz attribution from the report footer |
+| `-SkipPurview` | switch | | Skip Purview/DLP collector and connection (saves ~46s) |
+| `-DryRun` | switch | | Preview sections, services, scopes, and check counts without connecting |
+| `-OpenReport` | switch | | Auto-open the HTML report in the default browser after generation |
+| `-SaveBaseline` | switch | | Save a policy baseline snapshot for future drift comparison. Auto-labels as `manual-<timestamp>`; combine with `-BaselineLabel` for a custom label |
+| `-BaselineLabel` | string | | Optional custom label to use with `-SaveBaseline` (e.g. `'sprint-end'`). Ignored without `-SaveBaseline` |
+| `-CompareBaseline` | string | | Compare the current run against a previously saved baseline and show drift in the XLSX |
+| `-AutoBaseline` | switch | | Automatically save and compare against the most recent baseline for this tenant |
+| `-ListBaselines` | switch | | List all saved baselines for the current tenant and exit |
+
+When no connection parameters are provided (`-TenantId`, `-SkipConnection`, `-ClientId`, or `-ManagedIdentity`), an interactive wizard prompts for tenant, auth method, and output folder. If `-Section` or `-OutputFolder` are provided on the command line, those wizard steps are skipped automatically.
+
+## Connection Profiles
+
+Connection profiles let you save tenant and auth settings once and reuse them across runs. Profiles are stored per-user under `%APPDATA%\M365-Assess\profiles.json` (Windows) or `~/.config/M365-Assess/profiles.json` (Linux/macOS). Profiles created on older versions at the module-root `.m365assess.json` continue to load; they're migrated to the new location on the next save. For GCC/GCC High/DoD tenants, pass `-M365Environment gcc` (or `gcchigh`, `dod`) when creating the profile.
+
+### Create a profile
+
+```powershell
+# Interactive (browser sign-in)
+New-M365ConnectionProfile -ProfileName 'Contoso' -TenantId 'contoso.onmicrosoft.com' -AuthMethod Interactive
+
+# Device code (headless / remote sessions)
+New-M365ConnectionProfile -ProfileName 'ContosoDevice' -TenantId 'contoso.onmicrosoft.com' -AuthMethod DeviceCode
+
+# Certificate / app-only (CI/CD, unattended)
+New-M365ConnectionProfile -ProfileName 'ContosoCert' -TenantId 'contoso.onmicrosoft.com' -AuthMethod Certificate -ClientId 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -CertificateThumbprint 'ABCDEF1234567890...' -AppName 'M365-Assess App Reg'
+```
+
+### Use and manage profiles
+
+```powershell
+# Run using a saved profile
+Invoke-M365Assessment -ConnectionProfile 'Contoso'
+
+# QuickScan using a cert-auth profile -- no interactive prompts
+Invoke-M365Assessment -ConnectionProfile 'ContosoCert' -QuickScan -NonInteractive
+
+# List, view, update (upsert), and remove profiles
+Get-M365ConnectionProfile
+Get-M365ConnectionProfile -ProfileName 'Contoso'
+Set-M365ConnectionProfile -ProfileName 'Contoso' -TenantId 'contoso.onmicrosoft.com' -AuthMethod DeviceCode
+Remove-M365ConnectionProfile -ProfileName 'OldTenant'
+Remove-M365ConnectionProfile -All
+```
+
+## Module Management
+
+The orchestrator detects missing or incompatible PowerShell modules **before** connecting to any service. Detection is section-aware: only modules needed by the selected sections are checked.
+
+| Module | Condition | Severity | Action |
+|--------|-----------|----------|--------|
+| Microsoft.Graph.Authentication | Not installed | Required | Install latest |
+| ExchangeOnlineManagement | Not installed | Required | Install pinned 3.7.1 |
+| ExchangeOnlineManagement | Version >= 3.8.0 and no <= 3.7.x installed | Required | Install 3.7.1 side-by-side (newer versions stay) |
+| msalruntime.dll | Missing (Windows + EXO 3.8.0+) | Required | Auto-copy from module path |
+| MicrosoftPowerBIMgmt | Not installed | Optional | Skip PowerBI section |
+
+In interactive mode the repair flow presents two tiers: (1) install missing modules to `CurrentUser` scope, and (2) install EXO 3.7.1 side-by-side with any EXO >= 3.8.0 (the newer version stays for other tooling; the session pins the compatible version at connect time, due to the [MSAL conflict](../reference/COMPATIBILITY.md)). After repair, modules are re-validated; if issues remain the exact manual commands are displayed and the script exits.
+
+In non-interactive mode, required module issues are logged with the exact install command and the script exits; optional module issues drop the dependent section and continue. On Windows, files extracted from a ZIP are tagged with an NTFS Zone.Identifier that blocks execution under `RemoteSigned`; the orchestrator prompts to `Unblock-File` (interactive) or logs the command and exits (non-interactive).
+
+## Individual Scripts
+
+Collectors and report generation can run standalone by dot-sourcing the required helpers first:
+
+```powershell
+# Load the module (makes helpers and Connect-Service available)
+Import-Module ./src/M365-Assess
+
+# Connect to the required service, then run a single collector
+Connect-Service -Service Graph -Scopes 'User.Read.All','AuditLog.Read.All'
+. ./src/M365-Assess/Entra/Get-InactiveUsers.ps1 -DaysInactive 90
+```
+
+| Script | Purpose |
+|--------|---------|
+| `src/M365-Assess/Entra/Get-MfaReport.ps1` | MFA enrollment and capability report |
+| `src/M365-Assess/Entra/Get-InactiveUsers.ps1` | Users inactive for 90+ days |
+| `src/M365-Assess/Exchange-Online/Get-MailFlowReport.ps1` | Mail flow rules and connectors |
+| `src/M365-Assess/Common/Export-AssessmentReport.ps1` | Regenerate HTML report from existing CSVs |
+| `src/M365-Assess/Common/Export-ComplianceMatrix.ps1` | Generate XLSX compliance matrix |
+
 ## See Also
 
 - [QUICKSTART.md](QUICKSTART.md) -- First assessment on a fresh machine
