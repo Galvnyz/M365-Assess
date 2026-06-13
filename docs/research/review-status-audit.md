@@ -14,7 +14,7 @@ Get-ChildItem -Path 'src/M365-Assess' -Recurse -Filter '*.ps1' |
 | Status | Emissions | What it should mean |
 |---|---|---|
 | `Review` | 69 | Data was collected but a human needs to interpret the result. |
-| `Skipped` | 28 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
+| `Skipped` | 29 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
 | `Unknown` | 1 | Data could not be collected; this is different from "Skipped". |
 | **Total** | **98** | |
 
@@ -56,6 +56,7 @@ For each emission site, the question is one of three things:
 - **`EntraUserGroupChecks.ps1` Skipped emissions (22 sites)** — most are conditional on Graph permissions or specific service-plan licensing. Skipped is the correct status for those scenarios.
 - **EXO checks that depend on Connect-ExchangeOnline** — when EXO module isn't connected, checks Skip. Correct.
 - **ENTRA-SSPR-001** (#878, fixed this PR) — the legacy "Self service password reset enabled" toggle (None / Selected / All) lives in the Entra admin center under Password reset > Properties and is **not exposed by Microsoft Graph** as of the 2026-04 audit. The previous collector read `authenticationMethodsRegistrationCampaign` (the MFA Registration Campaign — a different control) and labeled it as SSPR. Now correctly emits Review with a manual-verify instruction.
+- **FORMS-CONFIG-001 Skipped emission** (#941, ceiling 28 -> 29) — the `/beta/admin/forms/settings` Graph endpoint that the Forms collector reads is beta-only (no v1.0 endpoint exists) and is not served in GCC High / sovereign clouds, where it returns BadRequest. The collector now emits Skipped naming the cloud, surfaced in the report's not-assessed group. Genuine limitation: there is no correct call to substitute on these tenants.
 
 ### Triage pending (representative — not exhaustive)
 
@@ -65,7 +66,7 @@ For each emission site, the question is one of three things:
 
 ## Lock-down regression
 
-`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 28 / 1 = 98 total). When a new emission is added the test fails, forcing the contributor to:
+`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 29 / 1 = 99 total). When a new emission is added the test fails, forcing the contributor to:
 
 1. Justify the new emission (genuine limitation? collector bug?)
 2. Update this doc to add the new site to the audit catalogue

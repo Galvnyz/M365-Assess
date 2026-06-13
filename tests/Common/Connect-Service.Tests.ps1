@@ -94,4 +94,48 @@ Describe 'Connect-Service' {
             ($warningVar -join ' ') | Should -Not -Match '(?i)client secret'
         }
     }
+
+    Context 'Power BI sovereign-cloud environment routing (#943)' {
+        BeforeAll {
+            # Define the stub UNCONDITIONALLY with the parameters the collector
+            # passes. On CI (no MicrosoftPowerBIMgmt module) the earlier client-
+            # secret context leaves a param()-less residual command, so a
+            # conditional `if (-not Get-Command)` stub would never be created and
+            # the collector's -Environment arg would fail to bind before the mock
+            # recorded the call -- invisible locally where the real module supplies
+            # -Environment. Forcing our own param-ful stub makes binding (and the
+            # ParameterFilter) reliable in both environments.
+            function global:Connect-PowerBIServiceAccount {
+                [CmdletBinding()]
+                param(
+                    $Environment, $Tenant, [switch]$ServicePrincipal,
+                    $ApplicationId, $CertificateThumbprint, $Credential
+                )
+            }
+            Mock Get-Module { @{ Name = 'MicrosoftPowerBIMgmt' } }
+            Mock Connect-PowerBIServiceAccount { }
+        }
+
+        AfterAll {
+            Remove-Item -Path 'function:global:Connect-PowerBIServiceAccount' -ErrorAction SilentlyContinue
+        }
+
+        It 'routes <Cloud> to the Power BI <PbiEnv> environment' -ForEach @(
+            @{ Cloud = 'gcc';      PbiEnv = 'USGov' }
+            @{ Cloud = 'gcchigh';  PbiEnv = 'USGovHigh' }
+            @{ Cloud = 'dod';      PbiEnv = 'USGovMil' }
+        ) {
+            & $script:scriptPath -Service 'PowerBI' -M365Environment $Cloud -WarningAction SilentlyContinue
+            Should -Invoke Connect-PowerBIServiceAccount -ParameterFilter {
+                $Environment -eq $PbiEnv
+            }
+        }
+
+        It 'does not pass an Environment for commercial' {
+            & $script:scriptPath -Service 'PowerBI' -M365Environment 'commercial' -WarningAction SilentlyContinue
+            Should -Invoke Connect-PowerBIServiceAccount -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('Environment')
+            }
+        }
+    }
 }

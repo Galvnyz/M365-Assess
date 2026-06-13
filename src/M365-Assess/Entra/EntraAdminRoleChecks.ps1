@@ -301,103 +301,84 @@ elseif (-not $pimAvailable) {
     Add-Setting @settingParams
 }
 
-# CIS 5.3.4/5.3.5 -- PIM activation approval for GA and PRA
-$roleManagementPolicies = $null
+# CIS 5.3.4/5.3.5 -- GA/PRA activation approval. Per Microsoft Graph docs the
+# roleManagementPolicyAssignments endpoint REQUIRES a $filter on scopeId+scopeType
+# +roleDefinitionId and is GA in v1.0 including GCC High / DoD. The previous call
+# (/beta/policies/roleManagementPolicies?$expand=rules) omitted the mandatory
+# $filter -- commercial tolerated it but sovereign clouds returned 400, and the
+# returned policies are named after the scopeType ("DirectoryRole"), never the
+# role, so the old displayName match never resolved a role either (#978).
+$pimApprovalRoles = @(
+    @{ CheckId = 'ENTRA-PIM-004'; Setting = 'GA Activation Requires Approval'
+       RoleId = '62e90394-69f5-4237-9190-012177145e10'; RoleName = 'Global Administrator' }
+    @{ CheckId = 'ENTRA-PIM-005'; Setting = 'PRA Activation Requires Approval'
+       RoleId = 'e8611ab8-c189-46e8-94e1-60213ab1f814'; RoleName = 'Privileged Role Administrator' }
+)
+
 if ($pimAvailable) {
-    try {
-        Write-Verbose "Checking PIM role management policies..."
-        $graphParams = @{
-            Method      = 'GET'
-            Uri         = '/beta/policies/roleManagementPolicies?$expand=rules'
-            ErrorAction = 'Stop'
+    foreach ($role in $pimApprovalRoles) {
+        $approvalRequired = $null   # null = could not determine -> Review
+        try {
+            Write-Verbose "Checking PIM activation policy for $($role.RoleName)..."
+            $filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '$($role.RoleId)'"
+            $uri = "/v1.0/policies/roleManagementPolicyAssignments?`$filter=$filter&`$expand=policy(`$expand=rules)"
+            $assignmentsResp = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+            $assignment = if ($assignmentsResp -and $assignmentsResp['value']) { @($assignmentsResp['value'])[0] } else { $null }
+            $rules = if ($assignment -and $assignment['policy'] -and $assignment['policy']['rules']) {
+                @($assignment['policy']['rules'])
+            } else { @() }
+            $approvalRule = $rules | Where-Object { $_['@odata.type'] -match 'ApprovalRule' } | Select-Object -First 1
+            if ($approvalRule -and $approvalRule['setting']) {
+                $approvalRequired = [bool]$approvalRule['setting']['isApprovalRequired']
+            }
+            elseif ($assignment) {
+                # Policy resolved but carries no approval rule -> approval not required
+                $approvalRequired = $false
+            }
         }
-        $roleManagementPolicies = Invoke-MgGraphRequest @graphParams
-    }
-    catch {
-        if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
-            $pimAvailable = $false
+        catch {
+            Write-Warning "Could not check PIM activation policy for $($role.RoleName): $_"
+            $approvalRequired = $null
+        }
+
+        if ($null -eq $approvalRequired) {
+            $settingParams = @{
+                Category         = 'Privileged Identity Management'
+                Setting          = $role.Setting
+                CurrentValue     = 'Unable to read PIM activation policy'
+                RecommendedValue = 'Yes'
+                Status           = 'Review'
+                CheckId          = $role.CheckId
+                Remediation      = "Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > $($role.RoleName) > Require approval to activate > Yes."
+            }
         }
         else {
-            Write-Warning "Could not check PIM policies: $_"
+            $settingParams = @{
+                Category         = 'Privileged Identity Management'
+                Setting          = $role.Setting
+                CurrentValue     = $(if ($approvalRequired) { 'Yes' } else { 'No' })
+                RecommendedValue = 'Yes'
+                Status           = $(if ($approvalRequired) { 'Pass' } else { 'Fail' })
+                CheckId          = $role.CheckId
+                Remediation      = "Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > $($role.RoleName) > Require approval to activate > Yes."
+            }
         }
+        Add-Setting @settingParams
     }
-}
-
-if ($roleManagementPolicies -and $roleManagementPolicies['value']) {
-    $allPolicies = @($roleManagementPolicies['value'])
-
-    # CIS 5.3.4 -- GA activation approval
-    $gaPolicy = $allPolicies | Where-Object {
-        $_['scopeId'] -eq '/' -and $_['scopeType'] -eq 'DirectoryRole' -and
-        $_['displayName'] -match 'Global Administrator'
-    } | Select-Object -First 1
-
-    $gaApprovalRequired = $false
-    if ($gaPolicy -and $gaPolicy['rules']) {
-        $approvalRule = $gaPolicy['rules'] | Where-Object { $_['@odata.type'] -match 'ApprovalRule' }
-        if ($approvalRule) {
-            $gaApprovalRequired = $approvalRule['setting']['isApprovalRequired']
-        }
-    }
-
-    $settingParams = @{
-        Category         = 'Privileged Identity Management'
-        Setting          = 'GA Activation Requires Approval'
-        CurrentValue     = $(if ($gaApprovalRequired) { 'Yes' } else { 'No' })
-        RecommendedValue = 'Yes'
-        Status           = $(if ($gaApprovalRequired) { 'Pass' } else { 'Fail' })
-        CheckId          = 'ENTRA-PIM-004'
-        Remediation      = 'Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > Global Administrator > Require approval to activate > Yes.'
-    }
-    Add-Setting @settingParams
-
-    # CIS 5.3.5 -- PRA activation approval
-    $praPolicy = $allPolicies | Where-Object {
-        $_['scopeId'] -eq '/' -and $_['scopeType'] -eq 'DirectoryRole' -and
-        $_['displayName'] -match 'Privileged Role Administrator'
-    } | Select-Object -First 1
-
-    $praApprovalRequired = $false
-    if ($praPolicy -and $praPolicy['rules']) {
-        $approvalRule = $praPolicy['rules'] | Where-Object { $_['@odata.type'] -match 'ApprovalRule' }
-        if ($approvalRule) {
-            $praApprovalRequired = $approvalRule['setting']['isApprovalRequired']
-        }
-    }
-
-    $settingParams = @{
-        Category         = 'Privileged Identity Management'
-        Setting          = 'PRA Activation Requires Approval'
-        CurrentValue     = $(if ($praApprovalRequired) { 'Yes' } else { 'No' })
-        RecommendedValue = 'Yes'
-        Status           = $(if ($praApprovalRequired) { 'Pass' } else { 'Fail' })
-        CheckId          = 'ENTRA-PIM-005'
-        Remediation      = 'Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings > Privileged Role Administrator > Require approval to activate > Yes.'
-    }
-    Add-Setting @settingParams
 }
 elseif (-not $pimAvailable) {
-    $settingParams = @{
-        Category         = 'Privileged Identity Management'
-        Setting          = 'GA Activation Requires Approval'
-        CurrentValue     = $script:pimMessage
-        RecommendedValue = 'Yes'
-        Status           = 'Review'
-        CheckId          = 'ENTRA-PIM-004'
-        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings.'
+    foreach ($role in $pimApprovalRoles) {
+        $settingParams = @{
+            Category         = 'Privileged Identity Management'
+            Setting          = $role.Setting
+            CurrentValue     = $script:pimMessage
+            RecommendedValue = 'Yes'
+            Status           = 'Review'
+            CheckId          = $role.CheckId
+            Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings.'
+        }
+        Add-Setting @settingParams
     }
-    Add-Setting @settingParams
-
-    $settingParams = @{
-        Category         = 'Privileged Identity Management'
-        Setting          = 'PRA Activation Requires Approval'
-        CurrentValue     = $script:pimMessage
-        RecommendedValue = 'Yes'
-        Status           = 'Review'
-        CheckId          = 'ENTRA-PIM-005'
-        Remediation      = 'This check requires Entra ID P2 (included in M365 E5). Entra admin center > Identity Governance > PIM > Microsoft Entra roles > Settings.'
-    }
-    Add-Setting @settingParams
 }
 
 # ------------------------------------------------------------------

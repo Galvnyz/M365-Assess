@@ -242,3 +242,110 @@ Describe 'EntraAdminRoleChecks - Too Many Admins' {
         Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'EntraAdminRoleChecks - PIM approval via roleManagementPolicyAssignments (#978)' {
+    # The old call /beta/policies/roleManagementPolicies?$expand=rules omitted the
+    # REQUIRED $filter and used beta, so GCC High returned 400 MissingProvider and
+    # the displayName match never resolved a role. The documented, GCC-High-GA path
+    # is /v1.0/policies/roleManagementPolicyAssignments filtered by roleDefinitionId
+    # with $expand=policy($expand=rules). GA requires approval here (Pass), PRA does
+    # not (Fail).
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id' }
+        }
+
+        Mock Import-Module { }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri, $Headers, $ErrorAction)
+            switch -Wildcard ($Uri) {
+                '*/directoryRoles?*Global Administrator*' {
+                    return @{ value = @(@{ id = 'ga-role-id'; displayName = 'Global Administrator' }) }
+                }
+                '*/directoryRoles/ga-role-id/members' {
+                    return @{ value = @(
+                        @{ id = 'u1'; displayName = 'Admin One'; userPrincipalName = 'admin1@contoso.us'; '@odata.type' = '#microsoft.graph.user' }
+                    )}
+                }
+                # P2 present so PIM is considered available and the policy calls run
+                '*/subscribedSkus' {
+                    return @{ value = @(
+                        @{ skuPartNumber = 'SPE_E5_USGOV_GCCHIGH'; capabilityStatus = 'Enabled'
+                           servicePlans = @(
+                               @{ servicePlanId = 'eec0eb4f-6444-4f95-aba0-50c24d67f998'; provisioningStatus = 'Success' }
+                           ) }
+                    )}
+                }
+                '*/beta/roleManagement/directory/roleAssignmentScheduleInstances*' {
+                    return @{ value = @() }
+                }
+                # GA (62e90394...) policy: approval IS required -> Pass
+                '*roleManagementPolicyAssignments*62e90394*' {
+                    return @{ value = @(@{
+                        policy = @{ rules = @(
+                            @{ '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule'; setting = @{ isApprovalRequired = $true } }
+                        )}
+                    })}
+                }
+                # PRA (e8611ab8...) policy: approval NOT required -> Fail
+                '*roleManagementPolicyAssignments*e8611ab8*' {
+                    return @{ value = @(@{
+                        policy = @{ rules = @(
+                            @{ '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule'; setting = @{ isApprovalRequired = $false } }
+                        )}
+                    })}
+                }
+                default { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        $ctx            = Initialize-SecurityConfig
+        $settings       = $ctx.Settings
+        $checkIdCounter = $ctx.CheckIdCounter
+
+        function Add-Setting {
+            param([string]$Category, [string]$Setting, [string]$CurrentValue,
+                  [string]$RecommendedValue, [string]$Status,
+                  [string]$CheckId = '', [string]$Remediation = '')
+            Add-SecuritySetting -Settings $settings -CheckIdCounter $checkIdCounter `
+                -Category $Category -Setting $Setting -CurrentValue $CurrentValue `
+                -RecommendedValue $RecommendedValue -Status $Status `
+                -CheckId $CheckId -Remediation $Remediation
+        }
+
+        $authPolicy = @{ restrictNonAdminUsers = $true }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraAdminRoleChecks.ps1"
+    }
+
+    It 'ENTRA-PIM-004 passes when GA activation requires approval' {
+        # Pass here can only come from parsing the approval rule returned by the
+        # roleManagementPolicyAssignments call keyed on the GA roleDefinitionId,
+        # proving the corrected v1.0 + filter endpoint was queried.
+        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-004*' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass'
+        $check.CurrentValue | Should -Be 'Yes'
+    }
+
+    It 'ENTRA-PIM-005 fails when PRA activation does not require approval' {
+        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-PIM-005*' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
+    }
+}

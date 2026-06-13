@@ -267,6 +267,20 @@ try {
             $connectParams = @{}
             if ($TenantId) { $connectParams['Tenant'] = $TenantId }
 
+            # Route sovereign clouds to their Power BI environment. Without this the
+            # module defaults to commercial, so the WAM broker uses the commercial
+            # redirect URI and GCC High/DoD fail with IncorrectConfiguration /
+            # "Invalid redirect uri" (#943). Power BI env names differ from Graph's:
+            # gcc->USGov, gcchigh->USGovHigh, dod->USGovMil (api[.high|.mil].powerbigov.us).
+            $pbiEnvironmentMap = @{
+                'gcc'     = 'USGov'
+                'gcchigh' = 'USGovHigh'
+                'dod'     = 'USGovMil'
+            }
+            if ($pbiEnvironmentMap.ContainsKey($M365Environment)) {
+                $connectParams['Environment'] = $pbiEnvironmentMap[$M365Environment]
+            }
+
             if ($ManagedIdentity) {
                 throw "Power BI (Connect-PowerBIServiceAccount) does not support managed identity auth. Use -ClientId and -CertificateThumbprint for non-interactive auth."
             }
