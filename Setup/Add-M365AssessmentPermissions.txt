@@ -19,7 +19,7 @@
       Email         → Exchange Online RBAC role groups
       Intune        → Graph: DeviceManagement (devices + config)
       Security      → Graph: SecurityEvents  +  Exchange Online RBAC  +  Purview/Compliance roles
-                      + Stryker Readiness: DeviceManagement RBAC, audit events, CA policies
+                      + Critical Exposure: DeviceManagement RBAC, audit events, CA policies
       Collaboration → Graph: SharePoint tenant settings, Teams settings
       Hybrid        → Graph: Organization, Domain
       Inventory     → Graph: Groups, Teams, Channels, Reports, Sites, Users

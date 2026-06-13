@@ -221,6 +221,45 @@ Describe 'Build-ReportData' {
     }
 
     # ------------------------------------------------------------------
+    Context 'criticalExposure flag (#968)' {
+        # The curated "Critical exposure" report section filters on this flag. It is
+        # derived from the registry collector; both the legacy (StrykerReadiness) and
+        # renamed (CriticalExposure) ids are accepted so the upstream CheckID rename
+        # needs no report-side change.
+        It 'flags a finding whose registry collector is StrykerReadiness' {
+            $f = New-Finding -CheckId 'ENTRA-BREAKGLASS-001.1'
+            $registry = @{ 'ENTRA-BREAKGLASS-001' = @{ riskSeverity = 'Critical'; frameworks = @{}; collector = 'StrykerReadiness' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].criticalExposure | Should -BeTrue
+        }
+
+        It 'flags a finding whose registry collector is the renamed CriticalExposure' {
+            $f = New-Finding -CheckId 'ENTRA-BREAKGLASS-001.1'
+            $registry = @{ 'ENTRA-BREAKGLASS-001' = @{ riskSeverity = 'Critical'; frameworks = @{}; collector = 'CriticalExposure' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].criticalExposure | Should -BeTrue
+        }
+
+        It 'does not flag a finding from a different collector' {
+            $f = New-Finding -CheckId 'ENTRA-MFA-001.1'
+            $registry = @{ 'ENTRA-MFA-001' = @{ riskSeverity = 'High'; frameworks = @{}; collector = 'Entra' } }
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f) -RegistryData $registry)
+            $d.findings[0].criticalExposure | Should -BeFalse
+        }
+
+        It 'does not flag a finding with no registry entry' {
+            $f = New-Finding -CheckId 'UNKNOWN-001.1'
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @($f))
+            $d.findings[0].criticalExposure | Should -BeFalse
+        }
+
+        It 'always includes the criticalExposure field on findings' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding))
+            $d.findings[0].PSObject.Properties.Name | Should -Contain 'criticalExposure'
+        }
+    }
+
+    # ------------------------------------------------------------------
     Context 'domain derivation' {
         It 'maps CA-* to Conditional Access' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -CheckId 'CA-MFA-001.1'))

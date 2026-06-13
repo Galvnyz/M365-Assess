@@ -108,3 +108,29 @@ Describe 'Complete-CheckProgress' {
         $global:CheckProgressState | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Critical-exposure collector transition (#968)' {
+    # The collector maps accept both the legacy (StrykerReadiness) and renamed
+    # (CriticalExposure) ids so a registry sync flips cleanly with no flag-day.
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/Show-CheckProgress.ps1"
+        Mock Write-Host { }
+        Mock Write-Progress { }
+    }
+
+    It 'should track the legacy StrykerReadiness collector under the Security section' {
+        $registry = @{
+            'ENTRA-BREAKGLASS-001' = @{ checkId = 'ENTRA-BREAKGLASS-001'; hasAutomatedCheck = $true; collector = 'StrykerReadiness' }
+        }
+        Initialize-CheckProgress -ControlRegistry $registry -ActiveSections @('Security')
+        $global:CheckProgressState.CollectorCounts['StrykerReadiness'] | Should -Be 1
+    }
+
+    It 'should track the renamed CriticalExposure collector under the Security section' {
+        $registry = @{
+            'ENTRA-BREAKGLASS-001' = @{ checkId = 'ENTRA-BREAKGLASS-001'; hasAutomatedCheck = $true; collector = 'CriticalExposure' }
+        }
+        Initialize-CheckProgress -ControlRegistry $registry -ActiveSections @('Security')
+        $global:CheckProgressState.CollectorCounts['CriticalExposure'] | Should -Be 1
+    }
+}

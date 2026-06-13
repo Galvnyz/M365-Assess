@@ -4,6 +4,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Fixed
+- **"Critical exposure" report section revived (#968)**: the report's curated critical-exposure analysis (privileged account exposure, Conditional Access exclusions, dangerous Graph permissions, audit-trail gaps) had been silently dead since the registry was re-prefixed. Its React component was never mounted, and its filter matched a `'Stryker Readiness'` domain value that the data pipeline never produces. The section now renders from a new `criticalExposure` flag on each finding (derived from the registry collector), mounts after the Overview, and gains a Sidebar nav entry. The "Stryker" codename is dropped from the report and the console progress label in favor of plain "Critical exposure". The flag accepts both the legacy (`StrykerReadiness`) and renamed (`CriticalExposure`) collector ids so the pending upstream CheckID collector rename syncs with no report-side change.
+
 ## [2.12.0] - 2026-06-12
 
 Completes the **Report Clarity & Executive Briefing** milestone and advances **Trust at Scale**. The report now opens with a decision-maker Executive Briefing, summary visuals speak plain English, the shipped registry is partitioned to what the tool actually assesses (with CI-enforced generated statistics), every check carries an explicit severity rating, large tenants get complete Graph collections via pagination/throttling retry, and EXO 3.8+ installs no longer have to be uninstalled to run an assessment. No breaking API changes.

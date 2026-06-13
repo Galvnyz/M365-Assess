@@ -215,6 +215,11 @@ function Build-ReportDataJson {
             status       = $f.Status
             severity     = $severity
             domain       = Get-CheckDomain -CheckId $baseCheckId
+            # #968: flag the curated "Critical exposure" check set so the React report
+            # can render its dedicated section. Derived from the registry collector;
+            # both the legacy and renamed ids are accepted so the upstream CheckID
+            # collector rename (StrykerReadiness -> CriticalExposure) needs no report change.
+            criticalExposure = [bool]($regEntry -and $regEntry.collector -in @('StrykerReadiness', 'CriticalExposure'))
             section      = $f.Section
             category     = $f.Category
             setting      = $f.Setting

@@ -464,7 +464,10 @@ function Sidebar({
   }, {
     id: 'overview',
     label: 'Overview'
-  }, {
+  }, ...(FINDINGS.some(f => f.criticalExposure) ? [{
+    id: 'critical-exposure',
+    label: 'Critical exposure'
+  }] : []), {
     id: 'posture',
     label: 'Posture score'
   }, {
@@ -5634,18 +5637,22 @@ function Roadmap({
 }
 
 // ======================== Critical Exposure section ========================
-function StrykerBlock() {
+// #968: curated attack-path checks flagged by REPORT_DATA (criticalExposure).
+// These checks also appear under their natural domains (Entra ID, Conditional
+// Access, Intune); this section is a cross-cutting prioritized view, distinct
+// from the severity-based "critical findings" briefing tile.
+function CriticalExposureBlock() {
   const {
     open,
     headProps
   } = useCollapsibleSection();
-  const stryker = FINDINGS.filter(f => f.domain === 'Stryker Readiness');
-  if (!stryker.length) return null;
-  const fail = stryker.filter(f => f.status === 'Fail').length;
-  const pass = stryker.filter(f => f.status === 'Pass').length;
+  const items = FINDINGS.filter(f => f.criticalExposure);
+  if (!items.length) return null;
+  const fail = items.filter(f => f.status === 'Fail').length;
+  const pass = items.filter(f => f.status === 'Pass').length;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
-    id: "stryker"
+    id: "critical-exposure"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
   }, "01b \xB7 Critical exposure"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("span", {
@@ -5677,7 +5684,7 @@ function StrykerBlock() {
       fontFamily: 'var(--font-display)',
       letterSpacing: '-.02em'
     }
-  }, pct(pass, scoreDenom(stryker)), /*#__PURE__*/React.createElement("span", {
+  }, pct(pass, scoreDenom(items)), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 18,
       color: 'var(--muted)'
@@ -5725,11 +5732,11 @@ function StrykerBlock() {
     style: {
       fontWeight: 700
     }
-  }, stryker.length)))), /*#__PURE__*/React.createElement("div", {
+  }, items.length)))), /*#__PURE__*/React.createElement("div", {
     className: "findings"
   }, /*#__PURE__*/React.createElement("div", {
     className: "findings-head"
-  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Check"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null, "Frameworks"), /*#__PURE__*/React.createElement("div", null)), stryker.map((f, i) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Check"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null, "Frameworks"), /*#__PURE__*/React.createElement("div", null)), items.map((f, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "finding-row",
     style: {
@@ -6451,8 +6458,7 @@ function App() {
   }, []);
   const navCounts = {
     total: FINDINGS.length,
-    identity: FINDINGS.filter(f => ['Entra ID', 'Conditional Access', 'Enterprise Apps'].includes(f.domain) && f.status === 'Fail').length,
-    stryker: FINDINGS.filter(f => f.domain === 'Stryker Readiness' && f.status === 'Fail').length
+    identity: FINDINGS.filter(f => ['Entra ID', 'Conditional Access', 'Enterprise Apps'].includes(f.domain) && f.status === 'Fail').length
   };
   const domainCounts = useMemo(() => {
     const total = {},
@@ -6584,7 +6590,7 @@ function App() {
     onViewFinding: onViewFinding,
     onShowCritical: onShowCritical,
     onShowQuickWins: onShowQuickWins
-  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(ScoringViews, {
+  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(CriticalExposureBlock, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(ScoringViews, {
     view: scoringView,
     setView: setScoringView
   }), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {

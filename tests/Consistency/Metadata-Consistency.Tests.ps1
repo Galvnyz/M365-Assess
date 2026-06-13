@@ -112,6 +112,16 @@ Describe 'Metadata Consistency' {
             }
         }
 
+        It 'Should allowlist both the legacy and renamed critical-exposure collector during the #968 transition' {
+            # #968: the upstream CheckID collector rename (StrykerReadiness -> CriticalExposure)
+            # and the local report revive land in separate PRs. Both names stay allowlisted so the
+            # 9 critical-exposure checks survive a registry sync regardless of which name it carries.
+            $scopeJson  = Get-Content -Path "$moduleRoot/controls/sync-scope.json" -Raw | ConvertFrom-Json
+            $collectors = @($scopeJson.collectors)
+            $collectors | Should -Contain 'StrykerReadiness' -Because 'the registry still carries the legacy collector name until the CheckID rename syncs'
+            $collectors | Should -Contain 'CriticalExposure' -Because 'the renamed collector must be accepted ahead of the CheckID sync'
+        }
+
         It 'Should have no duplicate checkIds in the registry' {
             $allIds   = @($registry.checks | Select-Object -ExpandProperty checkId)
             $uniqueIds = @($allIds | Sort-Object -Unique)

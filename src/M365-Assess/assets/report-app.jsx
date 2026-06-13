@@ -244,6 +244,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
   const exec = [
     { id: 'briefing', label: 'Executive briefing' },
     { id: 'overview', label: 'Overview' },
+    ...(FINDINGS.some(f => f.criticalExposure) ? [{ id: 'critical-exposure', label: 'Critical exposure' }] : []),
     { id: 'posture',  label: 'Posture score' },
     { id: 'frameworks', label: 'Frameworks' },
     { id: 'identity', label: 'Domain posture' },
@@ -3752,14 +3753,18 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
 }
 
 // ======================== Critical Exposure section ========================
-function StrykerBlock() {
+// #968: curated attack-path checks flagged by REPORT_DATA (criticalExposure).
+// These checks also appear under their natural domains (Entra ID, Conditional
+// Access, Intune); this section is a cross-cutting prioritized view, distinct
+// from the severity-based "critical findings" briefing tile.
+function CriticalExposureBlock() {
   const { open, headProps } = useCollapsibleSection();
-  const stryker = FINDINGS.filter(f => f.domain === 'Stryker Readiness');
-  if (!stryker.length) return null;
-  const fail = stryker.filter(f => f.status==='Fail').length;
-  const pass = stryker.filter(f => f.status==='Pass').length;
+  const items = FINDINGS.filter(f => f.criticalExposure);
+  if (!items.length) return null;
+  const fail = items.filter(f => f.status==='Fail').length;
+  const pass = items.filter(f => f.status==='Pass').length;
   return (
-    <section className="block" id="stryker">
+    <section className="block" id="critical-exposure">
       <div {...headProps}>
         <span className="eyebrow">01b · Critical exposure</span>
         <h2>Critical exposure analysis</h2>
@@ -3770,7 +3775,7 @@ function StrykerBlock() {
         <div>
           <div style={{fontSize:12, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.1em', fontWeight:600}}>Coverage</div>
           <div style={{fontSize:34, fontWeight:700, fontFamily:'var(--font-display)', letterSpacing:'-.02em'}}>
-            {pct(pass, scoreDenom(stryker))}<span style={{fontSize:18, color:'var(--muted)'}}>%</span>
+            {pct(pass, scoreDenom(items))}<span style={{fontSize:18, color:'var(--muted)'}}>%</span>
           </div>
         </div>
         <div style={{flex:1, minWidth:200, fontSize:13, color:'var(--text-soft)', lineHeight:1.55}}>
@@ -3779,14 +3784,14 @@ function StrykerBlock() {
         <div style={{display:'flex', gap:18, fontVariantNumeric:'tabular-nums'}}>
           <div><div style={{fontSize:12,color:'var(--muted)'}}>Pass</div><div style={{fontWeight:700, color:'var(--success-text)'}}>{pass}</div></div>
           <div><div style={{fontSize:12,color:'var(--muted)'}}>Fail</div><div style={{fontWeight:700, color:'var(--danger-text)'}}>{fail}</div></div>
-          <div><div style={{fontSize:12,color:'var(--muted)'}}>Total</div><div style={{fontWeight:700}}>{stryker.length}</div></div>
+          <div><div style={{fontSize:12,color:'var(--muted)'}}>Total</div><div style={{fontWeight:700}}>{items.length}</div></div>
         </div>
       </div>
       <div className="findings">
         <div className="findings-head">
           <div>Status</div><div>Check</div><div>Check ID</div><div>Severity</div><div>Frameworks</div><div/>
         </div>
-        {stryker.map((f,i) => (
+        {items.map((f,i) => (
           <div key={i} className="finding-row" style={{cursor:'default'}}>
             <div><span className={'status-badge '+STATUS_COLORS[f.status]} title={STATUS_TIP[f.status]}><span className="dot"/>{statusLabel(f.status)}</span></div>
             <div className="finding-title"><div className="t">{f.setting}</div><div className="sub">{f.section}</div></div>
@@ -4241,7 +4246,6 @@ function App() {
   const navCounts = {
     total: FINDINGS.length,
     identity: FINDINGS.filter(f => ['Entra ID','Conditional Access','Enterprise Apps'].includes(f.domain) && f.status === 'Fail').length,
-    stryker: FINDINGS.filter(f => f.domain === 'Stryker Readiness' && f.status === 'Fail').length,
   };
 
   const domainCounts = useMemo(() => {
@@ -4316,6 +4320,7 @@ function App() {
         />
         <Briefing onViewFinding={onViewFinding} onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
         <Overview/>
+        <CriticalExposureBlock/>
         <Posture/>
         <ScoringViews view={scoringView} setView={setScoringView}/>
         <TrendChart/>

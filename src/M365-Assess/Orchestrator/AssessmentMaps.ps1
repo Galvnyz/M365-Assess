@@ -112,7 +112,7 @@ $collectorMap = [ordered]@{
         @{ Name = '19-DLP-Policies';       Script = 'Security\Get-DlpPolicyReport.ps1';     Label = 'DLP Policies'; RequiredServices = @('Purview') }
         @{ Name = '19b-Compliance-Security-Config'; Script = 'Security\Get-ComplianceSecurityConfig.ps1'; Label = 'Compliance Security Config'; RequiredServices = @('Purview') }
         @{ Name = '19c-Purview-Retention-Config'; Script = 'Purview\Get-PurviewRetentionConfig.ps1'; Label = 'Purview Retention Config'; RequiredServices = @('Purview') }
-        @{ Name = '24-StrykerIncidentReadiness'; Script = 'Security\Get-StrykerIncidentReadiness.ps1'; Label = 'Stryker Incident Readiness'; RequiredServices = @('Graph') }
+        @{ Name = '24-StrykerIncidentReadiness'; Script = 'Security\Get-StrykerIncidentReadiness.ps1'; Label = 'Critical Exposure'; RequiredServices = @('Graph') }
         @{ Name = '25-Defender-VulnScan';         Script = 'Security\Get-DefenderVulnScanConfig.ps1';    Label = 'Vulnerability Scanning'; RequiredServices = @('Graph') }
         @{ Name = '26-Defender-RealTimeScan';     Script = 'Security\Get-DefenderScanConfig.ps1';        Label = 'Real-time Scanning'; RequiredServices = @('Graph') }
         @{ Name = '27-Defender-SecureMon';        Script = 'Security\Get-DefenderSecureMonConfig.ps1';   Label = 'Security Monitoring'; RequiredServices = @('Graph') }
