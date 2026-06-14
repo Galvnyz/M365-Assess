@@ -313,13 +313,12 @@ Describe 'Collector Contract Compliance' -ForEach @(
             -Because "$FileName must initialize settings via the contract"
     }
 
-    It '<FileName> defines a thin-wrapper Add-Setting function' {
-        $content = Get-Content -Path $FilePath -Raw
-        $content | Should -Match 'function\s+Add-Setting' `
-            -Because "$FileName must define a local Add-Setting wrapper"
-        $content | Should -Match 'Add-SecuritySetting' `
-            -Because "$FileName Add-Setting must forward to Add-SecuritySetting"
-    }
+    # Note (#958): collectors no longer define a local Add-Setting wrapper -- they use
+    # the shared one from SecurityConfigHelper.ps1. A literal Add-Setting call need not
+    # appear in the collector file itself: delegating collectors (e.g. Defender, Entra)
+    # call it from dot-sourced helper files. The dot-source + Initialize-SecurityConfig
+    # + Export checks here cover the contract, and AddSetting-Centralization.Tests.ps1
+    # guards that no local wrappers remain.
 
     It '<FileName> calls Export-SecurityConfigReport for output' {
         $content = Get-Content -Path $FilePath -Raw

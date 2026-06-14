@@ -36,49 +36,7 @@ $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocati
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
-$checkIdCounter = $ctx.CheckIdCounter
 
-function Add-Setting {
-    param(
-        [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue,
-        [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown')]
-        [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = '',
-        [PSCustomObject]$Evidence = $null,
-        # D1 #785 -- structured evidence schema
-        [string]$ObservedValue = '',
-        [string]$ExpectedValue = '',
-        [string]$EvidenceSource = '',
-        [string]$EvidenceTimestamp = '',
-        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
-        [string]$CollectionMethod = '',
-        [string]$PermissionRequired = '',
-        [Nullable[double]]$Confidence = $null,
-        [string]$Limitations = ''
-    )
-    $p = @{
-        Settings           = $settings
-        CheckIdCounter     = $checkIdCounter
-        Category           = $Category
-        Setting            = $Setting
-        CurrentValue       = $CurrentValue
-        RecommendedValue   = $RecommendedValue
-        Status             = $Status
-        CheckId            = $CheckId
-        Remediation        = $Remediation
-        Evidence           = $Evidence
-        ObservedValue      = $ObservedValue
-        ExpectedValue      = $ExpectedValue
-        EvidenceSource     = $EvidenceSource
-        EvidenceTimestamp  = $EvidenceTimestamp
-        CollectionMethod   = $CollectionMethod
-        PermissionRequired = $PermissionRequired
-        Confidence         = $Confidence
-        Limitations        = $Limitations
-    }
-    Add-SecuritySetting @p
-}
 
 # ------------------------------------------------------------------
 # 1. Organization Config (modern auth, audit, customer lockbox)

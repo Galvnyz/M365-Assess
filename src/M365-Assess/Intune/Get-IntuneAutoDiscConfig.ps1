@@ -39,27 +39,7 @@ $_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocati
 
 $ctx = Initialize-SecurityConfig
 $settings = $ctx.Settings
-$checkIdCounter = $ctx.CheckIdCounter
 
-function Add-Setting {
-    param(
-        [string]$Category, [string]$Setting, [string]$CurrentValue,
-        [string]$RecommendedValue, [string]$Status,
-        [string]$CheckId = '', [string]$Remediation = ''
-    )
-    $p = @{
-        Settings         = $settings
-        CheckIdCounter   = $checkIdCounter
-        Category         = $Category
-        Setting          = $Setting
-        CurrentValue     = $CurrentValue
-        RecommendedValue = $RecommendedValue
-        Status           = $Status
-        CheckId          = $CheckId
-        Remediation      = $Remediation
-    }
-    Add-SecuritySetting @p
-}
 
 $remediationText = 'Configure Intune automatic enrollment: Entra admin center > Mobility (MDM and WIP) > Microsoft Intune > MDM user scope: All or Some. Consider configuring Windows Autopilot for zero-touch provisioning.'
 

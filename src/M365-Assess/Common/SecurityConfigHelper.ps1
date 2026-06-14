@@ -30,10 +30,92 @@ function Initialize-SecurityConfig {
     param()
 
     if (-not $global:AdoptionSignals) { $global:AdoptionSignals = @{} }
-    @{
+    $ctx = @{
         Settings       = [System.Collections.Generic.List[PSCustomObject]]::new()
         CheckIdCounter = @{}
     }
+    # #958 -- record the active context so the shared Add-Setting wrapper can find
+    # Settings + CheckIdCounter without each collector redefining a local wrapper.
+    # Dot-sourced per collector, so $script: is the collector's own scope and each
+    # Initialize-SecurityConfig call resets it; sequential collectors stay isolated.
+    $script:ActiveSecurityConfig = $ctx
+    $ctx
+}
+
+function Add-Setting {
+    <#
+    .SYNOPSIS
+        Adds a finding to the active collector context (#958).
+    .DESCRIPTION
+        Canonical replacement for the ~60 per-collector local Add-Setting wrappers.
+        Pulls Settings + CheckIdCounter from the script-scoped active context that
+        Initialize-SecurityConfig records, then forwards every other argument to
+        Add-SecuritySetting. Call Initialize-SecurityConfig first.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Category,
+
+        [Parameter(Mandatory)]
+        [string]$Setting,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$CurrentValue,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$RecommendedValue,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Skipped', 'Unknown', 'NotApplicable', 'NotLicensed')]
+        [string]$Status,
+
+        [Parameter()]
+        [string]$CheckId = '',
+
+        [Parameter()]
+        [string]$Remediation = '',
+
+        [Parameter()]
+        [switch]$IntentDesign,
+
+        [Parameter()]
+        [PSCustomObject]$Evidence = $null,
+
+        [Parameter()]
+        [string]$ObservedValue = '',
+
+        [Parameter()]
+        [string]$ExpectedValue = '',
+
+        [Parameter()]
+        [string]$EvidenceSource = '',
+
+        [Parameter()]
+        [string]$EvidenceTimestamp = '',
+
+        [Parameter()]
+        [ValidateSet('', 'Direct', 'Derived', 'Inferred')]
+        [string]$CollectionMethod = '',
+
+        [Parameter()]
+        [string]$PermissionRequired = '',
+
+        [Parameter()]
+        [Nullable[double]]$Confidence = $null,
+
+        [Parameter()]
+        [string]$Limitations = ''
+    )
+
+    if (-not $script:ActiveSecurityConfig) {
+        throw "Add-Setting was called before Initialize-SecurityConfig. Each collector must call Initialize-SecurityConfig before adding settings."
+    }
+
+    Add-SecuritySetting -Settings $script:ActiveSecurityConfig.Settings `
+        -CheckIdCounter $script:ActiveSecurityConfig.CheckIdCounter @PSBoundParameters
 }
 
 function Add-SecuritySetting {
