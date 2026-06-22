@@ -25,7 +25,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       docs: ${{ steps.filter.outputs.docs }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Third-party action pinned by commit SHA for supply-chain hardening (#768).
       # First-party actions/* stay on tag pins.
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d  # v4.0.1
@@ -57,7 +57,7 @@ jobs:
     name: Docs Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Version consistency
         shell: pwsh
@@ -90,7 +90,7 @@ jobs:
     name: Quality Gates
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/cache@v5
         with:
@@ -234,7 +234,7 @@ jobs:
     env:
       COVERAGE_THRESHOLD: 65
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/cache@v5
         with:
@@ -361,7 +361,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Pester
         shell: pwsh
@@ -403,7 +403,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Fetch CheckID data
         env:
