@@ -9,6 +9,6 @@
   "devDependencies": {
     "@babel/cli": "^7.29.7",
     "@babel/core": "^7.29.7",
-    "@babel/preset-react": "^7.29.7"
+    "@babel/preset-react": "^8.0.1"
   }
 }
