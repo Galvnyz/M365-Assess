@@ -47,6 +47,7 @@
     { "appId": "e97edbaf-39b2-4546-ba61-0a24e1bef890", "name": "EHRTeleHealth" },
     { "appId": "7c4f9118-450a-4e75-b96b-df2d0cac4c0d", "name": "d365-dani-exceladdinprod" },
     { "appId": "7f67af8a-fedc-4b08-8b4e-37c4d127b6cf", "name": "Power BI Desktop" },
+    { "appId": "789997c7-d888-4475-a0a0-35014494de85", "name": "Modern Workplace Management" },
     { "appId": "871c010f-5e61-4fb1-83ac-98610a7e9110", "name": "MicrosoftPowerBI" },
     { "appId": "8463278f-7a65-4b3d-903c-5e66a2ad1164", "name": "Mix Tools API" },
     { "appId": "5e72ef24-048b-4aae-8fd6-8653ce2d6760", "name": "PowerPlatform-commondataserviceforapps-Connector" },
