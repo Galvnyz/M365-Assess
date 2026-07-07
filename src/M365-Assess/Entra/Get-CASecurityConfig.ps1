@@ -119,26 +119,50 @@ function Test-TargetAllUser {
     return ($includeUsers -and ($includeUsers -contains 'All'))
 }
 
+# Helper: check if a policy carves any tracked admin role out via excludeRoles.
+# An All-Users (or admin-role) policy that excludes an admin role leaves that
+# privileged tier unprotected, so it must not count as admin MFA coverage.
+# Note: excludeUsers/excludeGroups are not resolved to membership (that would need
+# a per-group directory lookup), so a group-based admin carve-out is not detected here.
+function Test-ExcludesAdminRole {
+    param([hashtable]$Policy)
+    $excludeRoles = $Policy['conditions']['users']['excludeRoles']
+    if (-not $excludeRoles) { return $false }
+    foreach ($role in $excludeRoles) {
+        if ($role -in $adminRoleIds) { return $true }
+    }
+    return $false
+}
+
 # ------------------------------------------------------------------
 # 1. MFA Required for Admin Roles (CIS 5.2.2.1)
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking CA: MFA for admin roles..."
+    # Admins are covered when an enabled MFA policy targets admin directory roles OR
+    # targets All Users (admins are part of that scope). Either way, a policy that
+    # excludes an admin role via excludeRoles carves that tier out and does not count
+    # (#1000). authenticationStrength-based admin MFA is evaluated separately (check 5).
     $mfaAdminPolicies = @($enabledPolicies | Where-Object {
-        (Test-TargetAdminRole -Policy $_) -and
+        ((Test-TargetAdminRole -Policy $_) -or (Test-TargetAllUser -Policy $_)) -and
+        (-not (Test-ExcludesAdminRole -Policy $_)) -and
         ($_['grantControls']['builtInControls'] -contains 'mfa')
     })
+
+    $adminRolePolicies = @($mfaAdminPolicies | Where-Object { Test-TargetAdminRole -Policy $_ })
+    $coverageVia = if ($adminRolePolicies.Count -gt 0) { 'admin-role-targeted' } else { 'All-Users scope' }
 
     $mfaAdminEvidence = [PSCustomObject]@{
         PolicyCount = $mfaAdminPolicies.Count
         PolicyNames = @($mfaAdminPolicies | ForEach-Object { $_['displayName'] })
+        CoverageVia = $coverageVia
     }
     if ($mfaAdminPolicies.Count -gt 0) {
         $names = ($mfaAdminPolicies | ForEach-Object { $_['displayName'] }) -join '; '
         $settingParams = @{
             Category         = 'Conditional Access'
             Setting          = 'MFA Required for Admin Roles'
-            CurrentValue     = "Yes ($($mfaAdminPolicies.Count) policy: $names)"
+            CurrentValue     = "Yes ($($mfaAdminPolicies.Count) policy via ${coverageVia}: $names)"
             RecommendedValue = 'At least 1 policy'
             Status           = 'Pass'
             CheckId          = 'CA-MFA-ADMIN-001'
