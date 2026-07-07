@@ -821,3 +821,122 @@ Describe 'Get-CASecurityConfig - Admin MFA All-Users policy excludes admins (#10
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-CASecurityConfig - All-Users MFA under operator OR (#1000 review)' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # One All-Users policy whose grant is "MFA OR compliant device" (operator OR).
+        # MFA is NOT actually required, so it must not count as admin MFA coverage.
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') { return @{ isEnabled = $false } }
+            if ($Uri -like '*conditionalAccess/policies*') {
+                return @{ value = @(
+                    @{
+                        id = 'ca-or'
+                        displayName = 'MFA or compliant device for all users'
+                        state = 'enabled'
+                        conditions = @{ users = @{ includeUsers = @('All'); includeRoles = @(); excludeRoles = @(); excludeUsers = @(); excludeGroups = @() }; clientAppTypes = @('all') }
+                        grantControls = @{ builtInControls = @('mfa', 'compliantDevice'); operator = 'OR' }
+                        sessionControls = @{}
+                    }
+                )}
+            }
+            return @{ value = @() }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'does not treat an OR-combined mfa-or-device policy as admin MFA' {
+        $check = $settings | Where-Object { $_.Setting -eq 'MFA Required for Admin Roles' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail' -Because 'MFA is not required when a compliant device is an OR alternative'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - All-Users MFA under operator AND (#1000 review)' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # "MFA AND compliant device" (operator AND) DOES require MFA, so it still passes.
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') { return @{ isEnabled = $false } }
+            if ($Uri -like '*conditionalAccess/policies*') {
+                return @{ value = @(
+                    @{
+                        id = 'ca-and'
+                        displayName = 'MFA and compliant device for all users'
+                        state = 'enabled'
+                        conditions = @{ users = @{ includeUsers = @('All'); includeRoles = @(); excludeRoles = @(); excludeUsers = @(); excludeGroups = @() }; clientAppTypes = @('all') }
+                        grantControls = @{ builtInControls = @('mfa', 'compliantDevice'); operator = 'AND' }
+                        sessionControls = @{}
+                    }
+                )}
+            }
+            return @{ value = @() }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'passes when an AND-combined policy requires MFA for all users' {
+        $check = $settings | Where-Object { $_.Setting -eq 'MFA Required for Admin Roles' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass' -Because 'MFA is required under operator AND'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'Get-CASecurityConfig - All-Users MFA with group exclusion (#1000 review)' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+
+        # One All-Users MFA policy that excludes a group. We cannot resolve group membership,
+        # so admins might be carved out; the control must report Review, not Pass.
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            if ($Uri -like '*identitySecurityDefaultsEnforcementPolicy*') { return @{ isEnabled = $false } }
+            if ($Uri -like '*conditionalAccess/policies*') {
+                return @{ value = @(
+                    @{
+                        id = 'ca-allusers-exclgroup'
+                        displayName = 'MFA for all users except a group'
+                        state = 'enabled'
+                        conditions = @{ users = @{ includeUsers = @('All'); includeRoles = @(); excludeRoles = @(); excludeUsers = @(); excludeGroups = @('11111111-2222-3333-4444-555555555555') }; clientAppTypes = @('all') }
+                        grantControls = @{ builtInControls = @('mfa') }
+                        sessionControls = @{}
+                    }
+                )}
+            }
+            return @{ value = @() }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-CASecurityConfig.ps1"
+    }
+
+    It 'reports Review when the only coverage is an All-Users policy excluding a group' {
+        $check = $settings | Where-Object { $_.Setting -eq 'MFA Required for Admin Roles' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Review' -Because 'the excluded group might contain administrators'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}

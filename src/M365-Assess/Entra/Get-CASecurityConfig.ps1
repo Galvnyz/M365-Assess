@@ -134,6 +134,30 @@ function Test-ExcludesAdminRole {
     return $false
 }
 
+# Helper: does the policy actually REQUIRE MFA? builtInControls listed under
+# grantControls.operator 'OR' alongside other controls (e.g. "mfa OR compliantDevice")
+# do NOT require MFA, since an alternative control satisfies the grant. MFA is required
+# only when it is the sole control or all controls are required (operator AND).
+function Test-RequiresMfa {
+    param([hashtable]$Policy)
+    $grantControls = $Policy['grantControls']
+    if (-not $grantControls) { return $false }
+    $controls = @($grantControls['builtInControls'])
+    if ($controls -notcontains 'mfa') { return $false }
+    return ($controls.Count -eq 1) -or ($grantControls['operator'] -eq 'AND')
+}
+
+# Helper: does the policy carve out specific users or groups? Group/user exclusions
+# cannot be resolved to membership here, so an All-Users policy carrying them may or
+# may not exclude administrators. Used to downgrade All-Users-only coverage to Review.
+function Test-HasUserOrGroupExclusion {
+    param([hashtable]$Policy)
+    $users = $Policy['conditions']['users']
+    $excludeUsers  = @($users['excludeUsers'])
+    $excludeGroups = @($users['excludeGroups'])
+    return (($excludeUsers.Count -gt 0) -or ($excludeGroups.Count -gt 0))
+}
+
 # ------------------------------------------------------------------
 # 1. MFA Required for Admin Roles (CIS 5.2.2.1)
 # ------------------------------------------------------------------
@@ -146,27 +170,62 @@ try {
     $mfaAdminPolicies = @($enabledPolicies | Where-Object {
         ((Test-TargetAdminRole -Policy $_) -or (Test-TargetAllUser -Policy $_)) -and
         (-not (Test-ExcludesAdminRole -Policy $_)) -and
-        ($_['grantControls']['builtInControls'] -contains 'mfa')
+        (Test-RequiresMfa -Policy $_)
     })
 
+    # Explicit admin-role coverage is definitive. All-Users coverage also protects admins,
+    # but only confidently when the policy has no user/group exclusions we cannot resolve;
+    # otherwise the admins may be carved out and the result is Review, not Pass (#1000 review).
     $adminRolePolicies = @($mfaAdminPolicies | Where-Object { Test-TargetAdminRole -Policy $_ })
-    $coverageVia = if ($adminRolePolicies.Count -gt 0) { 'admin-role-targeted' } else { 'All-Users scope' }
+    $allUserOnly       = @($mfaAdminPolicies | Where-Object { -not (Test-TargetAdminRole -Policy $_) })
+    $allUserClean      = @($allUserOnly | Where-Object { -not (Test-HasUserOrGroupExclusion -Policy $_) })
+    $allUserExcluded   = @($allUserOnly | Where-Object { Test-HasUserOrGroupExclusion -Policy $_ })
 
     $mfaAdminEvidence = [PSCustomObject]@{
-        PolicyCount = $mfaAdminPolicies.Count
-        PolicyNames = @($mfaAdminPolicies | ForEach-Object { $_['displayName'] })
-        CoverageVia = $coverageVia
+        PolicyCount            = $mfaAdminPolicies.Count
+        PolicyNames            = @($mfaAdminPolicies | ForEach-Object { $_['displayName'] })
+        AdminRoleTargetedCount = $adminRolePolicies.Count
+        AllUsersCleanCount     = $allUserClean.Count
+        AllUsersExcludedCount  = $allUserExcluded.Count
     }
-    if ($mfaAdminPolicies.Count -gt 0) {
-        $names = ($mfaAdminPolicies | ForEach-Object { $_['displayName'] }) -join '; '
+    if ($adminRolePolicies.Count -gt 0) {
+        $names = ($adminRolePolicies | ForEach-Object { $_['displayName'] }) -join '; '
         $settingParams = @{
             Category         = 'Conditional Access'
             Setting          = 'MFA Required for Admin Roles'
-            CurrentValue     = "Yes ($($mfaAdminPolicies.Count) policy via ${coverageVia}: $names)"
+            CurrentValue     = "Yes ($($adminRolePolicies.Count) admin-role-targeted policy: $names)"
             RecommendedValue = 'At least 1 policy'
             Status           = 'Pass'
             CheckId          = 'CA-MFA-ADMIN-001'
             Remediation      = 'No action needed.'
+            Evidence         = $mfaAdminEvidence
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($allUserClean.Count -gt 0) {
+        $names = ($allUserClean | ForEach-Object { $_['displayName'] }) -join '; '
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for Admin Roles'
+            CurrentValue     = "Yes (covered by All-Users MFA policy: $names)"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Pass'
+            CheckId          = 'CA-MFA-ADMIN-001'
+            Remediation      = 'No action needed. Admins are covered by an All-Users MFA policy; a dedicated admin-role policy would add defense in depth.'
+            Evidence         = $mfaAdminEvidence
+        }
+        Add-Setting @settingParams
+    }
+    elseif ($allUserExcluded.Count -gt 0) {
+        $names = ($allUserExcluded | ForEach-Object { $_['displayName'] }) -join '; '
+        $settingParams = @{
+            Category         = 'Conditional Access'
+            Setting          = 'MFA Required for Admin Roles'
+            CurrentValue     = "All-Users MFA policy found but it excludes users/groups; verify admins are not carved out: $names"
+            RecommendedValue = 'At least 1 policy'
+            Status           = 'Review'
+            CheckId          = 'CA-MFA-ADMIN-001'
+            Remediation      = 'Confirm the excluded users/groups do not contain administrators, or add a dedicated Conditional Access policy targeting admin directory roles with Require multifactor authentication.'
             Evidence         = $mfaAdminEvidence
         }
         Add-Setting @settingParams
