@@ -431,7 +431,9 @@ try {
                 $numberMatch = if ($numberMatchState) { $numberMatchState['state'] } else { 'enforced (mandatory)' }
                 $appInfo = if ($appInfoState) { $appInfoState['state'] } else { 'not configured' }
 
-                $numberMatchOn = $numberMatch -in @('enabled', 'enforced (mandatory)')
+                # 'default' is the Microsoft-managed advancedConfigState; for number matching
+                # (enforced tenant-wide) it means on, matching the System-Preferred MFA path.
+                $numberMatchOn = $numberMatch -in @('enabled', 'enforced (mandatory)', 'default')
                 $fatiguePassed = $numberMatchOn -and ($appInfo -eq 'enabled')
                 $settingParams = @{
                     Category         = 'Authentication Methods'

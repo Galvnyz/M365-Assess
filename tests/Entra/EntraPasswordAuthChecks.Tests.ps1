@@ -536,3 +536,108 @@ Describe 'EntraPasswordAuthChecks - Security Defaults OFF no CA' {
         Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'EntraPasswordAuthChecks - Modern schema with default states' {
+    # Graph can return a control at the advancedConfigState value 'default' (Microsoft-managed)
+    # instead of omitting it. For number matching and system-preferred MFA, 'default' means ON,
+    # so both checks must Pass. Guards consistency between the two fixes.
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id' }
+        }
+
+        Mock Import-Module { }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri, $Headers, $ErrorAction)
+            switch -Wildcard ($Uri) {
+                '*/identitySecurityDefaultsEnforcementPolicy' {
+                    return @{ isEnabled = $false }
+                }
+                '*/identity/conditionalAccess/policies' {
+                    return @{ value = @() }
+                }
+                '*/policies/authenticationMethodsPolicy' {
+                    return @{
+                        authenticationMethodConfigurations = @(
+                            @{
+                                id    = 'MicrosoftAuthenticator'
+                                state = 'enabled'
+                                '@odata.type' = '#microsoft.graph.microsoftAuthenticatorAuthenticationMethodConfiguration'
+                                # 'default' = Microsoft-managed = on. App context explicitly enabled.
+                                featureSettings = @{
+                                    numberMatchingRequiredState        = @{ state = 'default' }
+                                    displayAppInformationRequiredState = @{ state = 'enabled' }
+                                }
+                            }
+                        )
+                        registrationEnforcement = @{
+                            authenticationMethodsRegistrationCampaign = @{
+                                state          = 'disabled'
+                                includeTargets = @()
+                            }
+                        }
+                        systemCredentialPreferences = @{ state = 'default' }
+                    }
+                }
+                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/domains' {
+                    return @{ value = @(
+                        @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }
+                    )}
+                }
+                '*/v1.0/organization' {
+                    return @{ value = @(
+                        @{ onPremisesSyncEnabled = $false; onPremisesLastPasswordSyncDateTime = $null }
+                    )}
+                }
+                default { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        $ctx            = Initialize-SecurityConfig
+        $settings       = $ctx.Settings
+        $checkIdCounter = $ctx.CheckIdCounter
+
+        function Add-Setting {
+            param([string]$Category, [string]$Setting, [string]$CurrentValue,
+                  [string]$RecommendedValue, [string]$Status,
+                  [string]$CheckId = '', [string]$Remediation = '')
+            Add-SecuritySetting -Settings $settings -CheckIdCounter $checkIdCounter `
+                -Category $Category -Setting $Setting -CurrentValue $CurrentValue `
+                -RecommendedValue $RecommendedValue -Status $Status `
+                -CheckId $CheckId -Remediation $Remediation
+        }
+
+        $sspr       = $null
+        $orgSettings = $null
+        $pwSettings  = $null
+
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraPasswordAuthChecks.ps1"
+    }
+
+    It 'Authenticator fatigue protection passes when number matching is at default (Microsoft-managed)' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Authenticator Fatigue Protection' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass' -Because "'default' number matching is enforced by Microsoft"
+    }
+
+    It 'System-preferred MFA passes when at default' {
+        $check = $settings | Where-Object { $_.Setting -eq 'System-Preferred MFA' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Pass' -Because "'default' system-preferred MFA is on"
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
+    }
+}
