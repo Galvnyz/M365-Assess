@@ -75,8 +75,10 @@ Describe 'EntraPasswordAuthChecks' {
                                 id    = 'MicrosoftAuthenticator'
                                 state = 'enabled'
                                 '@odata.type' = '#microsoft.graph.microsoftAuthenticatorAuthenticationMethodConfiguration'
+                                # Modern Graph shape: number matching has been enforced tenant-wide
+                                # since May 2023, so Graph no longer returns numberMatchingRequiredState
+                                # under featureSettings. Only the admin-controllable context toggles remain.
                                 featureSettings = @{
-                                    numberMatchingRequiredState        = @{ state = 'enabled' }
                                     displayAppInformationRequiredState = @{ state = 'enabled' }
                                 }
                             }
@@ -90,7 +92,8 @@ Describe 'EntraPasswordAuthChecks' {
                                 includeTargets = @( @{ id = 'all_users'; targetType = 'group' } )
                             }
                         }
-                        systemCredentialPreferences = @{ state = 'enabled' }
+                        # Modern Graph shape: system-preferred MFA is GA and default-on, so Graph
+                        # omits systemCredentialPreferences unless it has been explicitly changed.
                     }
                 }
                 '*/v1.0/settings' {
@@ -242,6 +245,111 @@ Describe 'EntraPasswordAuthChecks' {
             $s.CheckId | Should -Match '^ENTRA-' `
                 -Because "CheckId '$($s.CheckId)' should start with ENTRA-"
         }
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+        Remove-Item Function:\Get-MgContext -ErrorAction SilentlyContinue
+        Remove-Item Function:\Add-Setting -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'EntraPasswordAuthChecks - Modern schema with disabled states' {
+    # Guards the #998/#999 fix against over-loosening: when Graph explicitly returns a
+    # disabled state (rather than omitting the property), the checks must still Fail.
+    BeforeAll {
+        function global:Update-CheckProgress {
+            param($CheckId, $Setting, $Status)
+        }
+
+        function global:Get-MgContext {
+            return @{ TenantId = 'test-tenant-id' }
+        }
+
+        Mock Import-Module { }
+
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri, $Headers, $ErrorAction)
+            switch -Wildcard ($Uri) {
+                '*/identitySecurityDefaultsEnforcementPolicy' {
+                    return @{ isEnabled = $false }
+                }
+                '*/identity/conditionalAccess/policies' {
+                    return @{ value = @() }
+                }
+                '*/policies/authenticationMethodsPolicy' {
+                    return @{
+                        authenticationMethodConfigurations = @(
+                            @{
+                                id    = 'MicrosoftAuthenticator'
+                                state = 'enabled'
+                                '@odata.type' = '#microsoft.graph.microsoftAuthenticatorAuthenticationMethodConfiguration'
+                                # numberMatchingRequiredState omitted (enforced), but the admin
+                                # explicitly turned OFF application context display.
+                                featureSettings = @{
+                                    displayAppInformationRequiredState = @{ state = 'disabled' }
+                                }
+                            }
+                        )
+                        registrationEnforcement = @{
+                            authenticationMethodsRegistrationCampaign = @{
+                                state          = 'disabled'
+                                includeTargets = @()
+                            }
+                        }
+                        # System-preferred MFA explicitly disabled by the admin.
+                        systemCredentialPreferences = @{ state = 'disabled' }
+                    }
+                }
+                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/domains' {
+                    return @{ value = @(
+                        @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }
+                    )}
+                }
+                '*/v1.0/organization' {
+                    return @{ value = @(
+                        @{ onPremisesSyncEnabled = $false; onPremisesLastPasswordSyncDateTime = $null }
+                    )}
+                }
+                default { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+
+        $ctx            = Initialize-SecurityConfig
+        $settings       = $ctx.Settings
+        $checkIdCounter = $ctx.CheckIdCounter
+
+        function Add-Setting {
+            param([string]$Category, [string]$Setting, [string]$CurrentValue,
+                  [string]$RecommendedValue, [string]$Status,
+                  [string]$CheckId = '', [string]$Remediation = '')
+            Add-SecuritySetting -Settings $settings -CheckIdCounter $checkIdCounter `
+                -Category $Category -Setting $Setting -CurrentValue $CurrentValue `
+                -RecommendedValue $RecommendedValue -Status $Status `
+                -CheckId $CheckId -Remediation $Remediation
+        }
+
+        $sspr       = $null
+        $orgSettings = $null
+        $pwSettings  = $null
+
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraPasswordAuthChecks.ps1"
+    }
+
+    It 'Authenticator fatigue protection fails when application context is explicitly disabled' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Authenticator Fatigue Protection' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail' -Because 'application context display is off even though number matching is enforced'
+    }
+
+    It 'System-preferred MFA fails when explicitly disabled' {
+        $check = $settings | Where-Object { $_.Setting -eq 'System-Preferred MFA' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail' -Because 'the admin explicitly turned it off'
     }
 
     AfterAll {

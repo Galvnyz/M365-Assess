@@ -424,10 +424,15 @@ try {
             if ($null -ne $featureSettings) {
                 $numberMatchState = $featureSettings['numberMatchingRequiredState']
                 $appInfoState = $featureSettings['displayAppInformationRequiredState']
-                $numberMatch = if ($numberMatchState) { $numberMatchState['state'] } else { 'not configured' }
+                # Number matching has been enforced tenant-wide since May 2023. Once enforced,
+                # Graph stops returning numberMatchingRequiredState, so an absent property means
+                # "enforced" (on), not "not configured". Treat absence as the enforced state
+                # rather than failing the check (community issue #998).
+                $numberMatch = if ($numberMatchState) { $numberMatchState['state'] } else { 'enforced (mandatory)' }
                 $appInfo = if ($appInfoState) { $appInfoState['state'] } else { 'not configured' }
 
-                $fatiguePassed = ($numberMatch -eq 'enabled') -and ($appInfo -eq 'enabled')
+                $numberMatchOn = $numberMatch -in @('enabled', 'enforced (mandatory)')
+                $fatiguePassed = $numberMatchOn -and ($appInfo -eq 'enabled')
                 $settingParams = @{
                     Category         = 'Authentication Methods'
                     Setting          = 'Authenticator Fatigue Protection'
@@ -476,14 +481,19 @@ catch {
 try {
     if ($sspr) {
         $systemPreferred = $sspr['systemCredentialPreferences']
-        $sysState = if ($systemPreferred) { $systemPreferred['state'] } else { 'not configured' }
+        # System-preferred MFA is GA and enabled by default. Graph omits
+        # systemCredentialPreferences (or returns state 'default') until it is explicitly
+        # changed, so an absent property or a 'default' state means enabled, not
+        # "not configured". Only an explicit 'disabled' should fail (community issue #999).
+        $sysState = if ($systemPreferred) { $systemPreferred['state'] } else { 'default (enabled)' }
+        $sysEnabled = $sysState -in @('enabled', 'default', 'default (enabled)')
 
         $settingParams = @{
             Category         = 'Authentication Methods'
             Setting          = 'System-Preferred MFA'
             CurrentValue     = "$sysState"
             RecommendedValue = 'enabled'
-            Status           = $(if ($sysState -eq 'enabled') { 'Pass' } else { 'Fail' })
+            Status           = $(if ($sysEnabled) { 'Pass' } else { 'Fail' })
             CheckId          = 'ENTRA-AUTHMETHOD-004'
             Remediation      = 'Entra admin center > Protection > Authentication methods > Settings > System-preferred multifactor authentication > Enabled.'
         }
