@@ -86,6 +86,69 @@ $dangerousDelegatedPermissions = @(
 )
 
 # ------------------------------------------------------------------
+# Microsoft first-party app allowlist (#1001)
+# Known Microsoft first-party apps (e.g. Modern Workplace Management / Windows
+# Autopatch) hold privileged Graph permissions by design. They are classified
+# separately from genuine third-party foreign apps so they do not generate
+# false-investigation noise. AppId is the primary signal (stable); owner-tenant
+# is the secondary. Data lives in controls/microsoft-first-party-appids.json so
+# new AppIds need no code change. Previously this allowlist was consumed only by
+# ENTRA-ENTAPP-020; it is now hoisted here for reuse across the foreign-app checks.
+# ------------------------------------------------------------------
+$msFirstPartyAppIds = @()
+$msFirstPartyTenantIds = @()
+$_allowlistPath = Join-Path -Path $_controlsPath -ChildPath 'microsoft-first-party-appids.json'
+if (Test-Path -Path $_allowlistPath) {
+    try {
+        $_allowlist = Get-Content -Raw -Path $_allowlistPath | ConvertFrom-Json
+        $msFirstPartyAppIds    = @($_allowlist.appIds         | ForEach-Object { $_.appId })
+        $msFirstPartyTenantIds = @($_allowlist.ownerTenantIds | ForEach-Object { $_.id })
+    }
+    catch {
+        Write-Warning "Could not parse microsoft-first-party-appids.json: $($_.Exception.Message). Falling back to inline tenant-ID allowlist."
+    }
+}
+# Fallback if the JSON file is missing (e.g., partial install): keep the
+# historical 4-tenant allowlist so first-party detection still works.
+if ($msFirstPartyTenantIds.Count -eq 0) {
+    $msFirstPartyTenantIds = @(
+        'f8cdef31-a31e-4b4a-93e4-5f571e91255a',
+        '72f988bf-86f1-41af-91ab-2d7cd011db47',
+        'ea8a4392-515e-481f-879e-6571ff2a8a36',
+        'cdc5aeea-15c5-4db6-b079-fcadd2505dc2'
+    )
+}
+
+# Helper: is this service principal a known Microsoft first-party app?
+function Test-MicrosoftFirstPartyApp {
+    param($ServicePrincipal)
+    return (($ServicePrincipal['appId'] -in $msFirstPartyAppIds) -or
+            ($ServicePrincipal['appOwnerOrganizationId'] -in $msFirstPartyTenantIds))
+}
+
+# Helper: classify an SP's Graph application-permission grants into tier0/tier1
+# finding strings ("DisplayName: Permission"). Reads the cached permission maps,
+# so it makes zero additional Graph calls per SP.
+function Get-SpTierPermissionFindings {
+    param($ServicePrincipal)
+    $tier0 = @()
+    $tier1 = @()
+    foreach ($role in (Get-SpAppRoleAssignments -SpId $ServicePrincipal['id'])) {
+        $permId = $role['appRoleId']
+        if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
+            $permName = $graphPermissionMap[$permId].Name
+            if ($permName -in $tier0AppPermissions) {
+                $tier0 += "$($ServicePrincipal['displayName']): $permName"
+            }
+            elseif ($permName -in $tier1AppPermissions) {
+                $tier1 += "$($ServicePrincipal['displayName']): $permName"
+            }
+        }
+    }
+    return @{ Tier0 = @($tier0); Tier1 = @($tier1) }
+}
+
+# ------------------------------------------------------------------
 # Fetch tenant organization ID for foreign app detection
 # ------------------------------------------------------------------
 $tenantId = $null
@@ -320,54 +383,64 @@ if ($tenantId) {
     })
 }
 
+# Partition foreign apps (#1001): Microsoft first-party apps hold privileged
+# permissions by design and are expected, so they are classified separately.
+# The foreign-app risk checks below evaluate only genuine third-party apps for
+# Pass/Fail, while still reporting first-party matches in each check's Evidence.
+$msFirstPartyForeignApps = @($foreignApps | Where-Object { Test-MicrosoftFirstPartyApp -ServicePrincipal $_ })
+$thirdPartyForeignApps   = @($foreignApps | Where-Object { -not (Test-MicrosoftFirstPartyApp -ServicePrincipal $_) })
+
 # ------------------------------------------------------------------
 # 3. ENTRA-ENTAPP-003: Foreign apps with Tier 0 application permissions
 #    (Global Admin escalation paths)
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking foreign apps with Tier 0 application permissions..."
+    # Only genuine third-party apps drive Pass/Fail. Microsoft first-party apps that
+    # hold the same permissions by design are collected separately for Evidence (#1001).
     $foreignTier0 = @()
     $foreignTier1 = @()
+    foreach ($sp in $thirdPartyForeignApps) {
+        $hits = Get-SpTierPermissionFindings -ServicePrincipal $sp
+        $foreignTier0 += $hits.Tier0
+        $foreignTier1 += $hits.Tier1
+    }
 
-    foreach ($sp in $foreignApps) {
-        $appRoles = Get-SpAppRoleAssignments -SpId $sp['id']
-        foreach ($role in $appRoles) {
-            $permId = $role['appRoleId']
-            if ($permId -and $graphPermissionMap.ContainsKey($permId)) {
-                $permName = $graphPermissionMap[$permId].Name
-                if ($permName -in $tier0AppPermissions) {
-                    $foreignTier0 += "$($sp['displayName']): $permName"
-                }
-                elseif ($permName -in $tier1AppPermissions) {
-                    $foreignTier1 += "$($sp['displayName']): $permName"
-                }
-            }
-        }
+    $msFpTier0 = @()
+    $msFpTier1 = @()
+    foreach ($sp in $msFirstPartyForeignApps) {
+        $hits = Get-SpTierPermissionFindings -ServicePrincipal $sp
+        $msFpTier0 += $hits.Tier0
+        $msFpTier1 += $hits.Tier1
     }
 
     # Tier 0 findings (Critical -- escalation paths)
+    $tier0Current = if ($foreignTier0.Count -eq 0) { 'No third-party apps with Tier 0 permissions' } else { "$($foreignTier0.Count) finding(s): $($foreignTier0 -join '; ')" }
+    if ($msFpTier0.Count -gt 0) { $tier0Current += " | $($msFpTier0.Count) Microsoft first-party app(s) with Tier 0 permissions (expected, not counted)" }
     $settingParams = @{
         Category         = 'Enterprise Applications'
         Setting          = 'Foreign Apps with Tier 0 Permissions (GA Escalation)'
-        CurrentValue     = $(if ($foreignTier0.Count -eq 0) { 'No foreign apps with Tier 0 permissions' } else { "$($foreignTier0.Count) finding(s): $($foreignTier0 -join '; ')" })
-        RecommendedValue = 'No foreign apps should hold Tier 0 (Global Admin escalation) permissions'
+        CurrentValue     = $tier0Current
+        RecommendedValue = 'No third-party apps should hold Tier 0 (Global Admin escalation) permissions'
         Status           = $(if ($foreignTier0.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-003'
-        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with Tier 0 permissions. These permissions have documented attack paths to Global Administrator. Remove or replace with least-privilege alternatives.'
-        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier0); Count = $foreignTier0.Count }
+        Remediation      = 'Entra admin center > Enterprise applications > review third-party apps with Tier 0 permissions. These permissions have documented attack paths to Global Administrator. Remove or replace with least-privilege alternatives. Microsoft first-party apps are listed separately in the evidence and are expected to hold these permissions.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier0); Count = $foreignTier0.Count; MicrosoftFirstParty = @($msFpTier0); MicrosoftFirstPartyCount = $msFpTier0.Count }
     }
     Add-Setting @settingParams
 
     # Tier 1 findings (High -- data access risk)
+    $tier1Current = if ($foreignTier1.Count -eq 0) { 'No third-party apps with Tier 1 data access permissions' } else { "$($foreignTier1.Count) finding(s): $($foreignTier1 -join '; ')" }
+    if ($msFpTier1.Count -gt 0) { $tier1Current += " | $($msFpTier1.Count) Microsoft first-party app(s) with Tier 1 permissions (expected, not counted)" }
     $settingParams = @{
         Category         = 'Enterprise Applications'
         Setting          = 'Foreign Apps with Tier 1 Permissions (Data Access)'
-        CurrentValue     = $(if ($foreignTier1.Count -eq 0) { 'No foreign apps with Tier 1 data access permissions' } else { "$($foreignTier1.Count) finding(s): $($foreignTier1 -join '; ')" })
-        RecommendedValue = 'Minimize foreign apps with broad data access permissions'
+        CurrentValue     = $tier1Current
+        RecommendedValue = 'Minimize third-party apps with broad data access permissions'
         Status           = $(if ($foreignTier1.Count -eq 0) { 'Pass' } else { 'Warning' })
         CheckId          = 'ENTRA-ENTAPP-011'
-        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with broad data access (Mail.ReadWrite, Files.ReadWrite.All, etc.). Scope to least-privilege or remove.'
-        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier1); Count = $foreignTier1.Count }
+        Remediation      = 'Entra admin center > Enterprise applications > review third-party apps with broad data access (Mail.ReadWrite, Files.ReadWrite.All, etc.). Scope to least-privilege or remove. Microsoft first-party apps are listed separately in the evidence.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignTier1); Count = $foreignTier1.Count; MicrosoftFirstParty = @($msFpTier1); MicrosoftFirstPartyCount = $msFpTier1.Count }
     }
     Add-Setting @settingParams
 }
@@ -380,29 +453,37 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking foreign apps with dangerous delegated permissions..."
+    # Third-party apps drive Pass/Fail; Microsoft first-party apps are reported separately (#1001)
     $foreignDangerousDelegated = @()
-
-    foreach ($sp in $foreignApps) {
-        $grants = Get-SpOAuth2Grants -SpId $sp['id']
-        foreach ($grant in $grants) {
+    $msFpDelegated = @()
+    foreach ($sp in $thirdPartyForeignApps) {
+        foreach ($grant in (Get-SpOAuth2Grants -SpId $sp['id'])) {
             $scopes = if ($grant['scope']) { $grant['scope'] -split '\s+' } else { @() }
             foreach ($scope in $scopes) {
-                if ($scope -in $dangerousDelegatedPermissions) {
-                    $foreignDangerousDelegated += "$($sp['displayName']): $scope"
-                }
+                if ($scope -in $dangerousDelegatedPermissions) { $foreignDangerousDelegated += "$($sp['displayName']): $scope" }
+            }
+        }
+    }
+    foreach ($sp in $msFirstPartyForeignApps) {
+        foreach ($grant in (Get-SpOAuth2Grants -SpId $sp['id'])) {
+            $scopes = if ($grant['scope']) { $grant['scope'] -split '\s+' } else { @() }
+            foreach ($scope in $scopes) {
+                if ($scope -in $dangerousDelegatedPermissions) { $msFpDelegated += "$($sp['displayName']): $scope" }
             }
         }
     }
 
+    $delegatedCurrent = if ($foreignDangerousDelegated.Count -eq 0) { 'No third-party apps with dangerous delegated permissions' } else { "$($foreignDangerousDelegated.Count) finding(s): $($foreignDangerousDelegated -join '; ')" }
+    if ($msFpDelegated.Count -gt 0) { $delegatedCurrent += " | $($msFpDelegated.Count) Microsoft first-party app(s) with these permissions (expected, not counted)" }
     $settingParams = @{
         Category         = 'Enterprise Applications'
         Setting          = 'Foreign Apps with Dangerous Delegated Permissions'
-        CurrentValue     = $(if ($foreignDangerousDelegated.Count -eq 0) { 'No foreign apps with dangerous delegated permissions' } else { "$($foreignDangerousDelegated.Count) finding(s): $($foreignDangerousDelegated -join '; ')" })
-        RecommendedValue = 'No foreign apps should hold dangerous delegated permissions'
+        CurrentValue     = $delegatedCurrent
+        RecommendedValue = 'No third-party apps should hold dangerous delegated permissions'
         Status           = $(if ($foreignDangerousDelegated.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-004'
-        Remediation      = 'Entra admin center > Enterprise applications > review foreign apps with high-privilege delegated permissions. Revoke admin consent or remove the app.'
-        Evidence         = [PSCustomObject]@{ Findings = @($foreignDangerousDelegated); Count = $foreignDangerousDelegated.Count }
+        Remediation      = 'Entra admin center > Enterprise applications > review third-party apps with high-privilege delegated permissions. Revoke admin consent or remove the app. Microsoft first-party apps are listed separately in the evidence.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignDangerousDelegated); Count = $foreignDangerousDelegated.Count; MicrosoftFirstParty = @($msFpDelegated); MicrosoftFirstPartyCount = $msFpDelegated.Count }
     }
     Add-Setting @settingParams
 }
@@ -415,23 +496,31 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking foreign apps with directory roles..."
+    # Third-party apps drive Pass/Fail; Microsoft first-party apps are reported separately (#1001)
     $foreignWithRoles = @()
-
-    foreach ($sp in $foreignApps) {
+    $msFpWithRoles = @()
+    foreach ($sp in $thirdPartyForeignApps) {
         if ($spRoleAssignments.ContainsKey($sp['id'])) {
-            $roles = $spRoleAssignments[$sp['id']]
-            $foreignWithRoles += "$($sp['displayName']) ($($roles.Count) role(s))"
+            $foreignWithRoles += "$($sp['displayName']) ($($spRoleAssignments[$sp['id']].Count) role(s))"
+        }
+    }
+    foreach ($sp in $msFirstPartyForeignApps) {
+        if ($spRoleAssignments.ContainsKey($sp['id'])) {
+            $msFpWithRoles += "$($sp['displayName']) ($($spRoleAssignments[$sp['id']].Count) role(s))"
         }
     }
 
+    $rolesCurrent = if ($foreignWithRoles.Count -eq 0) { 'No third-party apps hold directory roles' } else { "$($foreignWithRoles.Count) third-party app(s) with roles: $($foreignWithRoles -join '; ')" }
+    if ($msFpWithRoles.Count -gt 0) { $rolesCurrent += " | $($msFpWithRoles.Count) Microsoft first-party app(s) with roles (expected, not counted)" }
     $settingParams = @{
         Category         = 'Enterprise Applications'
         Setting          = 'Foreign Apps with Directory Roles'
-        CurrentValue     = $(if ($foreignWithRoles.Count -eq 0) { 'No foreign apps hold directory roles' } else { "$($foreignWithRoles.Count) foreign app(s) with roles: $($foreignWithRoles -join '; ')" })
-        RecommendedValue = 'No foreign apps should hold Entra directory roles'
+        CurrentValue     = $rolesCurrent
+        RecommendedValue = 'No third-party apps should hold Entra directory roles'
         Status           = $(if ($foreignWithRoles.Count -eq 0) { 'Pass' } else { 'Fail' })
         CheckId          = 'ENTRA-ENTAPP-005'
-        Remediation      = 'Entra admin center > Roles and administrators > review roles assigned to foreign service principals. Remove role assignments from untrusted external apps.'
+        Remediation      = 'Entra admin center > Roles and administrators > review roles assigned to third-party service principals. Remove role assignments from untrusted external apps. Microsoft first-party apps are listed separately in the evidence.'
+        Evidence         = [PSCustomObject]@{ Findings = @($foreignWithRoles); Count = $foreignWithRoles.Count; MicrosoftFirstParty = @($msFpWithRoles); MicrosoftFirstPartyCount = $msFpWithRoles.Count }
     }
     Add-Setting @settingParams
 }
@@ -1003,41 +1092,10 @@ try {
     $msNames = @('Microsoft Teams', 'Microsoft Graph', 'Microsoft Office', 'Microsoft Azure', 'Microsoft Intune', 'Microsoft Exchange', 'Microsoft SharePoint', 'Microsoft Outlook', 'Microsoft OneDrive', 'Microsoft Defender')
     $impersonators = @()
 
-    # #887: belt-and-suspenders Microsoft first-party allowlist. AppId match is
-    # the primary signal (most stable — Microsoft can move an app to a new
-    # owner tenant, but the AppId stays). Owner-tenant match is the secondary
-    # signal (catches first-party SPs whose AppId we haven't catalogued yet).
-    # Allowlist data lives in controls/microsoft-first-party-appids.json so
-    # adding new known first-party AppIds doesn't require a code change.
-    $allowlistPath = Join-Path -Path $PSScriptRoot -ChildPath '..\controls\microsoft-first-party-appids.json'
-    $msAppIds = @()
-    $msTenantIds = @()
-    if (Test-Path -Path $allowlistPath) {
-        try {
-            $allowlist = Get-Content -Raw -Path $allowlistPath | ConvertFrom-Json
-            $msAppIds    = @($allowlist.appIds         | ForEach-Object { $_.appId })
-            $msTenantIds = @($allowlist.ownerTenantIds | ForEach-Object { $_.id })
-        }
-        catch {
-            Write-Warning "Could not parse microsoft-first-party-appids.json: $($_.Exception.Message). Falling back to inline tenant-ID allowlist."
-        }
-    }
-    # Fallback if the JSON file is missing (e.g., partial install): keep the
-    # historical 4-tenant allowlist so the check still does the right thing.
-    if ($msTenantIds.Count -eq 0) {
-        $msTenantIds = @(
-            'f8cdef31-a31e-4b4a-93e4-5f571e91255a',
-            '72f988bf-86f1-41af-91ab-2d7cd011db47',
-            'ea8a4392-515e-481f-879e-6571ff2a8a36',
-            'cdc5aeea-15c5-4db6-b079-fcadd2505dc2'
-        )
-    }
-
-    $nonMsForeignApps = @($foreignApps | Where-Object {
-        ($_['appId'] -notin $msAppIds) -and ($_['appOwnerOrganizationId'] -notin $msTenantIds)
-    })
-
-    foreach ($sp in $nonMsForeignApps) {
+    # #887/#1001: exclude Microsoft first-party apps from impersonation detection.
+    # The allowlist (AppId primary signal, owner-tenant secondary) is loaded once at
+    # the top of this script; $thirdPartyForeignApps already has first-party apps removed.
+    foreach ($sp in $thirdPartyForeignApps) {
         $name = $sp['displayName']
         foreach ($msName in $msNames) {
             if ($name -eq $msName -or $name -like "$msName *") {
