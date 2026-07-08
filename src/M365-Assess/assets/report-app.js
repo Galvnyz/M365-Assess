@@ -626,7 +626,7 @@ function Sidebar({
     className: "sc-title"
   }, "TENANT"), /*#__PURE__*/React.createElement("span", {
     className: "sc-sub"
-  }, "\xB7 SNAPSHOT")), /*#__PURE__*/React.createElement("div", {
+  }, "· SNAPSHOT")), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", null, "org"), /*#__PURE__*/React.createElement("span", null, TENANT.DefaultDomain || TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
@@ -684,7 +684,7 @@ function Sidebar({
     className: "sc-title"
   }, "MFA"), /*#__PURE__*/React.createElement("span", {
     className: "sc-sub"
-  }, "\xB7 COVERAGE")), MFA_STATS.phishResistant > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "· COVERAGE")), MFA_STATS.phishResistant > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sc-row"
   }, /*#__PURE__*/React.createElement("span", {
     title: "Phishing-resistant MFA (FIDO2 keys, Windows Hello, certificates)"
@@ -785,18 +785,18 @@ function Topbar({
     className: "edit-toolbar"
   }, /*#__PURE__*/React.createElement("span", {
     className: "edit-toolbar-badge"
-  }, "\u270E Edit Mode"), hiddenCount > 0 && /*#__PURE__*/React.createElement("span", {
+  }, "✎ Edit Mode"), hiddenCount > 0 && /*#__PURE__*/React.createElement("span", {
     className: "edit-toolbar-info"
   }, hiddenCount, " finding", hiddenCount === 1 ? '' : 's', " hidden"), /*#__PURE__*/React.createElement("button", {
     className: "edit-toolbar-reset",
     onClick: onReset
-  }, "\u21BA Reset all"), /*#__PURE__*/React.createElement("button", {
+  }, "↺ Reset all"), /*#__PURE__*/React.createElement("button", {
     className: "edit-toolbar-finalize",
     onClick: onFinalize
-  }, "\u2193 Finalize report"), /*#__PURE__*/React.createElement("button", {
+  }, "↓ Finalize report"), /*#__PURE__*/React.createElement("button", {
     className: "edit-toolbar-exit",
     onClick: onEditToggle
-  }, "\u2715 Exit edit mode")), /*#__PURE__*/React.createElement("div", {
+  }, "✕ Exit edit mode")), /*#__PURE__*/React.createElement("div", {
     className: "topbar"
   }, /*#__PURE__*/React.createElement("button", {
     className: "hamburger-btn",
@@ -806,7 +806,7 @@ function Topbar({
     className: "title"
   }, "Security posture report", /*#__PURE__*/React.createElement("span", {
     className: "title-sub"
-  }, "\xB7 ", TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
+  }, "· ", TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("div", {
     className: "spacer"
   }), /*#__PURE__*/React.createElement("div", {
     className: "search"
@@ -821,7 +821,7 @@ function Topbar({
         setSearch('');
       }
     },
-    placeholder: "Search findings, check IDs, remediation\u2026 (Enter to cycle)"
+    placeholder: "Search findings, check IDs, remediation… (Enter to cycle)"
   }), search && /*#__PURE__*/React.createElement("span", {
     className: 'search-counter' + ((searchMatches || []).length === 0 ? ' is-empty' : '')
   }, (searchMatches || []).length === 0 ? '0/0' : matchIdx + 1 + '/' + searchMatches.length), /*#__PURE__*/React.createElement("kbd", null, "/")), /*#__PURE__*/React.createElement("div", {
@@ -855,7 +855,7 @@ function Topbar({
       fontSize: 13,
       letterSpacing: '-0.02em'
     }
-  }, "A\u2212")), /*#__PURE__*/React.createElement("button", {
+  }, "A−")), /*#__PURE__*/React.createElement("button", {
     className: 'icon-btn text-scale-step text-scale-step-inc' + (!canIncrement ? ' disabled' : ''),
     title: incTitle,
     "aria-disabled": !canIncrement,
@@ -1001,7 +1001,7 @@ function ScoringViews({
       className: "scoring-view-domain"
     }, f.domain))), items.length > 8 && /*#__PURE__*/React.createElement("li", {
       className: "scoring-view-more"
-    }, "+ ", items.length - 8, " more \u2014 see ", /*#__PURE__*/React.createElement("a", {
+    }, "+ ", items.length - 8, " more — see ", /*#__PURE__*/React.createElement("a", {
       href: "#findings-anchor",
       onClick: e => {
         e.preventDefault();
@@ -1019,7 +1019,7 @@ function ScoringViews({
     className: "section-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01c \xB7 Scoring"), /*#__PURE__*/React.createElement("h2", null, "Posture views by audience"), /*#__PURE__*/React.createElement("div", {
+  }, "01c · Scoring"), /*#__PURE__*/React.createElement("h2", null, "Posture views by audience"), /*#__PURE__*/React.createElement("div", {
     className: "hr"
   })), /*#__PURE__*/React.createElement("div", {
     className: "scoring-views"
@@ -1070,7 +1070,7 @@ function PermissionsPanel() {
       color: 'var(--text-soft)',
       marginBottom: 10
     }
-  }, p.authMode, " auth \xB7 ", sections.length, " section", sections.length === 1 ? '' : 's', " checked \xB7 ", allOk ? 'all granted' : `${missingTotal} role(s) missing`), /*#__PURE__*/React.createElement("table", {
+  }, p.authMode, " auth · ", sections.length, " section", sections.length === 1 ? '' : 's', " checked · ", allOk ? 'all granted' : `${missingTotal} role(s) missing`), /*#__PURE__*/React.createElement("table", {
     className: "permissions-table"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Section"), /*#__PURE__*/React.createElement("th", null, "Required"), /*#__PURE__*/React.createElement("th", null, "Missing"), /*#__PURE__*/React.createElement("th", null, "Status"))), /*#__PURE__*/React.createElement("tbody", null, sections.map(([name, s]) => {
     const req = asArray(s.required);
@@ -1084,7 +1084,7 @@ function PermissionsPanel() {
       className: "status-badge unknown"
     }, m)) : /*#__PURE__*/React.createElement("span", {
       className: "muted"
-    }, "\u2014")), /*#__PURE__*/React.createElement("td", null, s.ok ? /*#__PURE__*/React.createElement("span", {
+    }, "—")), /*#__PURE__*/React.createElement("td", null, s.ok ? /*#__PURE__*/React.createElement("span", {
       className: "status-badge pass"
     }, "OK") : /*#__PURE__*/React.createElement("span", {
       className: "status-badge fail"
@@ -1327,7 +1327,7 @@ function Posture() {
     title: `Peer avg ${avg}%`
   })), /*#__PURE__*/React.createElement("div", {
     className: "score-footnote"
-  }, /*#__PURE__*/React.createElement("span", null, "0"), avgAvailable && /*#__PURE__*/React.createElement("span", null, "Peer avg \xB7 ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
+  }, /*#__PURE__*/React.createElement("span", null, "0"), avgAvailable && /*#__PURE__*/React.createElement("span", null, "Peer avg · ", avg.toFixed(1), "%"), /*#__PURE__*/React.createElement("span", null, "100")), /*#__PURE__*/React.createElement(Sparkline, {
     scores: D.score,
     avg: avg
   }), SCORE.MicrosoftScore != null && SCORE.CustomerScore != null && SCORE.MicrosoftScore > 0 && /*#__PURE__*/React.createElement("div", {
@@ -1346,7 +1346,7 @@ function Posture() {
     className: "score-split-value"
   }, fmt(SCORE.CustomerScore), " pts"))), /*#__PURE__*/React.createElement("div", {
     className: "score-disclaimer"
-  }, "Microsoft refreshes Secure Score on a delay \u2014 recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state.")) : /*#__PURE__*/React.createElement("div", {
+  }, "Microsoft refreshes Secure Score on a delay — recent configuration changes can take up to 24 hours to reflect. The score above reflects Microsoft's last published value at assessment time, not the live tenant state.")) : /*#__PURE__*/React.createElement("div", {
     className: "score-card score-card--unavailable"
   }, /*#__PURE__*/React.createElement("div", {
     className: "score-eyebrow"
@@ -1661,9 +1661,9 @@ function TrendChart() {
     id: "trend"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01b \xB7 Trend"), /*#__PURE__*/React.createElement("h2", null, "Posture trend"), /*#__PURE__*/React.createElement("span", {
+  }, "01b · Trend"), /*#__PURE__*/React.createElement("h2", null, "Posture trend"), /*#__PURE__*/React.createElement("span", {
     className: "trend-subtitle"
-  }, trend.length, " snapshots \xB7 ", daysSpan, " day", daysSpan === 1 ? '' : 's', " span"), /*#__PURE__*/React.createElement("span", {
+  }, trend.length, " snapshots · ", daysSpan, " day", daysSpan === 1 ? '' : 's', " span"), /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
@@ -1919,7 +1919,7 @@ function DnsAuthPanel() {
   }, risks.map((r, i) => /*#__PURE__*/React.createElement("span", {
     key: i,
     className: 'dns-risk-chip ' + r.cls
-  }, "\u26A0 ", r.msg))));
+  }, "⚠ ", r.msg))));
 }
 
 // ======================== Intune category grid ========================
@@ -2013,7 +2013,7 @@ function IntuneCategoryGrid() {
     className: "icat-pct"
   }, "%")), /*#__PURE__*/React.createElement("div", {
     className: "icat-meta"
-  }, b.pass, " pass \xB7 ", b.fail, " fail \xB7 ", b.fs.length, " checks"), /*#__PURE__*/React.createElement("div", {
+  }, b.pass, " pass · ", b.fail, " fail · ", b.fs.length, " checks"), /*#__PURE__*/React.createElement("div", {
     className: "dc-bar",
     style: {
       height: 4,
@@ -2047,7 +2047,7 @@ function MailboxSummaryPanel() {
     className: "domain-sub-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-sublabel"
-  }, "Exchange Online \xB7 mailbox estate"), /*#__PURE__*/React.createElement("div", {
+  }, "Exchange Online · mailbox estate"), /*#__PURE__*/React.createElement("div", {
     className: "kpi-strip",
     style: {
       flexWrap: 'wrap'
@@ -2060,7 +2060,7 @@ function MailboxSummaryPanel() {
     className: "kpi-value"
   }, fmt(total)), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, fmt(mb.UserMailboxes || 0), " user \xB7 ", fmt(mb.SharedMailboxes || 0), " shared"), /*#__PURE__*/React.createElement("div", {
+  }, fmt(mb.UserMailboxes || 0), " user · ", fmt(mb.SharedMailboxes || 0), " shared"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -2104,7 +2104,7 @@ function MailboxSummaryPanel() {
     className: "kpi-value"
   }, fmt((mf.inboundConnectors || 0) + (mf.outboundConnectors || 0))), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, mf.inboundConnectors || 0, " in \xB7 ", mf.outboundConnectors || 0, " out"), /*#__PURE__*/React.createElement("div", {
+  }, mf.inboundConnectors || 0, " in · ", mf.outboundConnectors || 0, " out"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -2245,13 +2245,13 @@ function AdHybridPanel() {
     className: "domain-sub-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-sublabel"
-  }, "Active Directory \xB7 hybrid posture", ad.entraOnly && /*#__PURE__*/React.createElement("span", {
+  }, "Active Directory · hybrid posture", ad.entraOnly && /*#__PURE__*/React.createElement("span", {
     className: "kpi-hint",
     style: {
       marginLeft: 8,
       fontWeight: 400
     }
-  }, "(Entra data \u2014 AD collectors not run)")), /*#__PURE__*/React.createElement("div", {
+  }, "(Entra data — AD collectors not run)")), /*#__PURE__*/React.createElement("div", {
     className: "spo-summary-row"
   }, /*#__PURE__*/React.createElement("div", {
     className: "spo-stat-card"
@@ -2312,7 +2312,7 @@ function AdHybridPanel() {
     }
   }, "N/A"), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, "Cloud-only tenant \u2014 no on-prem hashes to sync")), ad.syncErrorCount > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Cloud-only tenant — no on-prem hashes to sync")), ad.syncErrorCount > 0 && /*#__PURE__*/React.createElement("div", {
     className: "spo-stat-card spo-stat-bad"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-label"
@@ -2332,7 +2332,7 @@ function AdHybridPanel() {
     }
   }, "%")), /*#__PURE__*/React.createElement("div", {
     className: "kpi-hint"
-  }, pass, " pass \xB7 ", fail, " fail"), /*#__PURE__*/React.createElement("div", {
+  }, pass, " pass · ", fail, " fail"), /*#__PURE__*/React.createElement("div", {
     className: "tiny-bar"
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -2383,7 +2383,7 @@ function DomainRollup({
     onClick: toggleOpen
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "02 \xB7 Domains"), /*#__PURE__*/React.createElement("h2", null, "Security posture by domain ", /*#__PURE__*/React.createElement("span", {
+  }, "02 · Domains"), /*#__PURE__*/React.createElement("h2", null, "Security posture by domain ", /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, open ? '\u25be' : '\u25b8')), /*#__PURE__*/React.createElement("div", {
@@ -2888,11 +2888,11 @@ function FwManageButton({
     className: "fw-manage-head"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fw-manage-eyebrow"
-  }, "Frameworks in scope \xB7 ", visibleIds.length, " of ", allFw.length), /*#__PURE__*/React.createElement("div", {
+  }, "Frameworks in scope · ", visibleIds.length, " of ", allFw.length), /*#__PURE__*/React.createElement("div", {
     className: "fw-manage-bulk"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => onSetAll(allFw.map(f => f.id))
-  }, "Select all"), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("button", {
+  }, "Select all"), /*#__PURE__*/React.createElement("span", null, "·"), /*#__PURE__*/React.createElement("button", {
     onClick: () => onSetAll([allFw[0].id]),
     disabled: visibleIds.length === 1
   }, "Reset"))), allFw.map(f => {
@@ -2923,7 +2923,7 @@ function FwManageButton({
         color: 'var(--muted)',
         fontFamily: 'var(--font-mono)'
       }
-    }, f.id, " \xB7 ", data?.counts.total || 0, " controls")), /*#__PURE__*/React.createElement("span", {
+    }, f.id, " · ", data?.counts.total || 0, " controls")), /*#__PURE__*/React.createElement("span", {
       className: 'ct ' + r.tone
     }, pct, "%"));
   })));
@@ -3128,7 +3128,7 @@ function CoverageChart({
       fontSize: 12,
       color: 'var(--text-soft)'
     }
-  }, frameworks.length, " frameworks \xB7 sorted by coverage")), /*#__PURE__*/React.createElement("div", {
+  }, frameworks.length, " frameworks · sorted by coverage")), /*#__PURE__*/React.createElement("div", {
     className: "fw-cov-chart-axis"
   }, /*#__PURE__*/React.createElement("span", null, "0%"), /*#__PURE__*/React.createElement("span", null, "50%"), /*#__PURE__*/React.createElement("span", null, "100%"))), /*#__PURE__*/React.createElement("div", {
     className: "fw-cov-chart-body"
@@ -3362,7 +3362,7 @@ function CompareTableM({
         e.stopPropagation();
         onRemove(fw.id);
       }
-    }, "\xD7"), /*#__PURE__*/React.createElement("span", {
+    }, "×"), /*#__PURE__*/React.createElement("span", {
       className: "fw-cmp-chev"
     }, isFocused ? '▾' : '▸')));
   }));
@@ -3457,7 +3457,7 @@ function FrameworkQuilt({
     id: "frameworks"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01 \xB7 Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("span", {
+  }, "01 · Compliance"), /*#__PURE__*/React.createElement("h2", null, "Framework coverage"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
       color: 'var(--muted)',
@@ -3652,7 +3652,7 @@ function FrameworkQuilt({
       fontSize: 12,
       color: 'var(--text-soft)'
     }
-  }, focused.families.length, " families \xB7 sorted by gaps \xB7 click a row to filter"))), /*#__PURE__*/React.createElement(FamilyChartM, {
+  }, focused.families.length, " families · sorted by gaps · click a row to filter"))), /*#__PURE__*/React.createElement(FamilyChartM, {
     families: [...focused.families].sort((a, b) => b.fail - a.fail),
     focused: family,
     onFocus: setFamily
@@ -3687,7 +3687,7 @@ function FrameworkQuilt({
     className: "fw-merged-detail-eyebrow"
   }, /*#__PURE__*/React.createElement("span", {
     className: "fw-merged-detail-arrow"
-  }, "\u2193"), "Selected \xB7 ", focused.id), /*#__PURE__*/React.createElement("div", {
+  }, "↓"), "Selected · ", focused.id), /*#__PURE__*/React.createElement("div", {
     className: "fw-merged-score-name",
     style: {
       fontSize: 20
@@ -3744,7 +3744,7 @@ function FrameworkQuilt({
       letterSpacing: 0,
       fontWeight: 400
     }
-  }, "\xB7 click a row to filter")), /*#__PURE__*/React.createElement(FamilyChartM, {
+  }, "· click a row to filter")), /*#__PURE__*/React.createElement(FamilyChartM, {
     families: [...focused.families].sort((a, b) => b.fail - a.fail),
     focused: family,
     onFocus: setFamily
@@ -3895,12 +3895,12 @@ function FilterBar({
   })), /*#__PURE__*/React.createElement("input", {
     value: search,
     onChange: e => setSearch(e.target.value),
-    placeholder: "Search findings, check IDs, categories\u2026"
+    placeholder: "Search findings, check IDs, categories…"
   }), search && /*#__PURE__*/React.createElement("button", {
     className: "fb-clear-x",
     onClick: () => setSearch(''),
     "aria-label": "Clear"
-  }, "\xD7"))), /*#__PURE__*/React.createElement("div", {
+  }, "×"))), /*#__PURE__*/React.createElement("div", {
     className: "fb-row fb-row-flow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "filter-group"
@@ -4501,7 +4501,7 @@ function FindingsTable({
             style: {
               color: 'var(--muted)'
             }
-          }, "\u2014"));
+          }, "—"));
         }
       case 'finding':
         return /*#__PURE__*/React.createElement("div", {
@@ -4609,7 +4609,7 @@ function FindingsTable({
     id: "findings"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "03 \xB7 Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings", isFiltered ? /*#__PURE__*/React.createElement("span", {
+  }, "03 · Detail"), /*#__PURE__*/React.createElement("h2", null, "All findings", isFiltered ? /*#__PURE__*/React.createElement("span", {
     style: {
       marginLeft: 8,
       fontSize: 12,
@@ -4627,13 +4627,13 @@ function FindingsTable({
       color: 'var(--muted)',
       fontSize: 13
     }
-  }, " \xB7 ", FINDINGS.length, " total")), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
+  }, " · ", FINDINGS.length, " total")), editMode && hiddenFindings?.size > 0 && /*#__PURE__*/React.createElement("button", {
     className: "restore-all-btn",
     onClick: e => {
       e.stopPropagation();
       onRestoreAll();
     }
-  }, "\u21A9 Restore ", hiddenFindings.size, " hidden"), /*#__PURE__*/React.createElement("button", {
+  }, "↩ Restore ", hiddenFindings.size, " hidden"), /*#__PURE__*/React.createElement("button", {
     className: "chip chip-more",
     style: {
       marginLeft: 12,
@@ -4723,7 +4723,7 @@ function FindingsTable({
       onDragEnd: onColDragEnd,
       title: "Drag to reorder column",
       "aria-label": `Reorder ${c.label} column`
-    }, "\u22EE\u22EE"), sortable ? /*#__PURE__*/React.createElement("button", {
+    }, "⋮⋮"), sortable ? /*#__PURE__*/React.createElement("button", {
       type: "button",
       className: 'findings-col-sort' + (isActive ? ' active' : ''),
       onClick: () => cycleSort(c.id),
@@ -4796,7 +4796,7 @@ function FindingsTable({
       href: r.url,
       target: "_blank",
       rel: "noreferrer noopener"
-    }, "\uD83D\uDCD6 ", r.title, " \u2197"))), /*#__PURE__*/React.createElement(FindingProvenanceFooter, {
+    }, "📖 ", r.title, " ↗"))), /*#__PURE__*/React.createElement(FindingProvenanceFooter, {
       evidence: f.evidence
     })));
   })));
@@ -4953,7 +4953,7 @@ function FindingStateStrip({
   } else {
     sequenceNode = /*#__PURE__*/React.createElement("span", {
       className: "val muted"
-    }, "\u2014");
+    }, "—");
   }
   const effort = f.effort ? f.effort[0].toUpperCase() + f.effort.slice(1) : '—';
 
@@ -4988,7 +4988,7 @@ function FindingStateStrip({
     className: 'val ' + affectedClass
   }, affectedText) : /*#__PURE__*/React.createElement("span", {
     className: "val muted"
-  }, "\u2014")), /*#__PURE__*/React.createElement("div", {
+  }, "—")), /*#__PURE__*/React.createElement("div", {
     className: "fdd-strip-cell"
   }, /*#__PURE__*/React.createElement("span", {
     className: "label"
@@ -5000,7 +5000,7 @@ function FindingStateStrip({
     className: "label"
   }, "Ticket"), /*#__PURE__*/React.createElement("span", {
     className: "val muted"
-  }, "\u2014")));
+  }, "—")));
 }
 function FindingRiskNarrative({
   f
@@ -5074,11 +5074,11 @@ function FindingProvenanceFooter({
     className: "prov-key"
   }, "Provenance"), summaryEntries.length === 0 && /*#__PURE__*/React.createElement("span", {
     className: "prov-sep"
-  }, "\xB7"), summaryEntries.map(([k, v], i) => /*#__PURE__*/React.createElement(React.Fragment, {
+  }, "·"), summaryEntries.map(([k, v], i) => /*#__PURE__*/React.createElement(React.Fragment, {
     key: k
   }, i > 0 && /*#__PURE__*/React.createElement("span", {
     className: "prov-sep"
-  }, "\xB7"), /*#__PURE__*/React.createElement("code", null, k === 'confidence' ? `${Math.round(v * 100)}%` : String(v))))), /*#__PURE__*/React.createElement("span", {
+  }, "·"), /*#__PURE__*/React.createElement("code", null, k === 'confidence' ? `${Math.round(v * 100)}%` : String(v))))), /*#__PURE__*/React.createElement("span", {
     className: "prov-toggle"
   }, "View details")), /*#__PURE__*/React.createElement("div", {
     className: "fdd-prov-body"
@@ -5390,7 +5390,7 @@ function Roadmap({
       className: "dot"
     }), statusLabel(t.status))), /*#__PURE__*/React.createElement("div", {
       className: "task-id"
-    }, t.checkId, " \xB7 ", t.domain), /*#__PURE__*/React.createElement("div", {
+    }, t.checkId, " · ", t.domain), /*#__PURE__*/React.createElement("div", {
       className: "task-tags"
     }, /*#__PURE__*/React.createElement("span", {
       className: 'task-tag task-tag-sev sev-' + t.severity
@@ -5413,25 +5413,25 @@ function Roadmap({
         e.stopPropagation();
         moveTo(key, 'soon');
       }
-    }, "Next \u2192"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
+    }, "Next →"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
       className: "task-move-btn",
       onClick: e => {
         e.stopPropagation();
         moveTo(key, 'now');
       }
-    }, "\u2190 Now"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
+    }, "← Now"), lane === 'soon' && /*#__PURE__*/React.createElement("button", {
       className: "task-move-btn",
       onClick: e => {
         e.stopPropagation();
         moveTo(key, 'later');
       }
-    }, "Later \u2192"), lane === 'later' && /*#__PURE__*/React.createElement("button", {
+    }, "Later →"), lane === 'later' && /*#__PURE__*/React.createElement("button", {
       className: "task-move-btn",
       onClick: e => {
         e.stopPropagation();
         moveTo(key, 'soon');
       }
-    }, "\u2190 Next"), isCustom && /*#__PURE__*/React.createElement("button", {
+    }, "← Next"), isCustom && /*#__PURE__*/React.createElement("button", {
       className: "task-move-btn task-move-reset",
       onClick: e => {
         e.stopPropagation();
@@ -5457,7 +5457,7 @@ function Roadmap({
       style: {
         color: 'var(--muted)'
       }
-    }, "\u2014"))), /*#__PURE__*/React.createElement("div", {
+    }, "—"))), /*#__PURE__*/React.createElement("div", {
       className: "task-field"
     }, /*#__PURE__*/React.createElement("div", {
       className: "task-field-label"
@@ -5467,7 +5467,7 @@ function Roadmap({
       style: {
         color: 'var(--muted)'
       }
-    }, "\u2014")))), t.remediation && /*#__PURE__*/React.createElement("div", {
+    }, "—")))), t.remediation && /*#__PURE__*/React.createElement("div", {
       className: "task-field"
     }, /*#__PURE__*/React.createElement("div", {
       className: "task-field-label"
@@ -5499,7 +5499,7 @@ function Roadmap({
         color: 'var(--accent-text)',
         textDecoration: 'none'
       }
-    }, "\uD83D\uDCD6 ", r.title, " \u2197")))), /*#__PURE__*/React.createElement("div", {
+    }, "📖 ", r.title, " ↗")))), /*#__PURE__*/React.createElement("div", {
       className: "task-meta-row"
     }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Section:"), " ", t.section), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Severity:"), " ", SEV_LABEL[t.severity]), t.effort && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Effort:"), " ", t.effort), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Frameworks:"), " ", t.frameworks.join(', ') || '—')), /*#__PURE__*/React.createElement("div", {
       className: "task-actions"
@@ -5509,7 +5509,7 @@ function Roadmap({
         e.preventDefault();
         onViewFinding?.(t.checkId);
       }
-    }, "View in findings table \u2192"))));
+    }, "View in findings table →"))));
   };
   const LaneReset = ({
     laneItems
@@ -5526,7 +5526,7 @@ function Roadmap({
     id: "roadmap"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "04 \xB7 Action plan"), /*#__PURE__*/React.createElement("h2", null, "Remediation roadmap"), /*#__PURE__*/React.createElement("span", {
+  }, "04 · Action plan"), /*#__PURE__*/React.createElement("h2", null, "Remediation roadmap"), /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, sectionOpen ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
@@ -5546,11 +5546,11 @@ function Roadmap({
     className: "roadmap-intro-head"
   }, "How we prioritized"), /*#__PURE__*/React.createElement("div", {
     className: "roadmap-intro-body"
-  }, "Findings are bucketed by severity. Critical findings \u2014 identity takeover, data exfiltration, privilege escalation paths \u2014 always go in ", /*#__PURE__*/React.createElement("b", null, "Now"), ". High-severity findings land in ", /*#__PURE__*/React.createElement("b", null, "Next"), ": risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join ", /*#__PURE__*/React.createElement("b", null, "Next"), " when tractable, or ", /*#__PURE__*/React.createElement("b", null, "Later"), " for larger hardening work. ", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+  }, "Findings are bucketed by severity. Critical findings — identity takeover, data exfiltration, privilege escalation paths — always go in ", /*#__PURE__*/React.createElement("b", null, "Now"), ". High-severity findings land in ", /*#__PURE__*/React.createElement("b", null, "Next"), ": risk is real but remediation typically requires coordination or scheduling. Medium-severity items also join ", /*#__PURE__*/React.createElement("b", null, "Next"), " when tractable, or ", /*#__PURE__*/React.createElement("b", null, "Later"), " for larger hardening work. ", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
     style: {
       color: 'var(--muted)'
     }
-  }, "Click any task to expand it, or use the move buttons on each card to reprioritize. Use Finalize (\u270E) to bake lane changes into the report."))), /*#__PURE__*/React.createElement("div", {
+  }, "Click any task to expand it, or use the move buttons on each card to reprioritize. Use Finalize (✎) to bake lane changes into the report."))), /*#__PURE__*/React.createElement("div", {
     className: "roadmap"
   }, /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "roadmap-lane-now",
@@ -5569,7 +5569,7 @@ function Roadmap({
       color: 'var(--muted)',
       fontWeight: 400
     }
-  }, "\xB7 ", now.length)), /*#__PURE__*/React.createElement("div", {
+  }, "· ", now.length)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -5596,7 +5596,7 @@ function Roadmap({
       color: 'var(--muted)',
       fontWeight: 400
     }
-  }, "\xB7 ", soon.length)), /*#__PURE__*/React.createElement("div", {
+  }, "· ", soon.length)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -5606,7 +5606,7 @@ function Roadmap({
     laneItems: soon
   }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 4 weeks"))), soon.map(t => renderTask(t, 'soon')))), /*#__PURE__*/React.createElement(HideableBlock, {
+  }, "1 – 4 weeks"))), soon.map(t => renderTask(t, 'soon')))), /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "roadmap-lane-later",
     label: "Later lane"
   }, /*#__PURE__*/React.createElement("div", {
@@ -5623,7 +5623,7 @@ function Roadmap({
       color: 'var(--muted)',
       fontWeight: 400
     }
-  }, "\xB7 ", later.length)), /*#__PURE__*/React.createElement("div", {
+  }, "· ", later.length)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -5633,7 +5633,7 @@ function Roadmap({
     laneItems: later
   }), /*#__PURE__*/React.createElement("div", {
     className: "lane-eta"
-  }, "1 \u2013 3 months"))), later.map(t => renderTask(t, 'later')))))));
+  }, "1 – 3 months"))), later.map(t => renderTask(t, 'later')))))));
 }
 
 // ======================== Critical Exposure section ========================
@@ -5655,7 +5655,7 @@ function CriticalExposureBlock() {
     id: "critical-exposure"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "01b \xB7 Critical exposure"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("span", {
+  }, "01b · Critical exposure"), /*#__PURE__*/React.createElement("h2", null, "Critical exposure analysis"), /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
@@ -5697,7 +5697,7 @@ function CriticalExposureBlock() {
       color: 'var(--text-soft)',
       lineHeight: 1.55
     }
-  }, "Mapped to MITRE ATT&CK Enterprise techniques and CISA Known Exploited Vulnerabilities (KEV). Prioritized by CIS Critical Security Controls v8 \u2014 covers privileged account exposure, CA exclusions, dangerous Graph permissions, and audit trail gaps."), /*#__PURE__*/React.createElement("div", {
+  }, "Mapped to MITRE ATT&CK Enterprise techniques and CISA Known Exploited Vulnerabilities (KEV). Prioritized by CIS Critical Security Controls v8 — covers privileged account exposure, CA exclusions, dangerous Graph permissions, and audit trail gaps."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 18,
@@ -5772,15 +5772,15 @@ function Overview() {
     className: "tenant-line"
   }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, TENANT.OrgDisplayName)), /*#__PURE__*/React.createElement("span", {
     className: "sep"
-  }, "\u2502"), /*#__PURE__*/React.createElement("span", null, "Tenant ", /*#__PURE__*/React.createElement("b", null, TENANT.TenantId)), /*#__PURE__*/React.createElement("span", {
+  }, "│"), /*#__PURE__*/React.createElement("span", null, "Tenant ", /*#__PURE__*/React.createElement("b", null, TENANT.TenantId)), /*#__PURE__*/React.createElement("span", {
     className: "sep"
-  }, "\u2502"), /*#__PURE__*/React.createElement("span", null, "Default domain ", /*#__PURE__*/React.createElement("b", null, TENANT.DefaultDomain)), /*#__PURE__*/React.createElement("span", {
+  }, "│"), /*#__PURE__*/React.createElement("span", null, "Default domain ", /*#__PURE__*/React.createElement("b", null, TENANT.DefaultDomain)), /*#__PURE__*/React.createElement("span", {
     className: "sep"
-  }, "\u2502"), /*#__PURE__*/React.createElement("span", null, "Users ", /*#__PURE__*/React.createElement("b", null, USERS.TotalUsers), " \xB7 licensed ", /*#__PURE__*/React.createElement("b", null, USERS.Licensed)), /*#__PURE__*/React.createElement("span", {
+  }, "│"), /*#__PURE__*/React.createElement("span", null, "Users ", /*#__PURE__*/React.createElement("b", null, USERS.TotalUsers), " · licensed ", /*#__PURE__*/React.createElement("b", null, USERS.Licensed)), /*#__PURE__*/React.createElement("span", {
     className: "sep"
-  }, "\u2502"), /*#__PURE__*/React.createElement("span", null, "Run ", /*#__PURE__*/React.createElement("b", null, new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()))), /*#__PURE__*/React.createElement("div", {
+  }, "│"), /*#__PURE__*/React.createElement("span", null, "Run ", /*#__PURE__*/React.createElement("b", null, new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()))), /*#__PURE__*/React.createElement("div", {
     className: "overview-meta"
-  }, /*#__PURE__*/React.createElement("span", null, "\u203A ", D.summary.length, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "\u203A ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "\u203A ", FINDINGS.length, " controls evaluated"), /*#__PURE__*/React.createElement("span", null, "\u203A ", FRAMEWORKS.length, " frameworks mapped")));
+  }, /*#__PURE__*/React.createElement("span", null, "› ", D.summary.length, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "› ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "› ", FINDINGS.length, " controls evaluated"), /*#__PURE__*/React.createElement("span", null, "› ", FRAMEWORKS.length, " frameworks mapped")));
 }
 
 // ======================== Appendix ========================
@@ -5835,7 +5835,7 @@ function Appendix() {
     id: "appendix"
   }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "05 \xB7 Reference"), /*#__PURE__*/React.createElement("h2", null, "Tenant appendix"), /*#__PURE__*/React.createElement("span", {
+  }, "05 · Reference"), /*#__PURE__*/React.createElement("h2", null, "Tenant appendix"), /*#__PURE__*/React.createElement("span", {
     className: "section-chevron",
     "aria-hidden": "true"
   }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
@@ -6205,7 +6205,7 @@ function TweaksPanel({
       fontSize: 16,
       lineHeight: 1
     }
-  }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+  }, "×")), /*#__PURE__*/React.createElement("div", {
     className: "tw-row"
   }, /*#__PURE__*/React.createElement("div", {
     className: "tw-label"
@@ -6660,7 +6660,7 @@ function App() {
     className: 'edit-mode-toggle' + (editMode ? ' active' : ''),
     onClick: () => setEditMode(e => !e),
     title: "Toggle edit mode"
-  }, "\u270E"))), showTweaks && /*#__PURE__*/React.createElement(TweaksPanel, {
+  }, "✎"))), showTweaks && /*#__PURE__*/React.createElement(TweaksPanel, {
     onClose: () => setShowTweaks(false),
     theme: theme,
     setTheme: setTheme,
