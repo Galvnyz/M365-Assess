@@ -13,7 +13,7 @@ Get-ChildItem -Path 'src/M365-Assess' -Recurse -Filter '*.ps1' |
 
 | Status | Emissions | What it should mean |
 |---|---|---|
-| `Review` | 69 | Data was collected but a human needs to interpret the result. |
+| `Review` | 70 | Data was collected but a human needs to interpret the result. |
 | `Skipped` | 31 | The check did not run (license-gated, permission-gated, or env-not-applicable). |
 | `Unknown` | 1 | Data could not be collected; this is different from "Skipped". |
 | **Total** | **98** | |
@@ -29,7 +29,7 @@ Per-collector breakdown:
 | `Exchange-Online/Get-DnsSecurityConfig.ps1` | 4 | 0 | 0 |
 | `Exchange-Online/Get-ExoSecurityConfig.ps1` | 5 | 0 | 0 |
 | `Collaboration/Get-TeamsSecurityConfig.ps1` | 2 | 0 | 0 |
-| `Entra/Get-CASecurityConfig.ps1` | 2 | 0 | 0 |
+| `Entra/Get-CASecurityConfig.ps1` | 3 | 0 | 0 |
 | various Intune, Compliance, Defender collectors | ~30 | ~6 | 0 |
 
 (Full per-site table available via `Get-ChildItem -Path 'src/M365-Assess' -Recurse -Filter '*.ps1' | Select-String -Pattern "Status\s*=\s*'(Review|Unknown|Skipped)'"`. Snapshot is intentionally not committed — it would rot quickly.)
@@ -58,16 +58,17 @@ For each emission site, the question is one of three things:
 - **ENTRA-SSPR-001** (#878, fixed this PR) — the legacy "Self service password reset enabled" toggle (None / Selected / All) lives in the Entra admin center under Password reset > Properties and is **not exposed by Microsoft Graph** as of the 2026-04 audit. The previous collector read `authenticationMethodsRegistrationCampaign` (the MFA Registration Campaign — a different control) and labeled it as SSPR. Now correctly emits Review with a manual-verify instruction.
 - **FORMS-CONFIG-001 Skipped emission** (#941, ceiling 28 -> 29) — the `/beta/admin/forms/settings` Graph endpoint that the Forms collector reads is beta-only (no v1.0 endpoint exists) and is not served in GCC High / sovereign clouds, where it returns BadRequest. The collector now emits Skipped naming the cloud, surfaced in the report's not-assessed group. Genuine limitation: there is no correct call to substitute on these tenants.
 - **Teams client-config + meeting-policy Skipped emissions** (#940, ceiling 29 -> 31) — `/beta/teamwork/teamsClientConfiguration` (6 checks: TEAMS-EXTACCESS-001/002/003/004, TEAMS-CLIENT-001/002) and `/beta/teamwork/teamsMeetingPolicy` (9 checks: TEAMS-MEETING-001..009) are beta-only with no v1.0 equivalent (confirmed against Microsoft's Graph v1.0 Teams API reference) and 400 in sovereign clouds. The collector now emits Skipped for the 15 dependent checks via two data-driven loops (so +2 static emissions, not +15) instead of WARN-and-omit. Genuine limitation; the underlying data is only reachable via the MicrosoftTeams PS module (Get-CsTeamsClientConfiguration / Get-CsTeamsMeetingPolicy), a separate dependency out of scope here.
+- **CA-MFA-ADMIN-001 All-Users-with-exclusions Review emission** (#1000, ceiling 69 -> 70) — the "MFA Required for Admin Roles" check now accepts an All-Users MFA policy as admin coverage (community request #1000). When such a policy carries `excludeUsers` / `excludeGroups`, group/user membership is not resolved here (that would need a per-group directory lookup), so the collector cannot prove the administrators are not carved out. Rather than guess Pass (a false negative if admins are excluded) or Fail (a false positive for a benign break-glass exclusion), it emits Review naming the policy and asking the operator to verify. Genuine limitation: confirming exclusion membership is out of scope for this collector; explicit admin-role-targeted coverage and clean All-Users coverage still resolve to Pass.
 
 ### Triage pending (representative — not exhaustive)
 
 - `EntraPasswordAuthChecks.ps1` — 8 Review emissions (was 7; ENTRA-SSPR-001 added per #878 fix above).
 - `Exchange-Online/Get-DnsSecurityConfig.ps1` — 4 Review emissions; verify whether they're genuinely manual-validation or if a Graph endpoint would resolve them.
-- `Get-CASecurityConfig.ps1` — 2 Review emissions; given the CA admin-center reorg + #879 path rot, worth confirming the collector's data path.
+- `Get-CASecurityConfig.ps1` — 3 Review emissions; 1 is by-design (CA-MFA-ADMIN-001 All-Users-exclusion, classified under genuine limitations above), 2 are triage-pending; given the CA admin-center reorg + #879 path rot, worth confirming the collector's data path.
 
 ## Lock-down regression
 
-`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (69 / 31 / 1 = 101 total). When a new emission is added the test fails, forcing the contributor to:
+`tests/Behavior/Status-Emission-Audit.Tests.ps1` asserts the count of Review / Unknown / Skipped emissions stays at or below the current ceiling (70 / 31 / 1 = 102 total). When a new emission is added the test fails, forcing the contributor to:
 
 1. Justify the new emission (genuine limitation? collector bug?)
 2. Update this doc to add the new site to the audit catalogue
