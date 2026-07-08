@@ -215,3 +215,97 @@ Describe 'Get-EntAppSecurityConfig - ENTRA-ENTAPP-020 Microsoft tenant exclusion
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-EntAppSecurityConfig - ENTRA-ENTAPP-003 first-party classification (#1001)' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        function Get-MgContext { return @{ TenantId = 'test-tenant-id' } }
+        Mock Import-Module { }
+
+        # Both a Microsoft first-party app (owner = Microsoft first-party tenant) and a
+        # genuine third-party app hold the same Tier 0 Graph permission. The third-party
+        # app must Fail the check; the first-party app must be classified separately
+        # (surfaced in Evidence, not driving the Fail).
+        Mock Invoke-MgGraphRequest {
+            param($Method, $Uri)
+            switch -Wildcard ($Uri) {
+                '*/organization' {
+                    return @{ value = @(@{ id = 'tenant-id-001' }) }
+                }
+                # Microsoft Graph resource SP: maps the tier0 app-role id to its name
+                '*00000003-0000-0000-c000-000000000000*' {
+                    return @{ value = @(@{
+                        id = 'graph-sp-id'
+                        appRoles = @(
+                            @{ id = 'role-tier0-dmc'; value = 'DeviceManagementConfiguration.ReadWrite.All' }
+                        )
+                        oauth2PermissionScopes = @()
+                    }) }
+                }
+                # Bulk app-role assignments from the Graph resource SP side
+                '*/servicePrincipals/graph-sp-id/appRoleAssignedTo*' {
+                    return @{ value = @(
+                        @{ principalId = 'sp-ms-fp'; appRoleId = 'role-tier0-dmc'; resourceId = 'graph-sp-id' }
+                        @{ principalId = 'sp-third'; appRoleId = 'role-tier0-dmc'; resourceId = 'graph-sp-id' }
+                    )}
+                }
+                '*/servicePrincipals?*' {
+                    return @{ value = @(
+                        # Microsoft first-party app (Modern Workplace Management / Autopatch).
+                        # Owner tenant is deliberately NOT one of the well-known Microsoft
+                        # tenants, so classification relies on the AppId being in the allowlist
+                        # JSON - this exercises the AppId detection path and the JSON addition.
+                        @{
+                            id                     = 'sp-ms-fp'
+                            appId                  = '789997c7-d888-4475-a0a0-35014494de85'
+                            displayName            = 'Modern Workplace Management'
+                            appOwnerOrganizationId = 'unlisted-tenant-777'
+                            servicePrincipalType   = 'Application'
+                            accountEnabled         = $true
+                            keyCredentials         = @()
+                            passwordCredentials    = @()
+                        }
+                        # Genuine third-party app with the same Tier 0 permission
+                        @{
+                            id                     = 'sp-third'
+                            appId                  = 'third-app-001'
+                            displayName            = 'Third Party Risky App'
+                            appOwnerOrganizationId = 'foreign-tenant-999'
+                            servicePrincipalType   = 'Application'
+                            accountEnabled         = $true
+                            keyCredentials         = @()
+                            passwordCredentials    = @()
+                        }
+                    )}
+                }
+                '*/roleManagement/directory/roleAssignments*' { return @{ value = @() } }
+                '*/policies/defaultAppManagementPolicy'       { return @{ isEnabled = $false } }
+                default                                       { return @{ value = @() } }
+            }
+        }
+
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntAppSecurityConfig.ps1"
+    }
+
+    It 'flags the third-party app with Tier 0 permissions' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Foreign Apps with Tier 0 Permissions (GA Escalation)' }
+        $check | Should -Not -BeNullOrEmpty
+        $check.Status | Should -Be 'Fail'
+        $check.CurrentValue | Should -Match 'Third Party Risky App'
+    }
+
+    It 'does not flag the Microsoft first-party app as a Tier 0 finding' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Foreign Apps with Tier 0 Permissions (GA Escalation)' }
+        $check.CurrentValue | Should -Not -Match 'Modern Workplace Management'
+    }
+
+    It 'still reports the first-party app separately in Evidence' {
+        $check = $settings | Where-Object { $_.Setting -eq 'Foreign Apps with Tier 0 Permissions (GA Escalation)' }
+        ($check.Evidence.MicrosoftFirstParty -join '; ') | Should -Match 'Modern Workplace Management'
+    }
+
+    AfterAll {
+        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    }
+}
