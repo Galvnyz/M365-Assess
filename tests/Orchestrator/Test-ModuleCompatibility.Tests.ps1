@@ -8,6 +8,23 @@ Describe 'Test-ModuleCompatibility' {
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/Test-ModuleCompatibility.ps1"
 
+        # Some CI runner images ship PowerShell without PowerShellGet's Install-Module on
+        # the command path (the PSResourceGet migration). Pester's Mock requires the command
+        # to exist, so define a no-op stub with the parameters the collector actually passes
+        # when the real cmdlet is absent. Real environments keep the genuine cmdlet, so this
+        # branch is a no-op locally and only engages on a stripped-down runner.
+        if (-not (Get-Command -Name Install-Module -ErrorAction SilentlyContinue)) {
+            function Install-Module {
+                [CmdletBinding()]
+                param(
+                    [string]$Name,
+                    [string]$RequiredVersion,
+                    [string]$Scope,
+                    [switch]$Force
+                )
+            }
+        }
+
         Mock Write-Host { }
         Mock Write-AssessmentLog { }
 
