@@ -27,7 +27,16 @@
 .PARAMETER ClientId
     Application (client) ID for app-only authentication.
 .PARAMETER CertificateThumbprint
-    Certificate thumbprint for app-only authentication.
+    Certificate thumbprint for app-only authentication. For Exchange Online and Purview
+    this is Windows-only; on Linux/macOS use -Certificate or -CertificatePath.
+.PARAMETER Certificate
+    App-only authentication certificate as an X509Certificate2 object. Portable across
+    Windows, Linux and macOS -- recommended for non-Windows runs.
+.PARAMETER CertificatePath
+    Path to a certificate file (.pfx/.p12) for app-only authentication, loaded with
+    -CertificatePassword. Portable alternative to -CertificateThumbprint.
+.PARAMETER CertificatePassword
+    SecureString password protecting the -CertificatePath file, if any.
 .PARAMETER ClientSecret
     Client secret for app-only authentication. Less secure than certificate
     auth -- prefer -CertificateThumbprint for production use.
@@ -201,8 +210,10 @@ param(
     # tenant cannot be inferred interactively. Must be listed explicitly in every
     # set — mixing named-set attributes with a bare [Parameter()] (__AllParameterSets)
     # causes parameter-set resolution failures in PowerShell 7.6+.
-    [Parameter(ParameterSetName = 'AppOnlyCert',      Mandatory)]
-    [Parameter(ParameterSetName = 'AppOnlySecret',    Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCert',       Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCertObject', Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCertFile',   Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlySecret',     Mandatory)]
     [Parameter(ParameterSetName = 'Interactive')]
     [Parameter(ParameterSetName = 'DeviceCode')]
     [Parameter(ParameterSetName = 'ManagedIdentity')]
@@ -217,12 +228,25 @@ param(
     [Parameter(ParameterSetName = 'SkipConnection', Mandatory)]
     [switch]$SkipConnection,
 
-    [Parameter(ParameterSetName = 'AppOnlyCert',   Mandatory)]
-    [Parameter(ParameterSetName = 'AppOnlySecret', Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCert',       Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCertObject', Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlyCertFile',   Mandatory)]
+    [Parameter(ParameterSetName = 'AppOnlySecret',     Mandatory)]
     [string]$ClientId,
 
     [Parameter(ParameterSetName = 'AppOnlyCert', Mandatory)]
     [string]$CertificateThumbprint,
+
+    # Portable app-only cert inputs -- work on Windows, Linux and macOS (unlike a bare
+    # thumbprint for Exchange/Purview, which is resolved through the Windows cert store).
+    [Parameter(ParameterSetName = 'AppOnlyCertObject', Mandatory)]
+    [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+    [Parameter(ParameterSetName = 'AppOnlyCertFile', Mandatory)]
+    [string]$CertificatePath,
+
+    [Parameter(ParameterSetName = 'AppOnlyCertFile')]
+    [SecureString]$CertificatePassword,
 
     [Parameter(ParameterSetName = 'AppOnlySecret', Mandatory)]
     [SecureString]$ClientSecret,

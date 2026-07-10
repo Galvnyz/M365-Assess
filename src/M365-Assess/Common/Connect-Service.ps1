@@ -17,7 +17,17 @@
     Application (client) ID for app-only authentication. Requires TenantId
     and either CertificateThumbprint or ClientSecret.
 .PARAMETER CertificateThumbprint
-    Certificate thumbprint for app-only authentication.
+    Certificate thumbprint for app-only authentication. For Exchange Online and Purview
+    this is Windows-only (Connect-ExchangeOnline / Connect-IPPSSession resolve it through
+    the Windows certificate store); on Linux/macOS pass -Certificate or -CertificatePath.
+.PARAMETER Certificate
+    App-only authentication certificate as an X509Certificate2 object. Portable across
+    Windows, Linux and macOS -- the recommended input for non-Windows Exchange/Purview.
+.PARAMETER CertificatePath
+    Path to a certificate file (.pfx/.p12) for app-only authentication; loaded with
+    -CertificatePassword. Portable alternative to -CertificateThumbprint.
+.PARAMETER CertificatePassword
+    SecureString password protecting the -CertificatePath file, if any.
 .PARAMETER ClientSecret
     Client secret for app-only authentication. Less secure than certificate auth.
 .PARAMETER UserPrincipalName
@@ -78,6 +88,15 @@ param(
     [string]$CertificateThumbprint,
 
     [Parameter()]
+    [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+    [Parameter()]
+    [string]$CertificatePath,
+
+    [Parameter()]
+    [SecureString]$CertificatePassword,
+
+    [Parameter()]
     [SecureString]$ClientSecret,
 
     [Parameter()]
@@ -95,6 +114,99 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Resolve-AppOnlyCertificate {
+    <#
+    .SYNOPSIS
+        Returns the app-only authentication certificate as an X509Certificate2, from either the
+        -Certificate object or the -CertificatePath (+ -CertificatePassword) file, or $null when
+        neither is supplied. Portable across Windows, Linux and macOS -- it never touches the
+        Windows-only PowerShell Cert: provider.
+    #>
+    [OutputType([System.Security.Cryptography.X509Certificates.X509Certificate2])]
+    param(
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+        [string]$CertificatePath,
+        [System.Security.SecureString]$CertificatePassword
+    )
+    if ($Certificate) { return $Certificate }
+    if (-not $CertificatePath) { return $null }
+    if (-not (Test-Path -Path $CertificatePath)) {
+        throw "Certificate file not found: '$CertificatePath'."
+    }
+    try {
+        if ($CertificatePassword) {
+            return [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($CertificatePath, $CertificatePassword)
+        }
+        return [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($CertificatePath)
+    }
+    catch {
+        throw "Failed to load certificate from '$CertificatePath': $($_.Exception.Message)"
+    }
+}
+
+function Resolve-InitialDomain {
+    <#
+    .SYNOPSIS
+        Resolves the tenant's initial (*.onmicrosoft.*) domain, which app-only Exchange Online /
+        Purview authentication requires as -Organization. Prefers -TenantId when it already is an
+        initial domain; otherwise queries Microsoft Graph with a RELATIVE request so the connected
+        sovereign-cloud endpoint (commercial, GCC High, DoD) is honoured. Returns $null on failure.
+    #>
+    [OutputType([string])]
+    param([string]$TenantId)
+    if ($TenantId -and $TenantId -match '\.onmicrosoft\.[a-z]+$') { return $TenantId }
+    try {
+        $verifiedDomains = (Invoke-MgGraphRequest -Method GET -Uri '/v1.0/organization?$select=verifiedDomains').value.verifiedDomains
+        $initial = $verifiedDomains | Where-Object { $_.isInitial } | Select-Object -First 1
+        if ($initial.name) { return [string]$initial.name }
+    }
+    catch {
+        Write-Verbose "Initial-domain lookup via Graph failed: $($_.Exception.Message)"
+    }
+    return $null
+}
+
+function Set-ExchangeAppOnlyAuth {
+    <#
+    .SYNOPSIS
+        Configures Exchange Online / Purview app-only certificate authentication cross-platform.
+    .DESCRIPTION
+        Connect-ExchangeOnline and Connect-IPPSSession resolve -CertificateThumbprint only through
+        the Windows certificate store, which is unavailable on Linux/macOS. When a certificate
+        object is supplied it is passed via -Certificate together with -Organization (the tenant's
+        initial domain). Windows keeps the unchanged -CertificateThumbprint code path. Fails early
+        with an actionable error when the required material cannot be resolved.
+    #>
+    param(
+        [Parameter(Mandatory)][hashtable]$ConnectParams,
+        [Parameter(Mandatory)][string]$ClientId,
+        [string]$CertificateThumbprint,
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+        [string]$TenantId
+    )
+    $ConnectParams['AppId'] = $ClientId
+    if ($Certificate) {
+        $ConnectParams['Certificate'] = $Certificate
+        $organization = Resolve-InitialDomain -TenantId $TenantId
+        if (-not $organization) {
+            throw "Could not resolve the tenant's initial (*.onmicrosoft.*) domain, which app-only Exchange Online / Purview authentication requires. Connect to Microsoft Graph first, or pass -TenantId as the initial domain."
+        }
+        $ConnectParams['Organization'] = $organization
+    }
+    elseif ($CertificateThumbprint) {
+        if ($IsWindows -eq $false) {
+            throw "-CertificateThumbprint is Windows-only for Exchange Online / Purview (it is resolved through the Windows certificate store). On Linux/macOS, pass the certificate with -Certificate or -CertificatePath instead."
+        }
+        $ConnectParams['CertificateThumbprint'] = $CertificateThumbprint
+    }
+    else {
+        throw "App-only Exchange Online / Purview authentication requires a certificate: pass -Certificate, -CertificatePath, or (on Windows) -CertificateThumbprint."
+    }
+}
+
+# Resolve the app-only certificate object once (from -Certificate or -CertificatePath).
+$appOnlyCertificate = Resolve-AppOnlyCertificate -Certificate $Certificate -CertificatePath $CertificatePath -CertificatePassword $CertificatePassword
 
 $moduleMap = @{
     'Graph'           = 'Microsoft.Graph.Authentication'
@@ -149,9 +261,12 @@ try {
             if ($ManagedIdentity) {
                 $connectParams['Identity'] = $true
             }
-            elseif ($ClientId -and $CertificateThumbprint) {
+            elseif ($ClientId -and ($appOnlyCertificate -or $CertificateThumbprint)) {
                 $connectParams['ClientId'] = $ClientId
-                $connectParams['CertificateThumbprint'] = $CertificateThumbprint
+                # Connect-MgGraph accepts a certificate object cross-platform; the thumbprint
+                # path stays for Windows callers that rely on the certificate store.
+                if ($appOnlyCertificate) { $connectParams['Certificate'] = $appOnlyCertificate }
+                else { $connectParams['CertificateThumbprint'] = $CertificateThumbprint }
             }
             elseif ($ClientId -and $ClientSecret) {
                 $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ClientId, $ClientSecret
@@ -200,9 +315,8 @@ try {
             if ($ManagedIdentity) {
                 $connectParams['ManagedIdentity'] = $true
             }
-            elseif ($ClientId -and $CertificateThumbprint) {
-                $connectParams['AppId'] = $ClientId
-                $connectParams['CertificateThumbprint'] = $CertificateThumbprint
+            elseif ($ClientId -and ($appOnlyCertificate -or $CertificateThumbprint)) {
+                Set-ExchangeAppOnlyAuth -ConnectParams $connectParams -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -Certificate $appOnlyCertificate -TenantId $TenantId
             }
             elseif ($ClientId -and $ClientSecret) {
                 throw "Exchange Online does not support client secret authentication. Use -CertificateThumbprint for app-only auth."
@@ -240,9 +354,8 @@ try {
                 Write-Warning "Purview (Connect-IPPSSession) does not support managed identity auth. Falling back to browser-based login."
             }
 
-            if ($ClientId -and $CertificateThumbprint) {
-                $connectParams['AppId'] = $ClientId
-                $connectParams['CertificateThumbprint'] = $CertificateThumbprint
+            if ($ClientId -and ($appOnlyCertificate -or $CertificateThumbprint)) {
+                Set-ExchangeAppOnlyAuth -ConnectParams $connectParams -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -Certificate $appOnlyCertificate -TenantId $TenantId
             }
             elseif ($ClientId -and $ClientSecret) {
                 throw "Purview does not support client secret authentication. Use -CertificateThumbprint for app-only auth."

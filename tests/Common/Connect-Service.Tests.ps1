@@ -138,4 +138,110 @@ Describe 'Connect-Service' {
             }
         }
     }
+
+    Context 'Exchange/Purview certificate app-only auth (portable, #1009)' {
+        BeforeAll {
+            # Stub the Exchange/Purview cmdlets + Graph request so nothing reaches a tenant.
+            function global:Connect-ExchangeOnline {
+                param($AppId, $Organization, $Certificate, $CertificateThumbprint,
+                      $ManagedIdentity, $Device, $UserPrincipalName, $ExchangeEnvironmentName)
+            }
+            function global:Connect-IPPSSession {
+                param($AppId, $Organization, $Certificate, $CertificateThumbprint,
+                      $UserPrincipalName, $ConnectionUri, $AzureADAuthorizationEndpointUri)
+            }
+            if (-not (Get-Command -Name Invoke-MgGraphRequest -ErrorAction SilentlyContinue)) {
+                function global:Invoke-MgGraphRequest { param($Method, $Uri) }
+            }
+            Mock Get-Module { @{ Name = 'ExchangeOnlineManagement' } }
+            Mock Import-Module { }
+            Mock Connect-ExchangeOnline { }
+            Mock Connect-IPPSSession { }
+            # Relative-URI Graph lookup returns an initial domain distinct from -TenantId.
+            Mock Invoke-MgGraphRequest {
+                @{ value = @{ verifiedDomains = @(
+                    @{ name = 'primary.example.com';        isInitial = $false }
+                    @{ name = 'contoso.onmicrosoft.com';    isInitial = $true  }
+                ) } }
+            } -ParameterFilter { $Uri -like '*organization*' }
+
+            # Cross-platform ephemeral self-signed certificate (no Windows Cert: provider).
+            $rsa = [System.Security.Cryptography.RSA]::Create(2048)
+            $req = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                'CN=M365Assess-Test', $rsa,
+                [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+            $script:testCert  = $req.CreateSelfSigned([System.DateTimeOffset]::UtcNow.AddDays(-1), [System.DateTimeOffset]::UtcNow.AddDays(1))
+            $script:testThumb = $script:testCert.Thumbprint
+        }
+
+        AfterAll {
+            Remove-Item -Path 'function:global:Connect-ExchangeOnline' -ErrorAction SilentlyContinue
+            Remove-Item -Path 'function:global:Connect-IPPSSession' -ErrorAction SilentlyContinue
+            Remove-Item -Path 'function:global:Invoke-MgGraphRequest' -ErrorAction SilentlyContinue
+        }
+
+        It 'Exchange Online with -Certificate connects with the object + resolved Organization' {
+            & $script:scriptPath -Service 'ExchangeOnline' -TenantId '00000000-0000-0000-0000-000000000000' `
+                -ClientId 'app-id' -Certificate $script:testCert -WarningAction SilentlyContinue
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter {
+                $Certificate.Thumbprint -eq $script:testThumb -and
+                $Organization -eq 'contoso.onmicrosoft.com' -and
+                $AppId -eq 'app-id' -and
+                -not $CertificateThumbprint
+            }
+        }
+
+        It 'Purview with -Certificate connects with the object + resolved Organization' {
+            & $script:scriptPath -Service 'Purview' -TenantId '00000000-0000-0000-0000-000000000000' `
+                -ClientId 'app-id' -Certificate $script:testCert -WarningAction SilentlyContinue
+            Should -Invoke Connect-IPPSSession -ParameterFilter {
+                $Certificate.Thumbprint -eq $script:testThumb -and
+                $Organization -eq 'contoso.onmicrosoft.com' -and
+                $AppId -eq 'app-id'
+            }
+        }
+
+        It 'resolves the initial domain via a RELATIVE Graph request (sovereign-cloud safe)' {
+            & $script:scriptPath -Service 'ExchangeOnline' -TenantId '00000000-0000-0000-0000-000000000000' `
+                -ClientId 'app-id' -Certificate $script:testCert -WarningAction SilentlyContinue
+            Should -Invoke Invoke-MgGraphRequest -ParameterFilter {
+                $Uri -notmatch '^https?://' -and $Uri -like '/v1.0/organization*'
+            }
+        }
+
+        It 'uses -TenantId directly when it already is an initial domain (no Graph call)' {
+            & $script:scriptPath -Service 'ExchangeOnline' -TenantId 'fabrikam.onmicrosoft.com' `
+                -ClientId 'app-id' -Certificate $script:testCert -WarningAction SilentlyContinue
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter { $Organization -eq 'fabrikam.onmicrosoft.com' }
+            Should -Not -Invoke Invoke-MgGraphRequest
+        }
+
+        It 'loads the certificate from -CertificatePath' {
+            $certPwd = ConvertTo-SecureString 'p@ss' -AsPlainText -Force
+            $pfxBytes = $script:testCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $certPwd)
+            $pfxPath  = Join-Path ([System.IO.Path]::GetTempPath()) ("m365a-test-{0}.pfx" -f [System.IO.Path]::GetRandomFileName())
+            [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+            try {
+                & $script:scriptPath -Service 'ExchangeOnline' -TenantId 'fabrikam.onmicrosoft.com' `
+                    -ClientId 'app-id' -CertificatePath $pfxPath -CertificatePassword $certPwd -WarningAction SilentlyContinue
+                Should -Invoke Connect-ExchangeOnline -ParameterFilter { $Certificate.Thumbprint -eq $script:testThumb }
+            }
+            finally { Remove-Item -Path $pfxPath -ErrorAction SilentlyContinue }
+        }
+
+        It 'uses -CertificateThumbprint on Windows' -Skip:(-not $IsWindows) {
+            & $script:scriptPath -Service 'ExchangeOnline' -TenantId 'fabrikam.onmicrosoft.com' `
+                -ClientId 'app-id' -CertificateThumbprint 'AB12CD34EF56' -WarningAction SilentlyContinue
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter {
+                $CertificateThumbprint -eq 'AB12CD34EF56' -and -not $Certificate
+            }
+        }
+
+        It 'throws for a bare thumbprint on Linux/macOS (Cert store is Windows-only)' -Skip:($IsWindows) {
+            { & $script:scriptPath -Service 'ExchangeOnline' -TenantId 'fabrikam.onmicrosoft.com' `
+                -ClientId 'app-id' -CertificateThumbprint 'AB12CD34EF56' -ErrorAction Stop } |
+                Should -Throw -ExpectedMessage '*Windows-only*'
+        }
+    }
 }

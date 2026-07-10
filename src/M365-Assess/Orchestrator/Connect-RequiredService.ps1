@@ -41,6 +41,10 @@ function Connect-RequiredService {
             if ($TenantId) { $connectParams['TenantId'] = $TenantId }
             if ($ClientId) { $connectParams['ClientId'] = $ClientId }
             if ($CertificateThumbprint) { $connectParams['CertificateThumbprint'] = $CertificateThumbprint }
+            # Portable app-only certificate inputs (cross-platform Exchange/Purview/Graph).
+            if ($Certificate) { $connectParams['Certificate'] = $Certificate }
+            if ($CertificatePath) { $connectParams['CertificatePath'] = $CertificatePath }
+            if ($CertificatePassword) { $connectParams['CertificatePassword'] = $CertificatePassword }
             if ($ClientSecret) { $connectParams['ClientSecret'] = $ClientSecret }
             if ($UserPrincipalName -and $svc -ne 'Graph') {
                 $connectParams['UserPrincipalName'] = $UserPrincipalName
