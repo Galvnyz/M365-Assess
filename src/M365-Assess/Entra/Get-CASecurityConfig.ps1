@@ -268,7 +268,7 @@ try {
     Write-Verbose "Checking CA: MFA for all users..."
     $mfaAllPolicies = @($enabledPolicies | Where-Object {
         (Test-TargetAllUser -Policy $_) -and
-        ($_['grantControls']['builtInControls'] -contains 'mfa')
+        ($null -ne $_['grantControls'] -and $_['grantControls']['builtInControls'] -contains 'mfa')
     })
 
     $mfaAllEvidence = [PSCustomObject]@{
@@ -329,7 +329,7 @@ try {
     $legacyBlockPolicies = @($enabledPolicies | Where-Object {
         $clientApps = $_['conditions']['clientAppTypes']
         ($clientApps -contains 'exchangeActiveSync' -or $clientApps -contains 'other') -and
-        ($_['grantControls']['builtInControls'] -contains 'block')
+        ($null -ne $_['grantControls'] -and $_['grantControls']['builtInControls'] -contains 'block')
     })
 
     $legacyAuthEvidence = [PSCustomObject]@{
@@ -433,7 +433,7 @@ try {
     Write-Verbose "Checking CA: Phishing-resistant MFA for admins..."
     $phishResPolicies = @($enabledPolicies | Where-Object {
         (Test-TargetAdminRole -Policy $_) -and
-        $null -ne $_['grantControls']['authenticationStrength']
+        $null -ne $_['grantControls'] -and $null -ne $_['grantControls']['authenticationStrength']
     })
 
     if ($phishResPolicies.Count -gt 0) {
@@ -555,8 +555,8 @@ try {
         $riskLevels = $_['conditions']['signInRiskLevels']
         $riskLevels -and
         ($riskLevels -contains 'medium' -or $riskLevels -contains 'high') -and
-        ($_['grantControls']['builtInControls'] -contains 'block' -or
-         $_['grantControls']['builtInControls'] -contains 'mfa')
+        ($null -ne $_['grantControls'] -and ($_['grantControls']['builtInControls'] -contains 'block' -or
+         $_['grantControls']['builtInControls'] -contains 'mfa'))
     })
 
     if ($signinRiskBlockPolicies.Count -gt 0) {
@@ -607,8 +607,8 @@ catch {
 try {
     Write-Verbose "Checking CA: Managed device required..."
     $devicePolicies = @($enabledPolicies | Where-Object {
-        $_['grantControls']['builtInControls'] -contains 'compliantDevice' -or
-        $_['grantControls']['builtInControls'] -contains 'domainJoinedDevice'
+        $null -ne $_['grantControls'] -and ($_['grantControls']['builtInControls'] -contains 'compliantDevice' -or
+        $_['grantControls']['builtInControls'] -contains 'domainJoinedDevice')
     })
 
     if ($devicePolicies.Count -gt 0) {
@@ -652,8 +652,8 @@ try {
             $userActions = $_['conditions']['applications']['includeUserActions']
         }
         ($userActions -contains 'urn:user:registersecurityinfo') -and
-        ($_['grantControls']['builtInControls'] -contains 'compliantDevice' -or
-         $_['grantControls']['builtInControls'] -contains 'domainJoinedDevice')
+        ($null -ne $_['grantControls'] -and ($_['grantControls']['builtInControls'] -contains 'compliantDevice' -or
+         $_['grantControls']['builtInControls'] -contains 'domainJoinedDevice'))
     })
 
     if ($secInfoDevicePolicies.Count -gt 0) {
@@ -741,7 +741,7 @@ try {
         $transferMethods = if ($authFlows) { $authFlows['transferMethods'] } else { $null }
         $transferMethods -and
         ($transferMethods -contains 'deviceCodeFlow') -and
-        ($_['grantControls']['builtInControls'] -contains 'block')
+        ($null -ne $_['grantControls'] -and $_['grantControls']['builtInControls'] -contains 'block')
     })
 
     if ($deviceCodePolicies.Count -gt 0) {
@@ -867,7 +867,7 @@ try {
 
     # Check if any of those also require device compliance
     $persistentWithoutDevice = @($persistentBrowserPolicies | Where-Object {
-        $grantControls = $_['grantControls']['builtInControls']
+        $grantControls = if ($null -ne $_['grantControls']) { $_['grantControls']['builtInControls'] } else { @() }
         -not ($grantControls -contains 'compliantDevice' -or $grantControls -contains 'domainJoinedDevice')
     })
 
