@@ -109,7 +109,7 @@ if ($isEnabled -eq $false) {
         $azureMgmtAppId = '797f4846-ba00-4fd7-ba43-dac1f8f63013'
 
         foreach ($policy in $caEnabled) {
-            $grants = $policy['grantControls']['builtInControls']
+            $grants = if ($null -ne $policy['grantControls']) { $policy['grantControls']['builtInControls'] } else { @() }
             $users = $policy['conditions']['users']
             $clientApps = $policy['conditions']['clientAppTypes']
             $apps = $policy['conditions']['applications']
