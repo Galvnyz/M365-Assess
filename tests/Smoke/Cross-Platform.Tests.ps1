@@ -94,4 +94,100 @@ Describe 'Cross-platform smoke (B6 #777)' {
             $json.TrimEnd() | Should -Match ';\s*$'
         }
     }
+
+    Context 'Portable app-only certificate authentication (#1009)' {
+        BeforeAll {
+            $script:connectServicePath = Join-Path $script:moduleRoot 'Common/Connect-Service.ps1'
+            $connectServiceSource = Get-Content -Path $script:connectServicePath -Raw
+
+            # This smoke test is added ahead of the portable-auth implementation on
+            # the maintenance branch. Skip there; the PR that introduces the new
+            # parameters will exercise these assertions on Ubuntu/macOS.
+            $script:portableAuthAvailable =
+                $connectServiceSource -match '\[System\.Security\.Cryptography\.X509Certificates\.X509Certificate2\]\$Certificate' -and
+                $connectServiceSource -match '\$CertificatePath' -and
+                $connectServiceSource -match 'Resolve-InitialDomain'
+
+            if (-not $script:portableAuthAvailable) { return }
+
+            # The smoke lane deliberately has no Graph, EXO, or Purview modules.
+            # Stub only the commands needed to exercise Connect-Service's parameter
+            # plumbing; no network or tenant calls are possible.
+            if (-not (Get-Command -Name Connect-ExchangeOnline -ErrorAction SilentlyContinue)) {
+                function global:Connect-ExchangeOnline {
+                    param(
+                        $AppId, $Organization, $Certificate, $CertificateThumbprint,
+                        $ShowBanner, $ExchangeEnvironmentName
+                    )
+                }
+                $script:createdPortableAuthStubs += 'Connect-ExchangeOnline'
+            }
+            if (-not (Get-Command -Name Invoke-MgGraphRequest -ErrorAction SilentlyContinue)) {
+                function global:Invoke-MgGraphRequest { param($Method, $Uri) }
+                $script:createdPortableAuthStubs += 'Invoke-MgGraphRequest'
+            }
+
+            Mock Get-Module { @{ Name = $Name } }
+            Mock Connect-ExchangeOnline { }
+            Mock Invoke-MgGraphRequest {
+                @{ value = @{ verifiedDomains = @(
+                    @{ name = 'primary.example.com';     isInitial = $false }
+                    @{ name = 'contoso.onmicrosoft.com'; isInitial = $true  }
+                ) } }
+            } -ParameterFilter { $Uri -like '/v1.0/organization*' }
+
+            $rsa = [System.Security.Cryptography.RSA]::Create(2048)
+            $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                'CN=M365Assess-Smoke', $rsa,
+                [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+            $script:portableSmokeCertificate = $request.CreateSelfSigned(
+                [System.DateTimeOffset]::UtcNow.AddDays(-1),
+                [System.DateTimeOffset]::UtcNow.AddDays(1))
+        }
+
+        AfterAll {
+            foreach ($commandName in @($script:createdPortableAuthStubs)) {
+                Remove-Item -Path "function:global:$commandName" -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'should pass an X509Certificate2 object and relative Graph lookup to Exchange Online' {
+            if (-not $script:portableAuthAvailable) {
+                Set-ItResult -Skipped -Because 'portable certificate parameters are not present on this branch'
+                return
+            }
+
+            & $script:connectServicePath -Service 'ExchangeOnline' `
+                -TenantId '00000000-0000-0000-0000-000000000000' `
+                -ClientId 'smoke-app-id' -Certificate $script:portableSmokeCertificate `
+                -ErrorAction Stop -WarningAction SilentlyContinue
+
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter {
+                $AppId -eq 'smoke-app-id' -and
+                $Organization -eq 'contoso.onmicrosoft.com' -and
+                $Certificate.Thumbprint -eq $script:portableSmokeCertificate.Thumbprint -and
+                -not $CertificateThumbprint
+            }
+            Should -Invoke Invoke-MgGraphRequest -ParameterFilter {
+                $Uri -eq '/v1.0/organization?$select=verifiedDomains'
+            }
+        }
+
+        It 'should reject a bare Exchange thumbprint on non-Windows' {
+            if (-not $script:portableAuthAvailable) {
+                Set-ItResult -Skipped -Because 'portable certificate parameters are not present on this branch'
+                return
+            }
+            if ($IsWindows) {
+                Set-ItResult -Skipped -Because 'thumbprints are supported by the Windows certificate store'
+                return
+            }
+
+            { & $script:connectServicePath -Service 'ExchangeOnline' `
+                -TenantId 'contoso.onmicrosoft.com' -ClientId 'smoke-app-id' `
+                -CertificateThumbprint 'AB12CD34EF56' -ErrorAction Stop } |
+                Should -Throw -ExpectedMessage '*Windows-only*'
+        }
+    }
 }
