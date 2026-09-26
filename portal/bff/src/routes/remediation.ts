@@ -45,15 +45,18 @@ export const REMEDIATION_PLANS_PATH = "/v1/remediation/plans";
 export const REMEDIATION_PLAN_DETAIL_PATH = "/v1/remediation/plans/:planId";
 export const REMEDIATION_APPLY_PATH = "/v1/remediation/plans/:planId/apply";
 export const REMEDIATION_HISTORY_PATH = "/v1/remediation/history";
+export const REMEDIATION_VERIFY_PATH = "/v1/remediation/actions/:actionId/verify";
 
 export const REMEDIATION_PERMISSIONS = {
   read: "remediation.read",
   plan: "remediation.plan",
   apply: "remediation.apply",
+  verify: "remediation.verify",
 } as const;
 
 export const REMEDIATION_UNAUTHENTICATED = "request.unauthenticated";
 export const REMEDIATION_PLAN_NOT_FOUND = "remediation.plan_not_found";
+export const REMEDIATION_ACTION_NOT_FOUND = "remediation.action_not_found";
 export const REMEDIATION_HISTORY_TENANT_REQUIRED = "remediation.history_tenant_required";
 
 // ─── Records (structural mirrors of the db package types) ────────────────────
@@ -99,6 +102,8 @@ export interface RemediationActionRecord {
 export interface RemediationPlanStore {
   getRemediationPlan(planId: string): Promise<RemediationPlanRecord | undefined>;
   listRemediationActions(planId: string): Promise<readonly RemediationActionRecord[]>;
+  /** Single action lookup for verify (optional seam). */
+  getRemediationAction?(actionId: string): Promise<RemediationActionRecord | undefined>;
   /** Tenant-wide action listing for the history view (optional seam). */
   listRemediationActionsForTenant?(tenantId: string): Promise<readonly RemediationActionRecord[]>;
 }
@@ -457,11 +462,59 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
     };
   }
 
+  // POST /v1/remediation/actions/:actionId/verify — re-run the collector and
+  // re-evaluate the finding (SPEC §4.4). Enqueues the verify worker job.
+  async function handlePostVerify(ctx: RemediationRequest): Promise<RouteResponse> {
+    const caller = options.resolveCaller(ctx);
+    if (!caller) {
+      throw new AppError(REMEDIATION_UNAUTHENTICATED, "authentication required", 401);
+    }
+    await ensureAuthorized(options, caller, REMEDIATION_PERMISSIONS.verify);
+
+    const actionId = requireParam(ctx, "actionId");
+    if (!options.store.getRemediationAction) {
+      throw new AppError(
+        ErrorCodes.internalError,
+        "remediation action store is not configured",
+        500,
+      );
+    }
+    const action = await options.store.getRemediationAction(actionId);
+    if (!action) {
+      throw new AppError(REMEDIATION_ACTION_NOT_FOUND, `Remediation action ${actionId} not found`, 404);
+    }
+    const plan = await options.store.getRemediationPlan(action.planId);
+    if (!plan) {
+      throw new AppError(REMEDIATION_PLAN_NOT_FOUND, `Remediation plan ${action.planId} not found`, 404);
+    }
+    requireTenantInScope(caller, plan.tenantId);
+
+    const body = requireBodyRecord(ctx.body);
+    const section = optionalString(body, "section") ?? "";
+    const jobId = idGenerator();
+    const requestId = idGenerator();
+
+    await options.queue.enqueue(
+      buildRemediationEnvelope(ctx, plan.tenantId, plan.runId, jobId, requestId, now(), {
+        actionId,
+        check: action.check,
+        section,
+        actor: callerActor(caller),
+      }),
+    );
+
+    return {
+      status: 202,
+      body: { actionId, jobId, tenantId: plan.tenantId, status: "queued" },
+    };
+  }
+
   return [
     { method: "POST", path: REMEDIATION_PLANS_PATH, handler: handlePostPlan },
     { method: "GET", path: REMEDIATION_PLAN_DETAIL_PATH, handler: handleGetPlan },
     { method: "POST", path: REMEDIATION_APPLY_PATH, handler: handlePostApply },
     { method: "GET", path: REMEDIATION_HISTORY_PATH, handler: handleGetHistory },
+    { method: "POST", path: REMEDIATION_VERIFY_PATH, handler: handlePostVerify },
   ];
 }
 
@@ -614,6 +667,36 @@ export const REMEDIATION_OPENAPI = {
         "400": { description: "Missing tenantId.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      },
+    },
+  },
+  "/v1/remediation/actions/{actionId}/verify": {
+    post: {
+      tags: ["Remediation"],
+      operationId: "verifyRemediationAction",
+      summary: "Re-run the collector and re-evaluate the finding (verify).",
+      permission: REMEDIATION_PERMISSIONS.verify,
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "actionId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "202": {
+          description: "Verify enqueued.",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RemediationVerifyQueuedResponse" },
+            },
+          },
+        },
+        "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "404": { description: "Action or plan not found.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       },
     },
   },
