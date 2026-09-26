@@ -47,6 +47,59 @@ export interface UpsertStandardOverrideInput {
   updatedBy?: string | null;
 }
 
+// ─── Templates and assignments (mirror of portal/contracts/src/standards.ts) ──
+
+export const STANDARD_TEMPLATE_KINDS = ["standards", "drift"] as const;
+export type StandardTemplateKind = (typeof STANDARD_TEMPLATE_KINDS)[number];
+
+export interface StandardTemplateActions {
+  report: boolean;
+  alert: boolean;
+  remediate: boolean;
+}
+
+export interface StandardTemplateSetting {
+  key: string;
+  value: unknown;
+}
+
+export interface StandardTemplate {
+  id: string;
+  name: string;
+  kind: StandardTemplateKind;
+  actions: StandardTemplateActions;
+  autoRemediate: boolean;
+  settings: StandardTemplateSetting[];
+  scheduleId: string | null;
+}
+
+export const TEMPLATE_TARGET_TYPES = ["allTenants", "group", "tenant"] as const;
+export type TemplateTargetType = (typeof TEMPLATE_TARGET_TYPES)[number];
+
+export interface TemplateAssignment {
+  templateId: string;
+  targetType: TemplateTargetType;
+  targetId: string | null;
+  precedence: number;
+}
+
+export interface CreateStandardTemplateInput {
+  id: string;
+  name: string;
+  kind: StandardTemplateKind;
+  actions?: Partial<StandardTemplateActions>;
+  autoRemediate?: boolean;
+  settings?: StandardTemplateSetting[];
+  scheduleId?: string | null;
+}
+
+export interface UpsertTemplateAssignmentInput {
+  templateId: string;
+  targetType: TemplateTargetType;
+  targetId?: string | null;
+  precedence?: number;
+}
+
 /** The default registry source: src/M365-Assess/controls/registry.json. */
 export const DEFAULT_STANDARDS_REGISTRY_PATH = fileURLToPath(
   new URL("../../../src/M365-Assess/controls/registry.json", import.meta.url),
@@ -71,7 +124,27 @@ export interface StandardsRepository {
   listOverrides(): Promise<StandardDefinitionOverride[]>;
   upsertOverride(input: UpsertStandardOverrideInput): Promise<StandardDefinitionOverride>;
   deleteOverride(checkId: string): Promise<boolean>;
+
+  // Templates and assignments (SPEC §5, §4.1).
+  createStandardTemplate(input: CreateStandardTemplateInput): Promise<StandardTemplate>;
+  getStandardTemplate(templateId: string): Promise<StandardTemplate | undefined>;
+  listStandardTemplates(): Promise<StandardTemplate[]>;
+  deleteStandardTemplate(templateId: string): Promise<boolean>;
+
+  upsertTemplateAssignment(input: UpsertTemplateAssignmentInput): Promise<TemplateAssignment>;
+  listTemplateAssignments(): Promise<TemplateAssignment[]>;
+  deleteTemplateAssignment(
+    templateId: string,
+    targetType: TemplateTargetType,
+    targetId: string | null,
+  ): Promise<boolean>;
 }
+
+const DEFAULT_TEMPLATE_ACTIONS: StandardTemplateActions = {
+  report: true,
+  alert: true,
+  remediate: false,
+};
 
 type Row = Record<string, unknown>;
 
@@ -244,6 +317,165 @@ export class SqliteStandardsRepository implements StandardsRepository {
       .prepare("DELETE FROM standard_definition_overrides WHERE checkId = ?")
       .run(checkId);
     return result.changes > 0;
+  }
+
+  // ─── Templates and assignments ──────────────────────────────────────────────
+
+  private mapTemplate(row: Row): StandardTemplate {
+    return {
+      id: asString(row["id"]),
+      name: asString(row["name"]),
+      kind: asString(row["kind"]) as StandardTemplateKind,
+      actions: parseActions(row["actions"]),
+      autoRemediate: Number(row["autoRemediate"]) === 1,
+      settings: parseSettings(row["settings"]),
+      scheduleId: row["scheduleId"] === null || row["scheduleId"] === undefined
+        ? null
+        : asString(row["scheduleId"]),
+    };
+  }
+
+  async createStandardTemplate(input: CreateStandardTemplateInput): Promise<StandardTemplate> {
+    const template: StandardTemplate = {
+      id: input.id,
+      name: input.name,
+      kind: input.kind,
+      actions: { ...DEFAULT_TEMPLATE_ACTIONS, ...(input.actions ?? {}) },
+      autoRemediate: input.autoRemediate ?? false,
+      settings: input.settings ?? [],
+      scheduleId: input.scheduleId ?? null,
+    };
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO standard_templates (id, name, kind, actions, autoRemediate, settings, scheduleId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        template.id,
+        template.name,
+        template.kind,
+        JSON.stringify(template.actions),
+        template.autoRemediate ? 1 : 0,
+        JSON.stringify(template.settings),
+        template.scheduleId,
+        now,
+        now,
+      );
+    return template;
+  }
+
+  async getStandardTemplate(templateId: string): Promise<StandardTemplate | undefined> {
+    const row = this.db
+      .prepare("SELECT * FROM standard_templates WHERE id = ?")
+      .get(templateId) as Row | undefined;
+    return row ? this.mapTemplate(row) : undefined;
+  }
+
+  async listStandardTemplates(): Promise<StandardTemplate[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM standard_templates ORDER BY id")
+      .all() as Row[];
+    return rows.map((row) => this.mapTemplate(row));
+  }
+
+  async deleteStandardTemplate(templateId: string): Promise<boolean> {
+    // Assignments reference the template; remove them first so the delete is
+    // not blocked by the foreign key.
+    this.db.prepare("DELETE FROM template_assignments WHERE templateId = ?").run(templateId);
+    const result = this.db.prepare("DELETE FROM standard_templates WHERE id = ?").run(templateId);
+    return result.changes > 0;
+  }
+
+  private mapAssignment(row: Row): TemplateAssignment {
+    const targetId = row["targetId"];
+    return {
+      templateId: asString(row["templateId"]),
+      targetType: asString(row["targetType"]) as TemplateTargetType,
+      targetId: targetId === null || targetId === undefined || targetId === ""
+        ? null
+        : asString(targetId),
+      precedence: Number(row["precedence"]),
+    };
+  }
+
+  async upsertTemplateAssignment(
+    input: UpsertTemplateAssignmentInput,
+  ): Promise<TemplateAssignment> {
+    const template = await this.getStandardTemplate(input.templateId);
+    if (!template) {
+      throw new Error(`standard template ${input.templateId} was not found`);
+    }
+    const targetId = input.targetId ?? "";
+    this.db
+      .prepare(
+        `INSERT INTO template_assignments (templateId, targetType, targetId, precedence)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (templateId, targetType, targetId) DO UPDATE SET
+           precedence = excluded.precedence`,
+      )
+      .run(input.templateId, input.targetType, targetId, input.precedence ?? 0);
+    const row = this.db
+      .prepare(
+        "SELECT * FROM template_assignments WHERE templateId = ? AND targetType = ? AND targetId = ?",
+      )
+      .get(input.templateId, input.targetType, targetId) as Row;
+    return this.mapAssignment(row);
+  }
+
+  async listTemplateAssignments(): Promise<TemplateAssignment[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM template_assignments ORDER BY targetType, targetId, precedence, templateId")
+      .all() as Row[];
+    return rows.map((row) => this.mapAssignment(row));
+  }
+
+  async deleteTemplateAssignment(
+    templateId: string,
+    targetType: TemplateTargetType,
+    targetId: string | null,
+  ): Promise<boolean> {
+    const result = this.db
+      .prepare(
+        "DELETE FROM template_assignments WHERE templateId = ? AND targetType = ? AND targetId = ?",
+      )
+      .run(templateId, targetType, targetId ?? "");
+    return result.changes > 0;
+  }
+}
+
+function parseActions(value: unknown): StandardTemplateActions {
+  try {
+    const parsed: unknown = JSON.parse(asString(value));
+    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_TEMPLATE_ACTIONS };
+    const record = parsed as Record<string, unknown>;
+    return {
+      report: record["report"] === undefined ? DEFAULT_TEMPLATE_ACTIONS.report : Boolean(record["report"]),
+      alert: record["alert"] === undefined ? DEFAULT_TEMPLATE_ACTIONS.alert : Boolean(record["alert"]),
+      remediate:
+        record["remediate"] === undefined
+          ? DEFAULT_TEMPLATE_ACTIONS.remediate
+          : Boolean(record["remediate"]),
+    };
+  } catch {
+    return { ...DEFAULT_TEMPLATE_ACTIONS };
+  }
+}
+
+function parseSettings(value: unknown): StandardTemplateSetting[] {
+  try {
+    const parsed: unknown = JSON.parse(asString(value));
+    if (!Array.isArray(parsed)) return [];
+    const settings: StandardTemplateSetting[] = [];
+    for (const entry of parsed) {
+      if (typeof entry !== "object" || entry === null) continue;
+      const record = entry as Record<string, unknown>;
+      if (typeof record["key"] !== "string") continue;
+      settings.push({ key: record["key"], value: record["value"] });
+    }
+    return settings;
+  } catch {
+    return [];
   }
 }
 

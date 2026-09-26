@@ -176,6 +176,102 @@ describe("curated overrides (T-0141)", () => {
   });
 });
 
+describe("StandardTemplate and TemplateAssignment persistence (T-0142)", () => {
+  it("persists a template with the §5 fields and the standards|drift kind", async () => {
+    const dir = tempDir();
+    const repo = await openRepository(dir, registryFixture(dir));
+    try {
+      const created = await repo.createStandardTemplate({
+        id: "tpl-1",
+        name: "Baseline",
+        kind: "standards",
+        actions: { report: true, alert: false, remediate: true },
+        autoRemediate: true,
+        settings: [{ key: "mfa", value: "required" }],
+        scheduleId: "sch-1",
+      });
+      expect(created.kind).toBe("standards");
+      expect(created.actions).toEqual({ report: true, alert: false, remediate: true });
+      expect(created.autoRemediate).toBe(true);
+
+      const loaded = await repo.getStandardTemplate("tpl-1");
+      expect(loaded).toMatchObject({
+        id: "tpl-1",
+        name: "Baseline",
+        kind: "standards",
+        scheduleId: "sch-1",
+      });
+      expect(loaded?.settings).toEqual([{ key: "mfa", value: "required" }]);
+
+      await repo.createStandardTemplate({ id: "tpl-2", name: "Drift", kind: "drift" });
+      expect((await repo.listStandardTemplates()).map((t) => t.id)).toEqual(["tpl-1", "tpl-2"]);
+    } finally {
+      repo.close();
+    }
+  });
+
+  it("persists assignments and replaces precedence on re-upsert", async () => {
+    const dir = tempDir();
+    const repo = await openRepository(dir, registryFixture(dir));
+    try {
+      await repo.createStandardTemplate({ id: "tpl-1", name: "Baseline", kind: "standards" });
+
+      const created = await repo.upsertTemplateAssignment({
+        templateId: "tpl-1",
+        targetType: "tenant",
+        targetId: "contoso",
+        precedence: 1,
+      });
+      expect(created).toEqual({
+        templateId: "tpl-1",
+        targetType: "tenant",
+        targetId: "contoso",
+        precedence: 1,
+      });
+
+      const updated = await repo.upsertTemplateAssignment({
+        templateId: "tpl-1",
+        targetType: "tenant",
+        targetId: "contoso",
+        precedence: 9,
+      });
+      expect(updated.precedence).toBe(9);
+      expect(await repo.listTemplateAssignments()).toHaveLength(1);
+
+      // An allTenants assignment stores a null targetId.
+      const all = await repo.upsertTemplateAssignment({ templateId: "tpl-1", targetType: "allTenants" });
+      expect(all.targetId).toBeNull();
+
+      expect(await repo.deleteTemplateAssignment("tpl-1", "tenant", "contoso")).toBe(true);
+      expect(await repo.listTemplateAssignments()).toHaveLength(1);
+    } finally {
+      repo.close();
+    }
+  });
+
+  it("rejects an assignment for an unknown template and cascades on template delete", async () => {
+    const dir = tempDir();
+    const repo = await openRepository(dir, registryFixture(dir));
+    try {
+      await expect(
+        repo.upsertTemplateAssignment({ templateId: "missing", targetType: "allTenants" }),
+      ).rejects.toThrow(/not found/);
+
+      await repo.createStandardTemplate({ id: "tpl-1", name: "Baseline", kind: "standards" });
+      await repo.upsertTemplateAssignment({
+        templateId: "tpl-1",
+        targetType: "tenant",
+        targetId: "contoso",
+      });
+      expect(await repo.deleteStandardTemplate("tpl-1")).toBe(true);
+      // Assignments are removed with the template.
+      expect(await repo.listTemplateAssignments()).toHaveLength(0);
+    } finally {
+      repo.close();
+    }
+  });
+});
+
 describe("0064 migration (T-0141)", () => {
   it("applies after the current head, advances SchemaVersion, and is re-runnable", async () => {
     const dir = tempDir();

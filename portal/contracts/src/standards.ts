@@ -43,3 +43,51 @@ export function isStandardLicensePreset(value: unknown): value is StandardLicens
     typeof value === "string" && (STANDARD_LICENSE_PRESETS as readonly string[]).includes(value)
   );
 }
+
+// ─── Templates and assignments (SPEC §5, §4.1) ───────────────────────────────
+
+export const STANDARD_TEMPLATE_KINDS = ["standards", "drift"] as const;
+export type StandardTemplateKind = (typeof STANDARD_TEMPLATE_KINDS)[number];
+
+export interface StandardTemplateActions {
+  report: boolean;
+  alert: boolean;
+  remediate: boolean;
+}
+
+/** A single keyed setting; the three-tier merge is per `key`. */
+export interface StandardTemplateSetting {
+  key: string;
+  value: unknown;
+}
+
+export interface StandardTemplate {
+  id: string;
+  name: string;
+  kind: StandardTemplateKind;
+  actions: StandardTemplateActions;
+  autoRemediate: boolean;
+  settings: StandardTemplateSetting[];
+  scheduleId: string | null;
+}
+
+export const TEMPLATE_TARGET_TYPES = ["allTenants", "group", "tenant"] as const;
+export type TemplateTargetType = (typeof TEMPLATE_TARGET_TYPES)[number];
+
+export interface TemplateAssignment {
+  templateId: string;
+  targetType: TemplateTargetType;
+  /** Tenant/group id; null for an `allTenants` target. */
+  targetId: string | null;
+  precedence: number;
+}
+
+/**
+ * Tier rank for the three-tier merge (SPEC §4.1): AllTenants → Group → Tenant,
+ * where a later tier wins per setting. Exported so resolution and tests agree.
+ */
+export const TEMPLATE_TIER_RANK: Record<TemplateTargetType, number> = {
+  allTenants: 0,
+  group: 1,
+  tenant: 2,
+};
