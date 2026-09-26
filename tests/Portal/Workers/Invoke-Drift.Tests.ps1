@@ -15,6 +15,8 @@ Describe 'Invoke-Drift' {
         $script:CurrentState = @{}
         $script:ExtraPolicies = @()
         $script:Upserts = [System.Collections.Generic.List[object]]::new()
+        $script:RemediationCalls = [System.Collections.Generic.List[object]]::new()
+        $script:RemediationResults = @{}
 
         $script:CollectCurrentSeam = {
             param($key, $resourceId)
@@ -28,12 +30,22 @@ Describe 'Invoke-Drift' {
             $script:Upserts.Add([PSCustomObject]@{ tenantId = $tenantId; deviations = $deviations }) | Out-Null
             return [PSCustomObject]@{ inserted = $deviations.Count; updated = 0; preserved = 0 }
         }
+        $script:ApplyRemediationSeam = {
+            param($standardKey, $resourceId, $expected)
+            $script:RemediationCalls.Add([PSCustomObject]@{ standardKey = $standardKey; resourceId = $resourceId; expected = $expected }) | Out-Null
+            if ($script:RemediationResults.ContainsKey($standardKey)) {
+                return $script:RemediationResults[$standardKey]
+            }
+            return [PSCustomObject]@{ State = 'applied'; Reason = $null }
+        }
     }
 
     BeforeEach {
         $script:CurrentState = @{}
         $script:ExtraPolicies = @()
         $script:Upserts.Clear()
+        $script:RemediationCalls.Clear()
+        $script:RemediationResults = @{}
     }
 
     It 'detects an in-template mismatch and an extra policy as distinct kinds' {
@@ -142,5 +154,90 @@ Describe 'Invoke-Drift' {
 
     It 'is importable from the worker module' {
         (Get-Command -Module M365Portal.Workers -Name 'Invoke-Drift') | Should -Not -BeNullOrEmpty
+    }
+
+    It 'stays report-only and writes nothing when no toggle is enabled' {
+        $script:CurrentState['A-001|'] = 1
+
+        $result = Invoke-Drift -TenantId 'contoso' `
+            -ExpectedSettings @([PSCustomObject]@{ key = 'A-001'; value = 9 }) `
+            -CollectCurrentState $script:CollectCurrentSeam -CollectExtraPolicies $script:CollectExtraSeam `
+            -UpsertDeviations $script:UpsertSeam -ApplyRemediation $script:ApplyRemediationSeam
+
+        $result.Remediations.Count | Should -Be 0
+        $result.RemediationSummary.total | Should -Be 0
+        $script:RemediationCalls.Count | Should -Be 0
+    }
+
+    It 'auto-remediates only the mismatches whose setting is enabled' {
+        $script:CurrentState['A-001|'] = 1
+        $script:CurrentState['B-001|'] = 2
+        $script:CurrentState['C-001|'] = 3
+
+        $result = Invoke-Drift -TenantId 'contoso' `
+            -ExpectedSettings @(
+                [PSCustomObject]@{ key = 'A-001'; value = 9 },
+                [PSCustomObject]@{ key = 'B-001'; value = 9 },
+                [PSCustomObject]@{ key = 'C-001'; value = 3 }  # already compliant
+            ) `
+            -AutoRemediateKeys @('A-001') `
+            -CollectCurrentState $script:CollectCurrentSeam -CollectExtraPolicies $script:CollectExtraSeam `
+            -UpsertDeviations $script:UpsertSeam -ApplyRemediation $script:ApplyRemediationSeam
+
+        # Only A-001 was enabled and mismatched.
+        $script:RemediationCalls.Count | Should -Be 1
+        $script:RemediationCalls[0].standardKey | Should -Be 'A-001'
+        # The expected value is passed through, not the toggle.
+        $script:RemediationCalls[0].expected | Should -Be 9
+
+        $result.RemediationSummary.total | Should -Be 1
+        $result.RemediationSummary.remediated | Should -Be 1
+    }
+
+    It 'never auto-remediates an extra policy' {
+        $script:ExtraPolicies = @([PSCustomObject]@{ resourceType = 'intune'; resourceId = 'i-1'; value = 3 })
+
+        $result = Invoke-Drift -TenantId 'contoso' `
+            -AutoRemediateKeys @('extra:intune') `
+            -CollectCurrentState $script:CollectCurrentSeam -CollectExtraPolicies $script:CollectExtraSeam `
+            -UpsertDeviations $script:UpsertSeam -ApplyRemediation $script:ApplyRemediationSeam
+
+        # Deleting a resource is the destructive deny path, never an implicit action.
+        $script:RemediationCalls.Count | Should -Be 0
+        $result.RemediationSummary.total | Should -Be 0
+    }
+
+    It 'records a gate failure as skipped and does not write directly' {
+        $script:CurrentState['A-001|'] = 1
+        # The EPIC-006 seam reports a gate skip (e.g. allowlist / licence).
+        $script:RemediationResults['A-001'] = [PSCustomObject]@{ State = 'skipped'; Reason = 'not-allowlisted' }
+
+        $result = Invoke-Drift -TenantId 'contoso' `
+            -ExpectedSettings @([PSCustomObject]@{ key = 'A-001'; value = 9 }) `
+            -AutoRemediateKeys @('A-001') `
+            -CollectCurrentState $script:CollectCurrentSeam -CollectExtraPolicies $script:CollectExtraSeam `
+            -UpsertDeviations $script:UpsertSeam -ApplyRemediation $script:ApplyRemediationSeam
+
+        $result.Remediations.Count | Should -Be 1
+        $result.Remediations[0].outcome | Should -Be 'skipped'
+        $result.Remediations[0].reason | Should -Be 'not-allowlisted'
+        $result.RemediationSummary.skipped | Should -Be 1
+        # The seam was the only write path consulted.
+        $script:RemediationCalls.Count | Should -Be 1
+    }
+
+    It 'records a remediation exception as failed without crashing the run' {
+        $script:CurrentState['A-001|'] = 1
+        $throwing = { param($k, $r, $e) throw 'apply blew up' }
+
+        $result = Invoke-Drift -TenantId 'contoso' `
+            -ExpectedSettings @([PSCustomObject]@{ key = 'A-001'; value = 9 }) `
+            -AutoRemediateKeys @('A-001') `
+            -CollectCurrentState $script:CollectCurrentSeam -CollectExtraPolicies $script:CollectExtraSeam `
+            -UpsertDeviations $script:UpsertSeam -ApplyRemediation $throwing
+
+        $result.Remediations[0].outcome | Should -Be 'failed'
+        $result.Remediations[0].reason | Should -Match 'apply blew up'
+        $result.RemediationSummary.failed | Should -Be 1
     }
 }

@@ -102,6 +102,10 @@ function Invoke-Drift {
         extra policies (CA + Intune) as deviations. Deviations are handed to the
         T-0162 upsert seam, which preserves triage state; this function never
         resolves or deletes a deviation.
+        Auto-remediation (SPEC §4.3, §11.5) applies only the mismatches whose
+        setting key is listed in -AutoRemediateKeys, and every write routes through
+        the EPIC-006 contract via -ApplyRemediation; a gate failure skips the item
+        and records the reason. Drift stays report-only when no key is listed.
     .PARAMETER TenantId
     .PARAMETER ExpectedSettings
         The drift template's settings; each has Key, Value, and an optional ResourceId.
@@ -113,10 +117,17 @@ function Invoke-Drift {
         Seam: scriptblock -> array of objects with ResourceType, ResourceId, Value.
     .PARAMETER UpsertDeviations
         Seam: scriptblock (tenantId, deviations) -> upsert result (T-0162).
+    .PARAMETER AutoRemediateKeys
+        Setting keys opted into auto-remediation; empty means report-only (§11.5).
+    .PARAMETER ApplyRemediation
+        Seam: scriptblock (standardKey, resourceId, expected) -> apply result with
+        State/Reason. Defaults to a no-op; the default must be overridden with the
+        EPIC-006 plan/apply contract when auto-remediation is enabled.
     .PARAMETER RunAt
         ISO-8601 timestamp; defaults to now.
     .OUTPUTS
-        [PSCustomObject] with TenantId, TemplateId, Deviations, Counts, Upsert.
+        [PSCustomObject] with TenantId, TemplateId, Deviations, Counts, Upsert,
+        Remediations, RemediationSummary.
     .EXAMPLE
         Invoke-Drift -TenantId 'contoso' -ExpectedSettings $settings -CollectCurrentState $reader
     #>
@@ -144,6 +155,13 @@ function Invoke-Drift {
         [scriptblock]$UpsertDeviations,
 
         [Parameter()]
+        [AllowEmptyCollection()]
+        [string[]]$AutoRemediateKeys = @(),
+
+        [Parameter()]
+        [scriptblock]$ApplyRemediation,
+
+        [Parameter()]
         [string]$CorrelationId = '',
 
         [Parameter()]
@@ -154,6 +172,8 @@ function Invoke-Drift {
     if (-not $CollectCurrentState) { $CollectCurrentState = { param($key, $resourceId) $null } }
     if (-not $CollectExtraPolicies) { $CollectExtraPolicies = { @() } }
     if (-not $UpsertDeviations) { $UpsertDeviations = { param($tenantId, $deviations) $null } }
+    if (-not $ApplyRemediation) { $ApplyRemediation = { param($standardKey, $resourceId, $expected) $null } }
+    $autoKeys = @($AutoRemediateKeys)
 
     $deviations = New-Object System.Collections.Generic.List[object]
     $mismatchCount = 0
@@ -204,12 +224,63 @@ function Invoke-Drift {
         $upsert = & $UpsertDeviations $TenantId $deviations.ToArray()
     }
 
+    # ── 3. Auto-remediation (opt-in per setting, SPEC §4.3/§11.5, §8). ────────
+    # Drift is report-only unless a setting's key is listed in -AutoRemediateKeys.
+    # Extras are never auto-remediated (deleting a resource is the destructive
+    # deny path, T-0166). Every write routes through EPIC-006 via the seam; a
+    # gate failure skips the item and records the reason.
+    $remediations = New-Object System.Collections.Generic.List[object]
+    foreach ($deviation in $deviations) {
+        if ($deviation.kind -ne 'mismatch') { continue }
+        if ($autoKeys -notcontains $deviation.standardKey) { continue }
+
+        try {
+            $applyResult = & $ApplyRemediation $deviation.standardKey $deviation.resourceId $deviation.expected
+            $state = 'applied'
+            $reason = $null
+            if ($null -ne $applyResult) {
+                if ($null -ne $applyResult.PSObject.Properties['State']) { $state = [string]$applyResult.State }
+                if ($null -ne $applyResult.PSObject.Properties['Reason']) { $reason = $applyResult.Reason }
+            }
+            switch ($state) {
+                'applied' { $outcome = 'remediated' }
+                'failed' { $outcome = 'failed' }
+                default {
+                    # skipped / rejected / not-implemented: a gate did not pass.
+                    $outcome = 'skipped'
+                    if (-not $reason) { $reason = $state }
+                }
+            }
+            if ($outcome -eq 'failed' -and -not $reason) { $reason = 'remediation failed' }
+        }
+        catch {
+            $outcome = 'failed'
+            $reason = $_.Exception.Message
+        }
+
+        $remediations.Add([PSCustomObject]@{
+            standardKey = $deviation.standardKey
+            resourceId  = $deviation.resourceId
+            outcome     = $outcome
+            reason      = $reason
+        }) | Out-Null
+    }
+
+    $remediationSummary = [PSCustomObject]@{
+        total      = $remediations.Count
+        remediated = @($remediations | Where-Object { $_.outcome -eq 'remediated' }).Count
+        skipped    = @($remediations | Where-Object { $_.outcome -eq 'skipped' }).Count
+        failed     = @($remediations | Where-Object { $_.outcome -eq 'failed' }).Count
+    }
+
     return [PSCustomObject]@{
         TenantId    = $TenantId
         TemplateId  = $TemplateId
         Deviations  = $deviations.ToArray()
         Counts      = [PSCustomObject]@{ mismatch = $mismatchCount; extra = $extraCount; total = $deviations.Count }
         Upsert      = $upsert
+        Remediations = $remediations.ToArray()
+        RemediationSummary = $remediationSummary
         CorrelationId = $CorrelationId
         RunAt       = $RunAt
     }
