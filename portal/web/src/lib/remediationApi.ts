@@ -1,0 +1,245 @@
+// Typed remediation API client (EPIC-006 SPEC.md §3.2, §6; T-0112).
+// Wraps the T-0105 plan/instruction endpoints and the T-0108 apply/history
+// endpoints behind small typed functions. A `fetcher` seam keeps the client
+// testable without a live BFF.
+
+export type RemediationActionState =
+  | "planned"
+  | "approved"
+  | "applied"
+  | "failed"
+  | "skipped";
+
+export type RemediationMode = "auto" | "manual";
+
+export interface RemediationActionItem {
+  readonly id: string;
+  readonly check: string;
+  readonly command: string;
+  readonly target: string | null;
+  readonly mode: RemediationMode;
+  /** automated | manual | undetermined (richer classification). */
+  readonly classification?: string | null;
+  readonly state: RemediationActionState;
+  // Optional display enrichment; the plan payload may omit these.
+  readonly finding?: string | null;
+  readonly severity?: string | null;
+  readonly collector?: string | null;
+  readonly license?: string | null;
+  readonly before?: Record<string, unknown> | null;
+  readonly after?: Record<string, unknown> | null;
+  readonly error?: string | null;
+  readonly result?: Record<string, unknown> | null;
+}
+
+export interface RemediationPlanHeader {
+  readonly id: string;
+  readonly tenantId: string;
+  readonly runId: string;
+  readonly findingIds: readonly string[];
+  readonly mode: string;
+  readonly createdAt: string;
+  readonly createdBy: string;
+}
+
+export interface RemediationPlanResponse {
+  readonly plan: RemediationPlanHeader;
+  readonly actions: readonly RemediationActionItem[];
+}
+
+export interface RemediationInstruction {
+  readonly check: string;
+  readonly found: boolean;
+  readonly portalPath: string | null;
+  readonly steps: readonly string[];
+  readonly notes: string | null;
+}
+
+export type Fetcher = typeof fetch;
+
+function asFetcher(fetcher?: Fetcher): Fetcher {
+  return fetcher ?? fetch;
+}
+
+async function expectOk(response: Response, what: string): Promise<unknown> {
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) detail = body.message;
+    } catch {
+      // non-JSON error body; keep the status text
+    }
+    throw new Error(`${what} failed: ${response.status} ${detail}`);
+  }
+  return response.json();
+}
+
+export async function fetchRemediationPlan(
+  planId: string,
+  fetcher?: Fetcher,
+): Promise<RemediationPlanResponse> {
+  const response = await asFetcher(fetcher)(`/v1/remediation/plans/${encodeURIComponent(planId)}`);
+  return (await expectOk(response, "Loading remediation plan")) as RemediationPlanResponse;
+}
+
+export async function generateRemediationPlan(
+  input: { tenantId: string; runId?: string },
+  fetcher?: Fetcher,
+): Promise<{ planId: string; jobId: string; status: string }> {
+  const response = await asFetcher(fetcher)("/v1/remediation/plans", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return (await expectOk(response, "Generating remediation plan")) as {
+    planId: string;
+    jobId: string;
+    status: string;
+  };
+}
+
+export async function fetchRemediationInstruction(
+  check: string,
+  fetcher?: Fetcher,
+): Promise<RemediationInstruction> {
+  const response = await asFetcher(fetcher)(
+    `/v1/remediation/instructions/${encodeURIComponent(check)}`,
+  );
+  return (await expectOk(response, "Loading instruction")) as RemediationInstruction;
+}
+
+export async function applyRemediationPlan(
+  planId: string,
+  input: { dryRun: boolean; actionIds?: readonly string[]; continueOnFailure?: boolean; reason?: string; idempotencyKey: string },
+  fetcher?: Fetcher,
+): Promise<{ actionId?: string; planId: string; jobId: string; dryRun: boolean; status: string }> {
+  const response = await asFetcher(fetcher)(
+    `/v1/remediation/plans/${encodeURIComponent(planId)}/apply`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": input.idempotencyKey,
+      },
+      body: JSON.stringify({
+        dryRun: input.dryRun,
+        actionIds: input.actionIds ?? [],
+        continueOnFailure: input.continueOnFailure ?? false,
+        reason: input.reason ?? null,
+      }),
+    },
+  );
+  return (await expectOk(response, "Applying remediation plan")) as {
+    planId: string;
+    jobId: string;
+    dryRun: boolean;
+    status: string;
+  };
+}
+
+// ─── KPI helpers ──────────────────────────────────────────────────────────────
+
+export interface RemediationKpis {
+  readonly total: number;
+  readonly automated: number;
+  readonly manual: number;
+  readonly gated: number;
+}
+
+/** True when an action is actionable (validated/planned, not undetermined). */
+export function isActionEligible(action: RemediationActionItem): boolean {
+  return action.state === "planned" && action.classification !== "undetermined";
+}
+
+/** Derives the collector (section) from a check id prefix when not supplied. */
+export function deriveCollector(action: RemediationActionItem): string {
+  if (action.collector) return action.collector;
+  const prefix = action.check.split("-")[0];
+  return prefix || "—";
+}
+
+export function computeKpis(actions: readonly RemediationActionItem[]): RemediationKpis {
+  let automated = 0;
+  let manual = 0;
+  let gated = 0;
+  for (const action of actions) {
+    if (action.mode === "auto") automated += 1;
+    else manual += 1;
+    if (action.state === "skipped" || action.state === "failed") gated += 1;
+  }
+  return { total: actions.length, automated, manual, gated };
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+export type ExportFormat = "json" | "md" | "csv";
+
+export const EXPORT_FORMATS: readonly ExportFormat[] = ["json", "md", "csv"];
+
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? "" : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** Renders a plan to an export string in the requested format. */
+export function exportPlan(plan: RemediationPlanResponse, format: ExportFormat): string {
+  const actions = plan.actions;
+  if (format === "json") {
+    return JSON.stringify(plan, null, 2);
+  }
+  if (format === "csv") {
+    const header = ["checkId", "finding", "severity", "mode", "state", "license", "target", "command"];
+    const rows = actions.map((a) =>
+      [
+        a.check,
+        a.finding ?? "",
+        a.severity ?? "",
+        a.mode,
+        a.state,
+        a.license ?? "",
+        a.target ?? "",
+        a.command,
+      ]
+        .map(csvCell)
+        .join(","),
+    );
+    return [header.join(","), ...rows].join("\n");
+  }
+  const lines: string[] = [];
+  lines.push(`# Remediation Plan — ${plan.plan.id}`);
+  lines.push("");
+  lines.push(`- Tenant: ${plan.plan.tenantId}`);
+  lines.push(`- Run: ${plan.plan.runId}`);
+  lines.push(`- Mode: ${plan.plan.mode}`);
+  lines.push(`- Generated: ${plan.plan.createdAt}`);
+  lines.push("");
+  lines.push("| Check | Finding | Severity | Mode | State | License | Target |");
+  lines.push("|---|---|---|---|---|---|---|");
+  for (const action of actions) {
+    lines.push(
+      `| ${action.check} | ${action.finding ?? "—"} | ${action.severity ?? "—"} | ${action.mode} | ${action.state} | ${action.license ?? "—"} | ${action.target ?? "—"} |`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/** Triggers a client-side download of the rendered plan. */
+export function downloadPlan(
+  plan: RemediationPlanResponse,
+  format: ExportFormat,
+  fileName = `remediation-plan-${plan.plan.id}`,
+): void {
+  const content = exportPlan(plan, format);
+  const mime =
+    format === "json" ? "application/json" : format === "md" ? "text/markdown" : "text/csv";
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${fileName}.${format}`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
