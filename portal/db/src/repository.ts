@@ -402,6 +402,29 @@ export interface OffboardingStepUpdate {
 export type LinkRemovalJobInput = Omit<LinkRemovalJob, "createdAt" | "state" | "results"> &
   Partial<Pick<LinkRemovalJob, "createdAt" | "state" | "results">>;
 
+export interface UserTemplate {
+  id: string;
+  name: string;
+  properties: Record<string, unknown>;
+  licenses: string[];
+  groups: string[];
+  offboardingDefaults: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type UserTemplateInput = Omit<UserTemplate, "createdAt" | "updatedAt" | "deletedAt"> &
+  Partial<Pick<UserTemplate, "createdAt" | "updatedAt" | "deletedAt">>;
+
+export interface UserTemplateUpdate {
+  name?: string;
+  properties?: Record<string, unknown>;
+  licenses?: string[];
+  groups?: string[];
+  offboardingDefaults?: Record<string, unknown>;
+}
+
 export interface LinkRemovalJobUpdate {
   state?: LinkRemovalJobState;
   results?: Record<string, unknown> | null;
