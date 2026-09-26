@@ -1,6 +1,28 @@
-// Groups API client (EPIC-014 SPEC.md §3, §6; T-0261, T-0263).
-
 export type GroupType = "m365" | "security" | "mailEnabledSecurity" | "distribution" | "dynamic";
+
+export function validateDynamicRule(rule: string): { valid: boolean; error?: string } {
+  if (!rule || rule.trim().length === 0) {
+    return { valid: false, error: "Dynamic membership rule cannot be empty." };
+  }
+  const trimmed = rule.trim();
+  if (!trimmed.startsWith("(") || !trimmed.endsWith(")")) {
+    return { valid: false, error: "Dynamic membership rule must be enclosed in parentheses." };
+  }
+  let depth = 0;
+  for (const ch of trimmed) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (depth < 0) return { valid: false, error: "Mismatched parentheses in dynamic membership rule." };
+  }
+  if (depth !== 0) {
+    return { valid: false, error: "Mismatched parentheses in dynamic membership rule." };
+  }
+  const opRegex = /-(eq|ne|contains|notContains|startsWith|notStartsWith|match|notMatch|in|notIn)\b/i;
+  if (!opRegex.test(trimmed)) {
+    return { valid: false, error: "Dynamic membership rule must contain a valid operator (-eq, -ne, -contains, etc.)." };
+  }
+  return { valid: true };
+}
 
 export interface GroupPrincipal {
   readonly id: string;
