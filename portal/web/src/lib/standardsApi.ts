@@ -205,6 +205,84 @@ export async function setStandardTemplateSchedule(
   return body.template;
 }
 
+// ─── Alignment / compare (SPEC §3.3, §3.4, §6; T-0148) ───────────────────────
+
+export const ALIGNMENT_STATUSES = [
+  "compliant",
+  "non-compliant",
+  "accepted deviation",
+  "customer specific",
+  "license missing",
+  "reporting disabled",
+] as const;
+export type AlignmentStatus = (typeof ALIGNMENT_STATUSES)[number];
+
+export const ALIGNMENT_VIEWS = ["summary", "by-standard", "aggregate"] as const;
+export type AlignmentView = (typeof ALIGNMENT_VIEWS)[number];
+
+export const ALIGNMENT_VIEW_LABELS: Record<AlignmentView, string> = {
+  summary: "Tenant/template summary",
+  "by-standard": "Tenant rows for each standard",
+  aggregate: "Aggregate tenant compliance by standard",
+};
+
+export interface ComplianceCounts {
+  readonly total: number;
+  readonly compliant: number;
+  readonly nonCompliant: number;
+  readonly acceptedDeviation: number;
+  readonly customerSpecific: number;
+  readonly licenseMissing: number;
+  readonly reportingDisabled: number;
+  readonly compliantPct: number;
+}
+
+export interface AlignmentSummaryRow extends ComplianceCounts {
+  readonly tenantId: string;
+}
+
+export interface AlignmentAggregateRow extends ComplianceCounts {
+  readonly check: string;
+}
+
+export interface AlignmentByStandardRow {
+  readonly tenantId: string;
+  readonly check: string;
+  readonly current: unknown;
+  readonly expected: unknown;
+  readonly state: AlignmentStatus;
+  readonly lastRunAt: string | null;
+}
+
+export async function fetchStandardsAlignment(
+  view: AlignmentView = "summary",
+  options: { tenantId?: string } = {},
+  fetcher?: Fetcher,
+): Promise<{ view: AlignmentView; items: readonly unknown[] }> {
+  const query = new URLSearchParams({ view });
+  if (options.tenantId) query.set("tenantId", options.tenantId);
+  return readJson<{ view: AlignmentView; items: readonly unknown[] }>(
+    await asFetcher(fetcher)(`/v1/standards/alignment?${query.toString()}`),
+    "Loading standards alignment",
+  );
+}
+
+export interface StandardsCompareResponse {
+  readonly tenantId: string;
+  readonly summary: ComplianceCounts;
+  readonly items: readonly AlignmentByStandardRow[];
+}
+
+export async function fetchStandardsCompare(
+  tenantId: string,
+  fetcher?: Fetcher,
+): Promise<StandardsCompareResponse> {
+  return readJson<StandardsCompareResponse>(
+    await asFetcher(fetcher)(`/v1/standards/compare/${encodeURIComponent(tenantId)}`),
+    "Loading standards comparison",
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** The template's standards count (one setting per referenced standard). */
