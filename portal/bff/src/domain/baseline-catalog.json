@@ -1,0 +1,65 @@
+{
+  "$schema": "baseline-catalog",
+  "version": 1,
+  "source": "local",
+  "entries": [
+    {
+      "id": "identity-baseline",
+      "name": "Identity Baseline",
+      "description": "Phishing-resistant MFA for all users with security defaults as the floor.",
+      "stages": [
+        {
+          "order": 0,
+          "action": "report",
+          "conditions": [
+            { "key": "ENTRA-SECDEFAULT-001", "expected": { "state": "enabled" } },
+            { "key": "CA-MFA-ALL-001", "expected": { "state": "enabled" } }
+          ]
+        },
+        {
+          "order": 1,
+          "action": "remediate",
+          "conditions": [
+            { "key": "CA-PHISHRES-001", "expected": { "state": "enabled" } },
+            { "key": "CA-MFA-ADMIN-001", "expected": { "state": "enabled" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conditional-access-baseline",
+      "name": "Conditional Access Baseline",
+      "description": "Report-only review first, enforcement for admins second.",
+      "stages": [
+        {
+          "order": 0,
+          "action": "report",
+          "conditions": [
+            { "key": "CA-REPORTONLY-001", "expected": { "state": "enabled" } }
+          ]
+        },
+        {
+          "order": 1,
+          "action": "remediate",
+          "conditions": [
+            { "key": "CA-MFA-ADMIN-001", "expected": { "state": "enabled" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sharing-baseline",
+      "name": "Sharing Baseline",
+      "description": "Conservative external sharing posture.",
+      "stages": [
+        {
+          "order": 0,
+          "action": "report",
+          "conditions": [
+            { "key": "EXO-SHARING-001", "expected": { "state": "disabled" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
