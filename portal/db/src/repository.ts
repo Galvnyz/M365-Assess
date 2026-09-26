@@ -499,6 +499,43 @@ export interface RoleChangeRequestUpdate {
   endsAt?: string | null;
 }
 
+export type JitGrantState = "active" | "revoked" | "expired" | "extended";
+export type JitAssignmentType = "eligible" | "active";
+
+export interface JitGrant {
+  id: string;
+  tenantId: string;
+  userId: string;
+  roleId: string;
+  templateId?: string | null;
+  assignmentType: JitAssignmentType;
+  startsAt: string;
+  endsAt: string;
+  durationHours: number;
+  maxDurationHours: number;
+  state: JitGrantState;
+  justification?: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string | null;
+  revokedBy?: string | null;
+}
+
+export type JitGrantInput = Omit<
+  JitGrant,
+  "createdAt" | "updatedAt" | "revokedAt" | "revokedBy"
+> &
+  Partial<Pick<JitGrant, "createdAt" | "updatedAt" | "revokedAt" | "revokedBy">>;
+
+export interface JitGrantUpdate {
+  state?: JitGrantState;
+  endsAt?: string;
+  durationHours?: number;
+  revokedAt?: string | null;
+  revokedBy?: string | null;
+}
+
 export interface LinkRemovalJobUpdate {
   state?: LinkRemovalJobState;
   results?: Record<string, unknown> | null;
