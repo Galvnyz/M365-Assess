@@ -3,7 +3,7 @@ id: "EPIC-010"
 source: "docs/portal-specs/01-feature-epics/EPIC-010-baselines-rollouts/SPEC.md"
 section: "Portal skeleton (Session 1)"
 severity: "medium"
-status: "epic"
+status: "closed"
 original_status: "declared"
 parent: ""
 scope: []
@@ -43,6 +43,6 @@ real `scope:` paths can be named.
 
 ## Acceptance
 
-- [ ] SPEC.md sections 2-9 complete and approved.
-- [ ] Child tickets authored in `tickets/` with non-empty `scope:`.
-- [ ] All children closed before this epic is considered done.
+- [x] SPEC.md sections 2-9 complete and approved.
+- [x] Child tickets authored in `tickets/` with non-empty `scope:`.
+- [x] All children closed before this epic is considered done.
