@@ -267,3 +267,186 @@ export async function getIntunePolicy(
   } while (cursor);
   return null;
 }
+
+// ---- Template list/edit/delete (T-0305 API) and deploy (T-0306 API) ----
+
+export interface IntuneTemplatesPage {
+  readonly items: readonly IntuneTemplate[];
+  readonly nextCursor: string | null;
+}
+
+export async function listIntuneTemplates(
+  filter?: { readonly policyType?: string; readonly cursor?: string | null; readonly limit?: number },
+  baseUrl = "",
+): Promise<IntuneTemplatesPage> {
+  const params = new URLSearchParams();
+  if (filter?.policyType) params.set("policyType", filter.policyType);
+  if (filter?.cursor) params.set("cursor", filter.cursor);
+  if (filter?.limit !== undefined) params.set("limit", String(filter.limit));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`${baseUrl}/v1/intune-templates${query}`);
+  if (!res.ok) await throwApiError(res, "Failed to list Intune templates");
+  return res.json() as Promise<IntuneTemplatesPage>;
+}
+
+export async function updateIntuneTemplate(
+  id: string,
+  patch: Partial<IntuneTemplateInput>,
+  baseUrl = "",
+): Promise<IntuneTemplate> {
+  const res = await fetch(`${baseUrl}/v1/intune-templates/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) await throwApiError(res, "Failed to update Intune template");
+  return res.json() as Promise<IntuneTemplate>;
+}
+
+export async function deleteIntuneTemplate(id: string, baseUrl = ""): Promise<void> {
+  const res = await fetch(`${baseUrl}/v1/intune-templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) await throwApiError(res, "Failed to delete Intune template");
+}
+
+export type IntuneAssignmentMode =
+  | "template"
+  | "none"
+  | "allDevices"
+  | "allUsers"
+  | "allUsersAndDevices"
+  | "groups";
+
+export type IntuneDeployPolicyState = "enabled" | "disabled";
+
+export interface IntuneDeployRequest {
+  readonly targets: readonly string[];
+  readonly policyName?: string;
+  readonly assignmentMode: IntuneAssignmentMode;
+  readonly groups: readonly string[];
+  readonly policyState: IntuneDeployPolicyState;
+  readonly overwrite: boolean;
+  readonly createGroups: boolean;
+}
+
+export interface IntuneTargetPlan {
+  readonly tenantId: string;
+  readonly policyName: string;
+  readonly action: "create" | "update";
+  readonly conflict: boolean;
+  readonly conflictMessage?: string | null;
+  readonly groupsToCreate: readonly string[];
+  readonly assignments: readonly string[];
+  readonly issues: readonly string[];
+  readonly diff: readonly string[];
+  readonly valid: boolean;
+}
+
+export interface IntuneDeployPreview {
+  readonly templateId: string;
+  readonly preview: true;
+  readonly targetCount: number;
+  readonly plans: readonly IntuneTargetPlan[];
+  readonly allValid: boolean;
+}
+
+export interface IntuneDeployStep {
+  readonly step: string;
+  readonly target?: string;
+  readonly status: "succeeded" | "failed";
+  readonly error?: string;
+}
+
+export interface IntuneTargetResult {
+  readonly tenantId: string;
+  readonly state: "succeeded" | "partial" | "failed";
+  readonly policyId?: string | null;
+  readonly steps: readonly IntuneDeployStep[];
+  readonly error?: string | null;
+}
+
+export interface IntuneDeployOutcome {
+  readonly templateId: string;
+  readonly targetCount: number;
+  readonly success: boolean;
+  readonly summary: { readonly succeeded: number; readonly partial: number; readonly failed: number };
+  readonly results: readonly IntuneTargetResult[];
+}
+
+async function postDeploy(id: string, body: Record<string, unknown>, baseUrl: string): Promise<Response> {
+  return fetch(`${baseUrl}/v1/intune-templates/${encodeURIComponent(id)}/deploy`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function previewIntuneTemplateDeploy(
+  id: string,
+  request: IntuneDeployRequest,
+  baseUrl = "",
+): Promise<IntuneDeployPreview> {
+  const res = await postDeploy(id, { ...request, preview: true }, baseUrl);
+  if (!res.ok) await throwApiError(res, "Failed to preview deploy");
+  return res.json() as Promise<IntuneDeployPreview>;
+}
+
+/**
+ * Apply a deploy. 207 (some targets partial/failed) and 422 (all failed) still
+ * carry per-target results, so they resolve rather than throw.
+ */
+export async function applyIntuneTemplateDeploy(
+  id: string,
+  request: IntuneDeployRequest,
+  baseUrl = "",
+): Promise<IntuneDeployOutcome> {
+  const res = await postDeploy(
+    id,
+    { ...request, preview: false, confirmTargetCount: request.targets.length },
+    baseUrl,
+  );
+  if (!res.ok && res.status !== 422) await throwApiError(res, "Failed to deploy template");
+  return res.json() as Promise<IntuneDeployOutcome>;
+}
+
+// ---- Deploy targets (tenants and tenant groups) ----
+
+export interface DeployTenantOption {
+  readonly id: string;
+  readonly displayName: string | null;
+}
+
+export interface DeployTenantGroupOption {
+  readonly id: string;
+  readonly name: string;
+  readonly memberTenantIds: readonly string[];
+}
+
+export async function listDeployTargets(
+  baseUrl = "",
+): Promise<{ tenants: DeployTenantOption[]; groups: DeployTenantGroupOption[] }> {
+  const [tenantsRes, groupsRes] = await Promise.all([
+    fetch(`${baseUrl}/v1/tenants`),
+    fetch(`${baseUrl}/v1/tenant-groups`),
+  ]);
+  if (!tenantsRes.ok) await throwApiError(tenantsRes, "Failed to load tenants");
+  const tenantsBody = (await tenantsRes.json()) as { items?: unknown[] } | unknown[];
+  const rawTenants = (Array.isArray(tenantsBody) ? tenantsBody : tenantsBody.items ?? []) as Record<string, unknown>[];
+  let rawGroups: Record<string, unknown>[] = [];
+  if (groupsRes.ok) {
+    const groupsBody = (await groupsRes.json()) as { items?: unknown[] } | unknown[];
+    rawGroups = (Array.isArray(groupsBody) ? groupsBody : groupsBody.items ?? []) as Record<string, unknown>[];
+  }
+  return {
+    tenants: rawTenants.map((t) => ({
+      id: String(t.id),
+      displayName: typeof t.displayName === "string" ? t.displayName : null,
+    })),
+    groups: rawGroups.map((g) => ({
+      id: String(g.id),
+      name: String(g.name ?? g.id),
+      memberTenantIds: Array.isArray(g.memberTenantIds) ? g.memberTenantIds.map(String) : [],
+    })),
+  };
+}
