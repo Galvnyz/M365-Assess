@@ -205,6 +205,47 @@ export async function setStandardTemplateSchedule(
   return body.template;
 }
 
+// ─── Catalog (SPEC §3.2 picker, §6; T-0144/T-0147) ───────────────────────────
+
+export interface CatalogStandard {
+  readonly id: string;
+  readonly check: string;
+  readonly name: string;
+  readonly category: string;
+  readonly licensePreset: string | null;
+  /** eligible | license-missing | unknown-license, or null when unevaluated. */
+  readonly licenseState: string | null;
+  readonly licenseReason: string | null;
+}
+
+export async function fetchStandardsCatalog(
+  options: { category?: string; tenantId?: string } = {},
+  fetcher?: Fetcher,
+): Promise<CatalogStandard[]> {
+  const query = new URLSearchParams();
+  if (options.category) query.set("category", options.category);
+  if (options.tenantId) query.set("tenantId", options.tenantId);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const body = await readJson<{ items?: CatalogStandard[] }>(
+    await asFetcher(fetcher)(`/v1/standards/catalog${suffix}`),
+    "Loading standards catalog",
+  );
+  return body.items ?? [];
+}
+
+/** Derived impact used by the picker's impact filter (E5 checks are higher impact). */
+export type StandardImpact = "standard" | "high" | "unknown";
+
+export function standardImpact(standard: Pick<CatalogStandard, "licensePreset">): StandardImpact {
+  if (standard.licensePreset === "E5") return "high";
+  if (standard.licensePreset === "E3") return "standard";
+  return "unknown";
+}
+
+export function isLicenseMissing(standard: Pick<CatalogStandard, "licenseState">): boolean {
+  return standard.licenseState === "license-missing";
+}
+
 // ─── Alignment / compare (SPEC §3.3, §3.4, §6; T-0148) ───────────────────────
 
 export const ALIGNMENT_STATUSES = [
