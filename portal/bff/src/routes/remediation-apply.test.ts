@@ -14,6 +14,7 @@ import {
   REMEDIATION_OPENAPI,
   REMEDIATION_PERMISSIONS,
   REMEDIATION_PLAN_NOT_FOUND,
+  REMEDIATION_INSTRUCTION_PATH,
   REMEDIATION_PLAN_DETAIL_PATH,
   REMEDIATION_PLANS_PATH,
   REMEDIATION_VERIFY_PATH,
@@ -334,13 +335,14 @@ describe("GET /v1/remediation/history (T-0108)", () => {
 
 // The plan routes from T-0105 remain reachable alongside the new ones.
 describe("route set (T-0105 + T-0108)", () => {
-  it("exposes all five operations", () => {
+  it("exposes all six operations", () => {
     const routes = createRemediationRoutes(baseOptions(new MemoryPlanStore(), new FakeQueue()));
     const keys = routes.map((r) => `${r.method} ${r.path}`).sort();
     expect(keys).toEqual(
       [
         `GET ${REMEDIATION_PLAN_DETAIL_PATH}`,
         `GET ${REMEDIATION_HISTORY_PATH}`,
+        `GET ${REMEDIATION_INSTRUCTION_PATH}`,
         `POST ${REMEDIATION_APPLY_PATH}`,
         `POST ${REMEDIATION_PLANS_PATH}`,
         `POST ${REMEDIATION_VERIFY_PATH}`,

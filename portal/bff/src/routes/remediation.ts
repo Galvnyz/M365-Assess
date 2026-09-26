@@ -46,6 +46,7 @@ export const REMEDIATION_PLAN_DETAIL_PATH = "/v1/remediation/plans/:planId";
 export const REMEDIATION_APPLY_PATH = "/v1/remediation/plans/:planId/apply";
 export const REMEDIATION_HISTORY_PATH = "/v1/remediation/history";
 export const REMEDIATION_VERIFY_PATH = "/v1/remediation/actions/:actionId/verify";
+export const REMEDIATION_INSTRUCTION_PATH = "/v1/remediation/instructions/:check";
 
 export const REMEDIATION_PERMISSIONS = {
   read: "remediation.read",
@@ -99,6 +100,13 @@ export interface RemediationActionRecord {
 
 // ─── Dependency seams ─────────────────────────────────────────────────────────
 
+export interface ManualInstructionRecord {
+  readonly check: string;
+  readonly portalPath: string;
+  readonly steps: readonly string[];
+  readonly notes: string | null;
+}
+
 export interface RemediationPlanStore {
   getRemediationPlan(planId: string): Promise<RemediationPlanRecord | undefined>;
   listRemediationActions(planId: string): Promise<readonly RemediationActionRecord[]>;
@@ -106,6 +114,8 @@ export interface RemediationPlanStore {
   getRemediationAction?(actionId: string): Promise<RemediationActionRecord | undefined>;
   /** Tenant-wide action listing for the history view (optional seam). */
   listRemediationActionsForTenant?(tenantId: string): Promise<readonly RemediationActionRecord[]>;
+  /** Materialized manual instruction lookup (optional seam, T-0106). */
+  getManualInstruction?(check: string): Promise<ManualInstructionRecord | undefined>;
 }
 
 export interface RemediationQueue {
@@ -509,12 +519,60 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
     };
   }
 
+  // GET /v1/remediation/instructions/:check — manual instruction for a check
+  // (SPEC §4.2). Docs override the registry; an unresolved check returns the
+  // empty-state marker so the UI can render "no instructions".
+  async function handleGetInstruction(ctx: RemediationRequest): Promise<RouteResponse> {
+    const caller = options.resolveCaller(ctx);
+    if (!caller) {
+      throw new AppError(REMEDIATION_UNAUTHENTICATED, "authentication required", 401);
+    }
+    await ensureAuthorized(options, caller, REMEDIATION_PERMISSIONS.read);
+
+    const requested = requireParam(ctx, "check");
+    const registryKey = requested.replace(/\.\d+$/, "");
+
+    const store = options.store;
+    if (!store.getManualInstruction) {
+      throw new AppError(
+        ErrorCodes.internalError,
+        "remediation instruction store is not configured",
+        500,
+      );
+    }
+
+    // Sub-numbered ids resolve to the same instruction as their base id.
+    // Call through the store so the method keeps its `this` binding.
+    const instruction =
+      (await store.getManualInstruction(registryKey)) ??
+      (await store.getManualInstruction(requested));
+
+    if (!instruction) {
+      return {
+        status: 200,
+        body: { check: requested, found: false, portalPath: null, steps: [], notes: null },
+      };
+    }
+
+    return {
+      status: 200,
+      body: {
+        check: requested,
+        found: true,
+        portalPath: instruction.portalPath,
+        steps: instruction.steps,
+        notes: instruction.notes,
+      },
+    };
+  }
+
   return [
     { method: "POST", path: REMEDIATION_PLANS_PATH, handler: handlePostPlan },
     { method: "GET", path: REMEDIATION_PLAN_DETAIL_PATH, handler: handleGetPlan },
     { method: "POST", path: REMEDIATION_APPLY_PATH, handler: handlePostApply },
     { method: "GET", path: REMEDIATION_HISTORY_PATH, handler: handleGetHistory },
     { method: "POST", path: REMEDIATION_VERIFY_PATH, handler: handlePostVerify },
+    { method: "GET", path: REMEDIATION_INSTRUCTION_PATH, handler: handleGetInstruction },
   ];
 }
 
@@ -667,6 +725,36 @@ export const REMEDIATION_OPENAPI = {
         "400": { description: "Missing tenantId.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      },
+    },
+  },
+  "/v1/remediation/instructions/{check}": {
+    get: {
+      tags: ["Remediation"],
+      operationId: "getRemediationInstruction",
+      summary: "Manual instruction for a check (docs override the registry).",
+      permission: REMEDIATION_PERMISSIONS.read,
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "check",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "Finding check id; a trailing sub-number is stripped.",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Instruction (or an empty-state marker when none is defined).",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RemediationInstructionResponse" },
+            },
+          },
+        },
+        "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "403": { description: "Forbidden.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       },
     },
   },
