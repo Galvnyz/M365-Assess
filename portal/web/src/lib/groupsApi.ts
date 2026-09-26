@@ -167,3 +167,117 @@ export async function deleteGroup(tenantId: string, groupId: string, confirmName
   }
   return response.json();
 }
+
+export interface GroupTemplateNaming {
+  readonly prefix?: string;
+  readonly suffix?: string;
+  readonly pattern?: string;
+  readonly conflictBehavior?: "block" | "appendSuffix";
+}
+
+export interface GroupTemplate {
+  readonly id: string;
+  readonly name: string;
+  readonly groupType: GroupType;
+  readonly naming: GroupTemplateNaming;
+  readonly owners?: readonly string[];
+  readonly members?: readonly string[];
+  readonly settings?: Record<string, unknown>;
+  readonly licensing?: readonly string[];
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
+}
+
+export interface DeployTargetPlan {
+  readonly tenantId: string;
+  readonly targetName: string;
+  readonly diff: readonly string[];
+  readonly valid: boolean;
+  readonly conflict?: boolean;
+  readonly conflictError?: string | null;
+}
+
+export interface DeployPlanResponse {
+  readonly templateId: string;
+  readonly preview: boolean;
+  readonly plans: readonly DeployTargetPlan[];
+  readonly allValid: boolean;
+}
+
+export interface GroupTemplateDeploymentRecord {
+  readonly id: string;
+  readonly templateId: string;
+  readonly tenantId: string;
+  readonly state: "succeeded" | "failed" | "partial";
+  readonly results: readonly Record<string, unknown>[];
+  readonly createdBy: string;
+}
+
+export interface DeployExecutionResponse {
+  readonly templateId: string;
+  readonly success: boolean;
+  readonly deployments: readonly GroupTemplateDeploymentRecord[];
+}
+
+export async function listGroupTemplates(): Promise<{ items: GroupTemplate[]; totalCount: number }> {
+  const response = await fetch("/v1/group-templates");
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to list templates: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function createGroupTemplate(data: Partial<GroupTemplate>): Promise<GroupTemplate> {
+  const response = await fetch("/v1/group-templates", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to create template: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function updateGroupTemplate(id: string, data: Partial<GroupTemplate>): Promise<GroupTemplate> {
+  const response = await fetch(`/v1/group-templates/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to update template: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function deleteGroupTemplate(id: string): Promise<{ deleted: boolean }> {
+  const response = await fetch(`/v1/group-templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to delete template: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function deployGroupTemplate(
+  id: string,
+  payload: { targets: string[]; variables?: Record<string, string>; preview?: boolean },
+): Promise<DeployPlanResponse | DeployExecutionResponse> {
+  const response = await fetch(`/v1/group-templates/${encodeURIComponent(id)}/deploy`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok && response.status !== 207) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to deploy template: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
