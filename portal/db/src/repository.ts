@@ -536,6 +536,36 @@ export interface JitGrantUpdate {
   revokedBy?: string | null;
 }
 
+export interface JitAdminTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  allowedRoles: string[];
+  duration: number;
+  maxDuration: number;
+  justificationRequired: boolean;
+  approvalRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type JitAdminTemplateInput = Omit<
+  JitAdminTemplate,
+  "createdAt" | "updatedAt" | "deletedAt"
+> &
+  Partial<Pick<JitAdminTemplate, "createdAt" | "updatedAt" | "deletedAt">>;
+
+export interface JitAdminTemplateUpdate {
+  name?: string;
+  description?: string | null;
+  allowedRoles?: string[];
+  duration?: number;
+  maxDuration?: number;
+  justificationRequired?: boolean;
+  approvalRequired?: boolean;
+}
+
 export interface LinkRemovalJobUpdate {
   state?: LinkRemovalJobState;
   results?: Record<string, unknown> | null;
