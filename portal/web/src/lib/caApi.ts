@@ -191,3 +191,115 @@ export async function deleteCaPolicy(
   }
   return res.json();
 }
+
+export interface CaTemplate {
+  id: string;
+  name: string;
+  policyJson: Record<string, unknown>;
+  source: "local";
+  category: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface CaDeployDrawerOptions {
+  readonly tenantId: string;
+  readonly policyName?: string;
+  readonly policyState?: string;
+  readonly groupUserHandling?: "all" | "assigned" | "custom" | string;
+  readonly createGroups?: boolean;
+  readonly overwrite?: boolean;
+  readonly disableSecurityDefaults?: boolean;
+  readonly breakGlassExclusions?: readonly string[];
+  readonly preview?: boolean;
+}
+
+export interface CaDeployPlan {
+  readonly action: "create" | "update";
+  readonly tenantId: string;
+  readonly templateId: string;
+  readonly policyName: string;
+  readonly policyState: string;
+  readonly disableSecurityDefaults: boolean;
+  readonly overwrite: boolean;
+  readonly conflict: boolean;
+  readonly conflictMessage?: string | null;
+  readonly diff: readonly string[];
+  readonly groupsToCreate: readonly string[];
+  readonly valid: boolean;
+  readonly dryRun: boolean;
+}
+
+export interface CaDeployResult {
+  readonly success: boolean;
+  readonly plan: CaDeployPlan;
+  readonly result?: Record<string, unknown>;
+  readonly auditEvent?: Record<string, unknown>;
+}
+
+export async function listCaTemplates(baseUrl = ""): Promise<CaTemplate[]> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates`);
+  if (!res.ok) {
+    throw new Error(`Failed to list CA templates: HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : data.items || [];
+}
+
+export async function getCaTemplate(id: string, baseUrl = ""): Promise<CaTemplate> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    throw new Error(`Failed to get CA template: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createCaTemplate(input: Partial<CaTemplate>, baseUrl = ""): Promise<CaTemplate> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to create CA template: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateCaTemplate(id: string, input: Partial<CaTemplate>, baseUrl = ""): Promise<CaTemplate> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update CA template: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteCaTemplate(id: string, baseUrl = ""): Promise<boolean> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  return res.ok;
+}
+
+export async function deployCaTemplate(
+  id: string,
+  options: CaDeployDrawerOptions,
+  baseUrl = "",
+): Promise<CaDeployPlan | CaDeployResult> {
+  const res = await fetch(`${baseUrl}/v1/ca-templates/${encodeURIComponent(id)}/deploy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options),
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.message || `Failed to deploy CA template: HTTP ${res.status}`);
+  }
+  return res.json();
+}
