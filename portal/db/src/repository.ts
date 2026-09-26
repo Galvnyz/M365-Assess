@@ -458,6 +458,47 @@ export interface PimRoleSettingsTemplateUpdate {
   scope?: string;
 }
 
+export type RoleChangeRequestAction = "activate" | "extend" | "assign" | "deactivate";
+export type RoleChangeRequestState =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "active"
+  | "completed"
+  | "cancelled";
+
+export interface RoleChangeRequest {
+  id: string;
+  tenantId: string;
+  principalId: string;
+  roleId: string;
+  action: RoleChangeRequestAction;
+  state: RoleChangeRequestState;
+  justification: string;
+  durationHours: number;
+  ticketNumber?: string | null;
+  approverId?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
+export type RoleChangeRequestInput = Omit<
+  RoleChangeRequest,
+  "createdAt" | "updatedAt"
+> &
+  Partial<Pick<RoleChangeRequest, "createdAt" | "updatedAt">>;
+
+export interface RoleChangeRequestUpdate {
+  state?: RoleChangeRequestState;
+  approverId?: string | null;
+  rejectionReason?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
 export interface LinkRemovalJobUpdate {
   state?: LinkRemovalJobState;
   results?: Record<string, unknown> | null;
