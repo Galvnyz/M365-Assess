@@ -116,13 +116,6 @@ export interface IntuneTemplate extends IntuneTemplateInput {
   readonly updatedAt: string;
 }
 
-// Graph @odata.type per template kind; mirrors the supported entries in the
-// T-0301 policy-type registry.
-const TEMPLATE_ODATA_TYPES: Record<IntuneTemplateInput["policyType"], string> = {
-  configuration: "#microsoft.graph.deviceManagementConfigurationPolicy",
-  compliance: "#microsoft.graph.windows10CompliancePolicy",
-};
-
 /**
  * Build the template payload for "Clone to template". Returns null when the
  * policy's kind/platform has no v1 template support (the T-0305 API accepts
@@ -142,7 +135,7 @@ export function templateInputFromPolicy(
     policyType: kind,
     policyJson: {
       displayName,
-      "@odata.type": TEMPLATE_ODATA_TYPES[kind],
+      "@odata.type": policyTypeInfo(kind, "windows")!.odataType,
       settings: { ...(policy.settingsSummary ?? {}) },
     },
     assignments: policy.assignments.map((a) => ({ target: a.target, targetType: a.targetType })),
@@ -165,4 +158,112 @@ export async function createIntuneTemplate(
 /** JSON for the `Export` row action: the policy as listed, for download. */
 export function exportIntunePolicyJson(policy: IntunePolicyItem): string {
   return JSON.stringify(policy, null, 2);
+}
+
+// ---- Policy-type registry mirror (T-0301) ----
+
+export interface IntunePolicyTypeInfo {
+  readonly kind: IntunePolicyKind;
+  readonly platform: IntunePlatform;
+  readonly odataType: string;
+  /** Whether v1 supports writes for this kind/platform. */
+  readonly supported: boolean;
+}
+
+/** Web mirror of the BFF registry in portal/bff/src/domain/intune-policy-types.ts. */
+export const INTUNE_POLICY_TYPES: readonly IntunePolicyTypeInfo[] = [
+  { kind: "configuration", platform: "windows", odataType: "#microsoft.graph.deviceManagementConfigurationPolicy", supported: true },
+  { kind: "compliance", platform: "windows", odataType: "#microsoft.graph.windows10CompliancePolicy", supported: true },
+  { kind: "configuration", platform: "android", odataType: "#microsoft.graph.deviceManagementConfigurationPolicy", supported: false },
+  { kind: "configuration", platform: "ios", odataType: "#microsoft.graph.deviceManagementConfigurationPolicy", supported: false },
+  { kind: "configuration", platform: "macos", odataType: "#microsoft.graph.deviceManagementConfigurationPolicy", supported: false },
+  { kind: "compliance", platform: "android", odataType: "#microsoft.graph.androidCompliancePolicy", supported: false },
+  { kind: "compliance", platform: "ios", odataType: "#microsoft.graph.iosCompliancePolicy", supported: false },
+  { kind: "compliance", platform: "macos", odataType: "#microsoft.graph.macOSCompliancePolicy", supported: false },
+  { kind: "app-protection", platform: "android", odataType: "#microsoft.graph.androidManagedAppProtection", supported: false },
+  { kind: "app-protection", platform: "ios", odataType: "#microsoft.graph.iosManagedAppProtection", supported: false },
+];
+
+export function policyTypeInfo(kind: string, platform: string): IntunePolicyTypeInfo | undefined {
+  const p = platform.toLowerCase();
+  return INTUNE_POLICY_TYPES.find((t) => t.kind === kind && t.platform === p);
+}
+
+// ---- Policy CRUD with plan preview (T-0302 API) ----
+
+export interface IntunePlan {
+  readonly action: "create" | "edit" | "delete";
+  readonly kind: string;
+  readonly policyId?: string;
+  readonly targetName: string;
+  readonly before?: Record<string, unknown> | null;
+  readonly after?: Record<string, unknown> | null;
+  readonly beforeAssignments?: readonly IntunePolicyAssignment[];
+  readonly afterAssignments?: readonly IntunePolicyAssignment[];
+  readonly diff: readonly string[];
+  readonly valid: boolean;
+  readonly dryRun: boolean;
+  readonly requiresConfirmation: boolean;
+}
+
+export interface IntuneCrudResult {
+  readonly success: boolean;
+  readonly plan: IntunePlan;
+  readonly result?: Record<string, unknown>;
+}
+
+export interface IntunePolicySaveInput {
+  readonly displayName: string;
+  readonly platform: string;
+  /** Structured settings (common types). */
+  readonly settings?: Record<string, unknown>;
+  /** Raw policy JSON text (advanced types). */
+  readonly policyJson?: string;
+  readonly assignments: readonly IntunePolicyAssignment[];
+}
+
+/**
+ * Create (policyId null) or edit a policy. `preview: true` returns the plan
+ * without applying; `preview: false` applies. The route may answer with a bare
+ * plan or a result wrapping one; both are normalised to IntuneCrudResult.
+ */
+export async function saveIntunePolicy(
+  tenantId: string,
+  kind: IntunePolicyKind,
+  policyId: string | null,
+  input: IntunePolicySaveInput,
+  preview: boolean,
+  baseUrl = "",
+): Promise<IntuneCrudResult> {
+  const base = `${baseUrl}/v1/tenants/${encodeURIComponent(tenantId)}/intune/${kind}`;
+  const res = await fetch(policyId ? `${base}/${encodeURIComponent(policyId)}` : base, {
+    method: policyId ? "PATCH" : "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...input, preview }),
+  });
+  if (!res.ok) await throwApiError(res, "Failed to save Intune policy");
+  const body = (await res.json()) as IntuneCrudResult | IntunePlan;
+  return "plan" in body ? body : { success: !preview, plan: body };
+}
+
+/** Find one policy by id. The list API has no item route, so this walks its pages. */
+export async function getIntunePolicy(
+  tenantId: string,
+  kind: IntunePolicyKind,
+  policyId: string,
+  baseUrl = "",
+): Promise<IntunePolicyItem | null> {
+  let cursor: string | null = null;
+  do {
+    const page: IntunePoliciesPage = await fetchIntunePolicies(
+      tenantId,
+      kind,
+      { cursor, limit: 100 },
+      baseUrl,
+    );
+    const hit = page.items.find((p) => p.id === policyId);
+    if (hit) return hit;
+    cursor = page.nextCursor;
+  } while (cursor);
+  return null;
 }
