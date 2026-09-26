@@ -1,24 +1,27 @@
-// Remediation plan API: generate a plan and read a plan with its actions
-// (EPIC-006 SPEC.md §4.1, §5, §6; T-0105).
+// Remediation plan and apply API (EPIC-006 SPEC.md §4.1, §4.3, §5, §6; T-0105, T-0108).
 //
-// Architecture (ADR-0014): plan generation is domain work, so it is enqueued as
-// a `remediation` job for the PowerShell worker (Plan-Remediation.ps1). This
-// route validates RBAC/tenant scope, enqueues the job, and serves the persisted
-// plan + actions on read. It performs no tenant writes itself.
+// Architecture (ADR-0014): plan generation and gated apply are domain work, so
+// both are enqueued as `remediation` jobs for the PowerShell workers
+// (Plan-Remediation.ps1, Invoke-RemediationApply.ps1). These routes validate
+// RBAC/tenant scope, enqueue the job, and serve persisted state; they perform no
+// tenant writes themselves. Apply additionally requires an Idempotency-Key so a
+// retry replays the prior handle instead of enqueuing a second apply.
 //
-// Persistence and findings are injected as structural seams (RemediationPlanStore)
-// so the route stays free of the SQL implementation. The BFF package depends only
-// on @m365-assess/contracts, so records are declared locally and structurally
+// Persistence is injected as structural seams (RemediationPlanStore) so the
+// routes stay free of the SQL implementation. The BFF package depends only on
+// @m365-assess/contracts, so records are declared locally and structurally
 // mirror the db package's RemediationPlan/RemediationAction.
 //
-// Permissions: `remediation.plan` for generation, `remediation.read` for reads.
-// The remediation permission tokens are declared here because the roles.ts
-// union is still the EPIC-001 minimal set; wiring them into the RBAC registry is
-// EPIC-038's scope. Callers supply the `authorize` seam until then.
+// Permissions: `remediation.plan` for generation, `remediation.apply` for apply,
+// `remediation.read` for reads. The remediation permission tokens are declared
+// here because the roles.ts union is still the EPIC-001 minimal set; wiring them
+// into the RBAC registry is EPIC-038's scope. Callers supply the `authorize`
+// seam until then.
 
 import { randomUUID } from "node:crypto";
 import type { JobEnvelope } from "@m365-assess/contracts";
 import { AppError, ErrorCodes } from "../errors.js";
+import { paginate, parsePagination } from "../pagination.js";
 import {
   requirePermission,
   requireTenantInScope,
@@ -26,19 +29,32 @@ import {
 } from "../rbac/authorize.js";
 import type { Permission } from "../rbac/roles.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
+import {
+  MAX_IDEMPOTENCY_KEY_LENGTH,
+  RemediationApplyInputError,
+  createMemoryRemediationIdempotencyStore,
+  parseRemediationApplyBody,
+  parseRemediationIdempotencyKey,
+  type RemediationApplyHandle,
+  type RemediationIdempotencyStore,
+} from "../domain/remediation/apply.js";
 
 // ─── Paths, permissions, error codes ─────────────────────────────────────────
 
 export const REMEDIATION_PLANS_PATH = "/v1/remediation/plans";
 export const REMEDIATION_PLAN_DETAIL_PATH = "/v1/remediation/plans/:planId";
+export const REMEDIATION_APPLY_PATH = "/v1/remediation/plans/:planId/apply";
+export const REMEDIATION_HISTORY_PATH = "/v1/remediation/history";
 
 export const REMEDIATION_PERMISSIONS = {
   read: "remediation.read",
   plan: "remediation.plan",
+  apply: "remediation.apply",
 } as const;
 
 export const REMEDIATION_UNAUTHENTICATED = "request.unauthenticated";
 export const REMEDIATION_PLAN_NOT_FOUND = "remediation.plan_not_found";
+export const REMEDIATION_HISTORY_TENANT_REQUIRED = "remediation.history_tenant_required";
 
 // ─── Records (structural mirrors of the db package types) ────────────────────
 
@@ -83,6 +99,8 @@ export interface RemediationActionRecord {
 export interface RemediationPlanStore {
   getRemediationPlan(planId: string): Promise<RemediationPlanRecord | undefined>;
   listRemediationActions(planId: string): Promise<readonly RemediationActionRecord[]>;
+  /** Tenant-wide action listing for the history view (optional seam). */
+  listRemediationActionsForTenant?(tenantId: string): Promise<readonly RemediationActionRecord[]>;
 }
 
 export interface RemediationQueue {
@@ -94,6 +112,7 @@ export interface RemediationRouteOptions {
   readonly queue: RemediationQueue;
   readonly resolveCaller: (ctx: RequestContext) => Caller | undefined;
   readonly authorize?: (caller: Caller, permission: string) => void | Promise<void>;
+  readonly idempotency?: RemediationIdempotencyStore;
   readonly idGenerator?: () => string;
   readonly now?: () => string;
 }
@@ -149,7 +168,34 @@ function mapPlan(plan: RemediationPlanRecord): Record<string, unknown> {
   };
 }
 
+// Append-only remediation log columns (06-remediation.md §5, T-0113): timestamp,
+// actor, tenant, check, command, before -> after, result, correlation id.
+function mapHistoryRow(action: RemediationActionRecord): Record<string, unknown> {
+  return {
+    id: action.id,
+    planId: action.planId,
+    check: action.check,
+    command: action.command,
+    target: action.target,
+    state: action.state,
+    before: action.before,
+    after: action.after,
+    timestamp: action.appliedAt,
+    actor: action.appliedBy,
+    result: action.result,
+    error: action.error,
+    correlationId: action.correlationId,
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function toAppError(error: unknown, fallbackField: string): AppError {
+  if (error instanceof RemediationApplyInputError) {
+    return new AppError(error.code, error.message, 400, [{ field: fallbackField, reason: "invalid" }]);
+  }
+  throw error;
+}
 
 async function ensureAuthorized(
   options: RemediationRouteOptions,
@@ -224,6 +270,7 @@ function buildRemediationEnvelope(
   jobId: string,
   requestId: string,
   createdAt: string,
+  extraPayload: Record<string, unknown> = {},
 ): JobEnvelope {
   return {
     schemaVersion: "v1",
@@ -240,6 +287,9 @@ function buildRemediationEnvelope(
       credentialRef: `tenants/${tenantId}/credential`,
       sectionRefs: [],
       artifactRefs: [],
+      // Job-specific fields ride alongside the reference payload; the envelope
+      // contract validates the refs and permits additional keys.
+      ...extraPayload,
     },
   };
 }
@@ -249,6 +299,8 @@ function buildRemediationEnvelope(
 export function createRemediationRoutes(options: RemediationRouteOptions): RemediationRoute[] {
   const idGenerator = options.idGenerator ?? (() => randomUUID());
   const now = options.now ?? (() => new Date().toISOString());
+  // Single store per route set so Idempotency-Key replay works across requests.
+  const idempotency = options.idempotency ?? createMemoryRemediationIdempotencyStore();
 
   // POST /v1/remediation/plans — enqueue plan generation for a run/tenant.
   async function handlePostPlan(ctx: RemediationRequest): Promise<RouteResponse> {
@@ -303,10 +355,122 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
     };
   }
 
+  // POST /v1/remediation/plans/:planId/apply — gated apply, Idempotency-Key
+  // required. Enqueues the apply worker and returns a replayable handle.
+  async function handlePostApply(ctx: RemediationRequest): Promise<RouteResponse> {
+    const caller = options.resolveCaller(ctx);
+    if (!caller) {
+      throw new AppError(REMEDIATION_UNAUTHENTICATED, "authentication required", 401);
+    }
+    await ensureAuthorized(options, caller, REMEDIATION_PERMISSIONS.apply);
+
+    const planId = requireParam(ctx, "planId");
+
+    let idempotencyKey: string;
+    try {
+      idempotencyKey = parseRemediationIdempotencyKey(ctx.headers["idempotency-key"]);
+    } catch (error) {
+      throw toAppError(error, "Idempotency-Key");
+    }
+
+    const body = requireBodyRecord(ctx.body);
+    let parsed;
+    try {
+      parsed = parseRemediationApplyBody(body);
+    } catch (error) {
+      throw toAppError(error, "dryRun");
+    }
+
+    const plan = await options.store.getRemediationPlan(planId);
+    if (!plan) {
+      throw new AppError(REMEDIATION_PLAN_NOT_FOUND, `Remediation plan ${planId} not found`, 404);
+    }
+    requireTenantInScope(caller, plan.tenantId);
+
+    const prior = await idempotency.find(plan.tenantId, idempotencyKey);
+    if (prior) {
+      // Replay: return the original handle without enqueuing a second apply.
+      return { status: 200, body: { ...prior, replayed: true } };
+    }
+
+    const jobId = idGenerator();
+    const requestId = idGenerator();
+
+    await options.queue.enqueue(
+      buildRemediationEnvelope(ctx, plan.tenantId, plan.runId, jobId, requestId, now(), {
+        planId,
+        actionIds: parsed.actionIds,
+        dryRun: parsed.dryRun,
+        continueOnFailure: parsed.continueOnFailure,
+        reason: parsed.reason,
+        idempotencyKey,
+        actor: callerActor(caller),
+      }),
+    );
+
+    const handle: RemediationApplyHandle = {
+      planId,
+      tenantId: plan.tenantId,
+      jobId,
+      requestId,
+      dryRun: parsed.dryRun,
+      status: "queued",
+    };
+    await idempotency.save(plan.tenantId, idempotencyKey, handle);
+
+    return { status: 202, body: { ...handle } };
+  }
+
+  // GET /v1/remediation/history — append-only, tenant-scoped, cursor paginated.
+  async function handleGetHistory(ctx: RemediationRequest): Promise<RouteResponse> {
+    const caller = options.resolveCaller(ctx);
+    if (!caller) {
+      throw new AppError(REMEDIATION_UNAUTHENTICATED, "authentication required", 401);
+    }
+    await ensureAuthorized(options, caller, REMEDIATION_PERMISSIONS.read);
+
+    const tenantId = ctx.query.get("tenantId");
+    if (!tenantId) {
+      throw new AppError(
+        REMEDIATION_HISTORY_TENANT_REQUIRED,
+        "Query parameter 'tenantId' is required for remediation history",
+        400,
+      );
+    }
+    requireTenantInScope(caller, tenantId);
+
+    if (!options.store.listRemediationActionsForTenant) {
+      throw new AppError(
+        ErrorCodes.internalError,
+        "remediation history store is not configured",
+        500,
+      );
+    }
+
+    const actions = await options.store.listRemediationActionsForTenant(tenantId);
+    const pag = parsePagination(ctx.query);
+    const page = paginate(actions, pag);
+
+    return {
+      status: 200,
+      body: { ...page, items: page.items.map(mapHistoryRow) },
+    };
+  }
+
   return [
     { method: "POST", path: REMEDIATION_PLANS_PATH, handler: handlePostPlan },
     { method: "GET", path: REMEDIATION_PLAN_DETAIL_PATH, handler: handleGetPlan },
+    { method: "POST", path: REMEDIATION_APPLY_PATH, handler: handlePostApply },
+    { method: "GET", path: REMEDIATION_HISTORY_PATH, handler: handleGetHistory },
   ];
+}
+
+/** Actor id for the job payload; the authorizer seam owns identity. */
+function callerActor(caller: Caller): string | null {
+  const withId = caller as Caller & { actorUserId?: unknown };
+  return typeof withId.actorUserId === "function"
+    ? ((withId.actorUserId as () => string | null)() ?? null)
+    : null;
 }
 
 // ─── OpenAPI fragment (paths published by the route module, §6) ──────────────
@@ -369,6 +533,87 @@ export const REMEDIATION_OPENAPI = {
         "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
         "404": { description: "Plan not found.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      },
+    },
+  },
+  "/v1/remediation/plans/{planId}/apply": {
+    post: {
+      tags: ["Remediation"],
+      operationId: "applyRemediationPlan",
+      summary: "Apply selected plan actions (gated); Idempotency-Key required.",
+      permission: REMEDIATION_PERMISSIONS.apply,
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "planId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+        {
+          name: "Idempotency-Key",
+          in: "header",
+          required: true,
+          schema: { type: "string", maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
+          description: "Required. A repeated key replays the prior apply handle.",
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/RemediationApplyRequest" },
+          },
+        },
+      },
+      responses: {
+        "202": {
+          description: "Apply enqueued.",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RemediationApplyHandle" },
+            },
+          },
+        },
+        "200": {
+          description: "Replay of an Idempotency-Key: the original apply handle.",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RemediationApplyHandle" },
+            },
+          },
+        },
+        "400": { description: "Missing Idempotency-Key or invalid body.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "404": { description: "Plan not found.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      },
+    },
+  },
+  "/v1/remediation/history": {
+    get: {
+      tags: ["Remediation"],
+      operationId: "getRemediationHistory",
+      summary: "Tenant-wide append-only remediation log (cursor paginated).",
+      permission: REMEDIATION_PERMISSIONS.read,
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "tenantId", in: "query", required: true, schema: { type: "string" } },
+        { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+        { name: "limit", in: "query", required: false, schema: { type: "integer" } },
+      ],
+      responses: {
+        "200": {
+          description: "Append-only remediation history.",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CursorPage" },
+            },
+          },
+        },
+        "400": { description: "Missing tenantId.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "401": { description: "Unauthenticated.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        "403": { description: "Forbidden or tenant out of scope.", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       },
     },
   },
