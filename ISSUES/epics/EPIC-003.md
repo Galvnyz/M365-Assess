@@ -3,7 +3,7 @@ id: "EPIC-003"
 source: "docs/portal-specs/01-feature-epics/EPIC-003-assessment-runs/SPEC.md"
 section: "Portal skeleton (Session 1)"
 severity: "high"
-status: "epic"
+status: "closed"
 original_status: "declared"
 parent: ""
 scope: []

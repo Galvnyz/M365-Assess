@@ -3,7 +3,7 @@ id: "EPIC-001"
 source: "docs/portal-specs/01-feature-epics/EPIC-001-platform-foundation/SPEC.md"
 section: "Portal skeleton (Session 1)"
 severity: "critical"
-status: "epic"
+status: "closed"
 original_status: "declared"
 parent: ""
 scope: []

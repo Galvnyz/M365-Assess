@@ -3,7 +3,7 @@ id: "EPIC-002"
 source: "docs/portal-specs/01-feature-epics/EPIC-002-tenants-onboarding/SPEC.md"
 section: "Portal skeleton (Session 1)"
 severity: "critical"
-status: "epic"
+status: "closed"
 original_status: "declared"
 parent: ""
 scope: []

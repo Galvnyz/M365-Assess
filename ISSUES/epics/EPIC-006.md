@@ -3,7 +3,7 @@ id: "EPIC-006"
 source: "docs/portal-specs/01-feature-epics/EPIC-006-remediation-engine/SPEC.md"
 section: "Portal skeleton (Session 1)"
 severity: "critical"
-status: "epic"
+status: "closed"
 original_status: "declared"
 parent: ""
 scope: []
