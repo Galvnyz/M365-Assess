@@ -281,3 +281,47 @@ export async function deployGroupTemplate(
   return response.json();
 }
 
+export interface BulkMembershipPayload {
+  readonly operation: "add" | "remove";
+  readonly users: readonly string[];
+  readonly preview?: boolean;
+}
+
+export interface BulkMembershipPlanResult {
+  readonly tenantId: string;
+  readonly groupId: string;
+  readonly role: "members" | "owners";
+  readonly operation: "add" | "remove";
+  readonly total: number;
+  readonly toAdd: number;
+  readonly toRemove: number;
+  readonly toSkip: number;
+  readonly diff: readonly string[];
+  readonly planRows: Array<{ user: string; action: string; reason: string }>;
+  readonly dryRun: boolean;
+}
+
+export interface BulkMembershipExecutionResult {
+  readonly success: boolean;
+  readonly plan: BulkMembershipPlanResult;
+  readonly results: Array<{ user: string; status: "added" | "removed" | "skipped" | "failed"; error?: string; reason?: string }>;
+}
+
+export async function invokeBulkMembership(
+  tenantId: string,
+  groupId: string,
+  role: "members" | "owners",
+  payload: BulkMembershipPayload,
+): Promise<BulkMembershipPlanResult | BulkMembershipExecutionResult> {
+  const response = await fetch(`/v1/tenants/${encodeURIComponent(tenantId)}/groups/${encodeURIComponent(groupId)}/${role}/bulk`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message ?? `Bulk membership failed: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
