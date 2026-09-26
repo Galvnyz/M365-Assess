@@ -138,6 +138,57 @@ export async function applyRemediationPlan(
   };
 }
 
+// ─── History ──────────────────────────────────────────────────────────────────
+
+export interface RemediationHistoryRow {
+  readonly id: string;
+  readonly planId: string;
+  /** Optional: the endpoint is tenant-scoped, so rows may omit it. */
+  readonly tenantId?: string | null;
+  readonly check: string;
+  readonly command: string;
+  readonly target: string | null;
+  readonly state: RemediationActionState;
+  readonly before: Record<string, unknown> | null;
+  readonly after: Record<string, unknown> | null;
+  readonly timestamp: string | null;
+  readonly actor: string | null;
+  readonly result: Record<string, unknown> | null;
+  readonly error: string | null;
+  readonly correlationId: string | null;
+}
+
+export interface RemediationHistoryPage {
+  readonly items: readonly RemediationHistoryRow[];
+  readonly nextCursor: string | null;
+}
+
+export async function fetchRemediationHistory(
+  tenantId: string,
+  options: { cursor?: string; limit?: number } = {},
+  fetcher?: Fetcher,
+): Promise<RemediationHistoryPage> {
+  const query = new URLSearchParams({ tenantId });
+  if (options.cursor) query.set("cursor", options.cursor);
+  if (options.limit !== undefined) query.set("limit", String(options.limit));
+  const response = await asFetcher(fetcher)(`/v1/remediation/history?${query.toString()}`);
+  return (await expectOk(response, "Loading remediation history")) as RemediationHistoryPage;
+}
+
+/** Formats a before -> after transition for the history table. */
+export function formatTransition(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+): string {
+  const render = (value: Record<string, unknown> | null): string => {
+    if (value === null || value === undefined) return "—";
+    const entries = Object.entries(value);
+    if (entries.length === 0) return "{}";
+    return entries.map(([key, item]) => `${key}: ${JSON.stringify(item)}`).join(", ");
+  };
+  return `${render(before)} → ${render(after)}`;
+}
+
 // ─── KPI helpers ──────────────────────────────────────────────────────────────
 
 export interface RemediationKpis {
