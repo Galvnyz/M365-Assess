@@ -425,6 +425,39 @@ export interface UserTemplateUpdate {
   offboardingDefaults?: Record<string, unknown>;
 }
 
+export interface PimRoleSettings {
+  maximumDurationInHours?: number;
+  requireMfa?: boolean;
+  requireJustification?: boolean;
+  requireApproval?: boolean;
+  approverIds?: string[];
+  [key: string]: unknown;
+}
+
+export interface PimRoleSettingsTemplate {
+  id: string;
+  name: string;
+  roleId: string | null;
+  settings: PimRoleSettings;
+  scope: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type PimRoleSettingsTemplateInput = Omit<
+  PimRoleSettingsTemplate,
+  "createdAt" | "updatedAt" | "deletedAt"
+> &
+  Partial<Pick<PimRoleSettingsTemplate, "createdAt" | "updatedAt" | "deletedAt">>;
+
+export interface PimRoleSettingsTemplateUpdate {
+  name?: string;
+  roleId?: string | null;
+  settings?: PimRoleSettings;
+  scope?: string;
+}
+
 export interface LinkRemovalJobUpdate {
   state?: LinkRemovalJobState;
   results?: Record<string, unknown> | null;
