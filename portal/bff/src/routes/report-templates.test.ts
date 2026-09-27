@@ -398,3 +398,34 @@ describe("report template routes", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("report template tenant scope (T-0823)", () => {
+  it("hides and refuses other tenants' templates but keeps global ones open", async () => {
+    const value = harness({ tenantAccess: (_ctx, tenantId) => tenantId === "tenant-a" });
+    const mine = await createTemplate(value, { name: "Mine", tenantId: "tenant-a", document: validDocument() });
+    const global = await createTemplate(value, { name: "Global", document: validDocument() });
+    const other = await value.store.createTemplate({
+      id: "other",
+      name: "Other",
+      tenantId: "tenant-b",
+      document: validDocument(),
+      createdBy: null,
+      actorUserId: null,
+      correlationId: null,
+    });
+
+    const list = await handlerFor(value.routes, "GET", "/v1/report-templates")(request());
+    const ids = (list.body as { items: { id: string }[] }).items.map((t) => t.id).sort();
+    expect(ids).toEqual([String(mine["id"]), String(global["id"])].sort());
+
+    const get = handlerFor(value.routes, "GET", "/v1/report-templates/:templateId");
+    await expect(get(request({ params: { templateId: other.id } }))).rejects.toMatchObject({ status: 403 });
+    const create = handlerFor(value.routes, "POST", "/v1/report-templates");
+    await expect(create(request({ body: { name: "X", tenantId: "tenant-b", document: validDocument() } }))).rejects.toMatchObject({ status: 403 });
+    const generate = handlerFor(value.routes, "POST", "/v1/report-templates/:templateId/generate");
+    await expect(
+      generate(request({ params: { templateId: String(global["id"]) }, body: { tenantId: "tenant-b" } })),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(value.render.requests).toHaveLength(0);
+  });
+});

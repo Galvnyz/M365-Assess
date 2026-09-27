@@ -5,6 +5,7 @@
 // resolver is injected so this module does not depend on the auth implementation.
 import { randomUUID } from "node:crypto";
 import { AppError, ErrorCodes } from "../errors.js";
+import { RbacErrorCodes } from "../rbac/authorize.js";
 import { paginate, parsePagination } from "../pagination.js";
 import type { RequestContext, RouteResponse } from "../server.js";
 
@@ -127,6 +128,13 @@ export interface ReportTemplateDependencies {
   readonly render: TemplateRenderPort;
   readonly authorize?: TemplateAuthorizer;
   readonly resolveActor?: (ctx: RequestContext) => string | null;
+  /**
+   * Whether the caller may use a tenant's templates. Tenant templates outside the
+   * caller's scope are hidden from lists and refused elsewhere; global templates
+   * (no tenant) are open to every caller holding the permission. Omitted, every
+   * tenant is allowed.
+   */
+  readonly tenantAccess?: (ctx: RequestContext, tenantId: string) => boolean;
 }
 
 // The HTTP server does not yet thread a parsed request body through
@@ -148,6 +156,17 @@ type Handler = ReportTemplateRoute["handler"];
 export function createReportTemplateRoutes(deps: ReportTemplateDependencies): ReportTemplateRoute[] {
   const actor = (ctx: ReportTemplateRequest): string | null => deps.resolveActor?.(ctx) ?? null;
 
+  const visible = (ctx: RequestContext, tenantId: string | null): boolean =>
+    tenantId === null || deps.tenantAccess === undefined || deps.tenantAccess(ctx, tenantId);
+
+  const requireAccess = (ctx: RequestContext, tenantId: string | null): void => {
+    if (!visible(ctx, tenantId)) {
+      throw new AppError(RbacErrorCodes.forbidden, "tenant is outside the caller scope", 403, [
+        { field: "tenantId", reason: "out_of_scope" },
+      ]);
+    }
+  };
+
   const guard = (permission: string, handler: Handler): Handler => async (ctx) => {
     if (deps.authorize) {
       await deps.authorize.requirePermission(ctx, permission);
@@ -157,8 +176,11 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
 
   const list: Handler = async (ctx) => {
     const tenantId = optionalQuery(ctx, "tenantId");
+    if (tenantId !== undefined) requireAccess(ctx, tenantId);
     const includeDeleted = ctx.query.get("includeDeleted") === "true";
-    const templates = await deps.store.listTemplates({ tenantId, includeDeleted });
+    const templates = (await deps.store.listTemplates({ tenantId, includeDeleted })).filter((t) =>
+      visible(ctx, t.tenantId),
+    );
     const page = paginate(templates, parsePagination(ctx.query));
     return {
       status: 200,
@@ -171,6 +193,7 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
     const name = requireString(body, "name");
     const id = randomUUID();
     const tenantId = body["tenantId"] === undefined ? null : optionalString(body, "tenantId");
+    requireAccess(ctx, tenantId);
     const document = parseTemplateDocument(deps.contract, body["document"], id, name);
     const created = await deps.store.createTemplate({
       id,
@@ -185,10 +208,13 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
   };
 
   const get: Handler = async (ctx) => {
-    const template = await deps.store.getTemplate(requireParam(ctx, "templateId"), {
-      tenantId: optionalQuery(ctx, "tenantId"),
-    });
-    return { status: 200, body: toResponse(requireTemplate(template)) };
+    const template = requireTemplate(
+      await deps.store.getTemplate(requireParam(ctx, "templateId"), {
+        tenantId: optionalQuery(ctx, "tenantId"),
+      }),
+    );
+    requireAccess(ctx, template.tenantId);
+    return { status: 200, body: toResponse(template) };
   };
 
   const update: Handler = async (ctx) => {
@@ -196,6 +222,7 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
     const existing = requireTemplate(
       await deps.store.getTemplate(id, { tenantId: optionalQuery(ctx, "tenantId") }),
     );
+    requireAccess(ctx, existing.tenantId);
     const body = requireBodyRecord(ctx.body);
     const name = body["name"] === undefined ? undefined : requireString(body, "name");
     const document =
@@ -214,6 +241,7 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
 
   const remove: Handler = async (ctx) => {
     const id = requireParam(ctx, "templateId");
+    requireAccess(ctx, requireTemplate(await deps.store.getTemplate(id)).tenantId);
     const deleted = await deps.store.softDeleteTemplate(id, {
       actorUserId: actor(ctx),
       correlationId: ctx.correlationId,
@@ -227,6 +255,7 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
     const source = requireTemplate(
       await deps.store.getTemplate(sourceId, { includeDeleted: false }),
     );
+    requireAccess(ctx, source.tenantId);
     const body = optionalBodyRecord(ctx.body);
     const name =
       body === undefined || body["name"] === undefined
@@ -236,6 +265,7 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
       body === undefined || body["tenantId"] === undefined
         ? source.tenantId
         : optionalString(body, "tenantId");
+    requireAccess(ctx, tenantId);
     const cloned = await deps.store.cloneTemplate(sourceId, {
       id: randomUUID(),
       name,
@@ -252,12 +282,14 @@ export function createReportTemplateRoutes(deps: ReportTemplateDependencies): Re
     const template = requireTemplate(
       await deps.store.getTemplate(templateId, { includeDeleted: false }),
     );
+    requireAccess(ctx, template.tenantId);
     const body = optionalBodyRecord(ctx.body);
     const tenantId =
       body === undefined || body["tenantId"] === undefined
         ? template.tenantId
         : optionalString(body, "tenantId");
     if (tenantId === null) throw tenantRequired();
+    requireAccess(ctx, tenantId);
     const handle = await deps.render.enqueue({
       template: template.document,
       templateId: template.id,

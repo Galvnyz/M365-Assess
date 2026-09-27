@@ -14,3 +14,7 @@ export * from "./role-requests-repository.js";
 export * from "./pim-settings-repository.js";
 export * from "./jit-repository.js";
 export * from "./jit-templates-repository.js";
+export * from "./dashboard-repository.js";
+export * from "./dashboard-layout-repository.js";
+export * from "./report-repository.js";
+export * from "./report-template-repository.js";

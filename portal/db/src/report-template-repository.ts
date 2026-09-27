@@ -20,8 +20,8 @@ import {
 
 type Row = Record<string, unknown>;
 
-// A numbered migration is the eventual home for this DDL; it lives here because
-// this ticket's scope does not allow adding files under portal/db/migrations/.
+// Migration 0080 creates this table for the shared database; the DDL stays here
+// (idempotent) for databases opened through openSqliteReportTemplateRepository.
 const REPORT_TEMPLATES_DDL = `
 CREATE TABLE IF NOT EXISTS report_templates (
   id        TEXT PRIMARY KEY,

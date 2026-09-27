@@ -80,6 +80,13 @@ import { TENANT_VARIABLES_OPENAPI } from "../routes/tenant-variables.js";
 import { TENANTS_OPENAPI } from "../routes/tenants.js";
 import { TEST_CONNECTION_OPENAPI } from "../routes/test-connection.js";
 import { REPORT_TEMPLATE_PERMISSIONS } from "../routes/report-templates.js";
+import { REPORTS_PERMISSIONS } from "../routes/reports.js";
+import {
+  DASHBOARD_FLEET_PATH,
+  DASHBOARD_READ_PERMISSION,
+  DASHBOARD_TENANT_PATH,
+  DASHBOARD_WIDGETS_PATH,
+} from "../routes/dashboard.js";
 import { CA_COVERAGE_PATH, CA_HISTORY_PATH, CA_READ_PERMISSION } from "../routes/ca-coverage.js";
 import {
   CA_NAMED_LOCATIONS_BASE_PATH,
@@ -402,6 +409,15 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  // EPIC-004 dashboards and EPIC-005 reports (T-0823). /widgets precedes /:tenantId.
+  { method: "GET", path: DASHBOARD_WIDGETS_PATH, permission: DASHBOARD_READ_PERMISSION },
+  { method: "GET", path: DASHBOARD_TENANT_PATH, permission: DASHBOARD_READ_PERMISSION },
+  { method: "GET", path: DASHBOARD_FLEET_PATH, permission: DASHBOARD_READ_PERMISSION },
+  { method: "POST", path: "/v1/reports/executive", permission: REPORTS_PERMISSIONS.generate },
+  { method: "POST", path: "/v1/reports/render", permission: REPORTS_PERMISSIONS.generate },
+  { method: "GET", path: "/v1/reports", permission: REPORTS_PERMISSIONS.read },
+  { method: "GET", path: "/v1/reports/:id/download", permission: REPORTS_PERMISSIONS.read },
+  { method: "POST", path: "/v1/reports/:id/bundle", permission: REPORTS_PERMISSIONS.generate },
   // EPIC-001/003 runs (T-0821). The route modules check the EPIC-001 names (runs.read,
   // runs.create, runs.cancel, runs.retry), which app.ts translates to these.
   { method: "GET", path: RUNS_LIST_PATH, permission: "Tenant.Runs.Read" },

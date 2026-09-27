@@ -12,10 +12,14 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import {
   SqliteBecFindingRepository,
+  SqliteDashboardLayoutRepository,
+  SqliteDashboardRepository,
   SqliteJitRepository,
   SqliteJitTemplatesRepository,
   SqliteOffboardingRepository,
   SqlitePimSettingsRepository,
+  SqliteReportRepository,
+  SqliteReportTemplateRepository,
   SqliteRepository,
   SqliteRoleRequestsRepository,
   SqliteTapRecordRepository,
@@ -23,6 +27,7 @@ import {
   loadMigrations,
   runMigrations,
 } from "@m365-assess/db";
+import { parseReportTemplate } from "@m365-assess/contracts/reports";
 import Database from "better-sqlite3";
 import {
   createCredentialRowStore,
@@ -35,6 +40,12 @@ import { createAuditSink, type RecordAudit } from "./adapters/audit.js";
 import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
+import {
+  createGeneratedReportStore,
+  createReportRunReader,
+  createUnavailableRenderQueue,
+  createUnavailableTemplateRender,
+} from "./adapters/reports.js";
 import { createActiveGrantsResolver, createRoleProviders } from "./adapters/roles.js";
 import { createJobPersistence, createRunGroupResolver, createRunQueue, createRunStore } from "./adapters/runs.js";
 import {
@@ -61,7 +72,7 @@ import {
   createWorkerRunner,
   type WorkerRunner,
 } from "./adapters/workers.js";
-import { createDevIdentityAuthenticator } from "./auth/dev-identity.js";
+import { createDevIdentityAuthenticator, ensureDevUser } from "./auth/dev-identity.js";
 import type { BffConfig } from "./config.js";
 import { createInMemoryCredentialStore } from "./credentials/store.js";
 import { AppError } from "./errors.js";
@@ -69,6 +80,7 @@ import { JobQueue } from "./jobs/queue.js";
 import { createSupervisorRunner } from "./jobs/supervisor.js";
 import type { BaseRoleId } from "./rbac/base-roles.js";
 import { RbacErrorCodes, requireTenantInScope, type Caller } from "./rbac/authorize.js";
+import { isTenantAllowed } from "./rbac/scope.js";
 import { testPortalAccess } from "./rbac/test-portal-access.js";
 import { SqliteCaTemplateRepository } from "./repository/ca-templates.js";
 import { SqliteGroupTemplateRepository } from "./repository/group-templates.js";
@@ -87,6 +99,8 @@ import { createCaReportOnlyRoutes } from "./routes/ca-report-only.js";
 import { createCaTemplateDeployRoute } from "./routes/ca-templates-deploy.js";
 import { createCaTemplateRoutes } from "./routes/ca-templates.js";
 import { createCredentialRoutes } from "./routes/credentials.js";
+import { createDashboardLayoutRoutes } from "./routes/dashboard-layout.js";
+import { createDashboardRoutes, type DashboardRoutesStore } from "./routes/dashboard.js";
 import { DEVICE_ACTIONS_HISTORY_OPENAPI, createDeviceActionsHistoryRoute } from "./routes/device-actions-history.js";
 import { DEVICE_BITLOCKER_PERMISSION, createDeviceBitLockerRoute } from "./routes/device-bitlocker.js";
 import { DEVICE_LAPS_PERMISSION, createDeviceLapsRoute } from "./routes/device-laps.js";
@@ -109,6 +123,8 @@ import { createPimRequestsRoutes } from "./routes/pim-requests.js";
 import { createPimSettingsTemplatesRoutes } from "./routes/pim-settings-templates.js";
 import { createPimAssignmentsRoute } from "./routes/pim.js";
 import { createRegistrationCampaignRoute } from "./routes/registration-campaign.js";
+import { createReportTemplateRoutes } from "./routes/report-templates.js";
+import { createReportsRoutes, type ReportsAuthorizer } from "./routes/reports.js";
 import { createRoleAssignmentsRoute } from "./routes/roles.js";
 import { createRunsActionsRoutes } from "./routes/runs-actions.js";
 import { createRunsArtifactsRoutes } from "./routes/runs-artifacts.js";
@@ -231,6 +247,22 @@ export function guardRoute(route: Route, permission: string): Route {
   };
 }
 
+/** Whether the request's caller may act on `tenantId` (false when anonymous). */
+function callerCanAccessTenant(ctx: RequestContext, tenantId: string): boolean {
+  return ctx.caller ? isTenantAllowed(ctx.caller.tenantScope, tenantId) : false;
+}
+
+/** The reports module's per-request authorizer; anonymous requests are a 401. */
+function reportsAuthorizer(ctx: RequestContext): ReportsAuthorizer {
+  if (!ctx.caller) throw unauthenticated();
+  const caller = ctx.caller;
+  return {
+    hasPermission: (permission) => canAccess(caller, permission),
+    actorUserId: () => actorOf(ctx),
+    canAccessTenant: (tenantId) => isTenantAllowed(caller.tenantScope, tenantId),
+  };
+}
+
 /** The signed-in user's id for audit records. */
 function actorOf(ctx: RequestContext): string {
   const caller = ctx.caller as { id?: unknown } | null | undefined;
@@ -306,6 +338,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   }
 
   const schemaVersion = runMigrations(db, loadMigrations());
+  if (config.devIdentityRole) ensureDevUser(db, config.devIdentityRole);
   const journalMode = String(db.pragma("journal_mode", { simple: true }) ?? "memory");
   const repo = new SqliteRepository(db, schemaVersion, journalMode);
   const run = options.workerRunner ?? createWorkerRunner({ workersDir: config.workersDir });
@@ -359,6 +392,12 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     credentials: credentialRows,
     repo,
   });
+  const generatedReports = createGeneratedReportStore(
+    new SqliteReportRepository(db, schemaVersion, repo),
+    repo,
+    db,
+  );
+
   // These routes read the raw body themselves; the server has already parsed it.
   const readBody = async (ctx: RequestContext) => (ctx.body === undefined ? "" : JSON.stringify(ctx.body));
 
@@ -398,6 +437,51 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     ...createRunsActionsRoutes({ store: runStore, queue: runQueue, eventHub: hub, readBody, ...caller }),
     ...createRunsArtifactsRoutes({ store: runStore, artifactRoot: config.artifactPath, ...caller }),
     createRunsEventsRoute({ hub, store: runStore, timeoutMs: RUN_EVENTS_TIMEOUT_MS, ...caller }),
+
+    // EPIC-004 dashboards (T-0823). The layout routes come first: /v1/dashboard/:tenantId
+    // would otherwise capture /v1/dashboard/layout.
+    ...createDashboardLayoutRoutes({
+      store: new SqliteDashboardLayoutRepository(db, schemaVersion),
+      resolveCaller: (ctx) => {
+        const userId = resolveCaller(ctx)?.userId;
+        return userId ? { userId } : undefined;
+      },
+    }),
+    ...createDashboardRoutes({
+      // The repository returns the route's payload; its widgets are typed as interfaces
+      // where the route declares plain records, which TypeScript will not relate.
+      store: new SqliteDashboardRepository(db, schemaVersion) as unknown as DashboardRoutesStore,
+      hasPermission: (c, permission) => canAccess(c as RequestCaller, permission),
+      ...caller,
+    }),
+
+    // EPIC-005 reports (T-0823). Rendering is not built yet (T-0835): generation
+    // requests are refused with 501.
+    ...(createReportTemplateRoutes({
+      store: new SqliteReportTemplateRepository(db, schemaVersion),
+      contract: { parse: (input) => parseReportTemplate(input) },
+      render: createUnavailableTemplateRender(),
+      authorize: { requirePermission: (ctx, permission) => authorizeCaller(ctx.caller, permission) },
+      resolveActor: (ctx) => (ctx.caller ? actorOf(ctx) : null),
+      tenantAccess: callerCanAccessTenant,
+    }) as Route[]),
+    ...(createReportsRoutes({
+      store: generatedReports,
+      queue: createUnavailableRenderQueue(generatedReports),
+      runs: createReportRunReader(repo, config.artifactPath),
+      audit: {
+        record: (event) =>
+          recordAudit({
+            action: event.action,
+            tenantId: event.tenantId,
+            actorUserId: event.actorUserId,
+            targetType: "report",
+            targetId: event.resourceId,
+            correlationId: event.correlationId,
+          }),
+      },
+      authorizer: reportsAuthorizer,
+    }) as Route[]),
 
     // EPIC-002 tenants and onboarding (T-0822).
     ...createTenantRoutes({ store: tenantStore, ...caller }),

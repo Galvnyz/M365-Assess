@@ -15,6 +15,10 @@
       "types": "./dist/events.d.ts",
       "import": "./dist/events.js"
     },
+    "./reports": {
+      "types": "./dist/reports.d.ts",
+      "import": "./dist/reports.js"
+    },
     "./openapi": "./openapi/portal.v1.yaml"
   },
   "files": [

@@ -312,3 +312,40 @@ describe("POST /v1/reports/:id/bundle", () => {
     await expect(route.handler(ctx)).rejects.toMatchObject({ status: 403 });
   });
 });
+
+describe("tenant scope (T-0823)", () => {
+  const scoped = (allowed: string[]) => (): ReportsAuthorizer => ({
+    hasPermission: () => true,
+    actorUserId: () => "user-1",
+    canAccessTenant: (tenantId) => allowed.includes(tenantId),
+  });
+
+  it("hides reports for tenants outside the caller's scope from history", async () => {
+    const store = makeStore({
+      list: vi.fn().mockResolvedValue([makeReport({ id: "a", tenantId: "t1" }), makeReport({ id: "b", tenantId: "t2" }), makeReport({ id: "g", tenantId: null })]),
+    });
+    const route = findRoute(makeDeps({ store, authorizer: scoped(["t1"]) }), "GET", "/v1/reports");
+    const res = await route.handler(makeCtx("GET", "/v1/reports"));
+    expect((res.body as { items: { id: string }[] }).items.map((r) => r.id)).toEqual(["a", "g"]);
+    await expect(route.handler(makeCtx("GET", "/v1/reports", { query: { tenantId: "t2" } }))).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("refuses to generate, download, or bundle for an out-of-scope tenant", async () => {
+    const queue = makeQueue();
+    const deps = makeDeps({
+      queue,
+      authorizer: scoped(["t1"]),
+      store: makeStore({ findById: vi.fn().mockResolvedValue(makeReport({ tenantId: "t2", status: "succeeded", artifactRef: "/a.pdf" })) }),
+    });
+    await expect(
+      findRoute(deps, "POST", "/v1/reports/executive").handler(makeCtx("POST", "/v1/reports/executive", { body: { tenantId: "t2" } })),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      findRoute(deps, "GET", "/v1/reports/:id/download").handler(makeCtx("GET", "/v1/reports/r/download", { params: { id: "r" } })),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      findRoute(deps, "POST", "/v1/reports/:id/bundle").handler(makeCtx("POST", "/v1/reports/r/bundle", { params: { id: "r" } })),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+});

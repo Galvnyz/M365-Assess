@@ -128,6 +128,12 @@ export interface AuditPort {
 export interface ReportsAuthorizer {
   hasPermission(permission: string): boolean;
   actorUserId(): string | null;
+  /**
+   * Whether the caller's tenant scope includes `tenantId`. Reports for tenants outside
+   * it are hidden from history and refused elsewhere; reports with no tenant are open
+   * to every caller holding the permission. Omitted, every tenant is allowed.
+   */
+  canAccessTenant?(tenantId: string): boolean;
 }
 
 // ─── Dependency bundle ────────────────────────────────────────────────────────
@@ -157,6 +163,17 @@ export interface ReportsRoute {
 export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
   const { store, queue, runs, audit, authorizer } = deps;
 
+  const visible = (auth: ReportsAuthorizer, tenantId: string | null): boolean =>
+    tenantId === null || auth.canAccessTenant === undefined || auth.canAccessTenant(tenantId);
+
+  const requireAccess = (auth: ReportsAuthorizer, tenantId: string | null): void => {
+    if (!visible(auth, tenantId)) {
+      throw new AppError(RbacErrorCodes.forbidden, "tenant is outside the caller scope", 403, [
+        { field: "tenantId", reason: "out_of_scope" },
+      ]);
+    }
+  };
+
   // POST /v1/reports/executive — assemble executive payload and enqueue render
   async function handlePostExecutive(ctx: ReportsRequest): Promise<RouteResponse> {
     const auth = authorizer(ctx);
@@ -165,6 +182,7 @@ export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
     }
     const body = requireBodyRecord(ctx.body);
     const tenantId = requireString(body, "tenantId");
+    requireAccess(auth, tenantId);
 
     const runId = await runs.latestRunId(tenantId);
     if (runId === null) {
@@ -209,6 +227,7 @@ export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
     }
     const body = requireBodyRecord(ctx.body);
     const tenantId = optionalString(body, "tenantId");
+    requireAccess(auth, tenantId);
     const templateId = optionalString(body, "templateId");
     const document = body["document"];
 
@@ -248,8 +267,11 @@ export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
       throw new AppError(RbacErrorCodes.forbidden, "reports.read permission required", 403);
     }
     const tenantId = ctx.query.get("tenantId") ?? undefined;
+    if (tenantId !== undefined) requireAccess(auth, tenantId);
     const pag = parsePagination(ctx.query);
-    const items = await store.list({ tenantId, limit: pag.limit, cursor: pag.cursor ?? undefined });
+    const items = (await store.list({ tenantId, limit: pag.limit, cursor: pag.cursor ?? undefined })).filter(
+      (report) => visible(auth, report.tenantId),
+    );
     const page = paginate(items, pag);
     return { status: 200, body: { ...page, items: page.items.map(toResponse) } };
   }
@@ -265,6 +287,7 @@ export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
     if (!report) {
       throw notFound(id);
     }
+    requireAccess(auth, report.tenantId);
     if (report.status !== "succeeded" || !report.artifactRef) {
       throw new AppError(
         REPORT_NOT_FOUND,
@@ -303,6 +326,7 @@ export function createReportsRoutes(deps: ReportsDependencies): ReportsRoute[] {
     if (!report) {
       throw notFound(id);
     }
+    requireAccess(auth, report.tenantId);
     if (!report.tenantId) {
       throw new AppError(REPORT_TENANT_REQUIRED, "Report has no tenantId; cannot bundle run artifacts", 400);
     }

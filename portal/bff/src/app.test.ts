@@ -49,6 +49,8 @@ async function serve(
     get: (p: string) => fetch(`${base}${p}`),
     post: (p: string, body: unknown) =>
       fetch(`${base}${p}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+    put: (p: string, body: unknown) =>
+      fetch(`${base}${p}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
   };
 }
 
@@ -654,5 +656,53 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
     } finally {
       cleanup();
     }
+  });
+});
+
+describe("EPIC-004 dashboards and EPIC-005 reports (T-0823)", () => {
+  const runner: WorkerRunner = async () => ({}) as never;
+  const TEMPLATE_DOCUMENT = {
+    schemaVersion: "v1",
+    id: "client-id",
+    name: "client-name",
+    settings: { title: "Security posture", redact: false },
+    pageSetup: { pageSize: "A4", orientation: "portrait", marginMm: 16 },
+    blocks: [{ id: "block-1", type: "rich-text", title: "Note", static: true, settings: { body: "All clear." } }],
+  };
+
+  it("serves a tenant dashboard to a read-only caller and saves a user's layout", async () => {
+    const operator = await adminWithTenant(runner, "operator");
+    const dashboard = await operator.get("/v1/dashboard/t-a");
+    expect(dashboard.status).toBe(200);
+    expect(await dashboard.json()).toMatchObject({ tenantId: "t-a" });
+
+    type LayoutBody = { layout: { widgets: unknown[] } };
+    const { layout } = (await (await operator.get("/v1/dashboard/layout")).json()) as LayoutBody;
+    expect(layout.widgets.length).toBeGreaterThan(0);
+    const saved = await operator.put("/v1/dashboard/layout", { widgets: layout.widgets.slice(0, 1) });
+    expect(saved.status).toBe(200);
+    expect(((await (await operator.get("/v1/dashboard/layout")).json()) as LayoutBody).layout.widgets).toHaveLength(1);
+  });
+
+  it("stores report templates, lists report history, and refuses renders until rendering exists", async () => {
+    const admin = await adminWithTenant(runner);
+    const created = await admin.post("/v1/report-templates", { name: "Quarterly", tenantId: "t-a", document: TEMPLATE_DOCUMENT });
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    expect((await admin.get("/v1/report-templates")).status).toBe(200);
+
+    const generate = await admin.post(`/v1/report-templates/${id}/generate`, {});
+    expect(generate.status).toBe(501);
+    expect(await generate.json()).toMatchObject({ code: "report.render_unavailable" });
+
+    const history = await admin.get("/v1/reports?tenantId=t-a");
+    expect(history.status).toBe(200);
+    expect(await history.json()).toMatchObject({ items: [] });
+  });
+
+  it("refuses report template writes to a read-only caller", async () => {
+    const operator = await adminWithTenant(runner, "operator");
+    const res = await operator.post("/v1/report-templates", { name: "X", document: TEMPLATE_DOCUMENT });
+    expect(res.status).toBe(403);
   });
 });
