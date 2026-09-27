@@ -1,0 +1,11 @@
+/* Portal tokens layered on the report theme (report-themes.css).
+   --on-accent: text and icons drawn on an accent-filled surface (primary buttons, active
+   pills). The report's --accent-text is accent-coloured text for normal surfaces, so it
+   is unreadable on an accent fill. */
+:root {
+  --on-accent: #ffffff;
+}
+/* High contrast dark uses a white accent. */
+[data-theme="high-contrast"][data-mode="dark"] {
+  --on-accent: #000000;
+}

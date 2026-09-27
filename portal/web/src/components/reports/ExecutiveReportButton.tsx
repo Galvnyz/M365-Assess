@@ -95,7 +95,7 @@ export default function ExecutiveReportButton({
         data-testid="executive-report-btn"
         disabled={busy}
         onClick={handleOpen}
-        style={{ color: "var(--text)", background: "var(--accent)", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: busy ? "not-allowed" : "pointer" }}
+        style={{ color: "var(--on-accent)", background: "var(--accent)", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: busy ? "not-allowed" : "pointer" }}
       >
         {busy ? "Generating…" : "Executive Report"}
       </button>

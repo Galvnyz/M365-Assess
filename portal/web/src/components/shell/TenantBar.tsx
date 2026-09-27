@@ -1,10 +1,11 @@
 "use client";
 
-// Shell top bar holding the global tenant selector. The chosen tenant is stored by
-// tenant-preference.ts and read by pages through useCurrentTenantId().
+// Shell top bar: the theme switcher and the global tenant selector. The chosen tenant is
+// stored by tenant-preference.ts and read by pages through useCurrentTenantId().
 
 import { useEffect, useState, type ReactElement } from "react";
 import { TenantSelector, type TenantItem } from "../TenantSelector";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function TenantBar(): ReactElement {
   const [tenants, setTenants] = useState<TenantItem[] | null>(null);
@@ -31,7 +32,6 @@ export function TenantBar(): ReactElement {
       data-testid="tenant-bar"
       style={{
         display: "flex",
-        justifyContent: "flex-end",
         alignItems: "center",
         gap: "12px",
         padding: "12px 0",
@@ -39,6 +39,8 @@ export function TenantBar(): ReactElement {
         minHeight: "58px",
       }}
     >
+      <ThemeSwitcher />
+      <div style={{ flex: 1 }} />
       {error && <span style={{ color: "var(--muted)", fontSize: "13px" }}>Tenants unavailable: {error}</span>}
       {/* Rendered after the tenant list loads, which is also after hydration: the selector
           reads the stored tenant from localStorage when it mounts. */}

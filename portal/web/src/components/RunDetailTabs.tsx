@@ -1154,7 +1154,7 @@ export function RunDetailTabs(props: RunDetailTabsProps): ReactElement {
                         fontSize: "13px",
                         fontWeight: 600,
                         background: "var(--accent)",
-                        color: "var(--accent-text)",
+                        color: "var(--on-accent)",
                         border: "1px solid var(--accent)",
                         borderRadius: "var(--radius, 6px)",
                         textDecoration: "none",

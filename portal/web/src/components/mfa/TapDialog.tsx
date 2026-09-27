@@ -110,7 +110,7 @@ const buttonStyle: CSSProperties = {
 const submitButtonStyle: CSSProperties = {
   ...buttonStyle,
   background: "var(--accent)",
-  color: "var(--accent-text)",
+  color: "var(--on-accent)",
   borderColor: "var(--accent)",
 };
 

@@ -37,7 +37,7 @@ const titleStyle: CSSProperties = {
 const primaryLinkStyle: CSSProperties = {
   padding: "10px 18px",
   background: "var(--accent)",
-  color: "var(--accent-text)",
+  color: "var(--on-accent)",
   border: "1px solid var(--accent)",
   borderRadius: "6px",
   fontWeight: 600,

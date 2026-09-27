@@ -136,7 +136,7 @@ const fieldValueStyle: CSSProperties = {
 const buttonStyle: CSSProperties = {
   padding: "8px 16px",
   background: "var(--accent)",
-  color: "var(--accent-text)",
+  color: "var(--on-accent)",
   border: "1px solid var(--accent)",
   borderRadius: "6px",
   fontSize: "14px",

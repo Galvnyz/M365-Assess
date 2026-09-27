@@ -176,7 +176,7 @@ const buttonStyle: CSSProperties = {
 const primaryButtonStyle: CSSProperties = {
   ...buttonStyle,
   background: "var(--accent)",
-  color: "var(--accent-text)",
+  color: "var(--on-accent)",
   borderColor: "var(--accent)",
 };
 

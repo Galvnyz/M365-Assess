@@ -324,7 +324,7 @@ export default function UsersPage(): ReactElement {
               <button type="button" style={buttonStyle} onClick={() => setCreateOpen(false)} data-testid="create-cancel-button">
                 Cancel
               </button>
-              <button type="button" style={{ ...buttonStyle, background: "var(--accent)", color: "var(--accent-text)", borderColor: "var(--accent)" }} onClick={() => void handleCreate()} data-testid="create-submit-button">
+              <button type="button" style={{ ...buttonStyle, background: "var(--accent)", color: "var(--on-accent)", borderColor: "var(--accent)" }} onClick={() => void handleCreate()} data-testid="create-submit-button">
                 Create
               </button>
             </div>
@@ -356,7 +356,7 @@ export default function UsersPage(): ReactElement {
               <button type="button" style={buttonStyle} onClick={() => setBulkOpen(false)} data-testid="bulk-cancel-button">
                 Close
               </button>
-              <button type="button" style={{ ...buttonStyle, background: "var(--accent)", color: "var(--accent-text)", borderColor: "var(--accent)" }} onClick={() => void handleBulkCreate()} data-testid="bulk-submit-button">
+              <button type="button" style={{ ...buttonStyle, background: "var(--accent)", color: "var(--on-accent)", borderColor: "var(--accent)" }} onClick={() => void handleBulkCreate()} data-testid="bulk-submit-button">
                 Validate and create
               </button>
             </div>
