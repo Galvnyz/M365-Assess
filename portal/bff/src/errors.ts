@@ -3,9 +3,14 @@
 // `details`, and the request `correlationId`. Never leaks stack traces.
 
 export const ErrorCodes = {
+  /** No route matches the method and path. */
   routeNotFound: "request.not_found",
   validationFailed: "request.validation_failed",
   internalError: "server.internal_error",
+  /** Same value as RbacErrorCodes.forbidden, so every 403 carries one code. */
+  forbidden: "auth.forbidden",
+  /** The route exists but the resource it names does not. */
+  notFound: "resource.not_found",
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
