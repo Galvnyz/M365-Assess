@@ -15,6 +15,20 @@ export interface BffConfig {
   readonly workerPoolSize: number;
   readonly storagePath: string;
   readonly artifactPath: string;
+  /**
+   * Local development only: authenticate every request as this EPIC-001 role until
+   * EPIC-038 delivers portal-user token validation. Null (the default) disables it.
+   */
+  readonly devIdentityRole: DevIdentityRole | null;
+}
+
+export type DevIdentityRole = "admin" | "operator";
+
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConfigError";
+  }
 }
 
 const ENV = {
@@ -23,6 +37,7 @@ const ENV = {
   workerPoolSize: "M365_BFF_WORKER_POOL_SIZE",
   storagePath: "M365_BFF_STORAGE_PATH",
   artifactPath: "M365_BFF_ARTIFACT_PATH",
+  devIdentity: "M365_BFF_DEV_IDENTITY",
 } as const;
 
 function readEnv(env: Environment, key: string): string | undefined {
@@ -59,6 +74,22 @@ export function parseWorkerPoolSize(
   return parsed;
 }
 
+/**
+ * Parse the opt-in dev identity. An unknown value is an error rather than a silent
+ * "off", and any value at all is refused when NODE_ENV is production.
+ */
+export function parseDevIdentityRole(env: Environment): DevIdentityRole | null {
+  const value = readEnv(env, ENV.devIdentity);
+  if (value === undefined) return null;
+  if (readEnv(env, "NODE_ENV") === "production") {
+    throw new ConfigError(`${ENV.devIdentity} must not be set when NODE_ENV=production`);
+  }
+  if (value !== "admin" && value !== "operator") {
+    throw new ConfigError(`${ENV.devIdentity} must be "admin" or "operator", got "${value}"`);
+  }
+  return value;
+}
+
 export function loadConfig(env: Environment = process.env): BffConfig {
   const storagePath = path.resolve(
     readEnv(env, ENV.storagePath) ?? path.join(PACKAGE_ROOT, "data"),
@@ -72,5 +103,6 @@ export function loadConfig(env: Environment = process.env): BffConfig {
     workerPoolSize: parseWorkerPoolSize(readEnv(env, ENV.workerPoolSize)),
     storagePath,
     artifactPath,
+    devIdentityRole: parseDevIdentityRole(env),
   };
 }

@@ -14,6 +14,10 @@ import {
   API_CLIENTS_OPENAPI,
   API_CLIENTS_PATH,
 } from "../routes/api-clients.js";
+import {
+  BASELINES_CATALOG_PATH,
+  BASELINES_CATALOG_PERMISSION,
+} from "../routes/baselines-catalog.js";
 import { CA_TEMPLATE_PERMISSIONS } from "../routes/ca-templates.js";
 import {
   DASHBOARD_LAYOUT_OPENAPI,
@@ -35,6 +39,12 @@ import {
   DEVICE_ACTIONS_HISTORY_OPENAPI,
   DEVICE_ACTIONS_HISTORY_PATH,
 } from "../routes/device-actions-history.js";
+import {
+  GROUP_TEMPLATE_ITEM_PATH,
+  GROUP_TEMPLATES_PATH,
+  GROUP_TEMPLATES_PERMISSION,
+} from "../routes/group-templates.js";
+import { HEALTH_PATH } from "../routes/health.js";
 import { INTUNE_TEMPLATE_PERMISSIONS } from "../routes/intune-templates.js";
 import { REPORT_TEMPLATE_PERMISSIONS } from "../routes/report-templates.js";
 
@@ -71,6 +81,14 @@ const DEVICE_ACTIONS_HISTORY_OPERATION =
 
 export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.freeze([
   { method: "GET", path: OPENAPI_ROUTE, permission: PUBLIC_PERMISSION },
+  // Liveness probe: reports no tenant data (EPIC-001 SPEC §6).
+  { method: "GET", path: HEALTH_PATH, permission: PUBLIC_PERMISSION },
+  { method: "GET", path: BASELINES_CATALOG_PATH, permission: BASELINES_CATALOG_PERMISSION },
+  { method: "GET", path: GROUP_TEMPLATES_PATH, permission: GROUP_TEMPLATES_PERMISSION },
+  { method: "POST", path: GROUP_TEMPLATES_PATH, permission: GROUP_TEMPLATES_PERMISSION },
+  { method: "GET", path: GROUP_TEMPLATE_ITEM_PATH, permission: GROUP_TEMPLATES_PERMISSION },
+  { method: "PATCH", path: GROUP_TEMPLATE_ITEM_PATH, permission: GROUP_TEMPLATES_PERMISSION },
+  { method: "DELETE", path: GROUP_TEMPLATE_ITEM_PATH, permission: GROUP_TEMPLATES_PERMISSION },
   {
     method: "GET",
     path: API_CLIENTS_PATH,

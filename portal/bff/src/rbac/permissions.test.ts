@@ -3,6 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { testPortalAccess } from "./test-portal-access.js";
+import Database from "better-sqlite3";
+import { createApp } from "../app.js";
+import { loadConfig } from "../config.js";
 import { OPENAPI_ROUTE, type Route } from "../server.js";
 import { InMemoryCaTemplateRepository } from "../repository/ca-templates.js";
 import type { CveExceptionRepository } from "../repository/cve-exceptions.js";
@@ -79,9 +82,17 @@ const reportDeps: ReportTemplateDependencies = {
   },
 };
 
+/**
+ * Every endpoint the registry must cover: the app's served routes (T-0817) plus route
+ * modules that are registered ahead of being mounted by T-0818..T-0825.
+ */
 function mountedEndpoints(): Route[] {
-  return [
+  const app = createApp(loadConfig({}), { db: new Database(":memory:") });
+  const appRoutes = [...app.routes];
+  app.close();
+  const all: Route[] = [
     { method: "GET", path: OPENAPI_ROUTE, handler: () => ({ status: 200, body: null }) },
+    ...appRoutes,
     ...createApiClientRoutes(createInMemoryApiClientStore()),
     ...createCaTemplateRoutes(new InMemoryCaTemplateRepository()),
     ...createDashboardLayoutRoutes({
@@ -94,6 +105,13 @@ function mountedEndpoints(): Route[] {
     ...createIntuneTemplateRoutes(new InMemoryIntuneTemplateRepository()),
     ...createReportTemplateRoutes(reportDeps),
   ];
+  const seen = new Set<string>();
+  return all.filter((r) => {
+    const key = `${r.method.toUpperCase()} ${r.path}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function endpointKey(method: string, path: string): string {
@@ -221,7 +239,7 @@ describe("permission taxonomy", () => {
     }
   });
 
-  it("keeps every registry permission in taxonomy with Public only on the contract route", () => {
+  it("keeps every registry permission in taxonomy with Public only on the contract and health routes", () => {
     expect(PermissionRegistry.length).toBeGreaterThan(0);
     for (const entry of PermissionRegistry) {
       expect(isPermissionString(entry.permission), `${entry.method} ${entry.path}`).toBe(true);
@@ -230,8 +248,10 @@ describe("permission taxonomy", () => {
     const publicEntries = PermissionRegistry.filter((entry) =>
       isPublicPermission(entry.permission),
     );
-    expect(publicEntries).toHaveLength(1);
-    expect(publicEntries[0]).toMatchObject({ method: "GET", path: OPENAPI_ROUTE });
+    // The OpenAPI contract and the liveness probe (no tenant data) are the only open endpoints.
+    expect(publicEntries.map((e) => `${e.method} ${e.path}`).sort()).toEqual(
+      ["GET /v1/health", `GET ${OPENAPI_ROUTE}`].sort(),
+    );
   });
 
   it("treats anonymous and authenticated as reserved, matched exactly", () => {
@@ -321,5 +341,19 @@ describe("route permissions follow the EPIC-038 taxonomy (T-0816)", () => {
     for (const permission of taxonomy) {
       expect(testPortalAccess({ permission, roles: ["admin"] }).allowed, permission).toBe(true);
     }
+  });
+});
+
+describe("permission registry covers the app's mounted routes (T-0817)", () => {
+  it("resolves exactly one permission for every route the app serves", () => {
+    const app = createApp(loadConfig({}), { db: new Database(":memory:") });
+    const served = [
+      { method: "GET", path: OPENAPI_ROUTE },
+      ...app.routes.map((r) => ({ method: r.method, path: r.path })),
+    ];
+    expect(app.routes.length).toBeGreaterThan(10);
+    const missing = served.filter((r) => permissionForEndpoint({ method: r.method, path: r.path }) === undefined);
+    expect(missing).toEqual([]);
+    app.close();
   });
 });
