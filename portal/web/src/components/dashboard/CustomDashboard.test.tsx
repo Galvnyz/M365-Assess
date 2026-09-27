@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { CustomDashboard, type DashboardLayout } from "./CustomDashboard.js";
-import { WidgetPicker, type StockWidgetDefinition } from "./WidgetPicker.js";
+import { CustomDashboard, type DashboardLayout } from "./CustomDashboard";
+import { WidgetPicker, type StockWidgetDefinition } from "./WidgetPicker";
 
 const SAMPLE_WIDGETS: StockWidgetDefinition[] = [
   {

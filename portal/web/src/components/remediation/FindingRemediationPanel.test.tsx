@@ -5,12 +5,12 @@ import {
   FindingRemediationPanel,
   automatedPlanToText,
   derivePreconditions,
-} from "./FindingRemediationPanel.js";
-import { ManualSteps, manualStepsToText, splitPortalPath } from "./ManualSteps.js";
+} from "./FindingRemediationPanel";
+import { ManualSteps, manualStepsToText, splitPortalPath } from "./ManualSteps";
 import type {
   RemediationActionItem,
   RemediationInstruction,
-} from "../../lib/remediationApi.js";
+} from "../../lib/remediationApi";
 
 afterEach(() => {
   cleanup();

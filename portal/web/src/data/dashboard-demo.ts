@@ -4,15 +4,15 @@
 // Strictly uses report theme tokens with zero colour literals.
 
 import React, { type CSSProperties, type ReactElement } from "react";
-import { DashboardGrid } from "../components/dashboard/DashboardGrid.js";
-import { TenantInfoCard } from "../components/dashboard/TenantInfoCard.js";
-import { TenantMetricsGrid } from "../components/dashboard/TenantMetricsGrid.js";
-import { AssessmentCard } from "../components/dashboard/AssessmentCard.js";
-import { AlertsOverviewCard } from "../components/dashboard/AlertsOverviewCard.js";
-import { SecureScoreCard } from "../components/dashboard/SecureScoreCard.js";
-import { AuthMethodCard } from "../components/dashboard/AuthMethodCard.js";
-import { MFACard } from "../components/dashboard/MFACard.js";
-import { LicenseCard } from "../components/dashboard/LicenseCard.js";
+import { DashboardGrid } from "../components/dashboard/DashboardGrid";
+import { TenantInfoCard } from "../components/dashboard/TenantInfoCard";
+import { TenantMetricsGrid } from "../components/dashboard/TenantMetricsGrid";
+import { AssessmentCard } from "../components/dashboard/AssessmentCard";
+import { AlertsOverviewCard } from "../components/dashboard/AlertsOverviewCard";
+import { SecureScoreCard } from "../components/dashboard/SecureScoreCard";
+import { AuthMethodCard } from "../components/dashboard/AuthMethodCard";
+import { MFACard } from "../components/dashboard/MFACard";
+import { LicenseCard } from "../components/dashboard/LicenseCard";
 
 export const WIDGET_TUTORIAL_MARKERS = {
   TenantInfoCard: "widget-tenant-info",

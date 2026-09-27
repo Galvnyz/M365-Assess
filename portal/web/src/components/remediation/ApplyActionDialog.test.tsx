@@ -1,14 +1,14 @@
 // T-0113 — ApplyActionDialog + RemediationHistoryTable + history page.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ApplyActionDialog } from "./ApplyActionDialog.js";
-import { RemediationHistoryTable } from "./RemediationHistoryTable.js";
-import RemediationHistoryPage from "../../app/remediation/history/page.js";
+import { ApplyActionDialog } from "./ApplyActionDialog";
+import { RemediationHistoryTable } from "./RemediationHistoryTable";
+import RemediationHistoryPage from "../../app/remediation/history/page";
 import {
   formatTransition,
   type RemediationActionItem,
   type RemediationHistoryRow,
-} from "../../lib/remediationApi.js";
+} from "../../lib/remediationApi";
 
 afterEach(() => {
   cleanup();

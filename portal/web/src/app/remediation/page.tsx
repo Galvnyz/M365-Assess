@@ -7,7 +7,7 @@
 // filters, and row actions. Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { RemediationPlanTable } from "../../components/remediation/RemediationPlanTable.js";
+import { RemediationPlanTable } from "../../components/remediation/RemediationPlanTable";
 import {
   EXPORT_FORMATS,
   downloadPlan,
@@ -16,7 +16,7 @@ import {
   waitForRemediationPlan,
   type ExportFormat,
   type RemediationPlanResponse,
-} from "../../lib/remediationApi.js";
+} from "../../lib/remediationApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

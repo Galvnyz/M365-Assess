@@ -8,8 +8,8 @@ import React, { type CSSProperties, type ReactElement } from "react";
 import {
   formatTransition,
   type RemediationHistoryRow,
-} from "../../lib/remediationApi.js";
-import { statusBadgeStyle } from "./RemediationPlanTable.js";
+} from "../../lib/remediationApi";
+import { statusBadgeStyle } from "./RemediationPlanTable";
 
 export interface RemediationHistoryTableProps {
   readonly rows?: readonly RemediationHistoryRow[];

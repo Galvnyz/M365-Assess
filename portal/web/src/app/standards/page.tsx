@@ -8,7 +8,7 @@
 // documented SPEC §6 paths. Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { TemplatesTable, type StandardsTemplateItem } from "../../components/standards/TemplatesTable.js";
+import { TemplatesTable, type StandardsTemplateItem } from "../../components/standards/TemplatesTable";
 import {
   cloneStandardTemplate,
   convertStandardTemplate,
@@ -20,7 +20,7 @@ import {
   setStandardTemplateSchedule,
   type StandardTemplate,
   type StandardTemplateKind,
-} from "../../lib/standardsApi.js";
+} from "../../lib/standardsApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

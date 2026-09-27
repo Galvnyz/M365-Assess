@@ -1,9 +1,9 @@
 // T-0146 — Standards templates list UI.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { TemplatesTable, type StandardsTemplateItem } from "./TemplatesTable.js";
-import StandardsPage from "../../app/standards/page.js";
-import { standardsCount, type StandardTemplate } from "../../lib/standardsApi.js";
+import { TemplatesTable, type StandardsTemplateItem } from "./TemplatesTable";
+import StandardsPage from "../../app/standards/page";
+import { standardsCount, type StandardTemplate } from "../../lib/standardsApi";
 
 afterEach(() => {
   cleanup();
@@ -158,7 +158,7 @@ describe("standardsApi helpers", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const { cloneStandardTemplate } = await import("../../lib/standardsApi.js");
+    const { cloneStandardTemplate } = await import("../../lib/standardsApi");
     const clone = await cloneStandardTemplate("tpl-1", { includeAssignments: true }, fetcher as unknown as typeof fetch);
     expect(clone.id).toBe("tpl-2");
     expect(fetcher).toHaveBeenCalledWith(

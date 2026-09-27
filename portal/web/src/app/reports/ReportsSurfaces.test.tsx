@@ -1,9 +1,9 @@
 // T-0089 — Report surfaces: ExecutiveReportButton, PdfPreviewDialog, /reports page
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import ExecutiveReportButton from "../../components/reports/ExecutiveReportButton.js";
-import PdfPreviewDialog from "../../components/reports/PdfPreviewDialog.js";
-import ReportsPage from "./page.js";
+import ExecutiveReportButton from "../../components/reports/ExecutiveReportButton";
+import PdfPreviewDialog from "../../components/reports/PdfPreviewDialog";
+import ReportsPage from "./page";
 
 afterEach(() => {
   cleanup();

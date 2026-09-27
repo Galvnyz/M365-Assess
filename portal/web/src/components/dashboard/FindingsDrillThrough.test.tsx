@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { FindingsDrillThrough, type FindingItem } from "./FindingsDrillThrough.js";
+import { FindingsDrillThrough, type FindingItem } from "./FindingsDrillThrough";
 import {
   serializeFindingsFilter,
   parseFindingsFilter,
@@ -12,7 +12,7 @@ import {
   filterFromWidgetMetric,
   matchesFindingsFilter,
   type FindingsFilter,
-} from "../../lib/findings-filter.js";
+} from "../../lib/findings-filter";
 
 const SAMPLE_FINDINGS: FindingItem[] = [
   {

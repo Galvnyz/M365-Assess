@@ -6,7 +6,7 @@
 // Strictly uses report theme tokens with zero colour literals.
 
 import React, { type CSSProperties, type ReactElement } from "react";
-import { WidgetCard } from "./WidgetCard.js";
+import { WidgetCard } from "./WidgetCard";
 
 export interface TenantInfoWidget {
   readonly tenantId: string;

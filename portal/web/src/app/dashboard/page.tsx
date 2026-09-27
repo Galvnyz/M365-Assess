@@ -6,8 +6,8 @@
 // Strictly uses report theme tokens with zero colour literals.
 
 import React, { useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { FleetTable, type FleetPayload } from "../../components/dashboard/FleetTable.js";
-import { TenantSelector } from "../../components/TenantSelector.js";
+import { FleetTable, type FleetPayload } from "../../components/dashboard/FleetTable";
+import { TenantSelector } from "../../components/TenantSelector";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

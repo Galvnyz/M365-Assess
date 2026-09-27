@@ -3,13 +3,13 @@
 // and item 3 (search + Standard Logs drawer). See the ticket scope_note.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AlignmentReport } from "./AlignmentReport.js";
-import AlignmentPage from "../../app/standards/alignment/page.js";
+import { AlignmentReport } from "./AlignmentReport";
+import AlignmentPage from "../../app/standards/alignment/page";
 import type {
   AlignmentAggregateRow,
   AlignmentByStandardRow,
   AlignmentSummaryRow,
-} from "../../lib/standardsApi.js";
+} from "../../lib/standardsApi";
 
 afterEach(() => {
   cleanup();

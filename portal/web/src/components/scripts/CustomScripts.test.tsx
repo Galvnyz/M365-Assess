@@ -5,9 +5,9 @@ import {
   ScriptEditor,
   describeDataStructure,
   renderScriptOutput,
-} from "./ScriptEditor.js";
-import { ScriptVersionsDrawer } from "./ScriptVersionsDrawer.js";
-import CustomScriptsPage, { parseScriptOutput } from "../../app/scripts/page.js";
+} from "./ScriptEditor";
+import { ScriptVersionsDrawer } from "./ScriptVersionsDrawer";
+import CustomScriptsPage, { parseScriptOutput } from "../../app/scripts/page";
 
 afterEach(() => {
   cleanup();

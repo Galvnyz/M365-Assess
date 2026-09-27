@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { TenantSelector, type TenantItem } from "./TenantSelector.js";
-import { TenantMultiSelect, type TenantOption, type TenantGroupOption, type TypedTenantOption } from "./TenantMultiSelect.js";
+import { TenantSelector, type TenantItem } from "./TenantSelector";
+import { TenantMultiSelect, type TenantOption, type TenantGroupOption, type TypedTenantOption } from "./TenantMultiSelect";
 import {
   CURRENT_TENANT_KEY,
   RECENT_TENANTS_KEY,
@@ -17,7 +17,7 @@ import {
   toggleFavoriteTenantId,
   getTenantPreference,
   setTenantPreference,
-} from "../lib/tenant-preference.js";
+} from "../lib/tenant-preference";
 
 const SAMPLE_TENANTS: TenantItem[] = [
   { id: "tenant-contoso", displayName: "Contoso Corp", defaultDomain: "contoso.com" },

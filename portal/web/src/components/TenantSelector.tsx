@@ -20,7 +20,7 @@ import {
   getFavoriteTenantIds,
   toggleFavoriteTenantId,
   onTenantChange as subscribeTenantChange,
-} from "../lib/tenant-preference.js";
+} from "../lib/tenant-preference";
 
 export interface TenantItem {
   readonly id: string;

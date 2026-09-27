@@ -11,7 +11,7 @@ import React, { useCallback, useEffect, useState, type CSSProperties, type React
 import {
   ExecutiveDriftReport,
   type ExecutiveDriftReportData,
-} from "../../../components/drift/ExecutiveDriftReport.js";
+} from "../../../components/drift/ExecutiveDriftReport";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

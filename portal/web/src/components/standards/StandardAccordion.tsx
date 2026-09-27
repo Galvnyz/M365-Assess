@@ -5,7 +5,7 @@
 // / Remediate, and an autoRemediate switch (US-2, US-3). Zero colour literals.
 
 import React, { type CSSProperties, type ReactElement } from "react";
-import type { StandardTemplateActions } from "../../lib/standardsApi.js";
+import type { StandardTemplateActions } from "../../lib/standardsApi";
 
 export interface AccordionStandard {
   readonly key: string;

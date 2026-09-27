@@ -1,8 +1,8 @@
 // T-0112 — Remediation plan page + RemediationPlanTable.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { RemediationPlanTable } from "./RemediationPlanTable.js";
-import RemediationPage from "../../app/remediation/page.js";
+import { RemediationPlanTable } from "./RemediationPlanTable";
+import RemediationPage from "../../app/remediation/page";
 import {
   computeKpis,
   exportPlan,
@@ -10,7 +10,7 @@ import {
   type RemediationActionItem,
   type RemediationPlanResponse,
   waitForRemediationPlan,
-} from "../../lib/remediationApi.js";
+} from "../../lib/remediationApi";
 
 afterEach(() => {
   cleanup();

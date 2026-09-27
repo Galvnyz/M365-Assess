@@ -10,13 +10,13 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { DriftTable, type DriftRowAction } from "../../components/drift/DriftTable.js";
+import { DriftTable, type DriftRowAction } from "../../components/drift/DriftTable";
 import {
   AcceptDeviationDialog,
   BulkTriageDialog,
   DenyDeviationDialog,
   OverrideDeviationDialog,
-} from "../../components/drift/DriftDialogs.js";
+} from "../../components/drift/DriftDialogs";
 import {
   acceptDeviation,
   bulkTriageDrift,
@@ -31,8 +31,8 @@ import {
   type DriftBulkAction,
   type DriftDeviation,
   type OverrideDeviationInput,
-} from "../../lib/driftApi.js";
-import { runStandardTemplateNow } from "../../lib/standardsApi.js";
+} from "../../lib/driftApi";
+import { runStandardTemplateNow } from "../../lib/standardsApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

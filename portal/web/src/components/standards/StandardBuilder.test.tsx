@@ -1,14 +1,14 @@
 // T-0147 — standards template builder: timeline, accordion, picker, guard.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { StandardAccordion } from "./StandardAccordion.js";
-import { StandardPicker } from "./StandardPicker.js";
-import StandardBuilderPage from "../../app/standards/[id]/edit/page.js";
+import { StandardAccordion } from "./StandardAccordion";
+import { StandardPicker } from "./StandardPicker";
+import StandardBuilderPage from "../../app/standards/[id]/edit/page";
 import {
   isLicenseMissing,
   standardImpact,
   type CatalogStandard,
-} from "../../lib/standardsApi.js";
+} from "../../lib/standardsApi";
 
 afterEach(() => {
   cleanup();

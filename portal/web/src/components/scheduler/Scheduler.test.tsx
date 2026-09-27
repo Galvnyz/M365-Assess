@@ -6,10 +6,10 @@ import {
   describeCronExpression,
   formatTarget,
   type ScheduledTaskItem,
-} from "./ScheduledTasksTable.js";
-import { SystemTimersCard } from "./SystemTimersCard.js";
-import SchedulerPage from "../../app/scheduler/page.js";
-import TaskDetailPage from "../../app/scheduler/[id]/page.js";
+} from "./ScheduledTasksTable";
+import { SystemTimersCard } from "./SystemTimersCard";
+import SchedulerPage from "../../app/scheduler/page";
+import TaskDetailPage from "../../app/scheduler/[id]/page";
 
 afterEach(() => {
   cleanup();

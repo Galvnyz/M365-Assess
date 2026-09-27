@@ -13,11 +13,11 @@ import {
   ScriptEditor,
   renderScriptOutput,
   type ScriptEditorScript,
-} from "../../components/scripts/ScriptEditor.js";
+} from "../../components/scripts/ScriptEditor";
 import {
   ScriptVersionsDrawer,
   type ScriptVersionItem,
-} from "../../components/scripts/ScriptVersionsDrawer.js";
+} from "../../components/scripts/ScriptVersionsDrawer";
 
 export interface CustomScriptItem {
   readonly id: string;

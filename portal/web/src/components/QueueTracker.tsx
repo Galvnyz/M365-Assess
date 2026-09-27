@@ -18,7 +18,7 @@ import {
   type RunState,
   type SectionState,
 } from "@m365-assess/contracts/events";
-import { useRunEvents } from "../lib/useRunEvents.js";
+import { useRunEvents } from "../lib/useRunEvents";
 
 export interface QueueTrackerCheck {
   readonly id: string;

@@ -1,9 +1,9 @@
 // T-0168 — Manage Drift UI and triage dialogs.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import DriftPage from "../../app/drift/page.js";
-import { DriftTable } from "./DriftTable.js";
-import { DRIFT_DENY_WARNING, type DriftDeviation } from "../../lib/driftApi.js";
+import DriftPage from "../../app/drift/page";
+import { DriftTable } from "./DriftTable";
+import { DRIFT_DENY_WARNING, type DriftDeviation } from "../../lib/driftApi";
 
 afterEach(() => {
   cleanup();

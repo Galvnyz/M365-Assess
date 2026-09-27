@@ -11,7 +11,7 @@ import {
   describeCronExpression,
   formatTarget,
   type ScheduledTaskItem,
-} from "../../../components/scheduler/ScheduledTasksTable.js";
+} from "../../../components/scheduler/ScheduledTasksTable";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

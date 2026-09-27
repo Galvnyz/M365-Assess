@@ -16,7 +16,7 @@ import {
   type DriftBulkAction,
   type DriftDeviation,
   type OverrideDeviationInput,
-} from "../../lib/driftApi.js";
+} from "../../lib/driftApi";
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 

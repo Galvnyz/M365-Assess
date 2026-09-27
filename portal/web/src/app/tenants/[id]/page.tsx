@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, type CSSProperties, type ReactElement } from "react";
+import React, { use, useEffect, useState, type CSSProperties, type ReactElement } from "react";
 import { CredentialBadge, type CredentialState } from "../../../components/CredentialBadge";
 
 type DetailTab = "overview" | "credential" | "groups" | "variables" | "history";
@@ -150,9 +150,14 @@ const buttonStyle: CSSProperties = {
 export default function TenantDetailPage({
   params,
 }: {
-  params?: { id?: string };
+  params?: Promise<{ id?: string }> | { id?: string };
 } = {}): ReactElement {
-  const tenantId = params?.id ?? "";
+  // Unwrap Next.js dynamic params (a promise from the router, a plain object in tests)
+  const resolved =
+    params && typeof (params as Promise<{ id?: string }>).then === "function"
+      ? use(params as Promise<{ id?: string }>)
+      : (params as { id?: string } | undefined);
+  const tenantId = resolved?.id ?? "";
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [tenant, setTenant] = useState<TenantDetailData | null>(null);
   const [credential, setCredential] = useState<CredentialDetailData | null>(null);

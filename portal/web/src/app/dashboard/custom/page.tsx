@@ -6,7 +6,7 @@
 // Strictly uses report theme tokens with zero colour literals.
 
 import React, { useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { CustomDashboard } from "../../../components/dashboard/CustomDashboard.js";
+import { CustomDashboard } from "../../../components/dashboard/CustomDashboard";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

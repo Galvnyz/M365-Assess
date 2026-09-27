@@ -8,7 +8,7 @@
 // literals: report theme tokens only.
 
 import React, { type CSSProperties, type ReactElement } from "react";
-import type { FleetOverview as FleetOverviewData } from "../../lib/baselinesApi.js";
+import type { FleetOverview as FleetOverviewData } from "../../lib/baselinesApi";
 
 export interface FleetOverviewProps {
   readonly overview: FleetOverviewData | null;

@@ -7,7 +7,7 @@
 // `Set schedule` hidden for drift templates. Zero colour literals: report tokens.
 
 import React, { useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import { kindLabel, type StandardTemplateKind } from "../../lib/standardsApi.js";
+import { kindLabel, type StandardTemplateKind } from "../../lib/standardsApi";
 
 export interface StandardsTemplateItem {
   readonly id: string;

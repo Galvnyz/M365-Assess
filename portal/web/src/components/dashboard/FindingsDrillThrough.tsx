@@ -10,7 +10,7 @@ import {
   type FindingsFilter,
   type FindingLike,
   matchesFindingsFilter,
-} from "../../lib/findings-filter.js";
+} from "../../lib/findings-filter";
 
 export interface FindingItem extends FindingLike {
   readonly id: string;

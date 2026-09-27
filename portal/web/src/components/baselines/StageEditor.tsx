@@ -8,7 +8,7 @@
 // report theme tokens only.
 
 import React, { useState, type CSSProperties, type ReactElement } from "react";
-import type { BaselineConditionInput, BaselineStageAction, BaselineStageInput } from "../../lib/baselinesApi.js";
+import type { BaselineConditionInput, BaselineStageAction, BaselineStageInput } from "../../lib/baselinesApi";
 
 export interface StageEditorProps {
   readonly stages: readonly BaselineStageInput[];

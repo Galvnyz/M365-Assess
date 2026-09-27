@@ -9,7 +9,7 @@
 // page. Zero colour literals: report theme tokens only.
 
 import React, { useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import type { DriftBreakdown, DriftDeviation, DriftDeviationState, DriftBulkAction } from "../../lib/driftApi.js";
+import type { DriftBreakdown, DriftDeviation, DriftDeviationState, DriftBulkAction } from "../../lib/driftApi";
 
 export type DriftRowAction = "accept" | "override" | "deny";
 

@@ -1,10 +1,10 @@
 // T-0183 — baseline builder interactions.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import BaselineBuilderPage from "../../app/baselines/[id]/edit/page.js";
-import { StageEditor } from "./StageEditor.js";
-import { BaselineTimeline } from "./BaselineTimeline.js";
-import type { BaselineStageInput } from "../../lib/baselinesApi.js";
+import BaselineBuilderPage from "../../app/baselines/[id]/edit/page";
+import { StageEditor } from "./StageEditor";
+import { BaselineTimeline } from "./BaselineTimeline";
+import type { BaselineStageInput } from "../../lib/baselinesApi";
 
 afterEach(() => {
   cleanup();

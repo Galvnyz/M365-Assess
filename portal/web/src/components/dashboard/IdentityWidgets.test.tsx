@@ -4,15 +4,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { SecureScoreCard, type SecureScoreWidget } from "./SecureScoreCard.js";
-import { MFACard, type MFAWidget } from "./MFACard.js";
-import { AuthMethodCard, type AuthMethodWidget } from "./AuthMethodCard.js";
-import { LicenseCard, type LicenseWidget } from "./LicenseCard.js";
+import { SecureScoreCard, type SecureScoreWidget } from "./SecureScoreCard";
+import { MFACard, type MFAWidget } from "./MFACard";
+import { AuthMethodCard, type AuthMethodWidget } from "./AuthMethodCard";
+import { LicenseCard, type LicenseWidget } from "./LicenseCard";
 import {
   IdentityDevicesTabs,
   DASHBOARD_TABS,
   type DashboardTabId,
-} from "./IdentityDevicesTabs.js";
+} from "./IdentityDevicesTabs";
 
 afterEach(() => {
   cleanup();

@@ -10,7 +10,7 @@ import {
   isLicenseMissing,
   standardImpact,
   type CatalogStandard,
-} from "../../lib/standardsApi.js";
+} from "../../lib/standardsApi";
 
 export interface StandardPickerProps {
   readonly items?: readonly CatalogStandard[];

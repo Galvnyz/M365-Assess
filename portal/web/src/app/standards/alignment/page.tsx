@@ -8,7 +8,7 @@
 // standard mode. Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import { AlignmentReport } from "../../../components/standards/AlignmentReport.js";
+import { AlignmentReport } from "../../../components/standards/AlignmentReport";
 import {
   fetchStandardsAlignment,
   fetchStandardsCompare,
@@ -18,7 +18,7 @@ import {
   type AlignmentSummaryRow,
   type AlignmentView,
   type StandardsCompareResponse,
-} from "../../../lib/standardsApi.js";
+} from "../../../lib/standardsApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

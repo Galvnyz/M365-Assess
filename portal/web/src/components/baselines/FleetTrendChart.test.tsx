@@ -1,7 +1,7 @@
 // T-0188 — fleet trend chart downsampling and rendering.
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { downsampleTrendPoints, FleetTrendChart, type TrendChartPoint } from "./FleetTrendChart.js";
+import { downsampleTrendPoints, FleetTrendChart, type TrendChartPoint } from "./FleetTrendChart";
 
 function points(count: number): TrendChartPoint[] {
   const start = Date.parse("2026-01-01T00:00:00.000Z");

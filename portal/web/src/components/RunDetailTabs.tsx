@@ -6,7 +6,7 @@
 // and progress streaming. Report theme tokens only with zero colour literals.
 
 import React, { useState, useMemo, useCallback, type CSSProperties, type ReactElement } from "react";
-import { useRunEvents } from "../lib/useRunEvents.js";
+import { useRunEvents } from "../lib/useRunEvents";
 import type { ProgressEvent } from "@m365-assess/contracts/events";
 
 export type RunDetailTabId = "progress" | "summary" | "findings" | "artifacts" | "issues";

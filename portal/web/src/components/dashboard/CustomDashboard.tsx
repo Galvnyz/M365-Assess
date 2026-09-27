@@ -6,7 +6,7 @@
 // Strictly uses report theme tokens with zero colour literals.
 
 import React, { useState, useEffect, useCallback, type CSSProperties, type ReactElement } from "react";
-import { WidgetPicker, type StockWidgetDefinition } from "./WidgetPicker.js";
+import { WidgetPicker, type StockWidgetDefinition } from "./WidgetPicker";
 
 export interface DashboardWidgetSize {
   readonly width: number;

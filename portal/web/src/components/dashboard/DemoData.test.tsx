@@ -9,7 +9,7 @@ import {
   DEMO_FLEET_PAYLOAD,
   WIDGET_TUTORIAL_MARKERS,
   DemoDashboard,
-} from "../../data/dashboard-demo.js";
+} from "../../data/dashboard-demo";
 
 interface TourStep {
   readonly step: number;

@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import FleetDashboardPage from "./page.js";
-import TenantDashboardPage from "./[tenantId]/page.js";
-import { FleetTable, type FleetPayload } from "../../components/dashboard/FleetTable.js";
-import { EmptyState } from "../../components/dashboard/EmptyState.js";
+import FleetDashboardPage from "./page";
+import TenantDashboardPage from "./[tenantId]/page";
+import { FleetTable, type FleetPayload } from "../../components/dashboard/FleetTable";
+import { EmptyState } from "../../components/dashboard/EmptyState";
 
 const SAMPLE_FLEET: FleetPayload = {
   schemaVersion: "v1",

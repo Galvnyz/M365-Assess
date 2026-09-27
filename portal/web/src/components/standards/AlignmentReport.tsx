@@ -13,7 +13,7 @@ import {
   type AlignmentStatus,
   type AlignmentSummaryRow,
   type AlignmentView,
-} from "../../lib/standardsApi.js";
+} from "../../lib/standardsApi";
 
 export interface AlignmentReportProps {
   readonly summary?: readonly AlignmentSummaryRow[];

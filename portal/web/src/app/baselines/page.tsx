@@ -8,14 +8,14 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { FleetOverview } from "../../components/baselines/FleetOverview.js";
+import { FleetOverview } from "../../components/baselines/FleetOverview";
 import {
   deleteBaseline,
   fetchBaselines,
   fetchFleetOverview,
   type BaselineSummary,
   type FleetOverview as FleetOverviewData,
-} from "../../lib/baselinesApi.js";
+} from "../../lib/baselinesApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

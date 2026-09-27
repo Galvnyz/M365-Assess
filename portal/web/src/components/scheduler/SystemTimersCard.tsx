@@ -7,7 +7,7 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { type CSSProperties, type ReactElement } from "react";
-import { describeCronExpression } from "./ScheduledTasksTable.js";
+import { describeCronExpression } from "./ScheduledTasksTable";
 
 export interface SystemTimerItem {
   readonly name: string;

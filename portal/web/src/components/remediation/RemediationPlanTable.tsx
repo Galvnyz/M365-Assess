@@ -14,7 +14,7 @@ import {
   isActionEligible,
   type RemediationActionItem,
   type RemediationPlanResponse,
-} from "../../lib/remediationApi.js";
+} from "../../lib/remediationApi";
 
 export interface RemediationPlanTableProps {
   readonly plan?: RemediationPlanResponse | null;

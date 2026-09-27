@@ -1,4 +1,4 @@
-import BlockControls from "./BlockControls.js";
+import BlockControls from "./BlockControls";
 
 // Block shapes mirror the T-0081 contract in portal/contracts/src/reports.ts so
 // the builder and the renderer reject the same unknown types at the boundary.

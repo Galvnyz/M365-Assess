@@ -9,8 +9,8 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useMemo, useState, use, type CSSProperties, type ReactElement } from "react";
-import { StandardAccordion, DEFAULT_ACTIONS, type AccordionStandard } from "../../../../components/standards/StandardAccordion.js";
-import { StandardPicker } from "../../../../components/standards/StandardPicker.js";
+import { StandardAccordion, DEFAULT_ACTIONS, type AccordionStandard } from "../../../../components/standards/StandardAccordion";
+import { StandardPicker } from "../../../../components/standards/StandardPicker";
 import {
   fetchStandardTemplate,
   fetchStandardsCatalog,
@@ -19,7 +19,7 @@ import {
   type CatalogStandard,
   type StandardTemplate,
   type StandardTemplateActions,
-} from "../../../../lib/standardsApi.js";
+} from "../../../../lib/standardsApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

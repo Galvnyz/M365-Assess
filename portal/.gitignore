@@ -1,0 +1,6 @@
+# Next.js build output and generated types
+web/.next/
+web/next-env.d.ts
+web/tsconfig.tsbuildinfo
+# Local development data (npm run dev)
+.dev-data/

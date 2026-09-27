@@ -10,8 +10,8 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { use, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import { BaselineTimeline, type BaselineTimelineStep } from "../../../../components/baselines/BaselineTimeline.js";
-import { StageEditor } from "../../../../components/baselines/StageEditor.js";
+import { BaselineTimeline, type BaselineTimelineStep } from "../../../../components/baselines/BaselineTimeline";
+import { StageEditor } from "../../../../components/baselines/StageEditor";
 import {
   createBaseline,
   fetchBaseline,
@@ -19,7 +19,7 @@ import {
   type BaselineAssignmentInput,
   type BaselineStageInput,
   type BaselineTargetType,
-} from "../../../../lib/baselinesApi.js";
+} from "../../../../lib/baselinesApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

@@ -1,8 +1,8 @@
 // T-0170 — Executive drift report rendering.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ExecutiveDriftReport, type ExecutiveDriftReportData } from "./ExecutiveDriftReport.js";
-import DriftReportPage from "../../app/drift/report/page.js";
+import { ExecutiveDriftReport, type ExecutiveDriftReportData } from "./ExecutiveDriftReport";
+import DriftReportPage from "../../app/drift/report/page";
 
 afterEach(() => {
   cleanup();

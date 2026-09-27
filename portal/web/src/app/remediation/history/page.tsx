@@ -6,11 +6,11 @@
 // Zero colour literals: report theme tokens only.
 
 import React, { useCallback, useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import { RemediationHistoryTable } from "../../../components/remediation/RemediationHistoryTable.js";
+import { RemediationHistoryTable } from "../../../components/remediation/RemediationHistoryTable";
 import {
   fetchRemediationHistory,
   type RemediationHistoryRow,
-} from "../../../lib/remediationApi.js";
+} from "../../../lib/remediationApi";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

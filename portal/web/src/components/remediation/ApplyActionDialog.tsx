@@ -10,8 +10,8 @@ import React, { useMemo, useState, type CSSProperties, type ReactElement } from 
 import {
   applyRemediationPlan,
   type RemediationActionItem,
-} from "../../lib/remediationApi.js";
-import { statusBadgeStyle } from "./RemediationPlanTable.js";
+} from "../../lib/remediationApi";
+import { statusBadgeStyle } from "./RemediationPlanTable";
 
 export interface ApplyActionDialogProps {
   readonly planId: string;

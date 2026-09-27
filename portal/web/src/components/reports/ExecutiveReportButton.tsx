@@ -5,7 +5,7 @@
 // handle until status=succeeded, then surfaces the inline preview and download.
 
 import { useState } from "react";
-import PdfPreviewDialog from "./PdfPreviewDialog.js";
+import PdfPreviewDialog from "./PdfPreviewDialog";
 
 export interface ExecutiveReportButtonProps {
   readonly tenantId: string;

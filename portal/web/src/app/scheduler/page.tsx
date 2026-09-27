@@ -9,11 +9,11 @@ import React, { useCallback, useEffect, useState, type CSSProperties, type React
 import {
   ScheduledTasksTable,
   type ScheduledTaskItem,
-} from "../../components/scheduler/ScheduledTasksTable.js";
+} from "../../components/scheduler/ScheduledTasksTable";
 import {
   SystemTimersCard,
   type SystemTimerItem,
-} from "../../components/scheduler/SystemTimersCard.js";
+} from "../../components/scheduler/SystemTimersCard";
 
 const pageStyle: CSSProperties = {
   padding: "32px",

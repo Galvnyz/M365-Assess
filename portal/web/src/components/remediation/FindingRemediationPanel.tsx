@@ -13,8 +13,8 @@ import {
   fetchRemediationInstruction,
   type RemediationActionItem,
   type RemediationInstruction,
-} from "../../lib/remediationApi.js";
-import { ManualSteps } from "./ManualSteps.js";
+} from "../../lib/remediationApi";
+import { ManualSteps } from "./ManualSteps";
 
 export interface RemediationPrecondition {
   readonly label: string;
