@@ -1,7 +1,8 @@
 // Audit sink (T-0820): routes hand over the audit events their workers return; this
 // records them in the append-only audit_events table (0001_init) through the db
 // repository. Worker events carry { id, tenantId, action, targetId, targetName, actor,
-// timestamp, before, after }; route-built events carry actorUserId and createdAt instead.
+// timestamp, before, after }; route-built events carry actorUserId (or callerId) and
+// createdAt instead.
 // Anything missing gets a safe default.
 import type { SqliteRepository } from "@m365-assess/db";
 
@@ -22,7 +23,7 @@ export function createAuditSink(repo: SqliteRepository): RecordAudit {
     await repo.appendAuditEvent({
       id: text(event["id"]) ?? globalThis.crypto.randomUUID(),
       timestamp: text(event["timestamp"]) ?? text(event["createdAt"]) ?? new Date().toISOString(),
-      actorUserId: text(event["actor"]) ?? text(event["actorUserId"]),
+      actorUserId: text(event["actor"]) ?? text(event["actorUserId"]) ?? text(event["callerId"]),
       actorType: "user",
       tenantId: text(event["tenantId"]),
       action: text(event["action"]) ?? "worker.write",

@@ -291,4 +291,32 @@ describe("PIM settings templates CRUD & compare (T-0243)", () => {
     expect(mfaDiff?.template).toBe(true);
     expect(mfaDiff?.matches).toBe(true);
   });
+  it("refuses an apply without Remediation.Apply before reading the tenant", async () => {
+    const repo = new InMemoryPimSettingsRepository();
+    await repo.createTemplate({ id: "tpl-gate", name: "Gate", roleId: "role-ga", settings: { requireMfa: true }, scope: "/" });
+    let liveReads = 0;
+    const routes = createPimSettingsTemplatesRoutes({
+      repository: repo,
+      liveSettingsProvider: {
+        async getLiveRoleSettings() {
+          liveReads += 1;
+          return {};
+        },
+      },
+      resolveCaller: () => ({ tenantScope: tenantScope(["tenant-a"]), permissions: [PIM_TEMPLATES_READ_PERMISSION] }),
+    });
+    const applyRoute = routes.find((r) => r.method === "POST" && r.path === "/v1/pim-settings-templates/:id/apply")!;
+
+    await expect(
+      applyRoute.handler({
+        method: "POST",
+        path: "/v1/pim-settings-templates/tpl-gate/apply",
+        params: { id: "tpl-gate" },
+        query: new URLSearchParams(),
+        headers: {},
+        body: { tenantId: "tenant-a", confirm: true, reason: "tighten" },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(liveReads).toBe(0);
+  });
 });

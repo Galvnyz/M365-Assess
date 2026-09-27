@@ -41,6 +41,19 @@ Describe 'Set-PimRoleSettings worker (T-0244)' {
         }
     }
 
+    Context 'Reading live settings' {
+        It 'throws when Graph fails instead of reporting default settings' {
+            Mock Invoke-MgGraphRequest { throw 'Graph 403: Forbidden' } -ParameterFilter { $Method -eq 'GET' }
+            { Get-PimRoleCurrentSettings -TenantId 'tenant-test' -RoleId 'role-ga' } | Should -Throw '*403*'
+        }
+
+        It 'reads a get action from the job' {
+            $path = Join-Path -Path $TestDrive -ChildPath 'get-job.json'
+            Set-Content -LiteralPath $path -Value '{"tenantId":"t","roleId":"r","action":"get"}'
+            (Read-SetPimRoleSettingsJob -Path $path)['Action'] | Should -Be 'get'
+        }
+    }
+
     Context 'Apply mode' {
         BeforeEach {
             Mock Invoke-MgGraphRequest {

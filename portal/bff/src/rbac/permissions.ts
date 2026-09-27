@@ -102,6 +102,24 @@ import { USERS_OPENAPI } from "../routes/users.js";
 import { AUTH_METHODS_POLICY_OPENAPI } from "../routes/auth-methods-policy.js";
 import { MFA_OPENAPI } from "../routes/mfa.js";
 import {
+  JIT_GRANT_EXTEND_PATH,
+  JIT_GRANT_REVOKE_PATH,
+  JIT_GRANTS_PATH,
+  ROLES_READ_PERMISSION,
+  ROLES_WRITE_PERMISSION,
+} from "../routes/jit-grants.js";
+import { JIT_TEMPLATE_ITEM_PATH, JIT_TEMPLATES_PATH } from "../routes/jit-templates.js";
+import { PIM_ASSIGNMENTS_PATH } from "../routes/pim.js";
+import { PIM_REQUEST_ITEM_PATH, PIM_REQUEST_TRANSITION_PATH, PIM_REQUESTS_PATH } from "../routes/pim-requests.js";
+import {
+  PIM_TEMPLATE_APPLY_PATH,
+  PIM_TEMPLATE_COMPARE_PATH,
+  PIM_TEMPLATE_ITEM_PATH,
+  PIM_TEMPLATES_PATH,
+  REMEDIATION_APPLY_PERMISSION as PIM_APPLY_PERMISSION,
+} from "../routes/pim-settings-templates.js";
+import { ROLE_ASSIGNMENTS_PATH } from "../routes/roles.js";
+import {
   REGISTRATION_CAMPAIGN_PATH,
   REGISTRATION_CAMPAIGN_READ_PERMISSION,
   REGISTRATION_CAMPAIGN_WRITE_PERMISSION,
@@ -388,6 +406,31 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   ...registryEntriesFromOpenApi(AUTH_METHODS_POLICY_OPENAPI),
   { method: "GET", path: REGISTRATION_CAMPAIGN_PATH, permission: REGISTRATION_CAMPAIGN_READ_PERMISSION },
   { method: "PUT", path: REGISTRATION_CAMPAIGN_PATH, permission: REGISTRATION_CAMPAIGN_WRITE_PERMISSION },
+  // EPIC-013 roles, PIM, and JIT (T-0818). Every module uses Identity.Role.Read and
+  // Identity.Role.ReadWrite; applying a PIM settings template is a Remediation.Apply
+  // write (its preview needs only read).
+  { method: "GET", path: ROLE_ASSIGNMENTS_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "GET", path: PIM_ASSIGNMENTS_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: PIM_REQUESTS_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: PIM_REQUESTS_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "GET", path: PIM_REQUEST_ITEM_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: PIM_REQUEST_TRANSITION_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: PIM_TEMPLATES_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: PIM_TEMPLATES_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: PIM_TEMPLATE_ITEM_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "PATCH", path: PIM_TEMPLATE_ITEM_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "DELETE", path: PIM_TEMPLATE_ITEM_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "POST", path: PIM_TEMPLATE_COMPARE_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: PIM_TEMPLATE_APPLY_PATH, permission: PIM_APPLY_PERMISSION },
+  { method: "POST", path: JIT_GRANTS_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: JIT_GRANTS_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: JIT_GRANT_REVOKE_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "POST", path: JIT_GRANT_EXTEND_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: JIT_TEMPLATES_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "POST", path: JIT_TEMPLATES_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "GET", path: JIT_TEMPLATE_ITEM_PATH, permission: ROLES_READ_PERMISSION },
+  { method: "PATCH", path: JIT_TEMPLATE_ITEM_PATH, permission: ROLES_WRITE_PERMISSION },
+  { method: "DELETE", path: JIT_TEMPLATE_ITEM_PATH, permission: ROLES_WRITE_PERMISSION },
   // EPIC-014 groups (T-0819). /groups/usage precedes /groups/:groupId, as in app.ts.
   // The template deploy route enforces the group write permission.
   { method: "GET", path: GROUP_USAGE_PATH, permission: GROUPS_READ_PERMISSION },

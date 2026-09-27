@@ -42,6 +42,11 @@ try {
         $job = Read-SetPimRoleSettingsJob -Path $JobFile
         $TenantId = $job['TenantId']
         $RoleId = $job['RoleId']
+        # action 'get' reads the role's live settings without changing them.
+        if ($job['Action'] -eq 'get') {
+            Get-PimRoleCurrentSettings -TenantId $TenantId -RoleId $RoleId | ConvertTo-Json -Depth 6 -Compress
+            return
+        }
         $Settings = $job['Settings']
         $DryRun = [bool]$job['DryRun']
     }

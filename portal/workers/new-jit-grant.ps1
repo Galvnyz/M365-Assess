@@ -41,7 +41,10 @@ param(
     [int]$AdditionalHours = 4,
 
     [Parameter(ParameterSetName = 'ByTenant')]
-    [string]$Justification = 'JIT Admin Grant'
+    [string]$Justification = 'JIT Admin Grant',
+
+    [Parameter(ParameterSetName = 'ByTenant')]
+    [string]$NewEndsAt = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -65,6 +68,8 @@ try {
         $DurationHours = $job['DurationHours']
         $MaxDurationHours = $job['MaxDurationHours']
         $Justification = $job['Justification']
+        $AdditionalHours = $job['AdditionalHours']
+        $NewEndsAt = $job['NewEndsAt']
     }
 
     $result = switch ($Action) {
@@ -72,7 +77,17 @@ try {
             Revoke-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType
         }
         'extend' {
-            Extend-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AdditionalHours $AdditionalHours -CurrentDurationHours $DurationHours -MaxDurationHours $MaxDurationHours -AssignmentType $AssignmentType
+            $extendParams = @{
+                TenantId             = $TenantId
+                UserId               = $UserId
+                RoleId               = $RoleId
+                AdditionalHours      = $AdditionalHours
+                CurrentDurationHours = $DurationHours
+                MaxDurationHours     = $MaxDurationHours
+                AssignmentType       = $AssignmentType
+                NewEndsAt            = $NewEndsAt
+            }
+            Extend-JitGrant @extendParams
         }
         default {
             New-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType -DurationHours $DurationHours -MaxDurationHours $MaxDurationHours -Justification $Justification

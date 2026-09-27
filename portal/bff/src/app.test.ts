@@ -524,3 +524,49 @@ describe("EPIC-012 MFA routes (T-0818)", () => {
     expect(stored).not.toContain("Secret-Pass-1");
   });
 });
+
+describe("EPIC-013 roles and JIT routes (T-0818)", () => {
+  function recordingRunner() {
+    const calls: { entrypoint: string; job: Record<string, unknown> }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      calls.push({ entrypoint, job: job as Record<string, unknown> });
+      if (entrypoint === "get-role-assignments.ps1") {
+        return { tenantId: "t-a", totalCount: 1, items: [{ id: "ra-1" }], nextCursor: null } as never;
+      }
+      if (entrypoint === "new-jit-grant.ps1") {
+        return { id: "sched-1", startsAt: "2026-09-26T08:00:00Z", endsAt: "2026-09-26T16:00:00Z" } as never;
+      }
+      return {} as never;
+    };
+    return { runner, calls };
+  }
+
+  it("lists role assignments for a read-only caller", async () => {
+    const { runner } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    const res = await api.get("/v1/tenants/t-a/role-assignments");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ items: [{ id: "ra-1" }] });
+  });
+
+  it("grants a JIT role in the tenant and records the grant", async () => {
+    const { runner, calls } = recordingRunner();
+    const db = new Database(":memory:");
+    const api = await adminWithTenant(runner, "admin", db);
+    const res = await api.post("/v1/tenants/t-a/jit-grants", { userId: "u-1", roleId: "role-ga", durationHours: 4, justification: "Incident 7" });
+    expect(res.status).toBe(201);
+    expect(calls.at(-1)).toMatchObject({
+      entrypoint: "new-jit-grant.ps1",
+      job: { action: "grant", userId: "u-1", roleId: "role-ga", durationHours: 4, justification: "Incident 7" },
+    });
+    expect(db.prepare("SELECT userId, roleId, createdBy FROM jit_grants").all()).toEqual([{ userId: "u-1", roleId: "role-ga", createdBy: "dev-user" }]);
+  });
+
+  it("refuses a JIT grant to a read-only caller", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    const res = await api.post("/v1/tenants/t-a/jit-grants", { userId: "u-1", roleId: "role-ga" });
+    expect(res.status).toBe(403);
+    expect(calls.filter((c) => c.entrypoint === "new-jit-grant.ps1")).toHaveLength(0);
+  });
+});

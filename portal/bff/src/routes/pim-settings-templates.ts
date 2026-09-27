@@ -393,6 +393,10 @@ export function createPimSettingsTemplatesRoutes(
 
       const preview = body.preview === true;
 
+      // Authorize before reading the tenant: a preview needs read, an apply is a
+      // privileged write routed through the EPIC-006 gate/executor.
+      await checkPerm(caller, preview ? PIM_TEMPLATES_READ_PERMISSION : REMEDIATION_APPLY_PERMISSION);
+
       const liveSettings = options.liveSettingsProvider
         ? (await options.liveSettingsProvider.getLiveRoleSettings(tenantId, targetRoleId)) ?? {}
         : {};
@@ -401,8 +405,6 @@ export function createPimSettingsTemplatesRoutes(
 
       if (preview) {
         // Preview mode: does NOT write anything
-        await checkPerm(caller, PIM_TEMPLATES_READ_PERMISSION);
-
         const previewResult: PimApplyResult = {
           templateId: template.id,
           tenantId,
@@ -420,9 +422,6 @@ export function createPimSettingsTemplatesRoutes(
           body: previewResult,
         };
       }
-
-      // Apply mode: privileged write routed through EPIC-006 gate/executor
-      await checkPerm(caller, REMEDIATION_APPLY_PERMISSION);
 
       if (body.confirm !== true) {
         throw new AppError(

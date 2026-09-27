@@ -164,5 +164,12 @@ Describe 'New-TemporaryAccessPass worker (T-0223)' {
             }
             { Read-TapJob -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'missing-tap-job.json') } | Should -Throw '*not found*'
         }
+
+        It 'keeps a start time in UTC ISO form rather than a local-format date' {
+            $path = Join-Path -Path $TestDrive -ChildPath 'tap-start.json'
+            Set-Content -LiteralPath $path -Value '{"schemaVersion":"v1","tenantId":"t","payload":{"userId":"u","startTime":"2026-09-26T20:00:00Z"}}'
+            $start = (Read-TapJob -Path $path)['StartTime']
+            $start | Should -Match '^2026-09-26T20:00:00(\.0+)?Z$'
+        }
     }
 }

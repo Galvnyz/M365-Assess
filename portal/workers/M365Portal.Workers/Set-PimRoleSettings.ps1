@@ -35,6 +35,7 @@ function Read-SetPimRoleSettingsJob {
     return @{
         TenantId = [string]$json.tenantId
         RoleId   = [string]$json.roleId
+        Action   = if ($json.action) { [string]$json.action } else { 'apply' }
         Settings = $settingsObj
         DryRun   = [bool]($json.dryRun -eq $true)
     }
@@ -53,39 +54,33 @@ function Get-PimRoleCurrentSettings {
         requireApproval        = $false
     }
 
-    try {
-        # Fetch policy assignment for the role
-        $uri = "/v1.0/policies/roleManagementPolicyAssignments?`$filter=roleDefinitionId eq '$RoleId' and scopeId eq '/' and scopeType eq 'DirectoryRole'&`$expand=policy(`$expand=rules)"
-        $resp = Invoke-MgGraphRequest -Method GET -Uri $uri
-        if ($resp.value -and $resp.value.Count -gt 0) {
-            $policy = $resp.value[0].policy
-            if ($policy -and $policy.rules) {
-                foreach ($rule in $policy.rules) {
-                    if ($rule.'@odata.type' -match 'expirationRule') {
-                        if ($rule.maximumDuration) {
-                            # ISO 8601 duration e.g. PT8H
-                            if ($rule.maximumDuration -match 'PT(\d+)H') {
-                                $current.maximumDurationInHours = [int]$Matches[1]
-                            }
-                        }
+    # A failed read throws rather than reporting default settings: the portal diffs
+    # templates against this and would otherwise show or apply the wrong changes.
+    $uri = "/v1.0/policies/roleManagementPolicyAssignments?`$filter=roleDefinitionId eq '$RoleId' and scopeId eq '/' and scopeType eq 'DirectoryRole'&`$expand=policy(`$expand=rules)"
+    $resp = Invoke-MgGraphRequest -Method GET -Uri $uri
+    if ($resp.value -and $resp.value.Count -gt 0) {
+        $policy = $resp.value[0].policy
+        if ($policy -and $policy.rules) {
+            foreach ($rule in $policy.rules) {
+                if ($rule.'@odata.type' -match 'expirationRule') {
+                    # ISO 8601 duration e.g. PT8H
+                    if ($rule.maximumDuration -and $rule.maximumDuration -match 'PT(\d+)H') {
+                        $current.maximumDurationInHours = [int]$Matches[1]
                     }
-                    if ($rule.'@odata.type' -match 'enablementRule') {
-                        if ($rule.enabledRules) {
-                            $current.requireMfa = [bool]($rule.enabledRules -contains 'mfa')
-                            $current.requireJustification = [bool]($rule.enabledRules -contains 'justification')
-                        }
+                }
+                if ($rule.'@odata.type' -match 'enablementRule') {
+                    if ($rule.enabledRules) {
+                        $current.requireMfa = [bool]($rule.enabledRules -contains 'mfa')
+                        $current.requireJustification = [bool]($rule.enabledRules -contains 'justification')
                     }
-                    if ($rule.'@odata.type' -match 'approvalRule') {
-                        if ($rule.setting -and $rule.setting.isApprovalRequired) {
-                            $current.requireApproval = [bool]$rule.setting.isApprovalRequired
-                        }
+                }
+                if ($rule.'@odata.type' -match 'approvalRule') {
+                    if ($rule.setting -and $rule.setting.isApprovalRequired) {
+                        $current.requireApproval = [bool]$rule.setting.isApprovalRequired
                     }
                 }
             }
         }
-    }
-    catch {
-        # If policy query fails, return standard defaults
     }
 
     return $current

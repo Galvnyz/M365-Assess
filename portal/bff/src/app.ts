@@ -12,8 +12,12 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import {
   SqliteBecFindingRepository,
+  SqliteJitRepository,
+  SqliteJitTemplatesRepository,
   SqliteOffboardingRepository,
+  SqlitePimSettingsRepository,
   SqliteRepository,
+  SqliteRoleRequestsRepository,
   SqliteTapRecordRepository,
   SqliteUserTemplateRepository,
   loadMigrations,
@@ -31,6 +35,7 @@ import { createAuditSink, type RecordAudit } from "./adapters/audit.js";
 import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
+import { createActiveGrantsResolver, createRoleProviders } from "./adapters/roles.js";
 import {
   createAuthMethodsPolicyProvider,
   createMfaProviders,
@@ -87,6 +92,8 @@ import {
   createAssignmentFilterRoutes,
 } from "./routes/intune-assignment-filters.js";
 import { createIntuneCompareRoute } from "./routes/intune-compare.js";
+import { createJitGrantsRoutes } from "./routes/jit-grants.js";
+import { createJitTemplatesRoutes } from "./routes/jit-templates.js";
 import { createIntuneCrudRoutes } from "./routes/intune-policies-crud.js";
 import { createIntunePoliciesRoutes } from "./routes/intune-policies.js";
 import { createReusableSettingsRoutes } from "./routes/intune-reusable-settings.js";
@@ -95,7 +102,11 @@ import { createGdapRoutes } from "./routes/gdap.js";
 import { createMfaRoutes } from "./routes/mfa.js";
 import { createOffboardingRoutes } from "./routes/offboarding.js";
 import { createOnboardRoutes } from "./routes/onboard.js";
+import { createPimRequestsRoutes } from "./routes/pim-requests.js";
+import { createPimSettingsTemplatesRoutes } from "./routes/pim-settings-templates.js";
+import { createPimAssignmentsRoute } from "./routes/pim.js";
 import { createRegistrationCampaignRoute } from "./routes/registration-campaign.js";
+import { createRoleAssignmentsRoute } from "./routes/roles.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
@@ -303,6 +314,8 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const offboarding = createOffboardingRunner(envelope, offboardingRepo);
   const tenantWorker = createTenantWorker(run, credentialRows);
   const mfa = createMfaProviders(envelope);
+  const roles = createRoleProviders(tenantWorker);
+  const jitRepo = new SqliteJitRepository(db, schemaVersion);
 
   const routes: Route[] = [
     ...createHealthRoutes({
@@ -428,6 +441,29 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     ...createRegistrationCampaignRoute({
       provider: createRegistrationCampaignProvider(tenantWorker),
       recordAudit: routeAudit,
+      ...caller,
+    }),
+
+    // EPIC-013 roles, PIM, and JIT (T-0818).
+    createRoleAssignmentsRoute({ provider: roles.roles, ...caller }),
+    createPimAssignmentsRoute({ provider: roles.pim, ...caller }),
+    ...createPimRequestsRoutes({
+      repository: new SqliteRoleRequestsRepository(db, schemaVersion),
+      submitProvider: roles.pimRequests,
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createPimSettingsTemplatesRoutes({
+      repository: new SqlitePimSettingsRepository(db, schemaVersion),
+      liveSettingsProvider: roles.liveSettings,
+      applyProvider: roles.applySettings,
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createJitGrantsRoutes({ repository: jitRepo, executionProvider: roles.jit, recordAudit: routeAudit, ...caller }),
+    ...createJitTemplatesRoutes({
+      repository: new SqliteJitTemplatesRepository(db, schemaVersion),
+      activeGrantsResolver: createActiveGrantsResolver(db, jitRepo),
       ...caller,
     }),
 

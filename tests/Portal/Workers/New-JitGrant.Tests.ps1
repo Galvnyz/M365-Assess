@@ -69,6 +69,24 @@ Describe 'New-JitGrant worker (T-0246)' {
             $result.durationHours | Should -Be 12
         }
 
+        It 'extends to an exact end time when one is given' {
+            $script:extendBody = $null
+            Mock Invoke-MgGraphRequest { $script:extendBody = $Body }
+            $result = Extend-JitGrant -TenantId 'tenant-test' -UserId 'user-alice' -RoleId 'role-ga' -AdditionalHours 4 -CurrentDurationHours 8 -MaxDurationHours 24 -NewEndsAt '2026-09-26T20:00:00Z'
+
+            $result.endsAt | Should -Be '2026-09-26T20:00:00Z'
+            $script:extendBody | Should -Match '"type":\s*"AfterDateTime"'
+            $script:extendBody | Should -Match '"endDateTime":\s*"2026-09-26T20:00:00Z"'
+        }
+
+        It 'reads the extension hours and end time from the job' {
+            $path = Join-Path -Path $TestDrive -ChildPath 'extend-job.json'
+            Set-Content -LiteralPath $path -Value '{"tenantId":"t","userId":"u","roleId":"r","action":"extend","additionalHours":2,"newEndsAt":"2026-09-26T20:00:00Z"}'
+            $job = Read-NewJitGrantJob -Path $path
+            $job['AdditionalHours'] | Should -Be 2
+            $job['NewEndsAt'] | Should -Be '2026-09-26T20:00:00Z'
+        }
+
         It 'rejects extension that exceeds max duration' {
             {
                 Extend-JitGrant -TenantId 'tenant-test' -UserId 'user-alice' -RoleId 'role-ga' -AdditionalHours 20 -CurrentDurationHours 8 -MaxDurationHours 24

@@ -4,6 +4,29 @@
 # Revoke ends the grant early; extend adjusts the window within maximum duration.
 # Advisory first: JIT never removes or mutates an unrelated permanent role assignment.
 
+function ConvertTo-JitIsoTime {
+    <#
+    .SYNOPSIS
+        Returns a job time as a UTC ISO 8601 string. ConvertFrom-Json turns ISO
+        strings into DateTime values, which [string] would render in local format.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        [object]$Value
+    )
+
+    if ($null -eq $Value -or [string]$Value -eq '') {
+        return ''
+    }
+    if ($Value -is [datetime]) {
+        return $Value.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    return [string]$Value
+}
+
 function Read-NewJitGrantJob {
     [CmdletBinding()]
     param(
@@ -38,6 +61,8 @@ function Read-NewJitGrantJob {
         MaxDurationHours = if ($json.maxDurationHours) { [int]$json.maxDurationHours } else { 24 }
         Justification    = if ($json.justification) { [string]$json.justification } else { 'JIT admin grant' }
         GrantId          = if ($json.grantId) { [string]$json.grantId } else { '' }
+        AdditionalHours  = if ($json.additionalHours) { [int]$json.additionalHours } else { 4 }
+        NewEndsAt        = ConvertTo-JitIsoTime -Value $json.newEndsAt
     }
 }
 
@@ -208,7 +233,12 @@ function Extend-JitGrant {
 
         [Parameter()]
         [ValidateSet('eligible', 'active')]
-        [string]$AssignmentType = 'eligible'
+        [string]$AssignmentType = 'eligible',
+
+        # The exact new end (ISO 8601). Without it the grant is extended to
+        # CurrentDurationHours + AdditionalHours counted from now.
+        [Parameter()]
+        [string]$NewEndsAt = ''
     )
 
     $newTotal = $CurrentDurationHours + $AdditionalHours
@@ -223,9 +253,17 @@ function Extend-JitGrant {
         directoryScopeId = '/'
         justification    = 'JIT grant extended'
         scheduleInfo     = @{
-            expiration = @{
-                type     = 'AfterDuration'
-                duration = "PT${newTotal}H"
+            expiration = if ($NewEndsAt) {
+                @{
+                    type        = 'AfterDateTime'
+                    endDateTime = $NewEndsAt
+                }
+            }
+            else {
+                @{
+                    type     = 'AfterDuration'
+                    duration = "PT${newTotal}H"
+                }
             }
         }
     }
@@ -244,6 +282,6 @@ function Extend-JitGrant {
         roleId         = $RoleId
         durationHours  = $newTotal
         state          = 'extended'
-        endsAt         = (Get-Date).AddHours($AdditionalHours).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        endsAt         = if ($NewEndsAt) { $NewEndsAt } else { (Get-Date).AddHours($newTotal).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
     }
 }

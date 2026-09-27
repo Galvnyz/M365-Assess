@@ -209,7 +209,9 @@ function Read-TapJob {
         UserId          = $userId
         LifetimeMinutes = $lifetime
         OneTime         = -not ($payload['oneTime'] -is [bool] -and $payload['oneTime'] -eq $false)
-        StartTime       = [string]$payload['startTime']
+        # ConvertFrom-Json turns ISO strings into DateTime values, which [string]
+        # would render in local format without the zone; keep them in UTC ISO form.
+        StartTime       = if ($payload['startTime'] -is [datetime]) { $payload['startTime'].ToUniversalTime().ToString('o') } else { [string]$payload['startTime'] }
         DryRun          = [bool]$payload['dryRun']
         Confirmed       = [bool]$payload['confirmed']
     }

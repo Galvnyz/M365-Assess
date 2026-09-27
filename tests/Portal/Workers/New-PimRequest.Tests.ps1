@@ -17,6 +17,12 @@ Describe 'New-PimRequest worker (T-0245)' {
             (Get-Command New-PimRequest -CommandType Function) | Should -Not -BeNullOrEmpty
             (Get-Command Read-PimRequestJob -CommandType Function) | Should -Not -BeNullOrEmpty
         }
+
+        It 'ships an entrypoint that signs in to the tenant' {
+            $entrypoint = Join-Path $script:repoRoot 'portal/workers/new-pim-request.ps1'
+            Test-Path -LiteralPath $entrypoint | Should -BeTrue
+            (Get-Content -LiteralPath $entrypoint -Raw) | Should -Match 'Connect-WorkerTenant -JobFile'
+        }
     }
 
     Context 'Mandatory justification' {
