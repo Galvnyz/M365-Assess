@@ -81,6 +81,9 @@ import { TENANTS_OPENAPI } from "../routes/tenants.js";
 import { TEST_CONNECTION_OPENAPI } from "../routes/test-connection.js";
 import { REPORT_TEMPLATE_PERMISSIONS } from "../routes/report-templates.js";
 import { REPORTS_PERMISSIONS } from "../routes/reports.js";
+import { REMEDIATION_OPENAPI } from "../routes/remediation.js";
+import { SCHEDULE_PERMISSIONS, SCHEDULE_SYSTEM_PATH, SCHEDULES_OPENAPI } from "../routes/schedules.js";
+import { SCRIPTS_OPENAPI } from "../routes/scripts.js";
 import {
   DASHBOARD_FLEET_PATH,
   DASHBOARD_READ_PERMISSION,
@@ -418,6 +421,14 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "GET", path: "/v1/reports", permission: REPORTS_PERMISSIONS.read },
   { method: "GET", path: "/v1/reports/:id/download", permission: REPORTS_PERMISSIONS.read },
   { method: "POST", path: "/v1/reports/:id/bundle", permission: REPORTS_PERMISSIONS.generate },
+  // EPIC-006 remediation and EPIC-007 schedules and scripts (T-0824).
+  ...registryEntriesFromOpenApi({ paths: REMEDIATION_OPENAPI }),
+  ...registryEntriesFromOpenApi(SCHEDULES_OPENAPI),
+  // System schedules are read-only; these writes exist only to refuse with 409.
+  { method: "POST", path: SCHEDULE_SYSTEM_PATH, permission: SCHEDULE_PERMISSIONS.write },
+  { method: "PATCH", path: SCHEDULE_SYSTEM_PATH, permission: SCHEDULE_PERMISSIONS.write },
+  { method: "DELETE", path: SCHEDULE_SYSTEM_PATH, permission: SCHEDULE_PERMISSIONS.write },
+  ...registryEntriesFromOpenApi({ paths: SCRIPTS_OPENAPI }),
   // EPIC-001/003 runs (T-0821). The route modules check the EPIC-001 names (runs.read,
   // runs.create, runs.cancel, runs.retry), which app.ts translates to these.
   { method: "GET", path: RUNS_LIST_PATH, permission: "Tenant.Runs.Read" },

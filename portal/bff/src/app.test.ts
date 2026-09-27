@@ -706,3 +706,45 @@ describe("EPIC-004 dashboards and EPIC-005 reports (T-0823)", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("EPIC-006 remediation and EPIC-007 schedules and scripts (T-0824)", () => {
+  const runner: WorkerRunner = async () => ({}) as never;
+
+  it("serves remediation history and refuses plans until job dispatch exists", async () => {
+    const admin = await adminWithTenant(runner);
+    const history = await admin.get("/v1/remediation/history?tenantId=t-a");
+    expect(history.status).toBe(200);
+    const plan = await admin.post("/v1/remediation/plans", { tenantId: "t-a", runId: "run-1", findingIds: ["f-1"] });
+    expect(plan.status).toBe(501);
+    expect(await plan.json()).toMatchObject({ code: "jobs.dispatch_unavailable" });
+  });
+
+  it("stores schedules, lists them, and refuses run-now with 501", async () => {
+    const admin = await adminWithTenant(runner);
+    const created = await admin.post("/v1/schedules", {
+      id: "sch-1",
+      name: "Nightly assessment",
+      type: "assessment",
+      cron: "0 0 * * * *",
+      timezone: "UTC",
+      targetScope: { type: "tenant", id: "t-a" },
+      command: "Invoke-M365Assessment",
+    });
+    expect(created.status).toBe(201);
+    expect(JSON.stringify(await (await admin.get("/v1/schedules")).json())).toContain("sch-1");
+    const runNow = await admin.post("/v1/schedules/sch-1/run-now", {});
+    expect(runNow.status).toBe(501);
+    expect(await runNow.json()).toMatchObject({ code: "jobs.dispatch_unavailable" });
+    expect(await (await admin.get("/v1/schedules/sch-1/history")).json()).toMatchObject({ scheduleId: "sch-1", runs: [] });
+  });
+
+  it("registers scripts for admins and refuses them to read-only callers", async () => {
+    const admin = await adminWithTenant(runner);
+    const registered = await admin.post("/v1/scripts", { name: "Inventory", content: "Write-Output 'hi'", author: "dev-user" });
+    expect(registered.status).toBe(201);
+    expect((await admin.get("/v1/scripts")).status).toBe(200);
+
+    const operator = await adminWithTenant(runner, "operator");
+    expect((await operator.post("/v1/scripts", { name: "X", content: "Write-Output 1", author: "u" })).status).toBe(403);
+  });
+});

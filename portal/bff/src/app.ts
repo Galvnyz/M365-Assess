@@ -12,16 +12,19 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import {
   SqliteBecFindingRepository,
+  SqliteCustomScriptRepository,
   SqliteDashboardLayoutRepository,
   SqliteDashboardRepository,
   SqliteJitRepository,
   SqliteJitTemplatesRepository,
   SqliteOffboardingRepository,
   SqlitePimSettingsRepository,
+  SqliteRemediationRepository,
   SqliteReportRepository,
   SqliteReportTemplateRepository,
   SqliteRepository,
   SqliteRoleRequestsRepository,
+  SqliteScheduleRepository,
   SqliteTapRecordRepository,
   SqliteUserTemplateRepository,
   loadMigrations,
@@ -37,6 +40,13 @@ import {
   createTenantVariableStore,
 } from "./adapters/tenants.js";
 import { createAuditSink, type RecordAudit } from "./adapters/audit.js";
+import {
+  createRemediationStore,
+  createScheduleHistoryStore,
+  createUnavailableRemediationQueue,
+  createUnavailableScheduleQueue,
+  createUnavailableScriptSandbox,
+} from "./adapters/automation.js";
 import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
@@ -123,6 +133,7 @@ import { createPimRequestsRoutes } from "./routes/pim-requests.js";
 import { createPimSettingsTemplatesRoutes } from "./routes/pim-settings-templates.js";
 import { createPimAssignmentsRoute } from "./routes/pim.js";
 import { createRegistrationCampaignRoute } from "./routes/registration-campaign.js";
+import { createRemediationRoutes } from "./routes/remediation.js";
 import { createReportTemplateRoutes } from "./routes/report-templates.js";
 import { createReportsRoutes, type ReportsAuthorizer } from "./routes/reports.js";
 import { createRoleAssignmentsRoute } from "./routes/roles.js";
@@ -132,6 +143,8 @@ import { createRunsCreateRoute } from "./routes/runs-create.js";
 import { createRunsDetailRoutes } from "./routes/runs-detail.js";
 import { createRunsEventsRoute } from "./routes/runs-events.js";
 import { createRunsListRoute } from "./routes/runs-list.js";
+import { createScheduleRoutes } from "./routes/schedules.js";
+import { createScriptRoutes } from "./routes/scripts.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
@@ -482,6 +495,37 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       },
       authorizer: reportsAuthorizer,
     }) as Route[]),
+
+    // EPIC-006 remediation and EPIC-007 schedules and scripts (T-0824). Plans, schedules,
+    // and scripts persist; running them is not wired yet (T-0836, T-0837) and is
+    // refused with 501.
+    ...createRemediationRoutes({
+      store: createRemediationStore(new SqliteRemediationRepository(db, schemaVersion)),
+      queue: createUnavailableRemediationQueue(),
+      ...caller,
+    }),
+    ...createScheduleRoutes({
+      store: new SqliteScheduleRepository(db, schemaVersion),
+      history: createScheduleHistoryStore(db),
+      queue: createUnavailableScheduleQueue(),
+      ...caller,
+    }),
+    ...createScriptRoutes({
+      store: new SqliteCustomScriptRepository(db, schemaVersion),
+      sandbox: createUnavailableScriptSandbox(),
+      audit: {
+        record: (event) =>
+          recordAudit({
+            action: event.action,
+            tenantId: event.tenantId ?? null,
+            actorUserId: event.actorUserId,
+            targetType: "script",
+            targetId: event.resourceId,
+            correlationId: event.correlationId,
+          }),
+      },
+      ...caller,
+    }),
 
     // EPIC-002 tenants and onboarding (T-0822).
     ...createTenantRoutes({ store: tenantStore, ...caller }),

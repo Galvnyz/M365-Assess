@@ -4,6 +4,8 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  toManualInstructionView,
+  toRemediationActionView,
   InvalidRemediationActionStateError,
   InvalidRemediationModeError,
   openSqliteRemediationRepository,
@@ -128,6 +130,24 @@ describe("remediation repository", () => {
     const byTenant = await repo.listRemediationActionsForTenant(TENANT_ID);
     expect(byTenant.map((action) => action.id)).toEqual(["action-1", "action-2"]);
 
+    repo.close();
+  });
+
+  it("reads one action by id and presents actions and instructions with a check field", async () => {
+    const filename = tempDbPath();
+    await seedTenant(filename);
+
+    const repo = await openSqliteRemediationRepository({ filename });
+    await repo.createRemediationPlan(planInput());
+    const action = await repo.getRemediationAction("action-2");
+    expect(action?.target).toBe("mailbox-1");
+    expect(await repo.getRemediationAction("missing")).toBeUndefined();
+
+    const view = toRemediationActionView(action!);
+    expect(view.check).toBe(action!.checkId);
+    expect(view).not.toHaveProperty("checkId");
+    const instruction = toManualInstructionView({ checkId: "EXO-1", portalPath: "p", steps: ["a"], notes: null });
+    expect(instruction).toEqual({ check: "EXO-1", portalPath: "p", steps: ["a"], notes: null });
     repo.close();
   });
 

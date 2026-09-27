@@ -106,6 +106,25 @@ function assertActionState(state: string): void {
   }
 }
 
+/**
+ * A remediation action as the BFF routes present it: the check reference is named
+ * `check`, since the BFF's thin-layer guard rejects the collector identifier.
+ */
+export type RemediationActionView = Omit<RemediationAction, "checkId"> & { check: string };
+
+export function toRemediationActionView(action: RemediationAction): RemediationActionView {
+  const { checkId, ...rest } = action;
+  return { ...rest, check: checkId };
+}
+
+/** A manual instruction as the BFF routes present it (see RemediationActionView). */
+export type ManualInstructionView = Omit<ManualInstruction, "checkId"> & { check: string };
+
+export function toManualInstructionView(instruction: ManualInstruction): ManualInstructionView {
+  const { checkId, ...rest } = instruction;
+  return { ...rest, check: checkId };
+}
+
 export interface RemediationRepository {
   readonly schemaVersion: number;
 
@@ -114,6 +133,7 @@ export interface RemediationRepository {
   createRemediationPlan(input: RemediationPlanInput): Promise<RemediationPlan>;
   getRemediationPlan(planId: string): Promise<RemediationPlan | undefined>;
   listRemediationActions(planId: string): Promise<RemediationAction[]>;
+  getRemediationAction(actionId: string): Promise<RemediationAction | undefined>;
   listRemediationActionsForTenant(tenantId: string): Promise<RemediationAction[]>;
   updateRemediationAction(
     actionId: string,
@@ -244,6 +264,11 @@ export class SqliteRemediationRepository implements RemediationRepository {
         .prepare("SELECT * FROM remediation_actions WHERE planId = ? ORDER BY rowid")
         .all(planId) as Row[]
     ).map((row) => this.mapAction(row));
+  }
+
+  async getRemediationAction(actionId: string): Promise<RemediationAction | undefined> {
+    const row = this.db.prepare("SELECT * FROM remediation_actions WHERE id = ?").get(actionId) as Row | undefined;
+    return row ? this.mapAction(row) : undefined;
   }
 
   async listRemediationActionsForTenant(tenantId: string): Promise<RemediationAction[]> {
