@@ -213,4 +213,102 @@ Describe 'Get-IntunePolicies worker (T-0301)' {
             $res.items.Count | Should -Be 0
         }
     }
+
+    Context 'List filters (T-0812)' {
+        BeforeEach {
+            Mock Invoke-MgGraphRequest {
+                return @{
+                    value = @(
+                        @{ id = 'p1'; displayName = 'Win Baseline'; platform = 'windows10'; lastModifiedDateTime = '2026-09-10T10:00:00Z'; assignments = @(@{ id = 'a1'; target = @{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }) },
+                        @{ id = 'p2'; displayName = 'iOS Baseline'; platform = 'iOS'; lastModifiedDateTime = '2026-09-20T10:00:00Z'; assignments = @() },
+                        @{ id = 'p3'; displayName = 'Win Legacy'; platform = 'windows10'; lastModifiedDateTime = '2026-08-01T10:00:00Z'; assignments = @() },
+                        @{ id = 'p4'; displayName = 'No date'; platform = 'windows10'; assignments = @() }
+                    )
+                }
+            }
+        }
+
+        It 'filters by platform prefix, case-insensitively' {
+            $res = Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Platform 'windows'
+            @($res.items.id) | Should -Be @('p1', 'p3', 'p4')
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Platform 'ios').items.id | Should -Be 'p2'
+        }
+
+        It 'filters by policy type' {
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -PolicyType 'compliance policy').totalCount | Should -Be 4
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -PolicyType 'Configuration Policy').totalCount | Should -Be 0
+        }
+
+        It 'filters by assignment state' {
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Assigned 'true').items.id | Should -Be 'p1'
+            @((Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Assigned 'false').items.id) | Should -Be @('p2', 'p3', 'p4')
+        }
+
+        It 'keeps policies modified on or after the date and drops undated ones' {
+            @((Get-IntunePolicies -TenantId 't' -Kind 'compliance' -ModifiedDate '2026-09-10').items.id) | Should -Be @('p1', 'p2')
+        }
+
+        It 'rejects an invalid modified date' {
+            { Get-IntunePolicies -TenantId 't' -Kind 'compliance' -ModifiedDate 'last tuesday' } | Should -Throw '*not a valid date*'
+        }
+
+        It 'treats search text literally, not as a wildcard pattern' {
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Search '*').totalCount | Should -Be 0
+            @((Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Search 'baseline').items.id) | Should -Be @('p1', 'p2')
+        }
+
+        It 'combines filters' {
+            (Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Platform 'windows' -Assigned 'false' -Search 'legacy').items.id | Should -Be 'p3'
+        }
+    }
+
+    Context 'Paging after filtering (T-0812)' {
+        It 'follows Graph nextLink pages before filtering' {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                if ($Uri -like '*page2*') {
+                    return @{ value = @(@{ id = 'p3'; displayName = 'Win C'; assignments = @() }) }
+                }
+                return @{
+                    value             = @(@{ id = 'p1'; displayName = 'Win A'; assignments = @() }, @{ id = 'p2'; displayName = 'Other'; assignments = @() })
+                    '@odata.nextLink' = 'https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies?page2'
+                }
+            }
+            $res = Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Search 'Win'
+            @($res.items.id) | Should -Be @('p1', 'p3')
+            Should -Invoke Invoke-MgGraphRequest -Times 2
+        }
+
+        It 'pages the filtered set with an offset cursor' {
+            Mock Invoke-MgGraphRequest {
+                return @{ value = @(1..5 | ForEach-Object { @{ id = "p$_"; displayName = "Win $_"; assignments = @() } }) + @(@{ id = 'x'; displayName = 'Other'; assignments = @() }) }
+            }
+            $first = Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Search 'Win' -Top 2
+            @($first.items.id) | Should -Be @('p1', 'p2')
+            $first.totalCount | Should -Be 5
+            $first.nextCursor | Should -Be '2'
+            $last = Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Search 'Win' -Top 2 -Cursor '4'
+            @($last.items.id) | Should -Be @('p5')
+            $last.nextCursor | Should -BeNullOrEmpty
+            { Get-IntunePolicies -TenantId 't' -Kind 'compliance' -Cursor 'abc' } | Should -Throw '*cursor*'
+        }
+    }
+
+    Context 'Entrypoint (T-0812)' {
+        It 'reads every filter from the envelope and passes it through' {
+            Mock Invoke-MgGraphRequest {
+                return @{ value = @(
+                        @{ id = 'p1'; displayName = 'Win A'; platform = 'windows10'; lastModifiedDateTime = '2026-09-20T00:00:00Z'; assignments = @(@{ id = 'a'; target = @{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }) },
+                        @{ id = 'p2'; displayName = 'Win B'; platform = 'windows10'; lastModifiedDateTime = '2026-09-20T00:00:00Z'; assignments = @() }
+                    ) }
+            }
+            $path = Join-Path $TestDrive 'job.json'
+            @{ tenantId = 't'; kind = 'compliance'; platform = 'windows'; policyType = 'Compliance Policy'; assigned = $true; modifiedDate = '2026-09-01'; search = 'win'; top = 10 } |
+                ConvertTo-Json | Set-Content -LiteralPath $path
+            $job = Read-IntunePoliciesJob -Path $path
+            $job.Assigned | Should -Be 'true'
+            $out = & $script:entrypoint -JobPath $path | ConvertFrom-Json
+            @($out.items.id) | Should -Be @('p1')
+        }
+    }
 }

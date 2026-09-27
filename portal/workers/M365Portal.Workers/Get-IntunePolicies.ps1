@@ -1,4 +1,4 @@
-# Get-IntunePolicies.ps1 — EPIC-016 Intune policy list worker (SPEC §3.1, §6; T-0301).
+# Get-IntunePolicies.ps1 - EPIC-016 Intune policy list worker (SPEC section 3.1, section 6; T-0301).
 #
 # Read-only. Issues only GET requests via Invoke-MgGraphRequest.
 # Supports kind: "configuration" (deviceManagement/configurationPolicies) and
@@ -47,6 +47,8 @@ function Read-IntunePoliciesJob {
         PolicyType   = if ($json.policyType) { [string]$json.policyType } else { '' }
         Search       = if ($json.search) { [string]$json.search } else { '' }
         ModifiedDate = if ($json.modifiedDate) { [string]$json.modifiedDate } else { '' }
+        # 'true' / 'false' / '' (no filter); the BFF sends a boolean.
+        Assigned     = if ($null -ne $json.assigned) { ([string]$json.assigned).ToLowerInvariant() } else { '' }
         Top          = if ($json.top) { [int]$json.top } else { 100 }
         SkipToken    = if ($json.skipToken) { [string]$json.skipToken } else { '' }
     }
@@ -100,7 +102,7 @@ function ConvertTo-IntunePolicyRow {
     $policyType = 'Configuration Policy'
     if ($Kind -eq 'compliance') { $policyType = 'Compliance Policy' }
 
-    # Assignments — may already be expanded or may need separate call.
+    # Assignments - may already be expanded or may need separate call.
     # Worker treats assignments as an array if present on the object.
     $assignments     = @()
     $assignedToCount = 0
@@ -139,6 +141,54 @@ function ConvertTo-IntunePolicyRow {
     }
 }
 
+function Select-IntunePolicyRow {
+    <#
+    .SYNOPSIS
+        Applies the SPEC section 3.1 list filters to converted policy rows.
+    .DESCRIPTION
+        Platform matches by prefix so 'windows' covers 'windows10'; policyType matches
+        exactly; assigned compares assignedToCount with zero; modifiedDate keeps rows
+        modified on or after that day; search is a case-insensitive name substring.
+    #>
+    [CmdletBinding()]
+    [OutputType([object[]])]
+    param(
+        [object[]]$Row = @(),
+        [string]$Platform = '',
+        [string]$PolicyType = '',
+        [ValidateSet('', 'true', 'false')]
+        [string]$Assigned = '',
+        [string]$ModifiedDate = '',
+        [string]$Search = ''
+    )
+
+    $since = $null
+    if ($ModifiedDate) {
+        $parsed = [datetime]::MinValue
+        $styles = [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal
+        if (-not [datetime]::TryParse($ModifiedDate, [cultureinfo]::InvariantCulture, $styles, [ref]$parsed)) {
+            throw "modifiedDate '$ModifiedDate' is not a valid date"
+        }
+        $since = $parsed.Date
+    }
+
+    $selected = foreach ($r in $Row) {
+        if ($Platform -and -not ([string]$r.platform).StartsWith($Platform, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($PolicyType -and -not ([string]$r.policyType).Equals($PolicyType, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($Assigned -eq 'true' -and [int]$r.assignedToCount -le 0) { continue }
+        if ($Assigned -eq 'false' -and [int]$r.assignedToCount -gt 0) { continue }
+        if ($since) {
+            $modified = [datetime]::MinValue
+            $styles = [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal
+            if (-not $r.lastModifiedDateTime -or -not [datetime]::TryParse([string]$r.lastModifiedDateTime, [cultureinfo]::InvariantCulture, $styles, [ref]$modified)) { continue }
+            if ($modified -lt $since) { continue }
+        }
+        if ($Search -and ([string]$r.displayName).IndexOf($Search, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+        $r
+    }
+    return @($selected)
+}
+
 function Get-IntunePolicies {
     <#
     .SYNOPSIS
@@ -148,9 +198,19 @@ function Get-IntunePolicies {
     .PARAMETER Kind
         Policy kind: 'configuration', 'compliance', or 'app-protection'.
     .PARAMETER Top
-        Maximum number of policies to return (default 100).
+        Page size (default 100). Paging applies after filtering.
+    .PARAMETER Cursor
+        Offset cursor from a previous page's nextCursor.
     .PARAMETER Search
-        Optional display-name substring filter (applied client-side).
+        Optional display-name substring filter.
+    .PARAMETER Platform
+        Optional platform prefix filter (windows, android, ios, macos).
+    .PARAMETER PolicyType
+        Optional policy type label filter, e.g. 'Compliance Policy'.
+    .PARAMETER Assigned
+        'true' for assigned policies only, 'false' for unassigned only.
+    .PARAMETER ModifiedDate
+        Optional date; keeps policies modified on or after it.
     #>
     [CmdletBinding()]
     param(
@@ -163,7 +223,18 @@ function Get-IntunePolicies {
 
         [int]$Top = 100,
 
-        [string]$Search = ''
+        [string]$Cursor = '',
+
+        [string]$Search = '',
+
+        [string]$Platform = '',
+
+        [string]$PolicyType = '',
+
+        [ValidateSet('', 'true', 'false')]
+        [string]$Assigned = '',
+
+        [string]$ModifiedDate = ''
     )
 
     $entry = $script:KindRegistry[$Kind]
@@ -183,30 +254,40 @@ function Get-IntunePolicies {
         }
     }
 
-    $resource = $entry.GraphResource
-    $uri      = "/$resource`?`$top=$Top&`$expand=assignments"
-
-    $response = Invoke-MgGraphRequest -Method GET -Uri $uri
-    $rawItems = if ($response.value) { @($response.value) } else { @() }
-
-    # Client-side search filter
-    if (-not [string]::IsNullOrWhiteSpace($Search)) {
-        $rawItems = $rawItems | Where-Object {
-            $name = if ($_.name) { $_.name } elseif ($_.displayName) { $_.displayName } else { '' }
-            $name -like "*$Search*"
-        }
+    # Read every Graph page: filters apply to the whole set, so paging must come after them.
+    $uri = "/$($entry.GraphResource)?`$expand=assignments"
+    $rawItems = [System.Collections.Generic.List[object]]::new()
+    while ($uri) {
+        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+        $page = if ($response -is [System.Collections.IDictionary]) { $response['value'] } else { $response.value }
+        foreach ($item in @($page)) { if ($null -ne $item) { $rawItems.Add($item) } }
+        $uri = if ($response -is [System.Collections.IDictionary]) { $response['@odata.nextLink'] } else { $response.'@odata.nextLink' }
     }
 
-    $rows = @()
-    foreach ($item in $rawItems) {
-        $rows += ConvertTo-IntunePolicyRow -Policy $item -Kind $Kind
+    $rows = @(foreach ($item in $rawItems) { ConvertTo-IntunePolicyRow -Policy $item -Kind $Kind })
+    $filterParams = @{
+        Row          = $rows
+        Platform     = $Platform
+        PolicyType   = $PolicyType
+        Assigned     = $Assigned
+        ModifiedDate = $ModifiedDate
+        Search       = $Search
     }
+    $filtered = @(Select-IntunePolicyRow @filterParams)
+
+    $offset = 0
+    if ($Cursor -and -not [int]::TryParse($Cursor, [ref]$offset)) {
+        throw "cursor '$Cursor' is not valid"
+    }
+    $pageSize = [Math]::Max(1, $Top)
+    $pageItems = @($filtered | Select-Object -Skip $offset -First $pageSize)
+    $next = if ($offset + $pageSize -lt $filtered.Count) { [string]($offset + $pageSize) } else { $null }
 
     return @{
         tenantId    = $TenantId
         kind        = $Kind
-        totalCount  = $rows.Count
-        items       = $rows
-        nextCursor  = $null
+        totalCount  = $filtered.Count
+        items       = $pageItems
+        nextCursor  = $next
     }
 }
