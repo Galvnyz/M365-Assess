@@ -36,6 +36,7 @@ import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
 import { createActiveGrantsResolver, createRoleProviders } from "./adapters/roles.js";
+import { createJobPersistence, createRunGroupResolver, createRunQueue, createRunStore } from "./adapters/runs.js";
 import {
   createAuthMethodsPolicyProvider,
   createMfaProviders,
@@ -64,6 +65,8 @@ import { createDevIdentityAuthenticator } from "./auth/dev-identity.js";
 import type { BffConfig } from "./config.js";
 import { createInMemoryCredentialStore } from "./credentials/store.js";
 import { AppError } from "./errors.js";
+import { JobQueue } from "./jobs/queue.js";
+import { createSupervisorRunner } from "./jobs/supervisor.js";
 import type { BaseRoleId } from "./rbac/base-roles.js";
 import { RbacErrorCodes, requireTenantInScope, type Caller } from "./rbac/authorize.js";
 import { testPortalAccess } from "./rbac/test-portal-access.js";
@@ -107,6 +110,12 @@ import { createPimSettingsTemplatesRoutes } from "./routes/pim-settings-template
 import { createPimAssignmentsRoute } from "./routes/pim.js";
 import { createRegistrationCampaignRoute } from "./routes/registration-campaign.js";
 import { createRoleAssignmentsRoute } from "./routes/roles.js";
+import { createRunsActionsRoutes } from "./routes/runs-actions.js";
+import { createRunsArtifactsRoutes } from "./routes/runs-artifacts.js";
+import { createRunsCreateRoute } from "./routes/runs-create.js";
+import { createRunsDetailRoutes } from "./routes/runs-detail.js";
+import { createRunsEventsRoute } from "./routes/runs-events.js";
+import { createRunsListRoute } from "./routes/runs-list.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
@@ -123,8 +132,12 @@ import { createGroupUsageRoutes } from "./routes/groups-usage.js";
 import { createHealthRoutes } from "./routes/health.js";
 import { createIntuneTemplateRoutes } from "./routes/intune-templates.js";
 import type { RequestAuthenticator, RequestCaller, RequestContext, Route } from "./server.js";
+import { ProgressEventHub } from "./sse/hub.js";
 
 export const DATABASE_FILE = "portal.db";
+/** How long one progress request waits for events before returning (see T-0832). */
+export const RUN_EVENTS_TIMEOUT_MS = 25_000;
+export const RUN_WORKER = "run-tenant.ps1";
 export const UNAUTHENTICATED = "auth.unauthenticated";
 
 // ---- Authorization ---------------------------------------------------------
@@ -259,6 +272,8 @@ export function recordResponseAudit(route: Route, recordAudit: RecordAudit): Rou
 export interface App {
   readonly routes: readonly Route[];
   readonly authenticators: readonly RequestAuthenticator[];
+  /** Assessment run jobs; `drain()` waits for the ones in flight. */
+  readonly runs: JobQueue;
   /** Background offboarding runs; `idle()` waits for the ones in flight. */
   readonly offboarding: OffboardingRunner;
   close(): void;
@@ -269,6 +284,8 @@ export interface CreateAppOptions {
   readonly db?: Database.Database;
   /** Run worker entrypoints with this instead of pwsh (tests pass a fake). */
   readonly workerRunner?: WorkerRunner;
+  /** Run assessment jobs with this instead of supervising run-tenant.ps1 (tests pass a fake). */
+  readonly runWorker?: ConstructorParameters<typeof JobQueue>[0]["runWorker"];
   readonly version?: string;
 }
 
@@ -317,6 +334,34 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const roles = createRoleProviders(tenantWorker);
   const jitRepo = new SqliteJitRepository(db, schemaVersion);
 
+  // EPIC-001/003 runs: the job queue supervises run-tenant.ps1 under the artifact root,
+  // and every queue and worker progress event goes through the hub, which records run
+  // and section state and serves the progress stream.
+  const runStore = createRunStore(repo, db);
+  const hub = new ProgressEventHub({ store: runStore });
+  const publish = (event: unknown) => void hub.publish(event as Record<string, unknown>);
+  const runJobs = new JobQueue({
+    persistence: createJobPersistence(repo),
+    poolSize: config.workerPoolSize,
+    runWorker:
+      options.runWorker ??
+      createSupervisorRunner({
+        workerScriptPath: path.join(config.workersDir, RUN_WORKER),
+        storageRoot: config.artifactPath,
+        onProgress: publish,
+      }),
+    onProgress: publish,
+  });
+  const runQueue = createRunQueue({
+    queue: runJobs,
+    storageRoot: config.artifactPath,
+    tenants: tenantStore,
+    credentials: credentialRows,
+    repo,
+  });
+  // These routes read the raw body themselves; the server has already parsed it.
+  const readBody = async (ctx: RequestContext) => (ctx.body === undefined ? "" : JSON.stringify(ctx.body));
+
   const routes: Route[] = [
     ...createHealthRoutes({
       ...(options.version !== undefined ? { version: options.version } : {}),
@@ -339,6 +384,21 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       resolveCaller,
       authorize: authorizeCaller,
     }),
+    // EPIC-001/003 runs (T-0821). runs.ts, the EPIC-001 version of these routes, is
+    // superseded by the EPIC-003 modules on every path and is not mounted.
+    createRunsListRoute({ store: runStore, ...caller }),
+    createRunsCreateRoute({
+      store: runStore,
+      queue: runQueue,
+      groupResolver: createRunGroupResolver(createTenantGroupStore(repo)),
+      readBody,
+      ...caller,
+    }),
+    ...createRunsDetailRoutes({ store: runStore, ...caller }),
+    ...createRunsActionsRoutes({ store: runStore, queue: runQueue, eventHub: hub, readBody, ...caller }),
+    ...createRunsArtifactsRoutes({ store: runStore, artifactRoot: config.artifactPath, ...caller }),
+    createRunsEventsRoute({ hub, store: runStore, timeoutMs: RUN_EVENTS_TIMEOUT_MS, ...caller }),
+
     // EPIC-002 tenants and onboarding (T-0822).
     ...createTenantRoutes({ store: tenantStore, ...caller }),
     ...createTenantGroupRoutes({ store: createTenantGroupStore(repo), ...caller }),
@@ -501,6 +561,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     routes,
     authenticators,
     offboarding,
+    runs: runJobs,
     close: () => {
       if (!options.db) db.close();
     },

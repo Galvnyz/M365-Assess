@@ -119,6 +119,12 @@ import {
   REMEDIATION_APPLY_PERMISSION as PIM_APPLY_PERMISSION,
 } from "../routes/pim-settings-templates.js";
 import { ROLE_ASSIGNMENTS_PATH } from "../routes/roles.js";
+import { RUNS_CANCEL_PATH, RUNS_RETRY_PATH } from "../routes/runs-actions.js";
+import { RUNS_ARTIFACTS_DOWNLOAD_PATH, RUNS_ARTIFACTS_LIST_PATH } from "../routes/runs-artifacts.js";
+import { RUNS_CREATE_PATH } from "../routes/runs-create.js";
+import { RUNS_DETAIL_PATH, RUNS_RESULTS_PATH } from "../routes/runs-detail.js";
+import { RUNS_EVENTS_PATH } from "../routes/runs-events.js";
+import { RUNS_LIST_PATH } from "../routes/runs-list.js";
 import {
   REGISTRATION_CAMPAIGN_PATH,
   REGISTRATION_CAMPAIGN_READ_PERMISSION,
@@ -396,6 +402,17 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  // EPIC-001/003 runs (T-0821). The route modules check the EPIC-001 names (runs.read,
+  // runs.create, runs.cancel, runs.retry), which app.ts translates to these.
+  { method: "GET", path: RUNS_LIST_PATH, permission: "Tenant.Runs.Read" },
+  { method: "POST", path: RUNS_CREATE_PATH, permission: "Tenant.Runs.ReadWrite" },
+  { method: "GET", path: RUNS_DETAIL_PATH, permission: "Tenant.Runs.Read" },
+  { method: "GET", path: RUNS_RESULTS_PATH, permission: "Tenant.Runs.Read" },
+  { method: "POST", path: RUNS_CANCEL_PATH, permission: "Tenant.Runs.ReadWrite" },
+  { method: "POST", path: RUNS_RETRY_PATH, permission: "Tenant.Runs.ReadWrite" },
+  { method: "GET", path: RUNS_ARTIFACTS_LIST_PATH, permission: "Tenant.Runs.Read" },
+  { method: "GET", path: RUNS_ARTIFACTS_DOWNLOAD_PATH, permission: "Tenant.Runs.Read" },
+  { method: "GET", path: RUNS_EVENTS_PATH, permission: "Tenant.Runs.Read" },
   // EPIC-011 users, BEC, offboarding, and user templates (T-0818).
   ...registryEntriesFromOpenApi(USERS_OPENAPI),
   ...registryEntriesFromOpenApi(BEC_OPENAPI),

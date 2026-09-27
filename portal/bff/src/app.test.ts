@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { JobEnvelope, ResultEnvelope } from "@m365-assess/contracts";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -568,5 +569,90 @@ describe("EPIC-013 roles and JIT routes (T-0818)", () => {
     const res = await api.post("/v1/tenants/t-a/jit-grants", { userId: "u-1", roleId: "role-ga" });
     expect(res.status).toBe(403);
     expect(calls.filter((c) => c.entrypoint === "new-jit-grant.ps1")).toHaveLength(0);
+  });
+});
+
+describe("EPIC-001/003 runs routes (T-0821)", () => {
+  async function runsApp(role: "admin" | "operator") {
+    const root = mkdtempSync(path.join(tmpdir(), "m365-app-runs-"));
+    const db = new Database(":memory:");
+    const worked: string[] = [];
+    const runWorker = async (envelope: JobEnvelope): Promise<ResultEnvelope> => {
+      worked.push(envelope.runId);
+      return {
+        schemaVersion: "v1",
+        jobId: envelope.jobId,
+        jobType: envelope.jobType,
+        tenantId: envelope.tenantId,
+        runId: envelope.runId,
+        requestId: envelope.requestId,
+        correlationId: envelope.correlationId,
+        status: "succeeded",
+        startedAt: "2026-09-26T00:00:00.000Z",
+        finishedAt: "2026-09-26T00:00:05.000Z",
+        exitCode: 0,
+        artifactRefs: [],
+        summary: { total: 0, byStatus: {} },
+        error: null,
+      } as unknown as ResultEnvelope;
+    };
+    const make = (devIdentityRole: "admin" | "operator") =>
+      createApp(config({ devIdentityRole, artifactPath: root }), { db, runWorker });
+    const serveApp = async (app: App) => {
+      const server = buildServer({ routes: app.routes, authenticators: app.authenticators });
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      opened.push({ server, app });
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      return {
+        app,
+        get: (p: string) => fetch(`${base}${p}`),
+        post: (p: string, body: unknown) =>
+          fetch(`${base}${p}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+      };
+    };
+    const admin = await serveApp(make("admin"));
+    await admin.post("/v1/tenants", { id: "t-a", displayName: "Contoso" });
+    await admin.post("/v1/tenants/t-a/credential", { authMethod: "certificate-thumbprint", clientId: "app-1", thumbprint: "ABC123" });
+    const api = role === "admin" ? admin : await serveApp(make("operator"));
+    return { api, admin, root, worked, cleanup: () => rmSync(root, { recursive: true, force: true }) };
+  }
+
+  it("creates a run, runs its job through the queue, and serves its state", async () => {
+    const { api, root, worked, cleanup } = await runsApp("admin");
+    try {
+      const created = await api.post("/v1/runs", { tenantId: "t-a", sections: ["Identity"] });
+      expect(created.status).toBe(201);
+      const body = (await created.json()) as { run: { id: string }; children: { id: string }[]; enqueuedJobs: string[] };
+      const runId = body.children[0]?.id ?? body.run.id;
+      expect(body.enqueuedJobs).toHaveLength(1);
+      expect(existsSync(path.join(root, "runs", "t-a", runId, "context.json"))).toBe(true);
+
+      await api.app.runs.drain();
+      expect(worked).toEqual([runId]);
+      const detail = await api.get(`/v1/runs/${runId}`);
+      expect(detail.status).toBe(200);
+      expect(await detail.json()).toMatchObject({ id: runId, status: "succeeded" });
+
+      const list = await api.get("/v1/runs");
+      expect(list.status).toBe(200);
+      expect(JSON.stringify(await list.json())).toContain(runId);
+
+      // The parent run follows its only child.
+      const parent = await api.get(`/v1/runs/${body.run.id}`);
+      expect(await parent.json()).toMatchObject({ id: body.run.id, status: "succeeded" });
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("lets a read-only caller list runs but not start one", async () => {
+    const { api, worked, cleanup } = await runsApp("operator");
+    try {
+      expect((await api.get("/v1/runs")).status).toBe(200);
+      expect((await api.post("/v1/runs", { tenantId: "t-a", sections: ["Identity"] })).status).toBe(403);
+      expect(worked).toEqual([]);
+    } finally {
+      cleanup();
+    }
   });
 });

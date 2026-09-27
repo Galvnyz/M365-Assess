@@ -260,7 +260,8 @@ async function writeAudit(
   });
 }
 
-async function resolveMembers(
+/** A group's member tenant ids: stored rows, or its filter evaluated over the tenants. */
+export async function resolveMembers(
   store: TenantGroupStore,
   group: TenantGroupRecord,
 ): Promise<string[]> {

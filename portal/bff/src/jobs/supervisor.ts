@@ -75,6 +75,11 @@ export interface SuperviseJobOptions {
   readonly spawnImpl?: SpawnFn;
   readonly readResultFile?: (filePath: string) => Promise<string>;
   readonly onProgress?: (event: ProgressEvent) => void;
+  /**
+   * Directory the envelope's relative refs (context, output, result.json) resolve
+   * against. The worker runs there; defaults to the BFF's working directory.
+   */
+  readonly storageRoot?: string;
 }
 
 function defaultSpawn(
@@ -175,6 +180,8 @@ export interface SupervisedProcessOptions {
   readonly onStdout?: (chunk: unknown) => void;
   /** Keep the full stdout text for the caller (feature workers print their result there). */
   readonly collectStdout?: boolean;
+  /** Working directory for the worker process. */
+  readonly cwd?: string;
 }
 
 export interface SupervisedProcessExit {
@@ -201,6 +208,7 @@ export function runSupervisedProcess(
     spawnImpl = defaultSpawn,
     onStdout,
     collectStdout = false,
+    cwd,
   } = options;
 
   if (signal?.aborted === true) {
@@ -208,6 +216,7 @@ export function runSupervisedProcess(
   }
 
   const child = spawnImpl(pwshPath, args, {
+    ...(cwd !== undefined ? { cwd } : {}),
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
@@ -279,11 +288,13 @@ export async function superviseJob(
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.signal !== undefined ? { signal: options.signal } : {}),
     ...(options.spawnImpl !== undefined ? { spawnImpl: options.spawnImpl } : {}),
+    ...(options.storageRoot !== undefined ? { cwd: options.storageRoot } : {}),
     onStdout: (chunk) => forwardProgressLines(chunk, carried, onProgress),
   });
 
   try {
-    const raw = await readResultFile(resultFilePath(envelope));
+    const resultPath = resultFilePath(envelope);
+    const raw = await readResultFile(options.storageRoot !== undefined ? path.resolve(options.storageRoot, resultPath) : resultPath);
     const result = parseResultEnvelope(raw);
     if (
       result.jobId !== envelope.jobId ||

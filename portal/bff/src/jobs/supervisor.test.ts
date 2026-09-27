@@ -1,3 +1,4 @@
+import path from "node:path";
 import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 import { EnvelopeValidationError } from "@m365-assess/contracts";
@@ -132,6 +133,30 @@ describe("superviseJob", () => {
     await expect(pending).resolves.toEqual(result);
     expect(events.length).toBe(1);
     expect(events[0]?.state).toBe("running");
+  });
+
+  it("runs the worker in the storage root and reads the result from there", async () => {
+    const job = makeJob();
+    const fake = new FakeChild();
+    fake.pid = undefined;
+    let cwd: unknown;
+    let readPath = "";
+    const pending = superviseJob(job, {
+      workerScriptPath: "/workers/run-tenant.ps1",
+      storageRoot: "/srv/portal",
+      spawnImpl: (_command, _args, options) => {
+        cwd = options.cwd;
+        return fake;
+      },
+      readResultFile: async (filePath) => {
+        readPath = filePath;
+        return JSON.stringify(makeResult(job));
+      },
+    });
+    fake.emit("exit", 0, null);
+    await pending;
+    expect(cwd).toBe("/srv/portal");
+    expect(readPath).toBe(path.resolve("/srv/portal", job.payload.outputRef, "result.json"));
   });
 
   it("rejects a result envelope with a schema mismatch", async () => {
