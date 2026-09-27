@@ -4,13 +4,31 @@
 // authorizer, the authenticators, and the route list. Route modules stay free of
 // wiring; this file is the only place that knows which store backs which route.
 //
-// Areas whose route stores have no implementation yet are mounted by later tickets
-// (T-0818..T-0825), each adding entries to `routes` below.
+// Storage: the @m365-assess/db migrations run once on the shared connection, then the
+// db repositories and the BFF's own repositories share it. Worker-backed runners call
+// PowerShell entrypoints through runFeatureWorker (T-0815). Areas whose route stores
+// have no implementation yet are mounted by later tickets (T-0818..T-0825).
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { SqliteRepository, loadMigrations, runMigrations } from "@m365-assess/db";
 import Database from "better-sqlite3";
+import {
+  createCredentialRowStore,
+  createGdapRelationshipStore,
+  createTenantGroupStore,
+  createTenantStore,
+  createTenantVariableStore,
+} from "./adapters/tenants.js";
+import {
+  createGdapSyncRunner,
+  createOnboardRunner,
+  createTestConnectionRunner,
+  createWorkerRunner,
+  type WorkerRunner,
+} from "./adapters/workers.js";
 import { createDevIdentityAuthenticator } from "./auth/dev-identity.js";
 import type { BffConfig } from "./config.js";
+import { createInMemoryCredentialStore } from "./credentials/store.js";
 import { AppError } from "./errors.js";
 import type { BaseRoleId } from "./rbac/base-roles.js";
 import { RbacErrorCodes, type Caller } from "./rbac/authorize.js";
@@ -20,6 +38,13 @@ import { SqliteGroupTemplateRepository } from "./repository/group-templates.js";
 import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
 import { createCaTemplateRoutes } from "./routes/ca-templates.js";
+import { createCredentialRoutes } from "./routes/credentials.js";
+import { createGdapRoutes } from "./routes/gdap.js";
+import { createOnboardRoutes } from "./routes/onboard.js";
+import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
+import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
+import { createTenantRoutes } from "./routes/tenants.js";
+import { createTestConnectionRoutes } from "./routes/test-connection.js";
 import { createGroupTemplatesRoutes } from "./routes/group-templates.js";
 import { createHealthRoutes } from "./routes/health.js";
 import { createIntuneTemplateRoutes } from "./routes/intune-templates.js";
@@ -109,6 +134,8 @@ export interface App {
 export interface CreateAppOptions {
   /** Use this database instead of opening `<storagePath>/portal.db` (tests pass ":memory:"). */
   readonly db?: Database.Database;
+  /** Run worker entrypoints with this instead of pwsh (tests pass a fake). */
+  readonly workerRunner?: WorkerRunner;
   readonly version?: string;
 }
 
@@ -127,6 +154,15 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   if (config.devIdentityRole) {
     authenticators.push(createDevIdentityAuthenticator(config.devIdentityRole));
   }
+
+  const schemaVersion = runMigrations(db, loadMigrations());
+  const journalMode = String(db.pragma("journal_mode", { simple: true }) ?? "memory");
+  const repo = new SqliteRepository(db, schemaVersion, journalMode);
+  const run = options.workerRunner ?? createWorkerRunner({ workersDir: config.workersDir });
+
+  const tenantStore = createTenantStore(repo);
+  const credentialRows = createCredentialRowStore(repo);
+  const caller = { resolveCaller, authorize: authorizeCaller };
 
   const routes: Route[] = [
     ...createHealthRoutes({
@@ -149,6 +185,33 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       repository: new SqliteGroupTemplateRepository(db),
       resolveCaller,
       authorize: authorizeCaller,
+    }),
+    // EPIC-002 tenants and onboarding (T-0822).
+    ...createTenantRoutes({ store: tenantStore, ...caller }),
+    ...createTenantGroupRoutes({ store: createTenantGroupStore(repo), ...caller }),
+    ...createTenantVariableRoutes({ store: createTenantVariableStore(repo), ...caller }),
+    ...createCredentialRoutes({
+      records: credentialRows,
+      // Secret material has no persistent backend yet (T-0827): client-secret and PFX
+      // material set here lasts until restart. Thumbprint credentials need none.
+      secrets: createInMemoryCredentialStore(),
+      ...caller,
+    }),
+    ...createGdapRoutes({
+      enabled: config.gdapPartnerTenantId !== null,
+      tenantStore,
+      relationshipStore: createGdapRelationshipStore(repo),
+      ...(config.gdapPartnerTenantId
+        ? { runner: createGdapSyncRunner(run, credentialRows, config.gdapPartnerTenantId) }
+        : {}),
+      ...caller,
+    }),
+    ...createOnboardRoutes({ tenantStore, credentialStore: credentialRows, runner: createOnboardRunner(run), ...caller }),
+    ...createTestConnectionRoutes({
+      tenantStore,
+      credentialStore: credentialRows,
+      runner: createTestConnectionRunner(run),
+      ...caller,
     }),
   ];
 

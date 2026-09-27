@@ -82,12 +82,15 @@ const reportDeps: ReportTemplateDependencies = {
   },
 };
 
+/** Config with every optional feature on (GDAP sync mounts only with a partner tenant). */
+const FULL_CONFIG = loadConfig({ M365_BFF_GDAP_PARTNER_TENANT_ID: "partner-tenant" });
+
 /**
  * Every endpoint the registry must cover: the app's served routes (T-0817) plus route
  * modules that are registered ahead of being mounted by T-0818..T-0825.
  */
 function mountedEndpoints(): Route[] {
-  const app = createApp(loadConfig({}), { db: new Database(":memory:") });
+  const app = createApp(FULL_CONFIG, { db: new Database(":memory:") });
   const appRoutes = [...app.routes];
   app.close();
   const all: Route[] = [
@@ -282,7 +285,7 @@ const ADMIN_ONLY_PERMISSIONS: readonly string[] = [
 const EPIC001_RUN_PERMISSIONS: readonly string[] = ["runs.read", "runs.create", "runs.cancel", "runs.retry", "admin"];
 
 const ROUTES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../routes");
-const DOTTED = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*){1,2}$/;
+const DOTTED = /^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*){1,2}$/;
 const ERROR_CODE_PREFIXES = ["request.", "auth.", "rbac."];
 
 /** Permission-like strings on permission-bearing lines of the route sources. */
@@ -346,7 +349,7 @@ describe("route permissions follow the EPIC-038 taxonomy (T-0816)", () => {
 
 describe("permission registry covers the app's mounted routes (T-0817)", () => {
   it("resolves exactly one permission for every route the app serves", () => {
-    const app = createApp(loadConfig({}), { db: new Database(":memory:") });
+    const app = createApp(FULL_CONFIG, { db: new Database(":memory:") });
     const served = [
       { method: "GET", path: OPENAPI_ROUTE },
       ...app.routes.map((r) => ({ method: r.method, path: r.path })),

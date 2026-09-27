@@ -20,6 +20,13 @@ export interface BffConfig {
    * EPIC-038 delivers portal-user token validation. Null (the default) disables it.
    */
   readonly devIdentityRole: DevIdentityRole | null;
+  /** Directory of the PowerShell worker entrypoints (portal/workers). */
+  readonly workersDir: string;
+  /**
+   * Partner (MSP) tenant GDAP discovery signs in as. GDAP sync (T-0029) stays disabled
+   * until this is set and that tenant has a credential.
+   */
+  readonly gdapPartnerTenantId: string | null;
 }
 
 export type DevIdentityRole = "admin" | "operator";
@@ -38,6 +45,8 @@ const ENV = {
   storagePath: "M365_BFF_STORAGE_PATH",
   artifactPath: "M365_BFF_ARTIFACT_PATH",
   devIdentity: "M365_BFF_DEV_IDENTITY",
+  workersDir: "M365_BFF_WORKERS_DIR",
+  gdapPartnerTenantId: "M365_BFF_GDAP_PARTNER_TENANT_ID",
 } as const;
 
 function readEnv(env: Environment, key: string): string | undefined {
@@ -104,5 +113,7 @@ export function loadConfig(env: Environment = process.env): BffConfig {
     storagePath,
     artifactPath,
     devIdentityRole: parseDevIdentityRole(env),
+    workersDir: path.resolve(readEnv(env, ENV.workersDir) ?? path.join(PACKAGE_ROOT, "..", "workers")),
+    gdapPartnerTenantId: readEnv(env, ENV.gdapPartnerTenantId) ?? null,
   };
 }

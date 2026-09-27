@@ -14,6 +14,7 @@ import {
   type App,
 } from "./app.js";
 import { loadConfig, type BffConfig } from "./config.js";
+import type { WorkerRunner } from "./adapters/workers.js";
 import { ALL_TENANTS } from "./rbac/scope.js";
 import { buildServer, type RequestContext } from "./server.js";
 
@@ -30,8 +31,12 @@ function config(overrides: Partial<BffConfig> = {}): BffConfig {
   return { ...loadConfig({}), ...overrides };
 }
 
-async function serve(devIdentityRole: BffConfig["devIdentityRole"], db = new Database(":memory:")) {
-  const app = createApp(config({ devIdentityRole }), { db });
+async function serve(
+  devIdentityRole: BffConfig["devIdentityRole"],
+  db = new Database(":memory:"),
+  workerRunner?: WorkerRunner,
+) {
+  const app = createApp(config({ devIdentityRole }), { db, ...(workerRunner ? { workerRunner } : {}) });
   const server = buildServer({ routes: app.routes, authenticators: app.authenticators });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   opened.push({ server, app });
@@ -150,5 +155,58 @@ describe("the served app (T-0817)", () => {
     const api = await serve("admin");
     const res = await api.post("/v1/intune-templates", { name: "", platform: "tvos" });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("tenants and onboarding routes (T-0822)", () => {
+  it("lets a read-only caller list tenants but not add one", async () => {
+    const api = await serve("operator");
+    expect((await api.get("/v1/tenants")).status).toBe(200);
+    expect((await api.post("/v1/tenants", { id: "t-a", displayName: "Contoso" })).status).toBe(403);
+  });
+
+  it("persists a tenant, its credential, and variables for an admin", async () => {
+    const db = new Database(":memory:");
+    const api = await serve("admin", db);
+    expect((await api.post("/v1/tenants", { id: "t-a", displayName: "Contoso" })).status).toBe(201);
+    expect(await (await api.get("/v1/tenants/t-a")).json()).toMatchObject({ id: "t-a", displayName: "Contoso" });
+    const credential = await api.post("/v1/tenants/t-a/credential", {
+      authMethod: "certificate-thumbprint",
+      clientId: "app-1",
+      thumbprint: "ABC123",
+    });
+    expect(credential.status).toBe(201);
+    expect(db.prepare("SELECT thumbprint FROM tenant_credentials WHERE tenantId = ?").get("t-a")).toEqual({ thumbprint: "ABC123" });
+    expect((await api.post("/v1/tenant-variables", { name: "region", value: "eu", tenantId: "t-a" })).status).toBe(201);
+  });
+
+  it("runs the connection test worker with the tenant's credential block", async () => {
+    const calls: { entrypoint: string; job: unknown }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      calls.push({ entrypoint, job });
+      return { tenantId: "t-a", success: true, testedAt: "2026-09-26T00:00:00Z", services: [] } as never;
+    };
+    const api = await serve("admin", new Database(":memory:"), runner);
+    await api.post("/v1/tenants", { id: "t-a", displayName: "Contoso" });
+    await api.post("/v1/tenants/t-a/credential", { authMethod: "certificate-thumbprint", clientId: "app-1", thumbprint: "ABC123" });
+    const res = await api.post("/v1/tenants/t-a/test-connection", {});
+    expect(res.status).toBe(200);
+    expect(calls).toEqual([
+      {
+        entrypoint: "test-tenant-connection.ps1",
+        job: {
+          tenantId: "t-a",
+          credential: {
+            credentialRef: "tenants/t-a/credential",
+            record: expect.objectContaining({ tenantId: "t-a", clientId: "app-1", thumbprint: "ABC123" }),
+          },
+        },
+      },
+    ]);
+  });
+
+  it("does not serve GDAP sync unless a partner tenant is configured", async () => {
+    const api = await serve("admin");
+    expect((await api.post("/v1/gdap/sync", {})).status).toBe(404);
   });
 });

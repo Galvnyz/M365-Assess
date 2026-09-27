@@ -23,9 +23,12 @@
     "start": "node ./dist/index.js"
   },
   "dependencies": {
-    "@m365-assess/contracts": "*"
+    "@m365-assess/contracts": "*",
+    "@m365-assess/db": "*",
+    "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.0"

@@ -46,6 +46,13 @@ import {
 } from "../routes/group-templates.js";
 import { HEALTH_PATH } from "../routes/health.js";
 import { INTUNE_TEMPLATE_PERMISSIONS } from "../routes/intune-templates.js";
+import { CREDENTIALS_OPENAPI } from "../routes/credentials.js";
+import { GDAP_OPENAPI } from "../routes/gdap.js";
+import { ONBOARD_OPENAPI } from "../routes/onboard.js";
+import { TENANT_GROUPS_OPENAPI } from "../routes/tenant-groups.js";
+import { TENANT_VARIABLES_OPENAPI } from "../routes/tenant-variables.js";
+import { TENANTS_OPENAPI } from "../routes/tenants.js";
+import { TEST_CONNECTION_OPENAPI } from "../routes/test-connection.js";
 import { REPORT_TEMPLATE_PERMISSIONS } from "../routes/report-templates.js";
 
 // `Public` bypasses permission evaluation (SPEC §4.1 item 4). It is the only
@@ -64,6 +71,35 @@ export const API_CLIENT_PERMISSIONS = {
   read: "CIPP.ApiClients.Read",
   readWrite: "CIPP.ApiClients.ReadWrite",
 } as const;
+
+/** An OpenAPI fragment whose operations carry `permission` (and usually `operationId`). */
+export interface PermissionedOpenApiFragment {
+  readonly paths: Readonly<
+    Record<string, Readonly<Record<string, { readonly permission: string; readonly operationId?: string }>>>
+  >;
+}
+
+/**
+ * Registry entries projected from a route module's OpenAPI fragment, so mounted modules
+ * register by reference: `/tenants/{id}` + get -> GET /v1/tenants/:id.
+ */
+export function registryEntriesFromOpenApi(fragment: PermissionedOpenApiFragment): PermissionRegistryEntry[] {
+  const entries: PermissionRegistryEntry[] = [];
+  for (const [openApiPath, operations] of Object.entries(fragment.paths)) {
+    const routePath = openApiPath.replace(/\{([^/{}]+)\}/g, ":$1");
+    // Most fragments key paths without the /v1 prefix; a few already include it.
+    const path = routePath.startsWith("/v1/") ? routePath : `/v1${routePath}`;
+    for (const [method, operation] of Object.entries(operations)) {
+      entries.push({
+        method: method.toUpperCase(),
+        path,
+        permission: operation.permission,
+        ...(operation.operationId ? { operationId: operation.operationId } : {}),
+      });
+    }
+  }
+  return entries;
+}
 
 export interface PermissionRegistryEntry {
   readonly method: string;
@@ -254,6 +290,14 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
     path: "/v1/report-templates/:templateId/generate",
     permission: REPORT_TEMPLATE_PERMISSIONS.generate,
   },
+  // EPIC-002 tenant area (T-0822), projected from each module's OpenAPI fragment.
+  ...registryEntriesFromOpenApi(TENANTS_OPENAPI),
+  ...registryEntriesFromOpenApi(TENANT_GROUPS_OPENAPI),
+  ...registryEntriesFromOpenApi(TENANT_VARIABLES_OPENAPI),
+  ...registryEntriesFromOpenApi(CREDENTIALS_OPENAPI),
+  ...registryEntriesFromOpenApi(GDAP_OPENAPI),
+  ...registryEntriesFromOpenApi(ONBOARD_OPENAPI),
+  ...registryEntriesFromOpenApi(TEST_CONNECTION_OPENAPI),
 ]);
 
 // SPEC §11 item 2 taxonomy: `{Area}.{Resource}.{Action}` — two or three

@@ -33,7 +33,7 @@ export const TENANT_GROUP_PREVIEW_PATH = "/v1/tenant-groups/:id/preview";
 
 export const TENANT_GROUP_PERMISSIONS = {
   read: "Tenant.Administration.Read",
-  write: "tenant-groups.write",
+  write: "Tenant.Administration.ReadWrite",
 } as const;
 
 export const TENANT_GROUP_NOT_FOUND = "tenant-group.not_found";

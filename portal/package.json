@@ -5,9 +5,9 @@
   "description": "M365-Assess portal monorepo: thin BFF, contracts, web UI, and storage.",
   "workspaces": [
     "contracts",
+    "db",
     "bff",
-    "web",
-    "db"
+    "web"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
