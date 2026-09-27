@@ -1,6 +1,6 @@
 // Intune assignment filters API (EPIC-016 SPEC.md §3.3, §5, §6, §7, §9; T-0309).
 //
-// Tenant routes (live filters via the Set-AssignmentFilter worker; each write audited
+// Tenant routes (live filters via the assignment-filter worker; each write audited
 // with before/after):
 //   GET    /v1/tenants/:tenantId/intune/assignment-filters
 //   POST   /v1/tenants/:tenantId/intune/assignment-filters
@@ -523,7 +523,7 @@ export interface GraphFilterInput {
   readonly rule: string;
 }
 
-/** Runs the Set-AssignmentFilter worker for one tenant. */
+/** Runs the assignment-filter worker for one tenant. */
 export interface AssignmentFilterProvider {
   list(tenantId: string): Promise<readonly LiveAssignmentFilter[]>;
   create(tenantId: string, input: GraphFilterInput, actor: string): Promise<FilterWriteResult>;
