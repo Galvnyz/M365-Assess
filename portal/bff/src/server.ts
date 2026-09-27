@@ -54,6 +54,7 @@ export interface RouteResponse {
   readonly body?: unknown;
   readonly raw?: string | Buffer;
   readonly contentType?: string;
+  readonly headers?: Record<string, string | number | readonly string[]>;
 }
 
 export type RouteHandler = (ctx: RequestContext) => RouteResponse | Promise<RouteResponse>;
@@ -121,6 +122,13 @@ function sendJson(
 }
 
 function sendResponse(res: ServerResponse, result: RouteResponse, correlationId: string): void {
+  if (result.headers) {
+    for (const [key, value] of Object.entries(result.headers)) {
+      if (value !== undefined) {
+        res.setHeader(key, value);
+      }
+    }
+  }
   if (result.raw !== undefined) {
     res.statusCode = result.status;
     res.setHeader("Content-Type", result.contentType ?? "application/octet-stream");

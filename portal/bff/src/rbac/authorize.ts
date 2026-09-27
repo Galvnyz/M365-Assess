@@ -22,6 +22,7 @@ export const RbacErrorCodes = {
 export interface Caller {
   readonly roles: readonly RoleId[];
   readonly tenantScope: TenantScope;
+  readonly permissions?: readonly string[];
 }
 
 export function hasPermission(caller: Caller, permission: Permission): boolean {

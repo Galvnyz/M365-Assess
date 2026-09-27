@@ -14,6 +14,7 @@ import {
   type IntunePolicyCreateInput,
   type IntunePolicyEditInput,
 } from "./intune-policies-crud.js";
+import type { RequestContext } from "../server.js";
 
 const TENANT = "tenant-crud-test";
 
@@ -146,8 +147,13 @@ function createHarness(overrides?: Partial<IntuneCrudRoutesOptions>) {
   };
 }
 
-function makeCreateCtx(kind: string, body: Record<string, unknown> = {}) {
+function makeCreateCtx(
+  kind: string,
+  body: Record<string, unknown> = {},
+): RequestContext {
   return {
+    correlationId: "corr-test",
+    method: "POST",
     path: `/v1/tenants/${TENANT}/intune/${kind}`,
     params: { tenantId: TENANT, kind },
     query: new URLSearchParams(),
@@ -160,8 +166,11 @@ function makeItemCtx(
   kind: string,
   policyId: string,
   body: Record<string, unknown> = {},
-) {
+  method: string = "PATCH",
+): RequestContext {
   return {
+    correlationId: "corr-test",
+    method,
     path: `/v1/tenants/${TENANT}/intune/${kind}/${policyId}`,
     params: { tenantId: TENANT, kind, policyId },
     query: new URLSearchParams(),
@@ -239,10 +248,7 @@ describe("POST /v1/tenants/:tenantId/intune/:kind (T-0302 create)", () => {
     const route = harness.getRoute("POST", INTUNE_CRUD_BASE_PATH);
     await expect(
       route.handler({
-        path: `/v1/tenants/${TENANT}/intune/configuration`,
-        params: { tenantId: TENANT, kind: "configuration" },
-        query: new URLSearchParams(),
-        headers: {},
+        ...makeCreateCtx("configuration"),
         body: { platform: "windows" },
       }),
     ).rejects.toMatchObject({ status: 400, code: "request.validation_failed" });
@@ -300,7 +306,7 @@ describe("DELETE /v1/tenants/:tenantId/intune/:kind/:policyId (T-0302 delete)", 
     const harness = createHarness();
     const route = harness.getRoute("DELETE", INTUNE_CRUD_ITEM_PATH);
     const res = await route.handler(
-      makeItemCtx("configuration", "pol-1", { confirmName: "Windows Security Baseline" }),
+      makeItemCtx("configuration", "pol-1", { confirmName: "Windows Security Baseline" }, "DELETE"),
     );
     expect(res.status).toBe(200);
     const call = harness.provider.deleteCalls[0]!;
@@ -312,7 +318,7 @@ describe("DELETE /v1/tenants/:tenantId/intune/:kind/:policyId (T-0302 delete)", 
   it("returns 200 plan on preview=true delete", async () => {
     const harness = createHarness();
     const route = harness.getRoute("DELETE", INTUNE_CRUD_ITEM_PATH);
-    const res = await route.handler(makeItemCtx("configuration", "pol-1", { preview: true }));
+    const res = await route.handler(makeItemCtx("configuration", "pol-1", { preview: true }, "DELETE"));
     expect(res.status).toBe(200);
     const body = res.body as IntunePlan;
     expect(body.action).toBe("delete");
@@ -321,7 +327,7 @@ describe("DELETE /v1/tenants/:tenantId/intune/:kind/:policyId (T-0302 delete)", 
   it("forwards empty confirmName when not provided (enforcement deferred to worker)", async () => {
     const harness = createHarness();
     const route = harness.getRoute("DELETE", INTUNE_CRUD_ITEM_PATH);
-    await route.handler(makeItemCtx("compliance", "pol-3"));
+    await route.handler(makeItemCtx("compliance", "pol-3", {}, "DELETE"));
     expect(harness.provider.deleteCalls[0]!.confirmName).toBe("");
   });
 });

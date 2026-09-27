@@ -109,6 +109,7 @@ export interface IntuneCrudProvider {
 
 export interface IntuneCrudCaller extends Caller {
   readonly userId?: string;
+  readonly permissions?: readonly string[];
 }
 
 export type IntuneCrudAuthorizer = (

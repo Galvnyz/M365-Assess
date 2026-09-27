@@ -10,8 +10,8 @@ import type {
   RoleChangeRequestAction,
   RoleChangeRequestInput,
   RoleChangeRequestState,
-} from "../../../db/src/repository.js";
-import type { RoleRequestsRepository } from "../../../db/src/role-requests-repository.js";
+  RoleRequestsRepository,
+} from "@m365-assess/db";
 
 export const PIM_REQUESTS_PATH = "/v1/tenants/:tenantId/pim/requests";
 export const PIM_REQUEST_ITEM_PATH = "/v1/tenants/:tenantId/pim/requests/:id";

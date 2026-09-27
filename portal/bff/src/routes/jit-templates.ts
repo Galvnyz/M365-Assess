@@ -11,8 +11,8 @@ import type {
   JitAdminTemplateInput,
   JitAdminTemplateUpdate,
   JitGrant,
-} from "../../../db/src/repository.js";
-import type { JitTemplatesRepository } from "../../../db/src/jit-templates-repository.js";
+  JitTemplatesRepository,
+} from "@m365-assess/db";
 
 export const JIT_TEMPLATES_PATH = "/v1/jit-templates";
 export const JIT_TEMPLATE_ITEM_PATH = "/v1/jit-templates/:id";

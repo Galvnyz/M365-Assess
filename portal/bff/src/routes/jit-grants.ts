@@ -9,8 +9,8 @@ import type {
   JitGrant,
   JitGrantInput,
   JitGrantState,
-} from "../../../db/src/repository.js";
-import type { JitRepository } from "../../../db/src/jit-repository.js";
+  JitRepository,
+} from "@m365-assess/db";
 
 export const JIT_GRANTS_PATH = "/v1/tenants/:tenantId/jit-grants";
 export const JIT_GRANT_ITEM_PATH = "/v1/tenants/:tenantId/jit-grants/:id";

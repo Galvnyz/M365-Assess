@@ -20,7 +20,7 @@ export interface NamedLocationData {
   readonly countriesAndRegions?: string[];
   readonly includeUnknownCountriesAndRegions?: boolean;
   readonly countryLookupMethod?: string;
-  readonly referencingPolicies?: ReferencingPolicy[];
+  readonly referencingPolicies?: readonly ReferencingPolicy[];
 }
 
 export interface NamedLocationPlan {

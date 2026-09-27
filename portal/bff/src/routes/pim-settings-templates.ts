@@ -13,8 +13,8 @@ import type {
   PimRoleSettingsTemplate,
   PimRoleSettingsTemplateInput,
   PimRoleSettingsTemplateUpdate,
-} from "../../../db/src/repository.js";
-import type { PimSettingsRepository } from "../../../db/src/pim-settings-repository.js";
+  PimSettingsRepository,
+} from "@m365-assess/db";
 
 export const PIM_TEMPLATES_PATH = "/v1/pim-settings-templates";
 export const PIM_TEMPLATE_ITEM_PATH = "/v1/pim-settings-templates/:id";

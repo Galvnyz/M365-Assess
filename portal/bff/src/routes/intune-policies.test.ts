@@ -12,6 +12,7 @@ import {
   type IntunePoliciesProvider,
   type IntunePoliciesRoutesOptions,
 } from "./intune-policies.js";
+import type { RequestContext } from "../server.js";
 
 const TENANT = "tenant-intune-test";
 
@@ -94,8 +95,10 @@ function createHarness(overrides?: Partial<IntunePoliciesRoutesOptions>) {
   };
 }
 
-function makeCtx(kind: string, params: Record<string, string> = {}) {
+function makeCtx(kind: string, params: Record<string, string> = {}): RequestContext {
   return {
+    correlationId: "corr-test",
+    method: "GET",
     path: `/v1/tenants/${TENANT}/intune/${kind}`,
     params: { tenantId: TENANT, kind, ...params },
     query: new URLSearchParams(),
@@ -140,12 +143,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     const harness = createHarness();
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);
     await expect(
-      route.handler({
-        path: `/v1/tenants/${TENANT}/intune/scripts`,
-        params: { tenantId: TENANT, kind: "scripts" },
-        query: new URLSearchParams(),
-        headers: {},
-      }),
+      route.handler(makeCtx("scripts")),
     ).rejects.toMatchObject({ status: 400, code: "request.validation_failed" });
   });
 
@@ -153,12 +151,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     const harness = createHarness();
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);
     await expect(
-      route.handler({
-        path: `/v1/tenants/${TENANT}/intune/app-protection`,
-        params: { tenantId: TENANT, kind: "app-protection" },
-        query: new URLSearchParams(),
-        headers: {},
-      }),
+      route.handler(makeCtx("app-protection")),
     ).rejects.toMatchObject({ status: 501, code: "intune.kind.unsupported" });
   });
 
@@ -180,12 +173,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
   it("returns 200 with policy list for compliance (supported)", async () => {
     const harness = createHarness();
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);
-    const res = await route.handler({
-      path: `/v1/tenants/${TENANT}/intune/compliance`,
-      params: { tenantId: TENANT, kind: "compliance" },
-      query: new URLSearchParams(),
-      headers: {},
-    });
+    const res = await route.handler(makeCtx("compliance"));
     expect(res.status).toBe(200);
     const body = res.body as IntunePoliciesPage;
     expect(body.kind).toBe("compliance");
@@ -197,10 +185,8 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);
     const query = new URLSearchParams({ platform: "windows", assigned: "true", search: "security" });
     await route.handler({
-      path: `/v1/tenants/${TENANT}/intune/configuration`,
-      params: { tenantId: TENANT, kind: "configuration" },
+      ...makeCtx("configuration"),
       query,
-      headers: {},
     });
     const call = harness.provider.calls[0]!;
     expect(call.tenantId).toBe(TENANT);
@@ -223,24 +209,24 @@ describe("GET /v1/tenants/:tenantId/intune/:kind/:policyId (T-0829)", () => {
 
   it("returns one policy's body and assignments", async () => {
     const h = detailHarness();
-    const res = await h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" }) as never);
+    const res = await h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" }));
     expect(res).toMatchObject({ status: 200, body: detail });
   });
 
   it("answers 404 for a missing policy and 400 for an unknown kind", async () => {
     const h = detailHarness();
     await expect(
-      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "nope" }) as never),
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "nope" })),
     ).rejects.toMatchObject({ status: 404 });
     await expect(
-      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("widgets", { policyId: "p-1" }) as never),
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("widgets", { policyId: "p-1" })),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it("answers 501 when the provider cannot read details", async () => {
     const h = createHarness();
     await expect(
-      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" }) as never),
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" })),
     ).rejects.toMatchObject({ status: 501 });
   });
 });

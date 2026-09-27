@@ -111,7 +111,7 @@ export function RolesAssignmentsTable({
   tenantId,
   isPimView = false,
 }: RolesAssignmentsTableProps): ReactElement {
-  const [items, setItems] = useState<Array<RoleAssignment | PimAssignment>>([]);
+  const [items, setItems] = useState<ReadonlyArray<RoleAssignment | PimAssignment>>([]);
   const [gate, setGate] = useState<PimLicenseGateResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

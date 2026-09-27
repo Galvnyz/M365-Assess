@@ -82,6 +82,7 @@ export interface IntunePoliciesProvider {
 
 export interface IntuneCaller extends Caller {
   readonly userId?: string;
+  readonly permissions?: readonly string[];
 }
 
 export type IntuneAuthorizer = (
