@@ -8,6 +8,8 @@
 import React, { useState, type CSSProperties, type ReactElement } from "react";
 import { RolesAssignmentsTable } from "../../components/roles/RolesAssignmentsTable";
 import { PimSettingsTemplatesTab } from "../../components/roles/PimSettingsTemplatesTab";
+import { RequireTenant } from "../../components/shell/RequireTenant";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 
 type TabId = "assignments" | "pim" | "templates";
 
@@ -45,15 +47,6 @@ const subtitleStyle: CSSProperties = {
   fontSize: "14px",
 };
 
-const tenantInputStyle: CSSProperties = {
-  padding: "8px 12px",
-  background: "var(--input-bg, var(--bg))",
-  border: "1px solid var(--border)",
-  borderRadius: "6px",
-  color: "var(--text)",
-  fontSize: "14px",
-};
-
 const tabsBarStyle: CSSProperties = {
   display: "flex",
   borderBottom: "1px solid var(--border)",
@@ -74,13 +67,8 @@ function getTabButtonStyle(active: boolean): CSSProperties {
 }
 
 export default function RolesPage(): ReactElement {
-  const [tenantInput, setTenantInput] = useState("tenant-a");
-  const [activeTenant, setActiveTenant] = useState("tenant-a");
+  const activeTenant = useCurrentTenantId() ?? "";
   const [activeTab, setActiveTab] = useState<TabId>("assignments");
-
-  const handleApplyTenant = (): void => {
-    setActiveTenant(tenantInput.trim());
-  };
 
   return (
     <main style={pageStyle} data-testid="roles-page">
@@ -92,32 +80,6 @@ export default function RolesPage(): ReactElement {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Tenant ID…"
-            value={tenantInput}
-            onChange={(e) => setTenantInput(e.target.value)}
-            style={tenantInputStyle}
-            data-testid="tenant-input"
-          />
-          <button
-            type="button"
-            onClick={handleApplyTenant}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontWeight: 600,
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            Load
-          </button>
-        </div>
       </header>
 
       <nav style={tabsBarStyle} aria-label="Role sections">
@@ -147,17 +109,19 @@ export default function RolesPage(): ReactElement {
         </button>
       </nav>
 
-      <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {activeTab === "assignments" && (
-          <RolesAssignmentsTable tenantId={activeTenant} isPimView={false} />
-        )}
-        {activeTab === "pim" && (
-          <RolesAssignmentsTable tenantId={activeTenant} isPimView={true} />
-        )}
-        {activeTab === "templates" && (
-          <PimSettingsTemplatesTab tenantId={activeTenant} />
-        )}
-      </section>
+      <RequireTenant tenantId={activeTenant}>
+        <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {activeTab === "assignments" && (
+            <RolesAssignmentsTable tenantId={activeTenant} isPimView={false} />
+          )}
+          {activeTab === "pim" && (
+            <RolesAssignmentsTable tenantId={activeTenant} isPimView={true} />
+          )}
+          {activeTab === "templates" && (
+            <PimSettingsTemplatesTab tenantId={activeTenant} />
+          )}
+        </section>
+      </RequireTenant>
     </main>
   );
 }

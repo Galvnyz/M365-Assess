@@ -3,12 +3,12 @@
 // Create Group Page — Identity Management -> Administration -> Groups -> New (EPIC-014 SPEC.md §4.1; T-0264).
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import { GroupForm } from "../../../../components/groups/GroupForm";
 
-export default function NewGroupPage(): React.ReactElement {
+function NewGroupView({ tenantId }: { readonly tenantId: string }): React.ReactElement {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
 
   return (
     <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -30,5 +30,15 @@ export default function NewGroupPage(): React.ReactElement {
         }}
       />
     </div>
+  );
+}
+
+export default function NewGroupPage(): React.ReactElement {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <NewGroupView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

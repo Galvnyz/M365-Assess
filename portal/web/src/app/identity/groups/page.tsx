@@ -3,13 +3,13 @@
 // Groups page — Identity Management -> Administration -> Groups (EPIC-014 SPEC.md §3.1; T-0263).
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../lib/useCurrentTenant";
 import { GroupsTable, type GroupRowAction } from "../../../components/groups/GroupsTable";
 import { listGroups, type GroupItem } from "../../../lib/groupsApi";
 
-export default function GroupsPage(): React.ReactElement {
+function GroupsView({ tenantId }: { readonly tenantId: string }): React.ReactElement {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
 
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,5 +75,15 @@ export default function GroupsPage(): React.ReactElement {
         onAction={handleAction}
       />
     </div>
+  );
+}
+
+export default function GroupsPage(): React.ReactElement {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <GroupsView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

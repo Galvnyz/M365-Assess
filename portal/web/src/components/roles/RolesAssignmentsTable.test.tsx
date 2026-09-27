@@ -5,6 +5,7 @@ import { RolesAssignmentsTable } from "./RolesAssignmentsTable";
 import { PimSettingsTemplatesTab } from "./PimSettingsTemplatesTab";
 import { P2GateNotice } from "./P2GateNotice";
 import RolesPage from "../../app/roles/page";
+import { setCurrentTenantId } from "../../lib/tenant-preference";
 
 afterEach(() => {
   cleanup();
@@ -194,6 +195,7 @@ describe("Roles & Assignments UI (T-0248)", () => {
   });
 
   it("renders the three tabs on the Roles & Assignments page", async () => {
+    setCurrentTenantId("tenant-a");
     render(<RolesPage />);
 
     expect(screen.getByTestId("roles-page")).toBeDefined();
@@ -212,5 +214,11 @@ describe("Roles & Assignments UI (T-0248)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("pim-templates-tab")).toBeDefined();
     });
+  });
+
+  it("asks for a tenant when none is selected in the shell", () => {
+    setCurrentTenantId(null);
+    render(<RolesPage />);
+    expect(screen.getByTestId("require-tenant")).toBeDefined();
   });
 });

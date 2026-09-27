@@ -3,6 +3,8 @@
 // Conditional Access Coverage and History Page (EPIC-015 SPEC §3.1, §4.4; T-0290).
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import {
   CoverageView,
   type CaCoverageSummary,
@@ -17,10 +19,7 @@ import {
   type CaPolicyChangeRecord,
 } from "../../../../components/conditionalAccess/ChangeHistoryPanel";
 
-export default function CaCoveragePage() {
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
-
+function CaCoverageView({ tenantId }: { readonly tenantId: string }) {
   const [activeMainTab, setActiveMainTab] = useState<"coverage" | "history">("coverage");
 
   // Coverage state
@@ -139,5 +138,15 @@ export default function CaCoveragePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function CaCoveragePage() {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <CaCoverageView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

@@ -5,6 +5,7 @@ import { JitGrantsTable } from "./JitGrantsTable";
 import { JitTemplatesTab } from "./JitTemplatesTab";
 import { ScheduleRequestDialog } from "./ScheduleRequestDialog";
 import JitAdminsPage from "../../app/jit-admins/page";
+import { setCurrentTenantId } from "../../lib/tenant-preference";
 
 afterEach(() => {
   cleanup();
@@ -223,6 +224,7 @@ describe("JIT Admin & Schedule Request UI (T-0249)", () => {
   });
 
   it("renders JIT Admins page with tabs and dialog opener", async () => {
+    setCurrentTenantId("tenant-a");
     render(<JitAdminsPage />);
 
     expect(screen.getByTestId("jit-admins-page")).toBeDefined();
@@ -240,5 +242,11 @@ describe("JIT Admin & Schedule Request UI (T-0249)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("schedule-request-dialog")).toBeDefined();
     });
+  });
+
+  it("asks for a tenant when none is selected in the shell", () => {
+    setCurrentTenantId(null);
+    render(<JitAdminsPage />);
+    expect(screen.getByTestId("require-tenant")).toBeDefined();
   });
 });

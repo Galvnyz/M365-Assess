@@ -3,16 +3,15 @@
 // Conditional Access Report-Only Evaluation Page (EPIC-015 SPEC §3.5; T-0289).
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import {
   ReportOnlyPanel,
   type CaReportOnlyPolicyResult,
   type CaReportOnlySummary,
 } from "../../../../components/conditionalAccess/ReportOnlyPanel";
 
-export default function CaReportOnlyPage() {
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
-
+function CaReportOnlyView({ tenantId }: { readonly tenantId: string }) {
   const [policies, setPolicies] = useState<CaReportOnlyPolicyResult[]>([]);
   const [summary, setSummary] = useState<CaReportOnlySummary | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
@@ -51,5 +50,15 @@ export default function CaReportOnlyPage() {
         onRefresh={fetchReportOnlyData}
       />
     </div>
+  );
+}
+
+export default function CaReportOnlyPage() {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <CaReportOnlyView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

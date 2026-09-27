@@ -3,15 +3,14 @@
 // Group Usage Report Page — Identity Management -> Administration -> Groups -> Usage (EPIC-014 SPEC.md §3.5; T-0270).
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import {
   GroupUsageReport,
   type GroupUsageReportData,
 } from "../../../../components/groups/GroupUsageReport";
 
-export default function GroupUsagePage(): React.ReactElement {
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
-
+function GroupUsageView({ tenantId }: { readonly tenantId: string }): React.ReactElement {
   const [report, setReport] = useState<GroupUsageReportData | null>(null);
   const [threshold, setThreshold] = useState<number>(90);
   const [loading, setLoading] = useState<boolean>(true);
@@ -61,5 +60,15 @@ export default function GroupUsagePage(): React.ReactElement {
         onRefresh={fetchUsage}
       />
     </div>
+  );
+}
+
+export default function GroupUsagePage(): React.ReactElement {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <GroupUsageView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

@@ -5,6 +5,7 @@
 // ?section=assignments focuses the assignments section (the list page's Assign action).
 import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { resolveTenantId, useCurrentTenantId } from "../../../../../lib/useCurrentTenant";
 import { IntunePolicyEditor } from "../../../../../components/intune/IntunePolicyEditor";
 import type { IntunePolicyKind } from "../../../../../lib/intuneApi";
 
@@ -14,7 +15,7 @@ export default function IntunePolicyEditorPage() {
   const params = useParams<{ kind: string; id: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tenantId = searchParams.get("tenantId") ?? "";
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
   const kind = params.kind as IntunePolicyKind;
 
   if (!KINDS.includes(kind)) {

@@ -5,6 +5,7 @@
 //   /intune/policies/compare?tenantId=<t>&kind=<kind>&left=<policyId>[&right=<ref>]
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import { PolicyCompareView } from "../../../../components/intune/PolicyCompareView";
 import {
   buildCompareOptions,
@@ -18,7 +19,7 @@ const KINDS: readonly IntunePolicyKind[] = ["configuration", "compliance", "app-
 
 export default function PolicyComparePage() {
   const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") ?? "";
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
   const kind = searchParams.get("kind") as IntunePolicyKind | null;
   const left = searchParams.get("left") ?? "";
   const right = searchParams.get("right");

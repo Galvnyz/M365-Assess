@@ -4,12 +4,13 @@
 // Nav: Intune → Device Management → Assignment Filters.
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { resolveTenantId, useCurrentTenantId } from "../../../lib/useCurrentTenant";
 import { AssignmentFilterTable } from "../../../components/intune/AssignmentFilterTable";
 import { listDeployTargets, type DeployTenantOption } from "../../../lib/intuneApi";
 
 export default function AssignmentFiltersPage() {
   const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") ?? "";
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
   const [tenants, setTenants] = useState<DeployTenantOption[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 

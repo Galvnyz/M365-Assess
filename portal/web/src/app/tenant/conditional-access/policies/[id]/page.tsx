@@ -3,6 +3,8 @@
 // Conditional Access Policy Editor Page (EPIC-015 SPEC.md §3.3, §4.1; T-0284).
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../../lib/useCurrentTenant";
 import {
   listCaPolicies,
   createCaPolicy,
@@ -14,13 +16,11 @@ import {
 } from "../../../../../lib/caApi";
 import { CaPolicyEditor } from "../../../../../components/conditionalAccess/CaPolicyEditor";
 
-export default function CaPolicyEditorPage() {
+function CaPolicyEditorView({ tenantId }: { readonly tenantId: string }) {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   const policyId = (params["id"] as string) || "new";
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
   const isNew = policyId === "new";
 
   const [policy, setPolicy] = useState<CaPolicyItem | null>(null);
@@ -113,5 +113,15 @@ export default function CaPolicyEditorPage() {
         onCancel={handleCancel}
       />
     </div>
+  );
+}
+
+export default function CaPolicyEditorPage() {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <CaPolicyEditorView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

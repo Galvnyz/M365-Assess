@@ -4,16 +4,17 @@
 // Nav: Intune → Device Management → Compliance Policies.
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import { IntunePolicyListPage } from "../../../../components/intune/IntunePolicyTable";
 
 export default function Page() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
   return (
-    <IntunePolicyListPage
-      kind="compliance"
-      tenantId={searchParams.get("tenantId") ?? ""}
-      navigate={(href) => router.push(href)}
-    />
+    <RequireTenant tenantId={tenantId}>
+      <IntunePolicyListPage kind="compliance" tenantId={tenantId} navigate={(href) => router.push(href)} />
+    </RequireTenant>
   );
 }

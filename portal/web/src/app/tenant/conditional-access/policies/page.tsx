@@ -3,6 +3,8 @@
 // Conditional Access Policies Page (EPIC-015 SPEC.md §3.1; T-0283).
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { RequireTenant } from "../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import {
   listCaPolicies,
   editCaPolicy,
@@ -14,10 +16,8 @@ import {
   type CaPolicyRowAction,
 } from "../../../../components/conditionalAccess/CaPolicyTable";
 
-export default function CaPoliciesPage() {
-  const searchParams = useSearchParams();
+function CaPoliciesView({ tenantId }: { readonly tenantId: string }) {
   const router = useRouter();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
 
   const [policies, setPolicies] = useState<CaPolicyItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -103,5 +103,15 @@ export default function CaPoliciesPage() {
         onAction={handleAction}
       />
     </div>
+  );
+}
+
+export default function CaPoliciesPage() {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <CaPoliciesView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

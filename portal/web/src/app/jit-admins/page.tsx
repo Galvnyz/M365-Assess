@@ -9,6 +9,8 @@ import React, { useState, type CSSProperties, type ReactElement } from "react";
 import { JitGrantsTable } from "../../components/roles/JitGrantsTable";
 import { JitTemplatesTab } from "../../components/roles/JitTemplatesTab";
 import { ScheduleRequestDialog } from "../../components/roles/ScheduleRequestDialog";
+import { RequireTenant } from "../../components/shell/RequireTenant";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 
 type TabId = "grants" | "templates";
 
@@ -46,15 +48,6 @@ const subtitleStyle: CSSProperties = {
   fontSize: "14px",
 };
 
-const tenantInputStyle: CSSProperties = {
-  padding: "8px 12px",
-  background: "var(--input-bg, var(--bg))",
-  border: "1px solid var(--border)",
-  borderRadius: "6px",
-  color: "var(--text)",
-  fontSize: "14px",
-};
-
 const tabsBarStyle: CSSProperties = {
   display: "flex",
   borderBottom: "1px solid var(--border)",
@@ -75,14 +68,9 @@ function getTabButtonStyle(active: boolean): CSSProperties {
 }
 
 export default function JitAdminsPage(): ReactElement {
-  const [tenantInput, setTenantInput] = useState("tenant-a");
-  const [activeTenant, setActiveTenant] = useState("tenant-a");
+  const activeTenant = useCurrentTenantId() ?? "";
   const [activeTab, setActiveTab] = useState<TabId>("grants");
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-
-  const handleApplyTenant = (): void => {
-    setActiveTenant(tenantInput.trim());
-  };
 
   return (
     <main style={pageStyle} data-testid="jit-admins-page">
@@ -113,30 +101,6 @@ export default function JitAdminsPage(): ReactElement {
             + Request Activation
           </button>
 
-          <input
-            type="text"
-            placeholder="Tenant ID…"
-            value={tenantInput}
-            onChange={(e) => setTenantInput(e.target.value)}
-            style={tenantInputStyle}
-            data-testid="jit-tenant-input"
-          />
-          <button
-            type="button"
-            onClick={handleApplyTenant}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontWeight: 600,
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            Load
-          </button>
         </div>
       </header>
 
@@ -160,11 +124,15 @@ export default function JitAdminsPage(): ReactElement {
       </nav>
 
       <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {activeTab === "grants" && <JitGrantsTable tenantId={activeTenant} />}
+        {activeTab === "grants" && (
+          <RequireTenant tenantId={activeTenant}>
+            <JitGrantsTable tenantId={activeTenant} />
+          </RequireTenant>
+        )}
         {activeTab === "templates" && <JitTemplatesTab />}
       </section>
 
-      {showScheduleDialog && (
+      {showScheduleDialog && activeTenant && (
         <ScheduleRequestDialog
           tenantId={activeTenant}
           onClose={() => setShowScheduleDialog(false)}

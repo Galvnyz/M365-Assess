@@ -3,15 +3,15 @@
 // Bulk Membership Page — Identity Management -> Administration -> Groups -> [id] -> Bulk (EPIC-014 SPEC.md §3.3; T-0268).
 import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { RequireTenant } from "../../../../../components/shell/RequireTenant";
+import { resolveTenantId, useCurrentTenantId } from "../../../../../lib/useCurrentTenant";
 import { BulkMembershipWizard } from "../../../../../components/groups/BulkMembershipWizard";
 
-export default function BulkMembershipPage(): React.ReactElement {
+function BulkMembershipView({ tenantId }: { readonly tenantId: string }): React.ReactElement {
   const router = useRouter();
   const params = useParams();
-  const searchParams = useSearchParams();
 
   const groupId = String(params.id || "");
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
 
   return (
     <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -30,5 +30,15 @@ export default function BulkMembershipPage(): React.ReactElement {
         }}
       />
     </div>
+  );
+}
+
+export default function BulkMembershipPage(): React.ReactElement {
+  const searchParams = useSearchParams();
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
+  return (
+    <RequireTenant tenantId={tenantId}>
+      <BulkMembershipView tenantId={tenantId} />
+    </RequireTenant>
   );
 }

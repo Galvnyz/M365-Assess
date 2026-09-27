@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import "../../../../src/M365-Assess/assets/report-themes.css";
 import "../../../../src/M365-Assess/assets/report-shell.css";
 import { AppNav } from "../components/shell/AppNav";
+import { TenantBar } from "../components/shell/TenantBar";
 
 export const metadata = {
   title: "M365-Assess Portal",
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: { children: ReactNode }): React
       <body>
         <div className="app">
           <AppNav />
-          <div className="main">{children}</div>
+          <div className="main">
+            <TenantBar />
+            {children}
+          </div>
         </div>
       </body>
     </html>

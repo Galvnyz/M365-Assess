@@ -3,6 +3,7 @@
 // Conditional Access Templates Page (EPIC-015 SPEC.md §3.2; T-0287).
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { resolveTenantId, useCurrentTenantId } from "../../../../lib/useCurrentTenant";
 import {
   listCaTemplates,
   createCaTemplate,
@@ -20,7 +21,7 @@ import {
 
 export default function CaTemplatesPage() {
   const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId") || "default-tenant";
+  const tenantId = resolveTenantId(searchParams.get("tenantId"), useCurrentTenantId());
 
   const [templates, setTemplates] = useState<CaTemplate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
