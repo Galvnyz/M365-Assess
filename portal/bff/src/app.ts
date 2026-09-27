@@ -7,7 +7,7 @@
 // Storage: the @m365-assess/db migrations run once on the shared connection, then the
 // db repositories and the BFF's own repositories share it. Worker-backed runners call
 // PowerShell entrypoints through runFeatureWorker (T-0815). Areas whose route stores
-// have no implementation yet are mounted by later tickets (T-0818..T-0825).
+// have no implementation yet are mounted by later tickets (T-0818, T-0821..T-0825).
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { SqliteRepository, loadMigrations, runMigrations } from "@m365-assess/db";
@@ -19,7 +19,9 @@ import {
   createTenantStore,
   createTenantVariableStore,
 } from "./adapters/tenants.js";
-import { createAuditSink } from "./adapters/audit.js";
+import { createAuditSink, type RecordAudit } from "./adapters/audit.js";
+import { createCaProviders } from "./adapters/conditional-access.js";
+import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
 import {
   createGdapSyncRunner,
@@ -42,6 +44,12 @@ import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js
 import { SqliteKeyAccessAuditRepository } from "./repository/key-access-audit.js";
 import { SqliteReusableSettingTemplateRepository } from "./repository/reusable-setting-templates.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
+import { createCaCoverageRoutes } from "./routes/ca-coverage.js";
+import { createCaNamedLocationsRoutes } from "./routes/ca-named-locations.js";
+import { createCaPoliciesCrudRoutes } from "./routes/ca-policies-crud.js";
+import { createCaPoliciesRoute } from "./routes/ca-policies.js";
+import { createCaReportOnlyRoutes } from "./routes/ca-report-only.js";
+import { createCaTemplateDeployRoute } from "./routes/ca-templates-deploy.js";
 import { createCaTemplateRoutes } from "./routes/ca-templates.js";
 import { createCredentialRoutes } from "./routes/credentials.js";
 import { DEVICE_ACTIONS_HISTORY_OPENAPI, createDeviceActionsHistoryRoute } from "./routes/device-actions-history.js";
@@ -62,7 +70,13 @@ import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
 import { createTestConnectionRoutes } from "./routes/test-connection.js";
+import { createGroupTemplatesDeployRoute } from "./routes/group-templates-deploy.js";
 import { createGroupTemplatesRoutes } from "./routes/group-templates.js";
+import { createGroupCrudRoutes } from "./routes/groups-crud.js";
+import { createGroupGalDeliveryRoutes } from "./routes/groups-gal.js";
+import { createGroupsListRoute } from "./routes/groups-list.js";
+import { createGroupMembersRoutes } from "./routes/groups-members.js";
+import { createGroupUsageRoutes } from "./routes/groups-usage.js";
 import { createHealthRoutes } from "./routes/health.js";
 import { createIntuneTemplateRoutes } from "./routes/intune-templates.js";
 import type { RequestAuthenticator, RequestCaller, RequestContext, Route } from "./server.js";
@@ -133,11 +147,16 @@ export function authorizeContext(ctx: RequestContext, permission: string): boole
   return canAccess(ctx.caller, permission);
 }
 
-/** `resolveCaller` for routes: the server-resolved caller, or undefined when anonymous. */
-export function resolveCaller(ctx: RequestContext): Caller | undefined {
+/**
+ * `resolveCaller` for routes: the server-resolved caller, or undefined when anonymous.
+ * Portal users carry `id`; routes that stamp a creator read `userId`, so it is added.
+ */
+export function resolveCaller(ctx: RequestContext): (Caller & { userId?: string }) | undefined {
   // Route modules type the caller as the EPIC-001 Caller; RequestCaller has the same
   // fields with base-role ids allowed, which the authorizer above understands.
-  return (ctx.caller ?? undefined) as Caller | undefined;
+  if (!ctx.caller) return undefined;
+  const id = (ctx.caller as { id?: unknown }).id;
+  return (typeof id === "string" ? { ...ctx.caller, userId: id } : ctx.caller) as Caller & { userId?: string };
 }
 
 /**
@@ -160,6 +179,36 @@ export function guardRoute(route: Route, permission: string): Route {
 function actorOf(ctx: RequestContext): string {
   const caller = ctx.caller as { id?: unknown } | null | undefined;
   return typeof caller?.id === "string" ? caller.id : "unknown";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Record the audit events a worker-backed write returns in its response body
+ * (`auditEvent`, or `auditEvents` for bulk and multi-tenant writes), stamped with the
+ * signed-in actor. Used for routes whose modules hand events back instead of taking
+ * an audit sink. Previews return plans and carry no events.
+ */
+export function recordResponseAudit(route: Route, recordAudit: RecordAudit): Route {
+  return {
+    ...route,
+    handler: async (ctx) => {
+      const response = await route.handler(ctx);
+      const body: unknown = response.body;
+      if (isRecord(body)) {
+        const events = [
+          ...(isRecord(body["auditEvent"]) ? [body["auditEvent"]] : []),
+          ...(Array.isArray(body["auditEvents"]) ? body["auditEvents"].filter(isRecord) : []),
+        ];
+        for (const event of events) {
+          await recordAudit({ actor: actorOf(ctx), ...event });
+        }
+      }
+      return response;
+    },
+  };
 }
 
 // ---- Composition -----------------------------------------------------------
@@ -206,6 +255,11 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const intune = createIntuneProviders(run, credentialRows);
   const keyAudit = new SqliteKeyAccessAuditRepository(db, schemaVersion);
   const caller = { resolveCaller, authorize: authorizeCaller };
+  const groups = createGroupProviders(run, credentialRows);
+  const ca = createCaProviders(run, credentialRows, db);
+  const caTemplates = new SqliteCaTemplateRepository(db);
+  const groupTemplates = new SqliteGroupTemplateRepository(db);
+  const audited = (route: Route) => recordResponseAudit(route, recordAudit);
 
   const routes: Route[] = [
     ...createHealthRoutes({
@@ -222,10 +276,10 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       },
     }),
     ...createBaselinesCatalogRoutes({ resolveCaller, authorize: authorizeCaller }),
-    ...createCaTemplateRoutes(new SqliteCaTemplateRepository(db), { authorize: authorizeContext }),
+    ...createCaTemplateRoutes(caTemplates, { authorize: authorizeContext }),
     ...createIntuneTemplateRoutes(intuneTemplates, { authorize: authorizeContext }),
     ...createGroupTemplatesRoutes({
-      repository: new SqliteGroupTemplateRepository(db),
+      repository: groupTemplates,
       resolveCaller,
       authorize: authorizeCaller,
     }),
@@ -284,6 +338,23 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     }),
     ...createIntunePoliciesRoutes({ provider: intune.policies, ...caller }),
     ...createIntuneCrudRoutes({ provider: intune.crud, ...caller }),
+
+    // EPIC-014 groups (T-0819). /groups/usage is mounted before the /groups/:groupId
+    // routes so the id pattern cannot capture it.
+    ...createGroupUsageRoutes({ provider: groups.usage, ...caller }),
+    createGroupsListRoute({ provider: groups.list, ...caller }),
+    ...createGroupCrudRoutes({ provider: groups.crud, ...caller }).map(audited),
+    ...createGroupGalDeliveryRoutes({ provider: groups.gal, ...caller }).map(audited),
+    ...createGroupMembersRoutes({ provider: groups.members, ...caller }).map(audited),
+    audited(createGroupTemplatesDeployRoute({ repository: groupTemplates, provider: groups.templateDeploy, ...caller })),
+
+    // EPIC-015 Conditional Access (T-0819).
+    createCaPoliciesRoute({ provider: ca.policies, ...caller }),
+    ...createCaPoliciesCrudRoutes({ provider: ca.crud, ...caller }).map(audited),
+    ...createCaCoverageRoutes({ provider: ca.coverage, ...caller }),
+    ...createCaReportOnlyRoutes({ provider: ca.reportOnly, ...caller }),
+    ...createCaNamedLocationsRoutes({ provider: ca.namedLocations, ...caller }).map(audited),
+    audited(createCaTemplateDeployRoute({ repository: caTemplates, provider: ca.templateDeploy, ...caller })),
 
     // EPIC-018 devices (T-0820). These modules check permissions but not tenant scope,
     // and the history route checks neither, so each is guarded here.

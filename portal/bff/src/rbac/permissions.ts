@@ -80,6 +80,21 @@ import { TENANT_VARIABLES_OPENAPI } from "../routes/tenant-variables.js";
 import { TENANTS_OPENAPI } from "../routes/tenants.js";
 import { TEST_CONNECTION_OPENAPI } from "../routes/test-connection.js";
 import { REPORT_TEMPLATE_PERMISSIONS } from "../routes/report-templates.js";
+import { CA_COVERAGE_PATH, CA_HISTORY_PATH, CA_READ_PERMISSION } from "../routes/ca-coverage.js";
+import {
+  CA_NAMED_LOCATIONS_BASE_PATH,
+  CA_NAMED_LOCATIONS_ITEM_PATH,
+  CA_WRITE_PERMISSION,
+} from "../routes/ca-named-locations.js";
+import { CA_POLICIES_BASE_PATH, CA_POLICIES_ITEM_PATH } from "../routes/ca-policies-crud.js";
+import { CA_REPORT_ONLY_PATH } from "../routes/ca-report-only.js";
+import { CA_DEPLOY_PERMISSION, CA_TEMPLATE_DEPLOY_PATH } from "../routes/ca-templates-deploy.js";
+import { GROUP_TEMPLATE_DEPLOY_PATH } from "../routes/group-templates-deploy.js";
+import { GROUPS_BASE_PATH, GROUPS_ITEM_PATH, GROUPS_WRITE_PERMISSION } from "../routes/groups-crud.js";
+import { GROUP_DELIVERY_PATH, GROUP_GAL_PATH } from "../routes/groups-gal.js";
+import { GROUPS_READ_PERMISSION } from "../routes/groups-list.js";
+import { GROUP_MEMBERS_BULK_PATH, GROUP_OWNERS_BULK_PATH } from "../routes/groups-members.js";
+import { GROUP_USAGE_PATH } from "../routes/groups-usage.js";
 
 // `Public` bypasses permission evaluation (SPEC §4.1 item 4). It is the only
 // single-segment value the registry may hold.
@@ -352,6 +367,31 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  // EPIC-014 groups (T-0819). /groups/usage precedes /groups/:groupId, as in app.ts.
+  // The template deploy route enforces the group write permission.
+  { method: "GET", path: GROUP_USAGE_PATH, permission: GROUPS_READ_PERMISSION },
+  { method: "GET", path: GROUPS_BASE_PATH, permission: GROUPS_READ_PERMISSION },
+  { method: "POST", path: GROUPS_BASE_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "PATCH", path: GROUPS_ITEM_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "DELETE", path: GROUPS_ITEM_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "POST", path: GROUP_GAL_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "POST", path: GROUP_DELIVERY_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "POST", path: GROUP_MEMBERS_BULK_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "POST", path: GROUP_OWNERS_BULK_PATH, permission: GROUPS_WRITE_PERMISSION },
+  { method: "POST", path: GROUP_TEMPLATE_DEPLOY_PATH, permission: GROUPS_WRITE_PERMISSION },
+  // EPIC-015 Conditional Access (T-0819).
+  { method: "GET", path: CA_POLICIES_BASE_PATH, permission: CA_READ_PERMISSION },
+  { method: "POST", path: CA_POLICIES_BASE_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "PATCH", path: CA_POLICIES_ITEM_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "DELETE", path: CA_POLICIES_ITEM_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "GET", path: CA_COVERAGE_PATH, permission: CA_READ_PERMISSION },
+  { method: "GET", path: CA_HISTORY_PATH, permission: CA_READ_PERMISSION },
+  { method: "GET", path: CA_REPORT_ONLY_PATH, permission: CA_READ_PERMISSION },
+  { method: "GET", path: CA_NAMED_LOCATIONS_BASE_PATH, permission: CA_READ_PERMISSION },
+  { method: "POST", path: CA_NAMED_LOCATIONS_BASE_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "PATCH", path: CA_NAMED_LOCATIONS_ITEM_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "DELETE", path: CA_NAMED_LOCATIONS_ITEM_PATH, permission: CA_WRITE_PERMISSION },
+  { method: "POST", path: CA_TEMPLATE_DEPLOY_PATH, permission: CA_DEPLOY_PERMISSION },
   // EPIC-018 device key reveal (T-0820).
   ...registryEntriesFromOpenApi(DEVICE_BITLOCKER_OPENAPI),
   ...registryEntriesFromOpenApi(DEVICE_LAPS_OPENAPI),

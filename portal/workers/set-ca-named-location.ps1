@@ -63,36 +63,46 @@ if ($JobFile) {
     $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
 try {
+    # isTrusted, includeUnknownCountriesAndRegions and countryLookupMethod are forwarded
+    # only when given, so an edit that leaves them out keeps the location's values.
+    $optional = @{}
     if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
         $job = Read-SetCaNamedLocationJob -Path $JobFile
-        $TenantId                          = $job['TenantId']
-        $Action                            = $job['Action']
-        $LocationId                        = $job['LocationId']
-        $DisplayName                       = $job['DisplayName']
-        $LocationType                      = $job['LocationType']
-        $IpRanges                          = $job['IpRanges']
-        $IsTrusted                         = [bool]$job['IsTrusted']
-        $CountriesAndRegions               = $job['CountriesAndRegions']
-        $IncludeUnknownCountriesAndRegions = [bool]$job['IncludeUnknownCountriesAndRegions']
-        $CountryLookupMethod               = $job['CountryLookupMethod']
-        $ConfirmName                       = $job['ConfirmName']
-        $DryRun                            = [bool]$job['DryRun']
+        $TenantId            = $job['TenantId']
+        $Action              = $job['Action']
+        $LocationId          = $job['LocationId']
+        $DisplayName         = $job['DisplayName']
+        $LocationType        = $job['LocationType']
+        $IpRanges            = $job['IpRanges']
+        $CountriesAndRegions = $job['CountriesAndRegions']
+        $ConfirmName         = $job['ConfirmName']
+        $DryRun              = [bool]$job['DryRun']
+        foreach ($name in @('IsTrusted', 'IncludeUnknownCountriesAndRegions', 'CountryLookupMethod')) {
+            if ($job.ContainsKey($name)) {
+                $optional[$name] = $job[$name]
+            }
+        }
+    }
+    else {
+        foreach ($name in @('IsTrusted', 'IncludeUnknownCountriesAndRegions', 'CountryLookupMethod')) {
+            if ($PSBoundParameters.ContainsKey($name)) {
+                $optional[$name] = $PSBoundParameters[$name]
+            }
+        }
     }
 
     $invokeParams = @{
-        TenantId                          = $TenantId
-        Action                            = $Action
-        LocationId                        = $LocationId
-        DisplayName                       = $DisplayName
-        LocationType                      = $LocationType
-        IpRanges                          = $IpRanges
-        IsTrusted                         = [bool]$IsTrusted
-        CountriesAndRegions               = $CountriesAndRegions
-        IncludeUnknownCountriesAndRegions = [bool]$IncludeUnknownCountriesAndRegions
-        CountryLookupMethod               = $CountryLookupMethod
-        ConfirmName                       = $ConfirmName
-        DryRun                            = [bool]$DryRun
+        TenantId            = $TenantId
+        Action              = $Action
+        LocationId          = $LocationId
+        DisplayName         = $DisplayName
+        LocationType        = $LocationType
+        IpRanges            = $IpRanges
+        CountriesAndRegions = $CountriesAndRegions
+        ConfirmName         = $ConfirmName
+        DryRun              = [bool]$DryRun
     }
+    $invokeParams += $optional
 
     $result = Invoke-SetCaNamedLocation @invokeParams
     $result | ConvertTo-Json -Depth 10 -Compress

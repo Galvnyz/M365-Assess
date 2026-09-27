@@ -5,13 +5,19 @@
 // handles secret material; the worker resolves it in its own process. `credentialBlock`
 // is shared by every worker-backed provider (T-0818..T-0820).
 import { AppError } from "../errors.js";
-import { runFeatureWorker, type FeatureJob, type RunFeatureWorkerOptions } from "../jobs/feature-worker.js";
+import {
+  FeatureWorkerError,
+  runFeatureWorker,
+  type FeatureJob,
+  type RunFeatureWorkerOptions,
+} from "../jobs/feature-worker.js";
 import type { CredentialRecord, CredentialStoreRow } from "../routes/credentials.js";
 import type { GdapSyncResult, GdapSyncRunner } from "../routes/gdap.js";
 import type { OnboardRunner, OnboardWorkerResult } from "../routes/onboard.js";
 import type { TestConnectionResult, TestConnectionRunner } from "../routes/test-connection.js";
 
 export const NO_CREDENTIAL = "tenant.credential_missing";
+export const WORKER_FAILED = "worker.failed";
 
 export interface CredentialBlock {
   readonly credentialRef: string;
@@ -50,6 +56,37 @@ export type WorkerRunner = <T>(entrypoint: string, job: FeatureJob) => Promise<T
 
 export function createWorkerRunner(options: RunFeatureWorkerOptions): WorkerRunner {
   return (entrypoint, job) => runFeatureWorker(entrypoint, job, options);
+}
+
+/** Calls entrypoints for one tenant's work with `(entrypoint, tenantId, fields)`. */
+export type TenantWorkerCall = <T>(entrypoint: string, tenantId: string, fields: Record<string, unknown>) => Promise<T>;
+
+/**
+ * Runs entrypoints for one tenant, adding the tenant's credential block for
+ * Connect-WorkerTenant (T-0826) and mapping a failed worker to a 502 carrying its first
+ * diagnostic line; the worker has already scrubbed secrets from it.
+ */
+export function createTenantWorker(run: WorkerRunner, credentials: CredentialStoreRow): TenantWorkerCall {
+  return async function call<T>(entrypoint: string, tenantId: string, fields: Record<string, unknown>): Promise<T> {
+    const job = { tenantId, credential: await credentialBlock(credentials, tenantId), ...fields };
+    try {
+      return await run<T>(entrypoint, job);
+    } catch (error) {
+      if (error instanceof FeatureWorkerError) {
+        const detail = error.diagnostics.split(/\r?\n/).find((l) => l.trim().length > 0)?.trim();
+        throw new AppError(WORKER_FAILED, detail ? `${error.message}: ${detail}` : error.message, 502);
+      }
+      throw error;
+    }
+  };
+}
+
+/** Some workers report failures as `{ error, message, statusCode }` rather than throwing. */
+export function raiseWorkerError(result: unknown): void {
+  if (typeof result === "object" && result !== null && "error" in result && "statusCode" in result) {
+    const r = result as { error: string; message?: string; statusCode: number };
+    throw new AppError(r.error, r.message ?? r.error, r.statusCode);
+  }
 }
 
 export function createTestConnectionRunner(run: WorkerRunner): TestConnectionRunner {

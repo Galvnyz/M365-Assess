@@ -50,6 +50,14 @@ async function serve(
   };
 }
 
+/** Serve with tenant t-a and its credential set up, as `role`. */
+async function adminWithTenant(runner: WorkerRunner, role: "admin" | "operator" = "admin", db = new Database(":memory:")) {
+  const setup = await serve("admin", db, runner);
+  await setup.post("/v1/tenants", { id: "t-a", displayName: "Contoso" });
+  await setup.post("/v1/tenants/t-a/credential", { authMethod: "certificate-thumbprint", clientId: "app-1", thumbprint: "ABC123" });
+  return role === "admin" ? setup : serve("operator", db, runner);
+}
+
 const INTUNE_TEMPLATE = {
   name: "Win Baseline",
   platform: "windows10",
@@ -233,14 +241,6 @@ describe("Intune and device routes (T-0820)", () => {
     return { runner, calls };
   }
 
-  async function adminWithTenant(runner: WorkerRunner, role: "admin" | "operator" = "admin") {
-    const db = new Database(":memory:");
-    const setup = await serve("admin", db, runner);
-    await setup.post("/v1/tenants", { id: "t-a", displayName: "Contoso" });
-    await setup.post("/v1/tenants/t-a/credential", { authMethod: "certificate-thumbprint", clientId: "app-1", thumbprint: "ABC123" });
-    return role === "admin" ? setup : serve("operator", db, runner);
-  }
-
   it("dispatches /intune/* paths to their own modules, not the generic :kind routes", async () => {
     const { runner, calls } = recordingRunner();
     const api = await adminWithTenant(runner);
@@ -300,5 +300,129 @@ describe("Intune and device routes (T-0820)", () => {
       ({ params: { tenantId }, caller: { roles: ["operator"], tenantScope: tenantScope(["t-a"]) } }) as unknown as RequestContext;
     expect(await guarded.handler(ctx("t-a"))).toEqual({ status: 200 });
     expect(() => guarded.handler(ctx("t-b"))).toThrowError(expect.objectContaining({ status: 403 }));
+  });
+});
+
+describe("groups and Conditional Access routes (T-0819)", () => {
+  const AUDIT = { id: "evt-1", tenantId: "t-a", timestamp: "2026-09-26T10:00:00Z" };
+
+  /** A fake worker runner answering the group and CA entrypoints, recording every job. */
+  function recordingRunner() {
+    const calls: { entrypoint: string; job: Record<string, unknown> }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      const j = job as Record<string, unknown>;
+      calls.push({ entrypoint, job: j });
+      const plan = { action: j["action"], targetName: j["displayName"], diff: [], valid: true, dryRun: j["dryRun"], requiresConfirmation: false };
+      switch (entrypoint) {
+        case "get-groups.ps1":
+        case "get-ca-policies.ps1":
+          return { tenantId: "t-a", totalCount: 0, items: [], nextCursor: null } as never;
+        case "get-group-usage.ps1":
+          return { tenantId: "t-a", summary: { totalGroups: 0 } } as never;
+        case "set-group.ps1":
+          return { success: true, plan, auditEvent: { ...AUDIT, action: "group.create", targetId: "g-1", targetName: j["displayName"] } } as never;
+        case "set-ca-policy.ps1":
+          return j["dryRun"]
+            ? ({ success: true, plan } as never)
+            : ({
+                success: true,
+                plan,
+                auditEvent: { ...AUDIT, id: "evt-ca", action: "ca.policy.create", targetId: "pol-1", after: { displayName: j["displayName"] } },
+              } as never);
+        case "deploy-group-template.ps1":
+          return {
+            plan: {},
+            success: true,
+            deployment: { id: "dep-1", templateId: "tpl", tenantId: "t-a", state: "succeeded", results: [], createdBy: j["createdBy"], createdAt: "", updatedAt: "" },
+            auditEvent: { ...AUDIT, id: "evt-dep", action: "group-template.deploy", targetId: "g-2" },
+          } as never;
+        default:
+          return {} as never;
+      }
+    };
+    return { runner, calls };
+  }
+
+  function auditRows(db: Database.Database) {
+    return db.prepare("SELECT id, action, actorUserId, tenantId, targetId FROM audit_events WHERE tenantId = 't-a' ORDER BY rowid").all();
+  }
+
+  it("reads groups, keeping /groups/usage off the /groups/:groupId routes", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner);
+    expect((await api.get("/v1/tenants/t-a/groups?type=security&hidden=true")).status).toBe(200);
+    expect((await api.get("/v1/tenants/t-a/groups/usage")).status).toBe(200);
+    expect(calls.map((c) => c.entrypoint)).toEqual(["get-groups.ps1", "get-group-usage.ps1"]);
+    expect(calls[0]!.job).toMatchObject({ type: "security", hidden: true, credential: { credentialRef: "tenants/t-a/credential" } });
+  });
+
+  it("creates a group and records the worker's audit event under the signed-in user", async () => {
+    const { runner, calls } = recordingRunner();
+    const db = new Database(":memory:");
+    const api = await adminWithTenant(runner, "admin", db);
+    const res = await api.post("/v1/tenants/t-a/groups", { displayName: "Finance", groupType: "security" });
+    expect(res.status).toBe(201);
+    expect(calls.at(-1)).toMatchObject({ entrypoint: "set-group.ps1", job: { action: "create", displayName: "Finance", dryRun: false } });
+    expect(auditRows(db)).toContainEqual({ id: "evt-1", action: "group.create", actorUserId: "dev-user", tenantId: "t-a", targetId: "g-1" });
+  });
+
+  it("stamps a group template deploy with the signed-in user", async () => {
+    const { runner, calls } = recordingRunner();
+    const db = new Database(":memory:");
+    const api = await adminWithTenant(runner, "admin", db);
+    const created = await api.post("/v1/group-templates", {
+      name: "Team",
+      groupType: "m365",
+      naming: { prefix: "", suffix: "", conflictBehavior: "block" },
+      owners: [],
+      members: [],
+      settings: {},
+      licensing: [],
+    });
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    const res = await api.post(`/v1/group-templates/${id}/deploy`, { targets: ["t-a"] });
+    expect(res.status).toBe(200);
+    expect(calls.at(-1)!.job).toMatchObject({ createdBy: "dev-user", dryRun: false, template: { id } });
+    expect(auditRows(db)).toContainEqual(expect.objectContaining({ id: "evt-dep", actorUserId: "dev-user" }));
+  });
+
+  it("lets a read-only caller read CA policies but not write them", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    expect((await api.get("/v1/tenants/t-a/ca/policies")).status).toBe(200);
+    expect((await api.post("/v1/tenants/t-a/ca/policies", { displayName: "Require MFA", preview: true })).status).toBe(403);
+    expect(calls.filter((c) => c.entrypoint === "set-ca-policy.ps1")).toHaveLength(0);
+  });
+
+  it("writes a CA policy and serves it back as change history", async () => {
+    const { runner, calls } = recordingRunner();
+    const db = new Database(":memory:");
+    const api = await adminWithTenant(runner, "admin", db);
+    const body = {
+      displayName: "Require MFA",
+      conditions: { users: { includeUsers: ["All"] }, applications: { includeApplications: ["All"] } },
+      grantControls: { operator: "OR", builtInControls: ["mfa"] },
+    };
+
+    const preview = await api.post("/v1/tenants/t-a/ca/policies", { ...body, preview: true });
+    expect(preview.status).toBe(200);
+    expect(auditRows(db).filter((r) => String((r as { action: string }).action).startsWith("ca."))).toHaveLength(0);
+
+    expect((await api.post("/v1/tenants/t-a/ca/policies", body)).status).toBe(201);
+    expect(calls.at(-1)!.job).toMatchObject({
+      action: "create",
+      grantControlsJson: JSON.stringify(body.grantControls),
+      dryRun: false,
+    });
+
+    const history = await api.get("/v1/tenants/t-a/ca/history?policyId=pol-1");
+    expect(history.status).toBe(200);
+    expect(await history.json()).toMatchObject({
+      tenantId: "t-a",
+      policyId: "pol-1",
+      totalCount: 1,
+      items: [{ id: "evt-ca", policyName: "Require MFA", initiatedBy: "dev-user", action: "ca.policy.create", source: "portal" }],
+    });
   });
 });

@@ -219,6 +219,45 @@ Describe 'Set-CaNamedLocation worker (T-0288)' {
             ($res.plan.diff -join "`n") | Should -Match "DisplayName"
         }
 
+        It 'keeps trust and lookup settings an edit leaves out' {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri, $Body)
+                if ($Method -eq 'GET' -and $Uri -eq '/v1.0/identity/conditionalAccess/namedLocations/loc-2') {
+                    return [pscustomobject]@{
+                        '@odata.type'                     = '#microsoft.graph.countryNamedLocation'
+                        id                                = 'loc-2'
+                        displayName                       = 'Allowed countries'
+                        countriesAndRegions               = @('US')
+                        includeUnknownCountriesAndRegions = $true
+                        countryLookupMethod               = 'authenticatorAppGps'
+                    }
+                }
+                if ($Method -eq 'GET' -and $Uri -eq '/v1.0/identity/conditionalAccess/policies') {
+                    return [pscustomobject]@{ value = @() }
+                }
+                return $null
+            }
+
+            $res = Invoke-SetCaNamedLocation -TenantId 'tenant-test' -Action 'edit' -LocationId 'loc-2' -DisplayName 'Allowed countries v2' -DryRun $true
+            $res.plan.after.includeUnknownCountriesAndRegions | Should -BeTrue
+            $res.plan.after.countryLookupMethod | Should -Be 'authenticatorAppGps'
+        }
+
+        It 'reads optional flags from a job only when the job sets them' {
+            $path = Join-Path -Path $TestDrive -ChildPath 'edit-job.json'
+            Set-Content -LiteralPath $path -Value '{"tenantId":"t","action":"edit","locationId":"loc-2","displayName":"x"}'
+            $job = Read-SetCaNamedLocationJob -Path $path
+            $job.ContainsKey('IsTrusted') | Should -BeFalse
+            $job.ContainsKey('IncludeUnknownCountriesAndRegions') | Should -BeFalse
+            $job.ContainsKey('CountryLookupMethod') | Should -BeFalse
+
+            Set-Content -LiteralPath $path -Value '{"tenantId":"t","action":"edit","locationId":"loc-2","isTrusted":false,"countryLookupMethod":"clientIpAddress"}'
+            $job = Read-SetCaNamedLocationJob -Path $path
+            $job['IsTrusted'] | Should -BeFalse
+            $job.ContainsKey('IsTrusted') | Should -BeTrue
+            $job['CountryLookupMethod'] | Should -Be 'clientIpAddress'
+        }
+
         It 'blocks deleting an in-use location without confirmName' {
             Mock Invoke-MgGraphRequest {
                 param($Method, $Uri, $Body)

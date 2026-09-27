@@ -38,20 +38,30 @@ function Read-SetCaNamedLocationJob {
         $countries = @($json.countriesAndRegions)
     }
 
-    return @{
+    $result = @{
         TenantId                          = [string]$json.tenantId
         Action                            = [string]$json.action
         LocationId                        = if ($json.locationId) { [string]$json.locationId } else { '' }
         DisplayName                       = if ($json.displayName) { [string]$json.displayName } else { '' }
         LocationType                      = if ($json.locationType) { [string]$json.locationType } else { '' }
         IpRanges                          = $ipRanges
-        IsTrusted                         = [bool]($json.isTrusted -eq $true)
         CountriesAndRegions               = $countries
-        IncludeUnknownCountriesAndRegions = [bool]($json.includeUnknownCountriesAndRegions -eq $true)
-        CountryLookupMethod               = if ($json.countryLookupMethod) { [string]$json.countryLookupMethod } else { 'clientIpAddress' }
         ConfirmName                       = if ($json.confirmName) { [string]$json.confirmName } else { '' }
         DryRun                            = [bool]($json.dryRun -eq $true)
     }
+
+    # Present only when the job sets them, so an edit that leaves them out keeps the
+    # location's current values instead of resetting them.
+    if ($null -ne $json.isTrusted) {
+        $result['IsTrusted'] = [bool]($json.isTrusted -eq $true)
+    }
+    if ($null -ne $json.includeUnknownCountriesAndRegions) {
+        $result['IncludeUnknownCountriesAndRegions'] = [bool]($json.includeUnknownCountriesAndRegions -eq $true)
+    }
+    if ($json.countryLookupMethod) {
+        $result['CountryLookupMethod'] = [string]$json.countryLookupMethod
+    }
+    return $result
 }
 
 function Test-CidrFormat {
@@ -444,7 +454,7 @@ function Invoke-SetCaNamedLocation {
                 ipRanges                          = $newIpRanges
                 countriesAndRegions               = $newCountries
                 includeUnknownCountriesAndRegions = $newIncludeUnknown
-                countryLookupMethod               = $CountryLookupMethod
+                countryLookupMethod               = if ($PSBoundParameters.ContainsKey('CountryLookupMethod')) { $CountryLookupMethod } else { $before['countryLookupMethod'] }
             }
         }
         elseif ($Action -eq 'delete') {

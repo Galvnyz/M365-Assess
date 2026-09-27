@@ -3,10 +3,7 @@
 // Each provider turns a route's typed call into a feature-worker job (tenant id, the
 // tenant's credential block for Connect-WorkerTenant, and the worker's own fields),
 // runs the entrypoint, and returns the worker's JSON in the route's shape. Worker
-// failures surface as 502s carrying the worker's first diagnostic line; the worker has
-// already scrubbed secrets from it (T-0826).
-import { AppError } from "../errors.js";
-import { FeatureWorkerError } from "../jobs/feature-worker.js";
+// failures surface as 502s (createTenantWorker).
 import type { IntuneTemplate } from "../repository/intune-templates.js";
 import type { ReusableSettingTemplate } from "../repository/reusable-setting-templates.js";
 import type { CredentialStoreRow } from "../routes/credentials.js";
@@ -34,33 +31,9 @@ import type {
   IntuneTargetResult,
   IntuneTemplateDeployProvider,
 } from "../routes/intune-templates-deploy.js";
-import { credentialBlock, type WorkerRunner } from "./workers.js";
+import { WORKER_FAILED, createTenantWorker, raiseWorkerError, type WorkerRunner } from "./workers.js";
 
-export const WORKER_FAILED = "worker.failed";
-
-/** Runs entrypoints for one tenant, adding the credential block and mapping failures to 502. */
-function tenantWorker(run: WorkerRunner, credentials: CredentialStoreRow) {
-  return async function call<T>(entrypoint: string, tenantId: string, fields: Record<string, unknown>): Promise<T> {
-    const job = { tenantId, credential: await credentialBlock(credentials, tenantId), ...fields };
-    try {
-      return await run<T>(entrypoint, job);
-    } catch (error) {
-      if (error instanceof FeatureWorkerError) {
-        const detail = error.diagnostics.split(/\r?\n/).find((l) => l.trim().length > 0)?.trim();
-        throw new AppError(WORKER_FAILED, detail ? `${error.message}: ${detail}` : error.message, 502);
-      }
-      throw error;
-    }
-  };
-}
-
-/** Workers report unsupported kinds as { error, message, statusCode } rather than throwing. */
-function raiseWorkerError(result: unknown): void {
-  if (typeof result === "object" && result !== null && "error" in result && "statusCode" in result) {
-    const r = result as { error: string; message?: string; statusCode: number };
-    throw new AppError(r.error, r.message ?? r.error, r.statusCode);
-  }
-}
+export { WORKER_FAILED };
 
 export interface IntuneProviders {
   readonly policies: IntunePoliciesProvider;
@@ -74,7 +47,7 @@ export interface IntuneProviders {
 }
 
 export function createIntuneProviders(run: WorkerRunner, credentials: CredentialStoreRow): IntuneProviders {
-  const call = tenantWorker(run, credentials);
+  const call = createTenantWorker(run, credentials);
 
   const crudJob = (kind: string, action: string, input: {
     displayName?: string;
