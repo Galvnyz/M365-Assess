@@ -164,3 +164,32 @@ describe("0068 migration (T-0181)", () => {
     }
   });
 });
+
+describe("rollouts across baselines, history, and trend (T-0825)", () => {
+  it("lists every rollout, the newest history first, and the trend oldest first", async () => {
+    const repo = await openRepo(tempDir());
+    try {
+      const a = await repo.createBaseline({ name: "A", stages: [{ order: 0, conditions: [{ key: "K", expected: 1 }], action: "report" }] });
+      const b = await repo.createBaseline({ name: "B" });
+      await repo.upsertRollout({ baselineId: b.id, tenantId: "t-1", stage: 0, state: "active" });
+      await repo.upsertRollout({ baselineId: a.id, tenantId: "t-2", stage: 0, state: "eligible" });
+      expect((await repo.listAllRollouts()).map((r) => [r.baselineId, r.tenantId])).toEqual(
+        [[a.id, "t-2"], [b.id, "t-1"]].sort((x, y) => x[0]!.localeCompare(y[0]!)),
+      );
+
+      for (const [id, at] of [["h-1", "2026-09-01T00:00:00.000Z"], ["h-2", "2026-09-03T00:00:00.000Z"], ["h-3", "2026-09-02T00:00:00.000Z"]] as const) {
+        await repo.appendHistory({ id, baselineId: a.id, tenantId: "t-2", event: "stage.evaluated", detail: { stage: 0 }, at });
+      }
+      const history = await repo.listHistory(a.id, 2);
+      expect(history.map((event) => event.id)).toEqual(["h-2", "h-3"]);
+      expect(history[0]).toMatchObject({ baselineId: a.id, tenantId: "t-2", detail: { stage: 0 } });
+
+      await repo.appendTrend({ baselineId: a.id, tenantId: "t-2", at: "2026-09-02T00:00:00.000Z", compliance: 0.5 });
+      await repo.appendTrend({ baselineId: a.id, tenantId: "t-2", at: "2026-09-01T00:00:00.000Z", compliance: 0.25 });
+      expect((await repo.listTrend(a.id)).map((point) => point.compliance)).toEqual([0.25, 0.5]);
+      expect(await repo.listTrend(b.id)).toEqual([]);
+    } finally {
+      repo.close();
+    }
+  });
+});

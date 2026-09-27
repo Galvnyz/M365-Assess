@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { JobEnvelope, ResultEnvelope } from "@m365-assess/contracts";
+import { DEFAULT_STANDARDS_REGISTRY_PATH, SqliteDriftRepository } from "@m365-assess/db";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -791,5 +792,77 @@ describe("EPIC-006 remediation and EPIC-007 schedules and scripts (T-0824)", () 
 
     const operator = await adminWithTenant(runner, "operator");
     expect((await operator.post("/v1/scripts", { name: "X", content: "Write-Output 1", author: "u" })).status).toBe(403);
+  });
+});
+
+describe("EPIC-008 standards, EPIC-009 drift, and EPIC-010 baselines (T-0825)", () => {
+  const runner: WorkerRunner = async () => ({}) as never;
+
+  it("stores standards templates, serves the catalog, and refuses runs with 501", async () => {
+    const admin = await adminWithTenant(runner);
+    const created = await admin.post("/v1/standards/templates", { name: "Tier 1", settings: [{ key: "CA-1", value: true }] });
+    expect(created.status).toBe(201);
+    const { template } = (await created.json()) as { template: { id: string } };
+    expect(JSON.stringify(await (await admin.get("/v1/standards/templates")).json())).toContain(template.id);
+
+    const catalog = await admin.get("/v1/standards/catalog");
+    expect(catalog.status).toBe(200);
+    expect(((await catalog.json()) as { items: unknown[] }).items.length).toBeGreaterThan(0);
+    expect((await admin.get("/v1/standards/catalog?tenantId=t-a")).status).toBe(501);
+    expect((await admin.get("/v1/standards/compare/t-a")).status).toBe(200);
+
+    const run = await admin.post(`/v1/standards/templates/${template.id}/run`, { tenantId: "t-a" });
+    expect(run.status).toBe(501);
+    expect(await run.json()).toMatchObject({ code: "jobs.dispatch_unavailable" });
+
+    const operator = await adminWithTenant(runner, "operator");
+    expect((await operator.post("/v1/standards/templates", { name: "X" })).status).toBe(403);
+  });
+
+  it("lists and triages drift deviations, and refuses refresh and deletion with 501", async () => {
+    const db = new Database(":memory:");
+    const admin = await adminWithTenant(runner, "admin", db);
+    const drift = new SqliteDriftRepository(db, 0, DEFAULT_STANDARDS_REGISTRY_PATH);
+    await drift.upsertDeviations("t-a", [{ standardKey: "CA-1", resourceId: "p-1", kind: "mismatch", current: 1, expected: 2 }]);
+    const [deviation] = await drift.listDeviations("t-a");
+
+    const listed = await admin.get("/v1/drift/t-a");
+    expect(listed.status).toBe(200);
+    expect(JSON.stringify(await listed.json())).toContain(deviation!.id);
+
+    const accepted = await admin.post(`/v1/drift/deviations/${deviation!.id}/accept`, {
+      reason: "approved exception",
+      expiresOn: "2027-01-01T00:00:00.000Z",
+    });
+    expect(accepted.status).toBe(200);
+    expect((await drift.getDeviationById(deviation!.id))?.state).toBe("accepted");
+
+    expect((await admin.post("/v1/drift/t-a/refresh", {})).status).toBe(501);
+    const deny = await admin.post(`/v1/drift/deviations/${deviation!.id}/deny`, { reason: "remove", confirm: true });
+    expect(deny.status).toBe(501);
+    expect((await drift.getDeviationById(deviation!.id))?.state).toBe("accepted");
+
+    const operator = await adminWithTenant(runner, "operator", db);
+    expect((await operator.post(`/v1/drift/deviations/${deviation!.id}/deny`, { reason: "x", confirm: true })).status).toBe(403);
+  });
+
+  it("stores baselines and serves the fleet and alignment views", async () => {
+    const admin = await adminWithTenant(runner);
+    const created = await admin.post("/v1/baselines", {
+      id: "b-1",
+      name: "Rollout",
+      stages: [{ order: 0, conditions: [{ key: "CA-1", expected: true }], action: "report" }],
+      assignments: [{ targetType: "tenant", targetId: "t-a" }],
+    });
+    expect(created.status).toBe(201);
+
+    const fleet = await admin.get("/v1/baselines/fleet");
+    expect(fleet.status).toBe(200);
+    expect(JSON.stringify(await fleet.json())).toContain("b-1");
+    expect((await admin.get("/v1/baselines/b-1")).status).toBe(200);
+    expect((await admin.get("/v1/baselines/b-1/alignment")).status).toBe(200);
+
+    const operator = await adminWithTenant(runner, "operator");
+    expect((await operator.post("/v1/baselines", { name: "X" })).status).toBe(403);
   });
 });

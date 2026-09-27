@@ -22,3 +22,6 @@ export * from "./schedule-repository.js";
 export * from "./custom-script-repository.js";
 export * from "./findings-import.js";
 export * from "./remediation-import.js";
+export * from "./standards-repository.js";
+export * from "./drift-repository.js";
+export * from "./baselines-repository.js";

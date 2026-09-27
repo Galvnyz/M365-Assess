@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_STANDARDS_REGISTRY_PATH,
   openSqliteStandardsRepository,
+  toStandardCompareView,
+  toStandardDefinitionView,
 } from "./standards-repository.js";
 import { loadMigrations } from "./sqlite-repository.js";
 
@@ -300,6 +302,61 @@ describe("0064 migration (T-0141)", () => {
       );
     } finally {
       raw.close();
+    }
+  });
+});
+
+describe("template updates and compare rows (T-0825)", () => {
+  it("patches a template, keeping fields the patch leaves out", async () => {
+    const repo = await openSqliteStandardsRepository({ filename: join(tempDir(), "portal.db") });
+    try {
+      await repo.createStandardTemplate({ id: "tpl-1", name: "Baseline", kind: "standards", settings: [{ key: "A", value: 1 }] });
+      const updated = await repo.updateStandardTemplate("tpl-1", { name: "Renamed", actions: { remediate: true }, scheduleId: "sched-1" });
+      expect(updated).toMatchObject({
+        name: "Renamed",
+        kind: "standards",
+        actions: { report: true, alert: true, remediate: true },
+        settings: [{ key: "A", value: 1 }],
+        scheduleId: "sched-1",
+      });
+      expect(await repo.getStandardTemplate("tpl-1")).toEqual(updated);
+      expect((await repo.updateStandardTemplate("tpl-1", { scheduleId: null }))?.scheduleId).toBeNull();
+      expect(await repo.updateStandardTemplate("missing", { name: "x" })).toBeUndefined();
+    } finally {
+      repo.close();
+    }
+  });
+
+  it("upserts compare rows per tenant and standard and lists them", async () => {
+    const repo = await openSqliteStandardsRepository({ filename: join(tempDir(), "portal.db") });
+    try {
+      await repo.upsertCompare([
+        { tenantId: "t-b", checkId: "CA-1", current: false, expected: true, state: "non-compliant", lastRunAt: "2026-09-01T00:00:00.000Z" },
+        { tenantId: "t-a", checkId: "CA-1", current: { on: true }, expected: { on: true }, state: "compliant", lastRunAt: null },
+      ]);
+      await repo.upsertCompare([
+        { tenantId: "t-b", checkId: "CA-1", current: true, expected: true, state: "compliant", lastRunAt: "2026-09-02T00:00:00.000Z" },
+      ]);
+
+      const all = await repo.listCompare();
+      expect(all.map((row) => row.tenantId)).toEqual(["t-a", "t-b"]);
+      expect(all[0]).toMatchObject({ current: { on: true }, lastRunAt: null });
+      expect(await repo.listCompare("t-b")).toEqual([
+        { tenantId: "t-b", checkId: "CA-1", current: true, expected: true, state: "compliant", lastRunAt: "2026-09-02T00:00:00.000Z" },
+      ]);
+      expect(toStandardCompareView(all[0]!)).toEqual({
+        tenantId: "t-a",
+        check: "CA-1",
+        current: { on: true },
+        expected: { on: true },
+        state: "compliant",
+        lastRunAt: null,
+      });
+      expect(
+        toStandardDefinitionView({ id: "CA-1", checkId: "CA-1", name: "n", category: "CA", licensePreset: "E5" }),
+      ).toEqual({ id: "CA-1", check: "CA-1", name: "n", category: "CA", licensePreset: "E5" });
+    } finally {
+      repo.close();
     }
   });
 });

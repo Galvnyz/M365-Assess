@@ -7,14 +7,17 @@
 // Storage: the @m365-assess/db migrations run once on the shared connection, then the
 // db repositories and the BFF's own repositories share it. Worker-backed runners call
 // PowerShell entrypoints through runFeatureWorker (T-0815). Areas whose route stores
-// have no implementation yet are mounted by later tickets (T-0818, T-0821..T-0825).
+// had no implementation were mounted by T-0818..T-0825.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import {
+  DEFAULT_STANDARDS_REGISTRY_PATH,
+  SqliteBaselinesRepository,
   SqliteBecFindingRepository,
   SqliteCustomScriptRepository,
   SqliteDashboardLayoutRepository,
   SqliteDashboardRepository,
+  SqliteDriftRepository,
   SqliteJitRepository,
   SqliteJitTemplatesRepository,
   SqliteOffboardingRepository,
@@ -25,6 +28,7 @@ import {
   SqliteRepository,
   SqliteRoleRequestsRepository,
   SqliteScheduleRepository,
+  SqliteStandardsRepository,
   SqliteTapRecordRepository,
   SqliteUserTemplateRepository,
   loadMigrations,
@@ -49,7 +53,22 @@ import {
   createUnavailableScheduleQueue,
   createUnavailableScriptSandbox,
 } from "./adapters/automation.js";
+import {
+  createBaselineAdvanceStore,
+  createBaselineAlignmentStore,
+  createBaselineHistory,
+  createBaselinesFleetStore,
+  createBaselinesMigrateStore,
+  createBaselinesStore,
+} from "./adapters/baselines.js";
 import { createCaProviders } from "./adapters/conditional-access.js";
+import {
+  createDriftStore,
+  createDriftTriageStore,
+  createUnavailableDriftDeletion,
+  createUnavailableDriftRefresh,
+  refuseDriftDeletion,
+} from "./adapters/drift.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
 import {
@@ -59,6 +78,14 @@ import {
   createUnavailableTemplateRender,
 } from "./adapters/reports.js";
 import { createActiveGrantsResolver, createRoleProviders } from "./adapters/roles.js";
+import {
+  createStandardsAlignmentStore,
+  createStandardsCatalogStore,
+  createStandardsRunStore,
+  createStandardsTemplateStore,
+  createUnavailableStandardsRunQueue,
+  unavailableTenantLicenses,
+} from "./adapters/standards.js";
 import {
   createJobPersistence,
   createRunGroupResolver,
@@ -108,7 +135,12 @@ import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js
 import { SqliteKeyAccessAuditRepository } from "./repository/key-access-audit.js";
 import { SqliteReusableSettingTemplateRepository } from "./repository/reusable-setting-templates.js";
 import { createAuthMethodsPolicyRoutes } from "./routes/auth-methods-policy.js";
+import { createBaselinesAdvanceRoutes } from "./routes/baselines-advance.js";
+import { createBaselinesAlignmentRoutes } from "./routes/baselines-alignment.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
+import { createBaselinesFleetRoutes } from "./routes/baselines-fleet.js";
+import { createBaselinesMigrateRoutes } from "./routes/baselines-migrate.js";
+import { createBaselinesRoutes } from "./routes/baselines.js";
 import { createBecRoutes } from "./routes/bec.js";
 import { createCaCoverageRoutes } from "./routes/ca-coverage.js";
 import { createCaNamedLocationsRoutes } from "./routes/ca-named-locations.js";
@@ -123,6 +155,11 @@ import { createDashboardRoutes, type DashboardRoutesStore } from "./routes/dashb
 import { DEVICE_ACTIONS_HISTORY_OPENAPI, createDeviceActionsHistoryRoute } from "./routes/device-actions-history.js";
 import { DEVICE_BITLOCKER_PERMISSION, createDeviceBitLockerRoute } from "./routes/device-bitlocker.js";
 import { DEVICE_LAPS_PERMISSION, createDeviceLapsRoute } from "./routes/device-laps.js";
+import { DRIFT_BULK_PERMISSIONS, createDriftBulkRoutes } from "./routes/drift-bulk.js";
+import { DRIFT_DENY_PERMISSIONS, createDriftDenyRoutes } from "./routes/drift-deny.js";
+import { createDriftReportRoutes } from "./routes/drift-report.js";
+import { createDriftTriageRoutes } from "./routes/drift-triage.js";
+import { createDriftRoutes } from "./routes/drift.js";
 import {
   SqliteAssignmentFilterTemplateRepository,
   createAssignmentFilterRoutes,
@@ -154,6 +191,10 @@ import { createRunsEventsRoute } from "./routes/runs-events.js";
 import { createRunsListRoute } from "./routes/runs-list.js";
 import { createScheduleRoutes } from "./routes/schedules.js";
 import { createScriptRoutes } from "./routes/scripts.js";
+import { createStandardsAlignmentRoutes } from "./routes/standards-alignment.js";
+import { createStandardsCatalogRoutes } from "./routes/standards-catalog.js";
+import { createStandardsRunRoutes } from "./routes/standards-run.js";
+import { createStandardsTemplateRoutes } from "./routes/standards-templates.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
@@ -433,6 +474,11 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     repo,
     db,
   );
+  const scheduleRepo = new SqliteScheduleRepository(db, schemaVersion);
+  const standardsRepo = new SqliteStandardsRepository(db, schemaVersion, DEFAULT_STANDARDS_REGISTRY_PATH);
+  const driftRepo = new SqliteDriftRepository(db, schemaVersion, DEFAULT_STANDARDS_REGISTRY_PATH);
+  const baselinesRepo = new SqliteBaselinesRepository(db, schemaVersion);
+  const driftTriage = createDriftTriageStore(driftRepo);
 
   // These routes read the raw body themselves; the server has already parsed it.
   const readBody = async (ctx: RequestContext) => (ctx.body === undefined ? "" : JSON.stringify(ctx.body));
@@ -529,7 +575,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       ...caller,
     }),
     ...createScheduleRoutes({
-      store: new SqliteScheduleRepository(db, schemaVersion),
+      store: scheduleRepo,
       history: createScheduleHistoryStore(db),
       queue: createUnavailableScheduleQueue(),
       ...caller,
@@ -550,6 +596,53 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       },
       ...caller,
     }),
+
+    // EPIC-008 standards (T-0825). Running a standard now is refused with 501 (T-0841),
+    // as is classifying the catalog for a tenant (T-0828).
+    ...createStandardsCatalogRoutes({
+      catalog: createStandardsCatalogStore(standardsRepo),
+      resolveTenantLicense: unavailableTenantLicenses,
+      ...caller,
+    }),
+    ...createStandardsTemplateRoutes({ store: createStandardsTemplateStore(standardsRepo), ...caller }),
+    ...createStandardsRunRoutes({
+      store: createStandardsRunStore(standardsRepo, scheduleRepo),
+      queue: createUnavailableStandardsRunQueue(),
+      audit: { record: routeAudit },
+      ...caller,
+    }),
+    ...createStandardsAlignmentRoutes({ store: createStandardsAlignmentStore(standardsRepo), ...caller }),
+
+    // EPIC-009 drift (T-0825). Refresh and denials that delete are refused with 501
+    // (T-0841); see adapters/drift.ts.
+    ...createDriftRoutes({ store: createDriftStore(driftRepo), refresh: createUnavailableDriftRefresh(), ...caller }),
+    ...createDriftReportRoutes({ store: createDriftStore(driftRepo), ...caller }),
+    ...createDriftTriageRoutes({ store: driftTriage, audit: { record: routeAudit }, ...caller }),
+    ...createDriftDenyRoutes({
+      store: driftTriage,
+      remediation: createUnavailableDriftDeletion(),
+      audit: { record: routeAudit },
+      ...caller,
+    }).map((route) => refuseDriftDeletion(route, (ctx) => authorizeCaller(ctx.caller, DRIFT_DENY_PERMISSIONS.remediate))),
+    ...createDriftBulkRoutes({
+      store: driftTriage,
+      remediation: createUnavailableDriftDeletion(),
+      audit: { record: routeAudit },
+      ...caller,
+    }).map((route) => refuseDriftDeletion(route, (ctx) => authorizeCaller(ctx.caller, DRIFT_BULK_PERMISSIONS.remediate))),
+
+    // EPIC-010 baselines (T-0825). /baselines/fleet is mounted before the
+    // /baselines/:baselineId routes so the id pattern cannot capture it.
+    ...createBaselinesFleetRoutes({ store: createBaselinesFleetStore(baselinesRepo, driftRepo), ...caller }),
+    ...createBaselinesRoutes({ store: createBaselinesStore(baselinesRepo), ...caller }),
+    ...createBaselinesAdvanceRoutes({
+      store: createBaselineAdvanceStore(baselinesRepo),
+      history: createBaselineHistory(baselinesRepo),
+      audit: { record: routeAudit },
+      ...caller,
+    }),
+    ...createBaselinesAlignmentRoutes({ store: createBaselineAlignmentStore(baselinesRepo), ...caller }),
+    ...createBaselinesMigrateRoutes({ store: createBaselinesMigrateStore(standardsRepo, baselinesRepo), ...caller }),
 
     // EPIC-002 tenants and onboarding (T-0822).
     ...createTenantRoutes({ store: tenantStore, ...caller }),

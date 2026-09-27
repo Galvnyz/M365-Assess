@@ -84,6 +84,20 @@ import { REPORTS_PERMISSIONS } from "../routes/reports.js";
 import { REMEDIATION_OPENAPI } from "../routes/remediation.js";
 import { SCHEDULE_PERMISSIONS, SCHEDULE_SYSTEM_PATH, SCHEDULES_OPENAPI } from "../routes/schedules.js";
 import { SCRIPTS_OPENAPI } from "../routes/scripts.js";
+import { BASELINE_ADVANCE_PATH, BASELINE_ADVANCE_PERMISSION } from "../routes/baselines-advance.js";
+import { BASELINE_ALIGNMENT_PATH, BASELINE_ALIGNMENT_PERMISSION } from "../routes/baselines-alignment.js";
+import { BASELINES_FLEET_OPENAPI } from "../routes/baselines-fleet.js";
+import { BASELINE_MIGRATE_PATH } from "../routes/baselines-migrate.js";
+import { BASELINES_OPENAPI, BASELINES_PERMISSIONS } from "../routes/baselines.js";
+import { DRIFT_BULK_OPENAPI } from "../routes/drift-bulk.js";
+import { DRIFT_DENY_OPENAPI } from "../routes/drift-deny.js";
+import { DRIFT_REPORT_OPENAPI } from "../routes/drift-report.js";
+import { DRIFT_TRIAGE_OPENAPI } from "../routes/drift-triage.js";
+import { DRIFT_OPENAPI } from "../routes/drift.js";
+import { STANDARDS_ALIGNMENT_OPENAPI } from "../routes/standards-alignment.js";
+import { STANDARDS_CATALOG_OPENAPI } from "../routes/standards-catalog.js";
+import { STANDARDS_RUN_OPENAPI } from "../routes/standards-run.js";
+import { STANDARDS_TEMPLATES_OPENAPI } from "../routes/standards-templates.js";
 import {
   DASHBOARD_FLEET_PATH,
   DASHBOARD_READ_PERMISSION,
@@ -429,6 +443,22 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "PATCH", path: SCHEDULE_SYSTEM_PATH, permission: SCHEDULE_PERMISSIONS.write },
   { method: "DELETE", path: SCHEDULE_SYSTEM_PATH, permission: SCHEDULE_PERMISSIONS.write },
   ...registryEntriesFromOpenApi({ paths: SCRIPTS_OPENAPI }),
+  // EPIC-008 standards, EPIC-009 drift, and EPIC-010 baselines (T-0825).
+  ...registryEntriesFromOpenApi({ paths: STANDARDS_CATALOG_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: STANDARDS_TEMPLATES_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: STANDARDS_RUN_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: STANDARDS_ALIGNMENT_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: DRIFT_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: DRIFT_REPORT_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: DRIFT_TRIAGE_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: DRIFT_DENY_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: DRIFT_BULK_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: BASELINES_FLEET_OPENAPI }),
+  ...registryEntriesFromOpenApi({ paths: BASELINES_OPENAPI }),
+  // These fragments name the baseline parameter {id}; the routes mount :baselineId.
+  { method: "POST", path: BASELINE_ADVANCE_PATH, permission: BASELINE_ADVANCE_PERMISSION },
+  { method: "GET", path: BASELINE_ALIGNMENT_PATH, permission: BASELINE_ALIGNMENT_PERMISSION },
+  { method: "POST", path: BASELINE_MIGRATE_PATH, permission: BASELINES_PERMISSIONS.write },
   // EPIC-001/003 runs (T-0821). The route modules check the EPIC-001 names (runs.read,
   // runs.create, runs.cancel, runs.retry), which app.ts translates to these.
   { method: "GET", path: RUNS_LIST_PATH, permission: "Tenant.Runs.Read" },

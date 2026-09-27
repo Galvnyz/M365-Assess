@@ -82,6 +82,24 @@ export interface UpsertRolloutInput {
   readonly lastRunAt?: string;
 }
 
+/** One append-only baseline_history row (SPEC §4.5). `detail` is a JSON object. */
+export interface BaselineHistoryEvent {
+  readonly id: string;
+  readonly baselineId: string;
+  readonly tenantId: string;
+  readonly event: string;
+  readonly detail: Record<string, unknown>;
+  readonly at: string;
+}
+
+/** One compliance sample (0-1) per evaluation, for the fleet trend chart (SPEC §11.5). */
+export interface BaselineTrendPoint {
+  readonly baselineId: string;
+  readonly tenantId: string;
+  readonly at: string;
+  readonly compliance: number;
+}
+
 export interface CreateBaselineInput {
   readonly id?: string;
   readonly name: string;
@@ -411,6 +429,56 @@ export class SqliteBaselinesRepository {
       .prepare("SELECT * FROM baseline_rollouts WHERE baselineId = ? ORDER BY tenantId ASC")
       .all(baselineId) as Row[];
     return rows.map((row) => this.hydrateRollout(row));
+  }
+
+  /** Every rollout row across baselines and tenants (the fleet view). */
+  async listAllRollouts(): Promise<BaselineRollout[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM baseline_rollouts ORDER BY baselineId ASC, tenantId ASC")
+      .all() as Row[];
+    return rows.map((row) => this.hydrateRollout(row));
+  }
+
+  // ─── History and trend (SPEC §4.5, §11.5; T-0825) ─────────────────────────
+
+  async appendHistory(event: BaselineHistoryEvent): Promise<void> {
+    this.db
+      .prepare("INSERT INTO baseline_history (id, baselineId, tenantId, event, detail, at) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(event.id, event.baselineId, event.tenantId, event.event, JSON.stringify(event.detail), event.at);
+  }
+
+  /** The baseline's most recent events, newest first. */
+  async listHistory(baselineId: string, limit: number): Promise<BaselineHistoryEvent[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM baseline_history WHERE baselineId = ? ORDER BY at DESC, id DESC LIMIT ?")
+      .all(baselineId, limit) as Row[];
+    return rows.map((row) => ({
+      id: asString(row["id"]),
+      baselineId: asString(row["baselineId"]),
+      tenantId: asString(row["tenantId"]),
+      event: asString(row["event"]),
+      detail: parseJson<Record<string, unknown>>(row["detail"], "history detail"),
+      at: asString(row["at"]),
+    }));
+  }
+
+  async appendTrend(point: BaselineTrendPoint): Promise<void> {
+    this.db
+      .prepare("INSERT OR REPLACE INTO baseline_trend (baselineId, tenantId, at, compliance) VALUES (?, ?, ?, ?)")
+      .run(point.baselineId, point.tenantId, point.at, point.compliance);
+  }
+
+  /** The baseline's trend points, oldest first. */
+  async listTrend(baselineId: string): Promise<BaselineTrendPoint[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM baseline_trend WHERE baselineId = ? ORDER BY at ASC, tenantId ASC")
+      .all(baselineId) as Row[];
+    return rows.map((row) => ({
+      baselineId: asString(row["baselineId"]),
+      tenantId: asString(row["tenantId"]),
+      at: asString(row["at"]),
+      compliance: row["compliance"] as number,
+    }));
   }
 }
 

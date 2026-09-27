@@ -175,7 +175,21 @@ export interface DriftRepository {
     resourceId: string,
     patch: DeviationTriagePatch,
   ): Promise<DriftDeviation | undefined>;
+
+  // By deviation id, and across tenants (T-0825).
+  getDeviationById(deviationId: string): Promise<DriftDeviation | undefined>;
+  setDeviationTriageById(
+    deviationId: string,
+    patch: DeviationTriagePatch,
+  ): Promise<DriftDeviation | undefined>;
+  listAllDeviations(): Promise<DriftDeviation[]>;
+  /** Deviation counts per state across every tenant, zero-filled, plus a total. */
+  countDeviationsByState(): Promise<DeviationStateCounts>;
+  /** Open deviation counts keyed by tenant; tenants with none are absent. */
+  countOpenDeviationsByTenant(): Promise<Record<string, number>>;
 }
+
+export type DeviationStateCounts = Record<DriftDeviationState, number> & { total: number };
 
 type Row = Record<string, unknown>;
 
@@ -495,6 +509,49 @@ export class SqliteDriftRepository implements DriftRepository {
       );
     const row = this.deviationRow(tenantId, standardKey, resourceId);
     return row ? this.mapDeviation(row) : undefined;
+  }
+
+  async getDeviationById(deviationId: string): Promise<DriftDeviation | undefined> {
+    const row = this.db.prepare("SELECT * FROM drift_deviations WHERE id = ?").get(deviationId) as
+      | Row
+      | undefined;
+    return row ? this.mapDeviation(row) : undefined;
+  }
+
+  async setDeviationTriageById(
+    deviationId: string,
+    patch: DeviationTriagePatch,
+  ): Promise<DriftDeviation | undefined> {
+    const existing = await this.getDeviationById(deviationId);
+    if (!existing) return undefined;
+    return this.setDeviationTriage(existing.tenantId, existing.standardKey, existing.resourceId, patch);
+  }
+
+  async listAllDeviations(): Promise<DriftDeviation[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM drift_deviations ORDER BY tenantId, standardKey, resourceId")
+      .all() as Row[];
+    return rows.map((row) => this.mapDeviation(row));
+  }
+
+  async countDeviationsByState(): Promise<DeviationStateCounts> {
+    const rows = this.db
+      .prepare("SELECT state, COUNT(*) AS n FROM drift_deviations GROUP BY state")
+      .all() as { state: DriftDeviationState; n: number }[];
+    const counts = Object.fromEntries(DRIFT_DEVIATION_STATES.map((state) => [state, 0])) as DeviationStateCounts;
+    counts.total = 0;
+    for (const { state, n } of rows) {
+      counts[state] = n;
+      counts.total += n;
+    }
+    return counts;
+  }
+
+  async countOpenDeviationsByTenant(): Promise<Record<string, number>> {
+    const rows = this.db
+      .prepare("SELECT tenantId, COUNT(*) AS n FROM drift_deviations WHERE state = 'open' GROUP BY tenantId")
+      .all() as { tenantId: string; n: number }[];
+    return Object.fromEntries(rows.map(({ tenantId, n }) => [tenantId, n]));
   }
 }
 

@@ -100,6 +100,56 @@ export interface UpsertTemplateAssignmentInput {
   precedence?: number;
 }
 
+/** Fields left undefined keep their stored value. */
+export interface UpdateStandardTemplatePatch {
+  name?: string;
+  kind?: StandardTemplateKind;
+  actions?: Partial<StandardTemplateActions>;
+  autoRemediate?: boolean;
+  settings?: readonly StandardTemplateSetting[];
+  scheduleId?: string | null;
+}
+
+// ─── StandardCompare (SPEC §4.2, §5; T-0825) ─────────────────────────────────
+
+export const STANDARD_COMPARE_STATES = [
+  "compliant",
+  "non-compliant",
+  "accepted deviation",
+  "customer specific",
+  "license missing",
+  "reporting disabled",
+] as const;
+export type StandardCompareState = (typeof STANDARD_COMPARE_STATES)[number];
+
+/** One tenant's current vs expected value for one standard, from its latest run. */
+export interface StandardCompare {
+  tenantId: string;
+  checkId: string;
+  current: unknown;
+  expected: unknown;
+  state: StandardCompareState;
+  lastRunAt: string | null;
+}
+
+/** A compare row for the BFF, whose guard forbids the check reference's db name. */
+export interface StandardCompareView extends Omit<StandardCompare, "checkId"> {
+  check: string;
+}
+
+/** A definition for the BFF, whose guard forbids the check reference's db name. */
+export interface StandardDefinitionView extends Omit<StandardDefinition, "checkId"> {
+  check: string;
+}
+
+export function toStandardDefinitionView({ checkId, ...rest }: StandardDefinition): StandardDefinitionView {
+  return { ...rest, check: checkId };
+}
+
+export function toStandardCompareView({ checkId, ...rest }: StandardCompare): StandardCompareView {
+  return { ...rest, check: checkId };
+}
+
 /** The default registry source: src/M365-Assess/controls/registry.json. */
 export const DEFAULT_STANDARDS_REGISTRY_PATH = fileURLToPath(
   new URL("../../../src/M365-Assess/controls/registry.json", import.meta.url),
@@ -129,6 +179,10 @@ export interface StandardsRepository {
   createStandardTemplate(input: CreateStandardTemplateInput): Promise<StandardTemplate>;
   getStandardTemplate(templateId: string): Promise<StandardTemplate | undefined>;
   listStandardTemplates(): Promise<StandardTemplate[]>;
+  updateStandardTemplate(
+    templateId: string,
+    patch: UpdateStandardTemplatePatch,
+  ): Promise<StandardTemplate | undefined>;
   deleteStandardTemplate(templateId: string): Promise<boolean>;
 
   upsertTemplateAssignment(input: UpsertTemplateAssignmentInput): Promise<TemplateAssignment>;
@@ -138,6 +192,11 @@ export interface StandardsRepository {
     targetType: TemplateTargetType,
     targetId: string | null,
   ): Promise<boolean>;
+
+  // Compare rows (SPEC §4.2, §5).
+  upsertCompare(rows: readonly StandardCompare[]): Promise<void>;
+  /** Every tenant's rows, or one tenant's, ordered by tenant then standard. */
+  listCompare(tenantId?: string): Promise<StandardCompare[]>;
 }
 
 const DEFAULT_TEMPLATE_ACTIONS: StandardTemplateActions = {
@@ -379,6 +438,40 @@ export class SqliteStandardsRepository implements StandardsRepository {
     return rows.map((row) => this.mapTemplate(row));
   }
 
+  async updateStandardTemplate(
+    templateId: string,
+    patch: UpdateStandardTemplatePatch,
+  ): Promise<StandardTemplate | undefined> {
+    const existing = await this.getStandardTemplate(templateId);
+    if (!existing) return undefined;
+    const next: StandardTemplate = {
+      ...existing,
+      name: patch.name ?? existing.name,
+      kind: patch.kind ?? existing.kind,
+      actions: { ...existing.actions, ...(patch.actions ?? {}) },
+      autoRemediate: patch.autoRemediate ?? existing.autoRemediate,
+      settings: patch.settings ? [...patch.settings] : existing.settings,
+      scheduleId: patch.scheduleId === undefined ? existing.scheduleId : patch.scheduleId,
+    };
+    this.db
+      .prepare(
+        `UPDATE standard_templates
+            SET name = ?, kind = ?, actions = ?, autoRemediate = ?, settings = ?, scheduleId = ?, updatedAt = ?
+          WHERE id = ?`,
+      )
+      .run(
+        next.name,
+        next.kind,
+        JSON.stringify(next.actions),
+        next.autoRemediate ? 1 : 0,
+        JSON.stringify(next.settings),
+        next.scheduleId,
+        new Date().toISOString(),
+        templateId,
+      );
+    return next;
+  }
+
   async deleteStandardTemplate(templateId: string): Promise<boolean> {
     // Assignments reference the template; remove them first so the delete is
     // not blocked by the foreign key.
@@ -441,6 +534,55 @@ export class SqliteStandardsRepository implements StandardsRepository {
       )
       .run(templateId, targetType, targetId ?? "");
     return result.changes > 0;
+  }
+
+  // ─── Compare rows ───────────────────────────────────────────────────────────
+
+  async upsertCompare(rows: readonly StandardCompare[]): Promise<void> {
+    const upsert = this.db.prepare(
+      `INSERT INTO standard_compare (tenantId, checkId, currentValue, expectedValue, state, lastRunAt)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (tenantId, checkId) DO UPDATE SET
+         currentValue = excluded.currentValue, expectedValue = excluded.expectedValue,
+         state = excluded.state, lastRunAt = excluded.lastRunAt`,
+    );
+    this.db.transaction(() => {
+      for (const row of rows) {
+        upsert.run(
+          row.tenantId,
+          row.checkId,
+          JSON.stringify(row.current ?? null),
+          JSON.stringify(row.expected ?? null),
+          row.state,
+          row.lastRunAt,
+        );
+      }
+    })();
+  }
+
+  async listCompare(tenantId?: string): Promise<StandardCompare[]> {
+    const rows = (
+      tenantId === undefined
+        ? this.db.prepare("SELECT * FROM standard_compare ORDER BY tenantId, checkId").all()
+        : this.db.prepare("SELECT * FROM standard_compare WHERE tenantId = ? ORDER BY checkId").all(tenantId)
+    ) as Row[];
+    return rows.map((row) => ({
+      tenantId: asString(row["tenantId"]),
+      checkId: asString(row["checkId"]),
+      current: parseJsonValue(row["currentValue"]),
+      expected: parseJsonValue(row["expectedValue"]),
+      state: asString(row["state"]) as StandardCompareState,
+      lastRunAt: row["lastRunAt"] === null || row["lastRunAt"] === undefined ? null : asString(row["lastRunAt"]),
+    }));
+  }
+}
+
+function parseJsonValue(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  try {
+    return JSON.parse(asString(value));
+  } catch {
+    return null;
   }
 }
 

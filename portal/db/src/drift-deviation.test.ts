@@ -193,3 +193,60 @@ describe("deviation state constraint (T-0162)", () => {
     }
   });
 });
+
+describe("deviation lookups by id and across tenants (T-0825)", () => {
+  const TENANT_2 = "22222222-2222-2222-2222-222222222222";
+
+  it("reads and triages a deviation by its id", async () => {
+    const repo = await openRepo(tempDir());
+    try {
+      await repo.upsertDeviations(TENANT_1, [
+        { standardKey: CA, resourceId: "policy-1", kind: "mismatch", current: 1, expected: 2 },
+      ]);
+      const [row] = await repo.listDeviations(TENANT_1);
+      expect(await repo.getDeviationById(row!.id)).toEqual(row);
+
+      const accepted = await repo.setDeviationTriageById(row!.id, {
+        state: "accepted",
+        reason: "approved exception",
+        expiresOn: "2027-01-01T00:00:00.000Z",
+        autoRemediateOnExpiry: true,
+      });
+      expect(accepted).toMatchObject({ id: row!.id, state: "accepted", reason: "approved exception", autoRemediateOnExpiry: true });
+      expect(await repo.getDeviationById("missing")).toBeUndefined();
+      expect(await repo.setDeviationTriageById("missing", { state: "accepted" })).toBeUndefined();
+    } finally {
+      repo.close();
+    }
+  });
+
+  it("lists and counts deviations across tenants", async () => {
+    const repo = await openRepo(tempDir());
+    try {
+      await repo.upsertDeviations(TENANT_2, [{ standardKey: CA, resourceId: "p", kind: "extra", current: 1, expected: null }]);
+      await repo.upsertDeviations(TENANT_1, [
+        { standardKey: CA, resourceId: "a", kind: "mismatch", current: 1, expected: 2 },
+        { standardKey: CA, resourceId: "b", kind: "mismatch", current: 1, expected: 2 },
+      ]);
+      await repo.setDeviationTriage(TENANT_1, CA, "b", { state: "denied" });
+
+      expect((await repo.listAllDeviations()).map((d) => [d.tenantId, d.resourceId])).toEqual([
+        [TENANT_1, "a"],
+        [TENANT_1, "b"],
+        [TENANT_2, "p"],
+      ]);
+      expect(await repo.countDeviationsByState()).toEqual({
+        open: 2,
+        accepted: 0,
+        customerSpecific: 0,
+        denied: 1,
+        deletePending: 0,
+        resolved: 0,
+        total: 3,
+      });
+      expect(await repo.countOpenDeviationsByTenant()).toEqual({ [TENANT_1]: 1, [TENANT_2]: 1 });
+    } finally {
+      repo.close();
+    }
+  });
+});
