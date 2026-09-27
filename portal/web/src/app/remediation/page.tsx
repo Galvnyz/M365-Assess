@@ -13,6 +13,7 @@ import {
   downloadPlan,
   fetchRemediationPlan,
   generateRemediationPlan,
+  waitForRemediationPlan,
   type ExportFormat,
   type RemediationPlanResponse,
 } from "../../lib/remediationApi.js";
@@ -114,7 +115,7 @@ export default function RemediationPage({
     setError(null);
     try {
       const result = await generateRemediationPlan({ tenantId }, fetcher);
-      await load(result.planId);
+      setPlan(await waitForRemediationPlan(result.planId, fetcher));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

@@ -9,6 +9,7 @@ import {
   isActionEligible,
   type RemediationActionItem,
   type RemediationPlanResponse,
+  waitForRemediationPlan,
 } from "../../lib/remediationApi.js";
 
 afterEach(() => {
@@ -149,6 +150,32 @@ describe("remediationApi helpers", () => {
     expect(csv.split("\n")[0]).toBe("checkId,finding,severity,mode,state,license,target,command");
     // Comma-containing cells are quoted.
     expect(csv).toContain('"Finding, with comma"');
+  });
+});
+
+describe("waitForRemediationPlan (T-0836)", () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const noSleep = async () => undefined;
+
+  it("polls until the plan job has stored the plan", async () => {
+    const responses = [json({ message: "not found" }, 404), json({ message: "not found" }, 404), json(plan([action()]))];
+    const fetcher = vi.fn().mockImplementation(async () => responses.shift());
+    const result = await waitForRemediationPlan("plan-1", fetcher as unknown as typeof fetch, { sleep: noSleep });
+    expect(result.plan.id).toBe("plan-1");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after the attempts and surfaces other errors at once", async () => {
+    const missing = vi.fn().mockImplementation(async () => json({ message: "not found" }, 404));
+    await expect(
+      waitForRemediationPlan("plan-1", missing as unknown as typeof fetch, { attempts: 2, sleep: noSleep }),
+    ).rejects.toThrow(/still being generated/);
+    expect(missing).toHaveBeenCalledTimes(2);
+
+    const denied = vi.fn().mockImplementation(async () => json({ message: "forbidden" }, 403));
+    await expect(waitForRemediationPlan("plan-1", denied as unknown as typeof fetch, { sleep: noSleep })).rejects.toThrow(/403/);
+    expect(denied).toHaveBeenCalledTimes(1);
   });
 });
 

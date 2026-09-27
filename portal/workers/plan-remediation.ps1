@@ -53,9 +53,26 @@ $tenantId = [string]$job['tenantId']
 $runId = [string]$job['runId']
 $planId = ''
 $createdBy = ''
+$callerContext = $null
 if ($job['payload'] -is [System.Collections.IDictionary]) {
     if ($job['payload'].Contains('planId')) { $planId = [string]$job['payload']['planId'] }
     if ($job['payload'].Contains('createdBy')) { $createdBy = [string]$job['payload']['createdBy'] }
+    # The portal sends whether the caller may apply, and their tenant scope; without it
+    # the gate rejects every action (rbac-denied).
+    # Rebuilt in the gate's documented shape: -AsHashtable keys are case-sensitive and
+    # the gate reads Permissions / TenantScope.All / TenantScope.TenantIds.
+    $caller = $job['payload']['caller']
+    if ($caller -is [System.Collections.IDictionary]) {
+        $scope = $caller['tenantScope']
+        $callerContext = @{
+            # The gate's permission name for apply (Test-RemediationGate -RequiredPermission).
+            Permissions = if ([bool]$caller['canApply']) { @('remediation.apply') } else { @() }
+            TenantScope = @{
+                All       = ($scope -is [System.Collections.IDictionary]) -and [bool]$scope['all']
+                TenantIds = if ($scope -is [System.Collections.IDictionary]) { @($scope['tenantIds'] | Where-Object { $_ } | ForEach-Object { [string]$_ }) } else { @() }
+            }
+        }
+    }
 }
 
 $resolvedFindingsPath = if ($FindingsFile) {
@@ -68,13 +85,16 @@ else {
 try {
     $findings = @(Get-Content -LiteralPath $resolvedFindingsPath -Raw | ConvertFrom-Json)
 
-    $plan = New-RemediationPlan `
-        -Findings $findings `
-        -TenantId $tenantId `
-        -RunId $runId `
-        -PlanId $planId `
-        -CreatedBy $createdBy `
-        -CorrelationId ([string]$job['correlationId'])
+    $planParams = @{
+        Findings      = $findings
+        TenantId      = $tenantId
+        RunId         = $runId
+        PlanId        = $planId
+        CreatedBy     = $createdBy
+        CorrelationId = [string]$job['correlationId']
+    }
+    if ($null -ne $callerContext) { $planParams['CallerContext'] = $callerContext }
+    $plan = New-RemediationPlan @planParams
 
     New-Item -Path $OutputFolder -ItemType Directory -Force | Out-Null
     $plan | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path -Path $OutputFolder -ChildPath 'remediation-plan.json') -Encoding UTF8

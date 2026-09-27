@@ -170,7 +170,53 @@ describe("POST /v1/remediation/plans (T-0105)", () => {
     expect(envelope.tenantId).toBe(TENANT_1);
     expect(envelope.runId).toBe("run-1");
     expect(envelope.payload.credentialRef).toBe(`tenants/${TENANT_1}/credential`);
-    expect(envelope.payload.outputRef).toBe(`runs/${TENANT_1}/run-1`);
+    // Its own folder, so its result.json cannot overwrite the assessment run's.
+    expect(envelope.payload.outputRef).toBe(`remediation/${TENANT_1}/id-2`);
+    expect(envelope.payload).toMatchObject({
+      operation: "plan",
+      planId: "id-1",
+      createdBy: "system",
+      caller: { canApply: true, tenantScope: { all: true, tenantIds: [] } },
+    });
+  });
+
+  it("plans from the tenant's latest finished run when none is named", async () => {
+    const queue = new FakeQueue();
+    const opts = {
+      store: new MemoryPlanStore(),
+      queue,
+      resolveCaller: () => adminCaller(),
+      authorize: allowAll,
+      latestRunId: async (tenantId: string) => (tenantId === TENANT_1 ? "run-latest" : null),
+    };
+    const route = routeFor(opts, "POST", REMEDIATION_PLANS_PATH);
+    const res = await route.handler(postContext({ tenantId: TENANT_1 }));
+    expect(res.status).toBe(202);
+    expect(queue.enqueued[0]!.runId).toBe("run-latest");
+
+    await expect(route.handler(postContext({ tenantId: TENANT_2 }))).rejects.toMatchObject({
+      status: 409,
+      code: "remediation.no_run",
+    });
+    expect(queue.enqueued).toHaveLength(1);
+  });
+
+  it("tells the plan worker when the caller may not apply", async () => {
+    const queue = new FakeQueue();
+    const opts = {
+      store: new MemoryPlanStore(),
+      queue,
+      resolveCaller: () => scopedCaller([TENANT_1]),
+      authorize: (_caller: Caller, permission: string) => {
+        if (permission === "Remediation.Apply") {
+          throw new AppError(RbacErrorCodes.forbidden, "forbidden", 403);
+        }
+      },
+    };
+    await routeFor(opts, "POST", REMEDIATION_PLANS_PATH).handler(postContext({ tenantId: TENANT_1, runId: "run-1" }));
+    expect(queue.enqueued[0]!.payload).toMatchObject({
+      caller: { canApply: false, tenantScope: { all: false, tenantIds: [TENANT_1] } },
+    });
   });
 
   it("returns 401 without an authenticated caller", async () => {

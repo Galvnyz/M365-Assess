@@ -43,7 +43,9 @@ import { createAuditSink, type RecordAudit } from "./adapters/audit.js";
 import {
   createRemediationStore,
   createScheduleHistoryStore,
-  createUnavailableRemediationQueue,
+  createRemediationQueue,
+  createRemediationWorkerRunner,
+  withRemediationPlanIngestion,
   createUnavailableScheduleQueue,
   createUnavailableScriptSandbox,
 } from "./adapters/automation.js";
@@ -92,6 +94,7 @@ import { createDevIdentityAuthenticator, ensureDevUser } from "./auth/dev-identi
 import type { BffConfig } from "./config.js";
 import { createInMemoryCredentialStore } from "./credentials/store.js";
 import { AppError } from "./errors.js";
+import { createJobDispatcher } from "./jobs/dispatch.js";
 import { JobQueue } from "./jobs/queue.js";
 import { createSupervisorRunner } from "./jobs/supervisor.js";
 import type { BaseRoleId } from "./rbac/base-roles.js";
@@ -390,20 +393,30 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   // and every queue and worker progress event goes through the hub, which records run
   // and section state and serves the progress stream. A finished run's findings are
   // stored before the queue reports it finished.
+  const remediationRepo = new SqliteRemediationRepository(db, schemaVersion);
   const runStore = createRunStore(repo, db);
   const hub = new ProgressEventHub({ store: runStore });
   const publish = (event: unknown) => void hub.publish(event as Record<string, unknown>);
   const runJobs = new JobQueue({
     persistence: createJobPersistence(repo),
     poolSize: config.workerPoolSize,
-    runWorker: withFindingsIngestion(
-      options.runWorker ??
-        createSupervisorRunner({
-          workerScriptPath: path.join(config.workersDir, RUN_WORKER),
-          storageRoot: config.artifactPath,
-          onProgress: publish,
-        }),
-      { repo, storageRoot: config.artifactPath },
+    runWorker: withRemediationPlanIngestion(
+      withFindingsIngestion(
+        options.runWorker ??
+          createJobDispatcher({
+            assessment: createSupervisorRunner({
+              workerScriptPath: path.join(config.workersDir, RUN_WORKER),
+              storageRoot: config.artifactPath,
+              onProgress: publish,
+            }),
+            remediation: createRemediationWorkerRunner({
+              workersDir: config.workersDir,
+              storageRoot: config.artifactPath,
+            }),
+          }),
+        { repo, storageRoot: config.artifactPath },
+      ),
+      { remediation: remediationRepo, storageRoot: config.artifactPath },
     ),
     onProgress: publish,
   });
@@ -414,6 +427,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     credentials: credentialRows,
     repo,
   });
+  const reportRuns = createReportRunReader(repo, config.artifactPath);
   const generatedReports = createGeneratedReportStore(
     new SqliteReportRepository(db, schemaVersion, repo),
     repo,
@@ -490,7 +504,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     ...(createReportsRoutes({
       store: generatedReports,
       queue: createUnavailableRenderQueue(generatedReports),
-      runs: createReportRunReader(repo, config.artifactPath),
+      runs: reportRuns,
       audit: {
         record: (event) =>
           recordAudit({
@@ -509,8 +523,9 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     // and scripts persist; running them is not wired yet (T-0836, T-0837) and is
     // refused with 501.
     ...createRemediationRoutes({
-      store: createRemediationStore(new SqliteRemediationRepository(db, schemaVersion)),
-      queue: createUnavailableRemediationQueue(),
+      store: createRemediationStore(remediationRepo),
+      queue: createRemediationQueue({ jobs: runJobs, repo, storageRoot: config.artifactPath }),
+      latestRunId: (tenantId) => reportRuns.latestRunId(tenantId),
       ...caller,
     }),
     ...createScheduleRoutes({

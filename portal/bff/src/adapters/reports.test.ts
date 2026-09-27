@@ -66,7 +66,9 @@ describe("report run reader (T-0823)", () => {
     dirs.push(root);
     const base = { tenantId: "t-a", parentRunId: null, trigger: "manual" as const, sections: [], options: null, startedAt: null, artifactPath: null, summaryCounts: null, provenance: null };
     await repo.createRun({ ...base, id: "old", status: "succeeded", finishedAt: "2026-09-01T00:00:00.000Z", artifactPath: "runs/t-a/old" });
-    await repo.createRun({ ...base, id: "new", status: "partial", finishedAt: "2026-09-20T00:00:00.000Z", artifactPath: "runs/t-a/new", summaryCounts: { pass: 3 } });
+    // A newer parent run is skipped: its results live on its child ("new").
+    await repo.createRun({ ...base, id: "parent", status: "succeeded", finishedAt: "2026-09-21T00:00:00.000Z" });
+    await repo.createRun({ ...base, parentRunId: "parent", id: "new", status: "partial", finishedAt: "2026-09-20T00:00:00.000Z", artifactPath: "runs/t-a/new", summaryCounts: { pass: 3 } });
     await repo.createRun({ ...base, id: "live", status: "running", finishedAt: null });
 
     const folder = path.join(root, "runs/t-a/new");

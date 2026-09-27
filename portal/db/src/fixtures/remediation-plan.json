@@ -1,0 +1,93 @@
+{
+  "Plan": {
+    "id": "plan-1",
+    "tenantId": "t-a",
+    "runId": "run-1",
+    "findingIds": [
+      "run-1:0",
+      "run-1:2",
+      "run-1:3"
+    ],
+    "mode": "mixed",
+    "createdAt": "2026-09-27T16:35:33.6948380Z",
+    "createdBy": "user-1"
+  },
+  "Actions": [
+    {
+      "id": "517a91f4-3154-42f0-924a-c93d83d2bdc1",
+      "checkId": "CA-REPORTONLY-001.1",
+      "command": "",
+      "target": "Entra admin center > Protection > Conditional Access",
+      "state": "skipped",
+      "before": null,
+      "after": null,
+      "appliedAt": null,
+      "appliedBy": null,
+      "result": {
+        "registryKey": "CA-REPORTONLY-001",
+        "mode": "manual",
+        "gateDecision": "skipped",
+        "gateReason": "not-allowlisted"
+      },
+      "error": "not-allowlisted",
+      "correlationId": "corr-1"
+    },
+    {
+      "id": "fdc28ece-4625-4e7d-988a-81aeadc17be2",
+      "checkId": "SPO-SHARING-001.1",
+      "command": "Set-SPOTenant -SharingCapability ExistingExternalUserSharingOnly",
+      "target": null,
+      "state": "skipped",
+      "before": null,
+      "after": null,
+      "appliedAt": null,
+      "appliedBy": null,
+      "result": {
+        "registryKey": "SPO-SHARING-001",
+        "mode": "automated",
+        "gateDecision": "skipped",
+        "gateReason": "not-allowlisted"
+      },
+      "error": "not-allowlisted",
+      "correlationId": "corr-1"
+    },
+    {
+      "id": "1f74d2d1-b4a1-4e48-bd27-881af11e19a9",
+      "checkId": "ENTRA-GUEST-001.1",
+      "command": "Update-MgPolicyAuthorizationPolicy -GuestUserRoleId ''2af84b1e-32c8-42b7-82bc-daa82404023b''",
+      "target": null,
+      "state": "skipped",
+      "before": null,
+      "after": null,
+      "appliedAt": null,
+      "appliedBy": null,
+      "result": {
+        "registryKey": "ENTRA-GUEST-001",
+        "mode": "automated",
+        "gateDecision": "skipped",
+        "gateReason": "not-allowlisted"
+      },
+      "error": "not-allowlisted",
+      "correlationId": "corr-1"
+    }
+  ],
+  "Instructions": [
+    {
+      "checkId": "CA-REPORTONLY-001",
+      "portalPath": "Entra admin center > Protection > Conditional Access",
+      "steps": [
+        "Entra admin center",
+        "Protection",
+        "Conditional Access"
+      ],
+      "notes": "Review report-only policies and either enable enforcement or remove if no longer needed"
+    }
+  ],
+  "Summary": {
+    "total": 3,
+    "automated": 2,
+    "manual": 1,
+    "undetermined": 0,
+    "skipped": 3
+  }
+}

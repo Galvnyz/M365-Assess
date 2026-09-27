@@ -21,3 +21,4 @@ export * from "./report-template-repository.js";
 export * from "./schedule-repository.js";
 export * from "./custom-script-repository.js";
 export * from "./findings-import.js";
+export * from "./remediation-import.js";

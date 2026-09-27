@@ -192,4 +192,42 @@ Describe 'plan-remediation entrypoint' {
         $text | Should -Match "JobType 'remediation'"
         $text | Should -Match 'remediation-plan\.json'
     }
+
+    Context 'when run on a portal job (T-0836)' {
+        BeforeAll {
+            function Invoke-PlanEntrypoint {
+                param([hashtable]$Caller, [string]$Name)
+                $folder = Join-Path -Path $TestDrive -ChildPath $Name
+                New-Item -Path $folder -ItemType Directory -Force | Out-Null
+                $payload = @{ contextRef = 'x'; outputRef = 'x'; credentialRef = 'x'; sectionRefs = @(); artifactRefs = @(); operation = 'plan'; planId = 'plan-1'; createdBy = 'user-1' }
+                if ($Caller) { $payload['caller'] = $Caller }
+                $job = @{ schemaVersion = 'v1'; jobId = 'job-1'; jobType = 'remediation'; tenantId = 't-a'; runId = 'run-1'; requestId = 'req-1'; correlationId = 'corr-1'; createdAt = '2026-09-27T00:00:00.000Z'; payload = $payload }
+                $jobFile = Join-Path -Path $folder -ChildPath 'job.json'
+                $job | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $jobFile
+                $findingsFile = Join-Path -Path $folder -ChildPath 'findings.json'
+                ConvertTo-Json -InputObject @(@{ id = 'run-1:0'; checkId = 'ENTRA-SECDEFAULT-001.1'; status = 'Fail' }) | Set-Content -LiteralPath $findingsFile
+                $out = Join-Path -Path $folder -ChildPath 'out'
+                & pwsh -NoProfile -File $script:entrypoint -JobFile $jobFile -OutputFolder $out -FindingsFile $findingsFile | Out-Null
+                Get-Content -LiteralPath (Join-Path -Path $out -ChildPath 'remediation-plan.json') -Raw | ConvertFrom-Json
+            }
+        }
+
+        It 'keeps the portal plan id and author' {
+            $plan = Invoke-PlanEntrypoint -Name 'ids'
+            $plan.Plan.id | Should -Be 'plan-1'
+            $plan.Plan.createdBy | Should -Be 'user-1'
+        }
+
+        It 'rejects every action when the job carries no caller' {
+            $plan = Invoke-PlanEntrypoint -Name 'no-caller'
+            $plan.Actions[0].error | Should -Be 'rbac-denied'
+        }
+
+        It 'passes the caller''s apply right and scope to the gate' {
+            $caller = @{ canApply = $true; tenantScope = @{ all = $false; tenantIds = @('t-a') } }
+            $plan = Invoke-PlanEntrypoint -Name 'caller' -Caller $caller
+            $plan.Actions[0].error | Should -Not -Be 'rbac-denied'
+            $plan.Actions[0].error | Should -Not -Be 'tenant-out-of-scope'
+        }
+    }
 }

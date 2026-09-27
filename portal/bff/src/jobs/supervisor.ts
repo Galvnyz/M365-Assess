@@ -80,6 +80,8 @@ export interface SuperviseJobOptions {
    * against. The worker runs there; defaults to the BFF's working directory.
    */
   readonly storageRoot?: string;
+  /** The worker's arguments; defaults to run-tenant.ps1's (buildWorkerArgs). */
+  readonly buildArgs?: (envelope: JobEnvelope, workerScriptPath: string) => string[];
 }
 
 function defaultSpawn(
@@ -282,7 +284,8 @@ export async function superviseJob(
   } = options;
 
   const carried = { text: "" };
-  const { stderrTail } = await runSupervisedProcess(buildWorkerArgs(envelope, workerScriptPath), {
+  const args = (options.buildArgs ?? buildWorkerArgs)(envelope, workerScriptPath);
+  const { stderrTail } = await runSupervisedProcess(args, {
     jobId: envelope.jobId,
     ...(options.pwshPath !== undefined ? { pwshPath: options.pwshPath } : {}),
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),

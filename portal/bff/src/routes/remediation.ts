@@ -58,6 +58,7 @@ export const REMEDIATION_PERMISSIONS = {
 export const REMEDIATION_UNAUTHENTICATED = "request.unauthenticated";
 export const REMEDIATION_PLAN_NOT_FOUND = "remediation.plan_not_found";
 export const REMEDIATION_ACTION_NOT_FOUND = "remediation.action_not_found";
+export const REMEDIATION_NO_RUN = "remediation.no_run";
 export const REMEDIATION_HISTORY_TENANT_REQUIRED = "remediation.history_tenant_required";
 
 // ─── Records (structural mirrors of the db package types) ────────────────────
@@ -130,6 +131,8 @@ export interface RemediationRouteOptions {
   readonly idempotency?: RemediationIdempotencyStore;
   readonly idGenerator?: () => string;
   readonly now?: () => string;
+  /** The tenant's latest finished run, used when a plan request names no run. */
+  readonly latestRunId?: (tenantId: string) => Promise<string | null>;
 }
 
 /** Route context carrying the parsed request body (see reports.ts). */
@@ -212,6 +215,20 @@ function toAppError(error: unknown, fallbackField: string): AppError {
   throw error;
 }
 
+async function isAuthorized(
+  options: RemediationRouteOptions,
+  caller: Caller,
+  permission: string,
+): Promise<boolean> {
+  try {
+    await ensureAuthorized(options, caller, permission);
+    return true;
+  } catch (error) {
+    if (error instanceof AppError && error.status === 403) return false;
+    throw error;
+  }
+}
+
 async function ensureAuthorized(
   options: RemediationRouteOptions,
   caller: Caller,
@@ -278,8 +295,13 @@ function requireParam(ctx: RequestContext, name: string): string {
   return value;
 }
 
+export type RemediationOperation = "plan" | "apply" | "verify";
+
+// Each job gets its own folder: the run's folder holds the assessment's artifacts and
+// result.json, which a remediation job's result must not overwrite.
 function buildRemediationEnvelope(
   ctx: RequestContext,
+  operation: RemediationOperation,
   tenantId: string,
   runId: string,
   jobId: string,
@@ -297,14 +319,14 @@ function buildRemediationEnvelope(
     correlationId: ctx.correlationId,
     createdAt,
     payload: {
-      contextRef: `runs/${tenantId}/${runId}/context.json`,
-      outputRef: `runs/${tenantId}/${runId}`,
+      contextRef: `remediation/${tenantId}/${jobId}/job.json`,
+      outputRef: `remediation/${tenantId}/${jobId}`,
       credentialRef: `tenants/${tenantId}/credential`,
       sectionRefs: [],
       artifactRefs: [],
       // Job-specific fields ride alongside the reference payload; the envelope
       // contract validates the refs and permits additional keys.
-      ...extraPayload,
+      ...{ operation, ...extraPayload },
     },
   };
 }
@@ -327,15 +349,32 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
 
     const body = requireBodyRecord(ctx.body);
     const tenantId = requireString(body, "tenantId");
-    const runId = optionalString(body, "runId") ?? "";
     requireTenantInScope(caller, tenantId);
+    const runId = optionalString(body, "runId") ?? (await options.latestRunId?.(tenantId)) ?? null;
+    if (!runId) {
+      throw new AppError(
+        REMEDIATION_NO_RUN,
+        `tenant ${tenantId} has no finished run to plan remediation from`,
+        409,
+      );
+    }
 
     const planId = idGenerator();
     const jobId = idGenerator();
     const requestId = idGenerator();
 
+    // The plan worker's gate marks an action planned only for a caller who may apply
+    // it (Test-RemediationGate), so the caller's apply right and scope travel with it.
+    const canApply = await isAuthorized(options, caller, REMEDIATION_PERMISSIONS.apply);
     await options.queue.enqueue(
-      buildRemediationEnvelope(ctx, tenantId, runId, jobId, requestId, now()),
+      buildRemediationEnvelope(ctx, "plan", tenantId, runId, jobId, requestId, now(), {
+        planId,
+        createdBy: callerActor(caller) ?? "system",
+        caller: {
+          canApply,
+          tenantScope: { all: caller.tenantScope.all, tenantIds: [...caller.tenantScope.tenantIds] },
+        },
+      }),
     );
 
     return {
@@ -412,7 +451,7 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
     const requestId = idGenerator();
 
     await options.queue.enqueue(
-      buildRemediationEnvelope(ctx, plan.tenantId, plan.runId, jobId, requestId, now(), {
+      buildRemediationEnvelope(ctx, "apply", plan.tenantId, plan.runId, jobId, requestId, now(), {
         planId,
         actionIds: parsed.actionIds,
         dryRun: parsed.dryRun,
@@ -505,7 +544,7 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
     const requestId = idGenerator();
 
     await options.queue.enqueue(
-      buildRemediationEnvelope(ctx, plan.tenantId, plan.runId, jobId, requestId, now(), {
+      buildRemediationEnvelope(ctx, "verify", plan.tenantId, plan.runId, jobId, requestId, now(), {
         actionId,
         check: action.check,
         section,
@@ -578,10 +617,11 @@ export function createRemediationRoutes(options: RemediationRouteOptions): Remed
 
 /** Actor id for the job payload; the authorizer seam owns identity. */
 function callerActor(caller: Caller): string | null {
-  const withId = caller as Caller & { actorUserId?: unknown };
-  return typeof withId.actorUserId === "function"
-    ? ((withId.actorUserId as () => string | null)() ?? null)
-    : null;
+  const withId = caller as Caller & { actorUserId?: unknown; userId?: unknown };
+  if (typeof withId.actorUserId === "function") {
+    return (withId.actorUserId as () => string | null)() ?? null;
+  }
+  return typeof withId.userId === "string" ? withId.userId : null;
 }
 
 // ─── OpenAPI fragment (paths published by the route module, §6) ──────────────

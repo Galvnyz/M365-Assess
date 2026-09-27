@@ -140,7 +140,11 @@ export function createReportRunReader(repo: SqliteRepository, artifactRoot: stri
       const finished = (await repo.listRuns(tenantId))
         .filter((run) => run.status === "succeeded" || run.status === "partial")
         .sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""));
-      return finished[0]?.id ?? null;
+      // A parent run only rolls up its per-tenant children; results live on the child.
+      for (const run of finished) {
+        if ((await repo.listRunsByParentId(run.id)).length === 0) return run.id;
+      }
+      return null;
     },
     async executivePayload(tenantId, runId): Promise<ExecutiveRenderPayload> {
       const [tenant, run] = await Promise.all([repo.getTenant(tenantId), repo.getRun(tenantId, runId)]);

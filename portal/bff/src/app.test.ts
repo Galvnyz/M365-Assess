@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -582,11 +582,18 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
     const worked: string[] = [];
     // Like run-tenant.ps1, the worker leaves the assessment's findings export behind.
     const exportFixture = fileURLToPath(new URL("../../db/src/fixtures/assessment-bridge.json", import.meta.url));
+    // A remediation plan job leaves plan-remediation.ps1's output behind.
+    const planFixture = fileURLToPath(new URL("../../db/src/fixtures/remediation-plan.json", import.meta.url));
     const runWorker = async (envelope: JobEnvelope): Promise<ResultEnvelope> => {
       worked.push(envelope.runId);
-      const assessmentFolder = path.join(root, envelope.payload.outputRef, "Assessment_1");
-      mkdirSync(assessmentFolder, { recursive: true });
-      copyFileSync(exportFixture, path.join(assessmentFolder, "_Assessment.json"));
+      const remediation = envelope.jobType === "remediation";
+      if (remediation) {
+        copyFileSync(planFixture, path.join(root, envelope.payload.outputRef, "remediation-plan.json"));
+      } else {
+        const assessmentFolder = path.join(root, envelope.payload.outputRef, "Assessment_1");
+        mkdirSync(assessmentFolder, { recursive: true });
+        copyFileSync(exportFixture, path.join(assessmentFolder, "_Assessment.json"));
+      }
       return {
         schemaVersion: "v1",
         jobId: envelope.jobId,
@@ -599,7 +606,7 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
         startedAt: "2026-09-26T00:00:00.000Z",
         finishedAt: "2026-09-26T00:00:05.000Z",
         exitCode: 0,
-        artifactRefs: ["Assessment_1/_Assessment.json"],
+        artifactRefs: [remediation ? "remediation-plan.json" : "Assessment_1/_Assessment.json"],
         summary: { total: 0, byStatus: {} },
         error: null,
       } as unknown as ResultEnvelope;
@@ -651,6 +658,35 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
       // The parent run follows its only child.
       const parent = await api.get(`/v1/runs/${body.run.id}`);
       expect(await parent.json()).toMatchObject({ id: body.run.id, status: "succeeded", summaryCounts: { total: 4 } });
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("plans remediation from a finished run's findings through the job queue (T-0836)", async () => {
+    const { api, root, worked, cleanup } = await runsApp("admin");
+    try {
+      const created = (await (await api.post("/v1/runs", { tenantId: "t-a", sections: ["Identity"] })).json()) as {
+        children: { id: string }[];
+      };
+      await api.app.runs.drain();
+      const runId = created.children[0]!.id;
+
+      // No run named: the tenant's latest finished run is used.
+      const requested = await api.post("/v1/remediation/plans", { tenantId: "t-a" });
+      expect(requested.status).toBe(202);
+      const { planId, jobId } = (await requested.json()) as { planId: string; jobId: string };
+      const findingsFile = path.join(root, "remediation", "t-a", jobId, "findings.json");
+      expect(JSON.parse(readFileSync(findingsFile, "utf8"))).toHaveLength(4);
+
+      await api.app.runs.drain();
+      expect(worked).toEqual([runId, runId]);
+      const plan = await api.get(`/v1/remediation/plans/${planId}`);
+      expect(plan.status).toBe(200);
+      expect(await plan.json()).toMatchObject({ plan: { id: planId, tenantId: "t-a", runId, mode: "mixed" }, actions: expect.any(Array) });
+
+      const apply = await api.post(`/v1/remediation/plans/${planId}/apply`, { actionIds: [], dryRun: true });
+      expect([400, 501]).toContain(apply.status);
     } finally {
       cleanup();
     }
@@ -719,13 +755,13 @@ describe("EPIC-004 dashboards and EPIC-005 reports (T-0823)", () => {
 describe("EPIC-006 remediation and EPIC-007 schedules and scripts (T-0824)", () => {
   const runner: WorkerRunner = async () => ({}) as never;
 
-  it("serves remediation history and refuses plans until job dispatch exists", async () => {
+  it("serves remediation history and refuses a plan for a tenant with no finished run", async () => {
     const admin = await adminWithTenant(runner);
     const history = await admin.get("/v1/remediation/history?tenantId=t-a");
     expect(history.status).toBe(200);
-    const plan = await admin.post("/v1/remediation/plans", { tenantId: "t-a", runId: "run-1", findingIds: ["f-1"] });
-    expect(plan.status).toBe(501);
-    expect(await plan.json()).toMatchObject({ code: "jobs.dispatch_unavailable" });
+    const plan = await admin.post("/v1/remediation/plans", { tenantId: "t-a" });
+    expect(plan.status).toBe(409);
+    expect(await plan.json()).toMatchObject({ code: "remediation.no_run" });
   });
 
   it("stores schedules, lists them, and refuses run-now with 501", async () => {
