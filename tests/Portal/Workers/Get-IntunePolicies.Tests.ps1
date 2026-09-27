@@ -315,4 +315,48 @@ Describe 'Get-IntunePolicies worker (T-0301)' {
             @($out.items.id) | Should -Be @('p1')
         }
     }
+
+    Context 'Policy detail for compare (T-0820)' {
+        It 'returns the configuration body without identity fields, with settings and assignments' {
+            Mock Invoke-MgGraphRequest {
+                param($Method, $Uri)
+                $Uri | Should -BeLike '*/configurationPolicies/p-1?$expand=settings,assignments'
+                return @{
+                    id                   = 'p-1'
+                    name                 = 'Defender'
+                    platforms            = 'windows10'
+                    lastModifiedDateTime = '2026-09-20T00:00:00Z'
+                    'settings@odata.context' = 'x'
+                    settings             = @(@{ settingInstance = @{ settingDefinitionId = 'a' } })
+                    assignments          = @(@{ target = @{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } })
+                }
+            }
+            $detail = Get-IntunePolicyDetail -Kind configuration -PolicyId 'p-1'
+            $detail.id | Should -Be 'p-1'
+            $detail.displayName | Should -Be 'Defender'
+            $detail.body.Keys | Sort-Object | Should -Be @('name', 'platforms', 'settings')
+            @($detail.assignments).Count | Should -Be 1
+        }
+
+        It 'expands only assignments for compliance policies' {
+            Mock Invoke-MgGraphRequest { param($Method, $Uri) $Uri | Should -BeLike '*deviceCompliancePolicies/c-1?$expand=assignments'; @{ id = 'c-1'; displayName = 'C'; passwordRequired = $true } }
+            (Get-IntunePolicyDetail -Kind compliance -PolicyId 'c-1').body.passwordRequired | Should -BeTrue
+        }
+
+        It 'returns null for a policy that does not exist' {
+            Mock Invoke-MgGraphRequest { throw 'Response status code does not indicate success: NotFound (Not Found).' }
+            Get-IntunePolicyDetail -Kind compliance -PolicyId 'gone' | Should -BeNullOrEmpty
+        }
+
+        It 'serves a detail read through the entrypoint when the job names a policy' {
+            Mock Connect-WorkerTenant { $null }
+            Mock Disconnect-WorkerTenant { }
+            Mock Invoke-MgGraphRequest { @{ id = 'c-1'; displayName = 'C'; passwordRequired = $true } }
+            $path = Join-Path $TestDrive 'detail.json'
+            @{ tenantId = 't'; kind = 'compliance'; policyId = 'c-1' } | ConvertTo-Json | Set-Content -LiteralPath $path
+            $out = & $script:entrypoint -JobFile $path | ConvertFrom-Json
+            $out.id | Should -Be 'c-1'
+            $out.body.passwordRequired | Should -BeTrue
+        }
+    }
 }

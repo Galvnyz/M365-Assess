@@ -66,6 +66,7 @@ try {
         $Overwrite      = [bool]$job['Overwrite']
         $CreateGroups   = [bool]$job['CreateGroups']
         $DryRun         = [bool]$job['DryRun']
+        $CreatedBy      = $job['Actor']
     }
 
     $invokeParams = @{
@@ -79,6 +80,7 @@ try {
         CreateGroups   = [bool]$CreateGroups
         DryRun         = [bool]$DryRun
     }
+    if ($CreatedBy) { $invokeParams['CreatedBy'] = $CreatedBy }
 
     $result = Invoke-DeployIntuneTemplate @invokeParams
     $result | ConvertTo-Json -Depth 20 -Compress

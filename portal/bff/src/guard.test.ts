@@ -33,7 +33,9 @@ const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
   { id: "collector-construct", re: /export-securityconfigreport/i },
   { id: "collector-construct", re: /add-setting/i },
   { id: "collector-construct", re: /checkid/i },
-  { id: "tenant-write-operation", re: /\bset-[a-z][a-z0-9]*/i },
+  // A Set-* cmdlet name is a tenant write; a worker entrypoint file name
+  // (set-intune-policy.ps1) is how the BFF asks a worker to do one, so it is allowed.
+  { id: "tenant-write-operation", re: /\bset-[a-z][a-z0-9]*(?![a-z0-9-]*\.ps1)/i },
 ];
 
 export interface Violation {
@@ -129,6 +131,14 @@ describe("thin BFF guard self-check", () => {
       "Set-Mailbox -Identity mailbox-1 -HiddenFromAddressListsEnabled $true",
     );
     expect(violations.map((v) => v.patternId)).toContain("tenant-write-operation");
+  });
+
+  it("allows naming a worker entrypoint file but not a Set-* cmdlet", () => {
+    expect(findViolations('run("set-intune-policy.ps1", job)')).toEqual([]);
+    expect(findViolations('run("set-assignment-filter.ps1", job)')).toEqual([]);
+    expect(findViolations("Set-IntunePolicy -PolicyId x").map((v) => v.patternId)).toContain(
+      "tenant-write-operation",
+    );
   });
 
   it("allows an RBAC permission identifier that names remediation", () => {

@@ -20,6 +20,12 @@ if ($JobFile) {
 }
 try {
     $job    = Read-IntunePoliciesJob -Path $JobFile
+    if ($job.PolicyId) {
+        $detail = Get-IntunePolicyDetail -Kind $job.Kind -PolicyId $job.PolicyId
+        ConvertTo-Json -InputObject $detail -Depth 20 -Compress
+        return
+    }
+
     $listParams = @{
         TenantId     = $job.TenantId
         Kind         = $job.Kind

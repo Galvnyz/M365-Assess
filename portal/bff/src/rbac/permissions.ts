@@ -47,6 +47,27 @@ import {
 import { HEALTH_PATH } from "../routes/health.js";
 import { INTUNE_TEMPLATE_PERMISSIONS } from "../routes/intune-templates.js";
 import { CREDENTIALS_OPENAPI } from "../routes/credentials.js";
+import { DEVICE_BITLOCKER_OPENAPI } from "../routes/device-bitlocker.js";
+import { DEVICE_LAPS_OPENAPI } from "../routes/device-laps.js";
+import {
+  ASSIGNMENT_FILTER_PATH,
+  ASSIGNMENT_FILTER_PERMISSIONS,
+  ASSIGNMENT_FILTERS_PATH,
+  FILTER_TEMPLATE_DEPLOY_PATH,
+  FILTER_TEMPLATE_PATH,
+  FILTER_TEMPLATES_PATH,
+} from "../routes/intune-assignment-filters.js";
+import { INTUNE_COMPARE_PATH, INTUNE_COMPARE_PERMISSION } from "../routes/intune-compare.js";
+import { INTUNE_CRUD_BASE_PATH, INTUNE_CRUD_ITEM_PATH } from "../routes/intune-policies-crud.js";
+import { INTUNE_POLICIES_PATH, INTUNE_READ_PERMISSION, INTUNE_WRITE_PERMISSION } from "../routes/intune-policies.js";
+import {
+  REUSABLE_SETTING_TEMPLATE_PATH,
+  REUSABLE_SETTING_TEMPLATES_PATH,
+  REUSABLE_SETTINGS_PATH,
+  REUSABLE_SETTINGS_PERMISSIONS,
+  REUSABLE_SETTINGS_SYNC_PATH,
+} from "../routes/intune-reusable-settings.js";
+import { INTUNE_TEMPLATE_DEPLOY_PATH } from "../routes/intune-templates-deploy.js";
 import { GDAP_OPENAPI } from "../routes/gdap.js";
 import { ONBOARD_OPENAPI } from "../routes/onboard.js";
 import { TENANT_GROUPS_OPENAPI } from "../routes/tenant-groups.js";
@@ -298,6 +319,36 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   ...registryEntriesFromOpenApi(GDAP_OPENAPI),
   ...registryEntriesFromOpenApi(ONBOARD_OPENAPI),
   ...registryEntriesFromOpenApi(TEST_CONNECTION_OPENAPI),
+  // EPIC-016 Intune (T-0820). Specific /intune/* paths precede the generic /intune/:kind
+  // entries, mirroring the mount order in app.ts. Deploy routes also require write
+  // semantics; the registry records their template permission.
+  { method: "GET", path: INTUNE_COMPARE_PATH, permission: INTUNE_COMPARE_PERMISSION },
+  { method: "GET", path: REUSABLE_SETTINGS_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.read },
+  { method: "POST", path: REUSABLE_SETTINGS_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.write },
+  { method: "POST", path: REUSABLE_SETTINGS_SYNC_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.write },
+  { method: "GET", path: REUSABLE_SETTING_TEMPLATES_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.read },
+  { method: "POST", path: REUSABLE_SETTING_TEMPLATES_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.templates },
+  { method: "GET", path: REUSABLE_SETTING_TEMPLATE_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.read },
+  { method: "PATCH", path: REUSABLE_SETTING_TEMPLATE_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.templates },
+  { method: "DELETE", path: REUSABLE_SETTING_TEMPLATE_PATH, permission: REUSABLE_SETTINGS_PERMISSIONS.templates },
+  { method: "GET", path: ASSIGNMENT_FILTERS_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.read },
+  { method: "POST", path: ASSIGNMENT_FILTERS_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.write },
+  { method: "PATCH", path: ASSIGNMENT_FILTER_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.write },
+  { method: "DELETE", path: ASSIGNMENT_FILTER_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.write },
+  { method: "GET", path: FILTER_TEMPLATES_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.read },
+  { method: "POST", path: FILTER_TEMPLATES_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.templates },
+  { method: "GET", path: FILTER_TEMPLATE_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.read },
+  { method: "PATCH", path: FILTER_TEMPLATE_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.templates },
+  { method: "DELETE", path: FILTER_TEMPLATE_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.templates },
+  { method: "POST", path: FILTER_TEMPLATE_DEPLOY_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.templates },
+  { method: "POST", path: INTUNE_TEMPLATE_DEPLOY_PATH, permission: INTUNE_TEMPLATE_PERMISSIONS.templates },
+  { method: "GET", path: INTUNE_POLICIES_PATH, permission: INTUNE_READ_PERMISSION },
+  { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
+  { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  // EPIC-018 device key reveal (T-0820).
+  ...registryEntriesFromOpenApi(DEVICE_BITLOCKER_OPENAPI),
+  ...registryEntriesFromOpenApi(DEVICE_LAPS_OPENAPI),
 ]);
 
 // SPEC §11 item 2 taxonomy: `{Area}.{Resource}.{Action}` — two or three

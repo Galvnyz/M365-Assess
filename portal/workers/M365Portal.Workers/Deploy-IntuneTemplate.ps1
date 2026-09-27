@@ -49,6 +49,7 @@ function Read-DeployIntuneTemplateJob {
         Overwrite      = [bool]($json.overwrite -eq $true)
         CreateGroups   = [bool]($json.createGroups -eq $true)
         DryRun         = [bool]($json.dryRun -eq $true)
+        Actor          = if ($json.actor) { [string]$json.actor } else { 'system' }
     }
 }
 

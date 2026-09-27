@@ -19,6 +19,8 @@ import {
   createTenantStore,
   createTenantVariableStore,
 } from "./adapters/tenants.js";
+import { createAuditSink } from "./adapters/audit.js";
+import { createIntuneProviders } from "./adapters/intune.js";
 import {
   createGdapSyncRunner,
   createOnboardRunner,
@@ -31,14 +33,29 @@ import type { BffConfig } from "./config.js";
 import { createInMemoryCredentialStore } from "./credentials/store.js";
 import { AppError } from "./errors.js";
 import type { BaseRoleId } from "./rbac/base-roles.js";
-import { RbacErrorCodes, type Caller } from "./rbac/authorize.js";
+import { RbacErrorCodes, requireTenantInScope, type Caller } from "./rbac/authorize.js";
 import { testPortalAccess } from "./rbac/test-portal-access.js";
 import { SqliteCaTemplateRepository } from "./repository/ca-templates.js";
 import { SqliteGroupTemplateRepository } from "./repository/group-templates.js";
+import { SqliteDeviceActionRepository } from "./repository/device-actions.js";
 import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js";
+import { SqliteKeyAccessAuditRepository } from "./repository/key-access-audit.js";
+import { SqliteReusableSettingTemplateRepository } from "./repository/reusable-setting-templates.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
 import { createCaTemplateRoutes } from "./routes/ca-templates.js";
 import { createCredentialRoutes } from "./routes/credentials.js";
+import { DEVICE_ACTIONS_HISTORY_OPENAPI, createDeviceActionsHistoryRoute } from "./routes/device-actions-history.js";
+import { DEVICE_BITLOCKER_PERMISSION, createDeviceBitLockerRoute } from "./routes/device-bitlocker.js";
+import { DEVICE_LAPS_PERMISSION, createDeviceLapsRoute } from "./routes/device-laps.js";
+import {
+  SqliteAssignmentFilterTemplateRepository,
+  createAssignmentFilterRoutes,
+} from "./routes/intune-assignment-filters.js";
+import { createIntuneCompareRoute } from "./routes/intune-compare.js";
+import { createIntuneCrudRoutes } from "./routes/intune-policies-crud.js";
+import { createIntunePoliciesRoutes } from "./routes/intune-policies.js";
+import { createReusableSettingsRoutes } from "./routes/intune-reusable-settings.js";
+import { createIntuneTemplateDeployRoute } from "./routes/intune-templates-deploy.js";
 import { createGdapRoutes } from "./routes/gdap.js";
 import { createOnboardRoutes } from "./routes/onboard.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
@@ -123,6 +140,28 @@ export function resolveCaller(ctx: RequestContext): Caller | undefined {
   return (ctx.caller ?? undefined) as Caller | undefined;
 }
 
+/**
+ * Wrap a route whose module does no authorization of its own: require `permission`
+ * and, when the path names a tenant, that the tenant is in the caller's scope.
+ */
+export function guardRoute(route: Route, permission: string): Route {
+  return {
+    ...route,
+    handler: (ctx) => {
+      authorizeCaller(ctx.caller, permission);
+      const tenantId = ctx.params["tenantId"];
+      if (tenantId) requireTenantInScope(ctx.caller as Caller, tenantId);
+      return route.handler(ctx);
+    },
+  };
+}
+
+/** The signed-in user's id for audit records. */
+function actorOf(ctx: RequestContext): string {
+  const caller = ctx.caller as { id?: unknown } | null | undefined;
+  return typeof caller?.id === "string" ? caller.id : "unknown";
+}
+
 // ---- Composition -----------------------------------------------------------
 
 export interface App {
@@ -161,7 +200,11 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const run = options.workerRunner ?? createWorkerRunner({ workersDir: config.workersDir });
 
   const tenantStore = createTenantStore(repo);
+  const recordAudit = createAuditSink(repo);
+  const intuneTemplates = new SqliteIntuneTemplateRepository(db);
   const credentialRows = createCredentialRowStore(repo);
+  const intune = createIntuneProviders(run, credentialRows);
+  const keyAudit = new SqliteKeyAccessAuditRepository(db, schemaVersion);
   const caller = { resolveCaller, authorize: authorizeCaller };
 
   const routes: Route[] = [
@@ -180,7 +223,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     }),
     ...createBaselinesCatalogRoutes({ resolveCaller, authorize: authorizeCaller }),
     ...createCaTemplateRoutes(new SqliteCaTemplateRepository(db), { authorize: authorizeContext }),
-    ...createIntuneTemplateRoutes(new SqliteIntuneTemplateRepository(db), { authorize: authorizeContext }),
+    ...createIntuneTemplateRoutes(intuneTemplates, { authorize: authorizeContext }),
     ...createGroupTemplatesRoutes({
       repository: new SqliteGroupTemplateRepository(db),
       resolveCaller,
@@ -213,6 +256,46 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
       runner: createTestConnectionRunner(run),
       ...caller,
     }),
+
+    // EPIC-016 Intune (T-0820). Order matters: the server takes the first match, and the
+    // generic /intune/:kind policy routes would otherwise capture compare,
+    // reusable-settings, and assignment-filters.
+    createIntuneCompareRoute({ provider: intune.compare, templates: intuneTemplates, resolveCaller, authorize: authorizeContext }),
+    ...createReusableSettingsRoutes({
+      repository: new SqliteReusableSettingTemplateRepository(db),
+      provider: intune.reusableSettings,
+      resolveCaller,
+      authorize: authorizeContext,
+      recordAudit,
+    }),
+    ...createAssignmentFilterRoutes({
+      repository: new SqliteAssignmentFilterTemplateRepository(db),
+      provider: intune.assignmentFilters,
+      resolveCaller,
+      authorize: authorizeContext,
+      recordAudit,
+    }),
+    createIntuneTemplateDeployRoute({
+      repository: intuneTemplates,
+      provider: intune.deploy,
+      resolveCaller,
+      authorize: authorizeContext,
+      recordAudit,
+    }),
+    ...createIntunePoliciesRoutes({ provider: intune.policies, ...caller }),
+    ...createIntuneCrudRoutes({ provider: intune.crud, ...caller }),
+
+    // EPIC-018 devices (T-0820). These modules check permissions but not tenant scope,
+    // and the history route checks neither, so each is guarded here.
+    ...createDeviceActionsHistoryRoute({ store: new SqliteDeviceActionRepository(db, schemaVersion) }).map((r) =>
+      guardRoute(r, DEVICE_ACTIONS_HISTORY_OPENAPI.paths["/tenants/{tenantId}/devices/{deviceId}/actions"].get.permission),
+    ),
+    ...createDeviceBitLockerRoute({ keys: intune.bitlocker, audit: keyAudit, authorize: authorizeContext, actor: actorOf }).map(
+      (r) => guardRoute(r, DEVICE_BITLOCKER_PERMISSION),
+    ),
+    ...createDeviceLapsRoute({ credentials: intune.laps, audit: keyAudit, authorize: authorizeContext, actor: actorOf }).map(
+      (r) => guardRoute(r, DEVICE_LAPS_PERMISSION),
+    ),
   ];
 
   return {

@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   DATABASE_FILE,
+  guardRoute,
   authorizeCaller,
   authorizeContext,
   canAccess,
@@ -15,7 +16,7 @@ import {
 } from "./app.js";
 import { loadConfig, type BffConfig } from "./config.js";
 import type { WorkerRunner } from "./adapters/workers.js";
-import { ALL_TENANTS } from "./rbac/scope.js";
+import { ALL_TENANTS, tenantScope } from "./rbac/scope.js";
 import { buildServer, type RequestContext } from "./server.js";
 
 const opened: { server: Server; app: App }[] = [];
@@ -208,5 +209,85 @@ describe("tenants and onboarding routes (T-0822)", () => {
   it("does not serve GDAP sync unless a partner tenant is configured", async () => {
     const api = await serve("admin");
     expect((await api.post("/v1/gdap/sync", {})).status).toBe(404);
+  });
+});
+
+describe("Intune and device routes (T-0820)", () => {
+  /** A fake worker runner answering per entrypoint/action, recording every job. */
+  function recordingRunner() {
+    const calls: { entrypoint: string; job: Record<string, unknown> }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      const j = job as Record<string, unknown>;
+      calls.push({ entrypoint, job: j });
+      if (entrypoint === "get-intune-policies.ps1" && j["policyId"]) {
+        return { id: j["policyId"], displayName: `Policy ${j["policyId"]}`, platform: "windows", body: { passwordMinimumLength: j["policyId"] === "p-1" ? 8 : 12 }, assignments: [] } as never;
+      }
+      if (entrypoint === "get-intune-policies.ps1") {
+        return { tenantId: "t-a", kind: j["kind"], totalCount: 0, items: [], nextCursor: null } as never;
+      }
+      if (entrypoint === "get-bitlocker-keys.ps1") {
+        return { tenantId: "t-a", deviceId: j["deviceId"], keys: [{ id: "k-1", key: "123-456", volumeType: "operatingSystemVolume", createdDateTime: null }] } as never;
+      }
+      return { tenantId: "t-a", items: [] } as never;
+    };
+    return { runner, calls };
+  }
+
+  async function adminWithTenant(runner: WorkerRunner, role: "admin" | "operator" = "admin") {
+    const db = new Database(":memory:");
+    const setup = await serve("admin", db, runner);
+    await setup.post("/v1/tenants", { id: "t-a", displayName: "Contoso" });
+    await setup.post("/v1/tenants/t-a/credential", { authMethod: "certificate-thumbprint", clientId: "app-1", thumbprint: "ABC123" });
+    return role === "admin" ? setup : serve("operator", db, runner);
+  }
+
+  it("dispatches /intune/* paths to their own modules, not the generic :kind routes", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner);
+    expect((await api.get("/v1/tenants/t-a/intune/assignment-filters")).status).toBe(200);
+    expect((await api.get("/v1/tenants/t-a/intune/reusable-settings")).status).toBe(200);
+    const compare = await api.get("/v1/tenants/t-a/intune/compare?left=policy:compliance:p-1&right=policy:compliance:p-2");
+    expect(compare.status).toBe(200);
+    expect(await compare.json()).toMatchObject({ settings: [{ path: "passwordMinimumLength", kind: "changed", left: 8, right: 12 }] });
+    expect((await api.get("/v1/tenants/t-a/intune/compliance")).status).toBe(200);
+    expect(calls.map((c) => [c.entrypoint, c.job["action"] ?? c.job["policyId"] ?? c.job["kind"]])).toEqual([
+      ["set-assignment-filter.ps1", "list"],
+      ["sync-reusable-settings.ps1", "list"],
+      ["get-intune-policies.ps1", "p-1"],
+      ["get-intune-policies.ps1", "p-2"],
+      ["get-intune-policies.ps1", "compliance"],
+    ]);
+    for (const call of calls) expect(call.job["credential"]).toMatchObject({ credentialRef: "tenants/t-a/credential" });
+  });
+
+  it("lets a read-only caller list policies but not write them", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    expect((await api.get("/v1/tenants/t-a/intune/compliance")).status).toBe(200);
+    expect((await api.post("/v1/tenants/t-a/intune/compliance", { displayName: "x", preview: true })).status).toBe(403);
+    expect(calls.filter((c) => c.entrypoint === "set-intune-policy.ps1")).toHaveLength(0);
+  });
+
+  it("reveals BitLocker keys to admins only, auditing each reveal", async () => {
+    const { runner } = recordingRunner();
+    const admin = await adminWithTenant(runner);
+    const res = await admin.get("/v1/tenants/t-a/devices/d-1/bitlocker");
+    expect(res.status).toBe(200);
+    const operator = await serve("operator", new Database(":memory:"), runner);
+    expect((await operator.get("/v1/tenants/t-a/devices/d-1/bitlocker")).status).toBe(403);
+  });
+
+  it("guards the device history route, which does no authorization itself", async () => {
+    const anonymous = await serve(null);
+    expect((await anonymous.get("/v1/tenants/t-a/devices/d-1/actions")).status).toBe(401);
+    const operator = await serve("operator");
+    expect((await operator.get("/v1/tenants/t-a/devices/d-1/actions")).status).toBe(200);
+
+    const inner = { method: "GET", path: "/v1/tenants/:tenantId/x", handler: () => ({ status: 200 }) };
+    const guarded = guardRoute(inner, "Endpoint.Device.Read");
+    const ctx = (tenantId: string) =>
+      ({ params: { tenantId }, caller: { roles: ["operator"], tenantScope: tenantScope(["t-a"]) } }) as unknown as RequestContext;
+    expect(await guarded.handler(ctx("t-a"))).toEqual({ status: 200 });
+    expect(() => guarded.handler(ctx("t-b"))).toThrowError(expect.objectContaining({ status: 403 }));
   });
 });

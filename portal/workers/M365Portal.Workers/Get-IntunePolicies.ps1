@@ -49,6 +49,8 @@ function Read-IntunePoliciesJob {
         ModifiedDate = if ($json.modifiedDate) { [string]$json.modifiedDate } else { '' }
         # 'true' / 'false' / '' (no filter); the BFF sends a boolean.
         Assigned     = if ($null -ne $json.assigned) { ([string]$json.assigned).ToLowerInvariant() } else { '' }
+        # Set for a single-policy detail read (compare, T-0820) instead of a list.
+        PolicyId     = if ($json.policyId) { [string]$json.policyId } else { '' }
         Top          = if ($json.top) { [int]$json.top } else { 100 }
         SkipToken    = if ($json.skipToken) { [string]$json.skipToken } else { '' }
     }
@@ -138,6 +140,59 @@ function ConvertTo-IntunePolicyRow {
         assignments          = $assignments
         lastModifiedDateTime = $lastModified
         modifiedBy           = $modifiedBy
+    }
+}
+
+function Get-IntunePolicyDetail {
+    <#
+    .SYNOPSIS
+        Reads one policy with its full configuration and assignments.
+    .DESCRIPTION
+        Returns the policy body (Graph properties minus identity/metadata fields, plus the
+        settings-catalog `settings` for configuration policies) and its raw Graph
+        assignments, for structural compare (T-0310/T-0820). Returns $null when the
+        policy does not exist.
+    .PARAMETER Kind
+        configuration or compliance.
+    .PARAMETER PolicyId
+        The policy id.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('configuration', 'compliance')]
+        [string]$Kind,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$PolicyId
+    )
+
+    $resource = $script:KindRegistry[$Kind].GraphResource
+    $expand = if ($Kind -eq 'configuration') { 'settings,assignments' } else { 'assignments' }
+    try {
+        $policy = Invoke-MgGraphRequest -Method GET -Uri "/$resource/$([uri]::EscapeDataString($PolicyId))?`$expand=$expand"
+    }
+    catch {
+        if ($_.Exception.Message -match '404|NotFound|ResourceNotFound') { return $null }
+        throw
+    }
+    if ($null -eq $policy) { return $null }
+
+    $row = ConvertTo-IntunePolicyRow -Policy $policy -Kind $Kind
+    $skip = @('id', 'assignments', 'createdDateTime', 'lastModifiedDateTime', 'modifiedDateTime', 'version', '@odata.context', 'settings@odata.context', 'assignments@odata.context')
+    $body = @{}
+    $keys = if ($policy -is [System.Collections.IDictionary]) { $policy.Keys } else { $policy.PSObject.Properties.Name }
+    foreach ($key in $keys) {
+        if ($skip -notcontains $key) { $body[[string]$key] = $policy.$key }
+    }
+    return @{
+        id          = $row.id
+        displayName = $row.displayName
+        platform    = $row.platform
+        body        = $body
+        assignments = @($policy.assignments)
     }
 }
 
