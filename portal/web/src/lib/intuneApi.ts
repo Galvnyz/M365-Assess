@@ -450,3 +450,62 @@ export async function listDeployTargets(
     })),
   };
 }
+
+// ---- Compare page options (T-0810) ----
+
+/** A compare target for PolicyCompareView: policy:<kind>:<id> or template:<id>. */
+export interface CompareOption {
+  readonly ref: string;
+  readonly label: string;
+}
+
+/**
+ * The right-hand choices for comparing `leftPolicyId`: the other policies of the same
+ * kind, then templates of that policy type, each sorted by label. Compare is within one
+ * tenant in v1, so every policy option comes from the current tenant's list.
+ */
+export function buildCompareOptions(
+  kind: IntunePolicyKind,
+  leftPolicyId: string,
+  policies: readonly IntunePolicyItem[],
+  templates: readonly IntuneTemplate[],
+): CompareOption[] {
+  const byLabel = (a: CompareOption, b: CompareOption) => a.label.localeCompare(b.label);
+  const policyOptions = policies
+    .filter((p) => p.id !== leftPolicyId)
+    .map((p) => ({ ref: `policy:${kind}:${p.id}`, label: p.displayName || p.name }))
+    .sort(byLabel);
+  const templateOptions = templates
+    .filter((t) => t.policyType === kind)
+    .map((t) => ({ ref: `template:${t.id}`, label: t.name }))
+    .sort(byLabel);
+  return [...policyOptions, ...templateOptions];
+}
+
+/** Read every page of a kind's policies (the compare picker needs the whole set). */
+export async function fetchAllIntunePolicies(
+  tenantId: string,
+  kind: IntunePolicyKind,
+  baseUrl = "",
+): Promise<IntunePolicyItem[]> {
+  const all: IntunePolicyItem[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: IntunePoliciesPage = await fetchIntunePolicies(tenantId, kind, { cursor, limit: 100 }, baseUrl);
+    all.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return all;
+}
+
+/** Read every page of Intune templates. */
+export async function fetchAllIntuneTemplates(baseUrl = ""): Promise<IntuneTemplate[]> {
+  const all: IntuneTemplate[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: IntuneTemplatesPage = await listIntuneTemplates({ cursor, limit: 100 }, baseUrl);
+    all.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return all;
+}
