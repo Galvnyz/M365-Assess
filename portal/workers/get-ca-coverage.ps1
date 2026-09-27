@@ -21,11 +21,22 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-CaCoverage.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-CaCoverageJob -Path $JobFile
-    $TenantId = $job['TenantId']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-CaCoverageJob -Path $JobFile
+        $TenantId = $job['TenantId']
+    }
 
-$result = Get-CaCoverage -TenantId $TenantId
-$result | ConvertTo-Json -Depth 10 -Compress
+    $result = Get-CaCoverage -TenantId $TenantId
+    $result | ConvertTo-Json -Depth 10 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

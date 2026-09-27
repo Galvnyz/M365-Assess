@@ -47,31 +47,42 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Deploy-IntuneTemplate.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-DeployIntuneTemplateJob -Path $JobFile
-    $TenantId       = $job['TenantId']
-    $TemplateJson   = $job['TemplateJson']
-    $PolicyName     = $job['PolicyName']
-    $AssignmentMode = $job['AssignmentMode']
-    $Groups         = @($job['Groups'])
-    $PolicyState    = $job['PolicyState']
-    $Overwrite      = [bool]$job['Overwrite']
-    $CreateGroups   = [bool]$job['CreateGroups']
-    $DryRun         = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-DeployIntuneTemplateJob -Path $JobFile
+        $TenantId       = $job['TenantId']
+        $TemplateJson   = $job['TemplateJson']
+        $PolicyName     = $job['PolicyName']
+        $AssignmentMode = $job['AssignmentMode']
+        $Groups         = @($job['Groups'])
+        $PolicyState    = $job['PolicyState']
+        $Overwrite      = [bool]$job['Overwrite']
+        $CreateGroups   = [bool]$job['CreateGroups']
+        $DryRun         = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId       = $TenantId
-    TemplateJson   = $TemplateJson
-    PolicyName     = $PolicyName
-    AssignmentMode = $AssignmentMode
-    Groups         = $Groups
-    PolicyState    = $PolicyState
-    Overwrite      = [bool]$Overwrite
-    CreateGroups   = [bool]$CreateGroups
-    DryRun         = [bool]$DryRun
+    $invokeParams = @{
+        TenantId       = $TenantId
+        TemplateJson   = $TemplateJson
+        PolicyName     = $PolicyName
+        AssignmentMode = $AssignmentMode
+        Groups         = $Groups
+        PolicyState    = $PolicyState
+        Overwrite      = [bool]$Overwrite
+        CreateGroups   = [bool]$CreateGroups
+        DryRun         = [bool]$DryRun
+    }
+
+    $result = Invoke-DeployIntuneTemplate @invokeParams
+    $result | ConvertTo-Json -Depth 20 -Compress
 }
-
-$result = Invoke-DeployIntuneTemplate @invokeParams
-$result | ConvertTo-Json -Depth 20 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

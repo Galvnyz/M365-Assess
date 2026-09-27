@@ -40,31 +40,42 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-AuthMethodsPolicy.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-AuthMethodsPolicyJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $policy = $job['Policy']
-    if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
-        $DryRun = [switch]$true
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-AuthMethodsPolicyJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $policy = $job['Policy']
+        if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
+            $DryRun = [switch]$true
+        }
+        if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
+            $Confirmed = [switch]$true
+        }
+    } else {
+        $policy = $PolicyJson | ConvertFrom-Json
     }
-    if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
-        $Confirmed = [switch]$true
+
+    $invokeParams = @{
+        TenantId = $TenantId
+        Policy   = $policy
     }
-} else {
-    $policy = $PolicyJson | ConvertFrom-Json
-}
+    if ($DryRun) {
+        $invokeParams['DryRun'] = $true
+    }
+    if ($Confirmed) {
+        $invokeParams['Confirmed'] = $true
+    }
 
-$invokeParams = @{
-    TenantId = $TenantId
-    Policy   = $policy
+    $result = Invoke-AuthMethodsPolicyApply @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-if ($DryRun) {
-    $invokeParams['DryRun'] = $true
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
 }
-if ($Confirmed) {
-    $invokeParams['Confirmed'] = $true
-}
-
-$result = Invoke-AuthMethodsPolicyApply @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress

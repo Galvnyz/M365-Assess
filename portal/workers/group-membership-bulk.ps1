@@ -38,25 +38,36 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Invoke-GroupMembershipBulk.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-GroupMembershipBulkJob -Path $JobFile
-    $TenantId  = $job['TenantId']
-    $GroupId   = $job['GroupId']
-    $Role      = $job['Role']
-    $Operation = $job['Operation']
-    $Users     = $job['Users']
-    $DryRun    = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-GroupMembershipBulkJob -Path $JobFile
+        $TenantId  = $job['TenantId']
+        $GroupId   = $job['GroupId']
+        $Role      = $job['Role']
+        $Operation = $job['Operation']
+        $Users     = $job['Users']
+        $DryRun    = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId  = $TenantId
-    GroupId   = $GroupId
-    Role      = $Role
-    Operation = $Operation
-    Users     = $Users
-    DryRun    = [bool]$DryRun
+    $invokeParams = @{
+        TenantId  = $TenantId
+        GroupId   = $GroupId
+        Role      = $Role
+        Operation = $Operation
+        Users     = $Users
+        DryRun    = [bool]$DryRun
+    }
+
+    $result = Invoke-GroupMembershipBulk @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-
-$result = Invoke-GroupMembershipBulk @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

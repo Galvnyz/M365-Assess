@@ -8,6 +8,7 @@ BeforeAll {
     }
 
     . $script:worker
+    . (Join-Path $script:repoRoot 'portal/workers/M365Portal.Workers/Connect-WorkerTenant.ps1')
 }
 
 Describe 'Get-CaPolicies worker (T-0281)' {
@@ -205,6 +206,9 @@ Describe 'Get-CaPolicies worker (T-0281)' {
 
     Context 'entrypoint job envelope' {
         It 'executes through the get-ca-policies.ps1 entrypoint' {
+            # Tenant sign-in is Connect-WorkerTenant's concern (T-0826); stub it here.
+            Mock Connect-WorkerTenant { $null }
+            Mock Disconnect-WorkerTenant { }
             Mock Invoke-MgGraphRequest {
                 return @{
                     value = @(

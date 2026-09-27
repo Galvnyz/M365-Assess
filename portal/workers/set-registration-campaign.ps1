@@ -51,29 +51,40 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-RegistrationCampaign.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-RegistrationCampaignJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $State = $job['State']
-    $SnoozeDurationInDays = $job['SnoozeDurationInDays']
-    $IncludeTargets = $job['IncludeTargets']
-    $ExcludeTargets = $job['ExcludeTargets']
-    if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
-        $Confirmed = [switch]$true
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-RegistrationCampaignJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $State = $job['State']
+        $SnoozeDurationInDays = $job['SnoozeDurationInDays']
+        $IncludeTargets = $job['IncludeTargets']
+        $ExcludeTargets = $job['ExcludeTargets']
+        if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
+            $Confirmed = [switch]$true
+        }
     }
-}
 
-$invokeParams = @{
-    TenantId             = $TenantId
-    State                = $State
-    SnoozeDurationInDays = $SnoozeDurationInDays
-    IncludeTargets       = $IncludeTargets
-    ExcludeTargets       = $ExcludeTargets
-}
-if ($Confirmed) {
-    $invokeParams['Confirmed'] = $true
-}
+    $invokeParams = @{
+        TenantId             = $TenantId
+        State                = $State
+        SnoozeDurationInDays = $SnoozeDurationInDays
+        IncludeTargets       = $IncludeTargets
+        ExcludeTargets       = $ExcludeTargets
+    }
+    if ($Confirmed) {
+        $invokeParams['Confirmed'] = $true
+    }
 
-$result = Invoke-RegistrationCampaignSet @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = Invoke-RegistrationCampaignSet @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

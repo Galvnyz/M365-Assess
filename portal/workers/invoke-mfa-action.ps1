@@ -58,37 +58,48 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Invoke-MfaAction.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-MfaActionJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $UserId = $job['UserId']
-    $Action = $job['Action']
-    if (-not $PSBoundParameters.ContainsKey('Method')) {
-        $Method = $job['Method']
-    }
-    if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
-        $DryRun = [switch]$true
-    }
-    if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
-        $Confirmed = [switch]$true
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-MfaActionJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $UserId = $job['UserId']
+        $Action = $job['Action']
+        if (-not $PSBoundParameters.ContainsKey('Method')) {
+            $Method = $job['Method']
+        }
+        if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
+            $DryRun = [switch]$true
+        }
+        if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
+            $Confirmed = [switch]$true
+        }
+    }
 
-$invokeParams = @{
-    TenantId = $TenantId
-    UserId   = $UserId
-    Action   = $Action
-}
-if ($Method.Trim().Length -gt 0) {
-    $invokeParams['Method'] = $Method.Trim()
-}
-if ($DryRun) {
-    $invokeParams['DryRun'] = $true
-}
-if ($Confirmed) {
-    $invokeParams['Confirmed'] = $true
-}
+    $invokeParams = @{
+        TenantId = $TenantId
+        UserId   = $UserId
+        Action   = $Action
+    }
+    if ($Method.Trim().Length -gt 0) {
+        $invokeParams['Method'] = $Method.Trim()
+    }
+    if ($DryRun) {
+        $invokeParams['DryRun'] = $true
+    }
+    if ($Confirmed) {
+        $invokeParams['Confirmed'] = $true
+    }
 
-$result = Invoke-MfaAction @invokeParams
-$result | ConvertTo-Json -Depth 5 -Compress
+    $result = Invoke-MfaAction @invokeParams
+    $result | ConvertTo-Json -Depth 5 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

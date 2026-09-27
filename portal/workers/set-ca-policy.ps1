@@ -52,35 +52,46 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-CaPolicy.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-SetCaPolicyJob -Path $JobFile
-    $TenantId            = $job['TenantId']
-    $Action              = $job['Action']
-    $PolicyId            = $job['PolicyId']
-    $DisplayName         = $job['DisplayName']
-    $State               = $job['State']
-    $PolicyJson          = $job['PolicyJson']
-    $ConditionsJson      = $job['ConditionsJson']
-    $GrantControlsJson   = $job['GrantControlsJson']
-    $SessionControlsJson = $job['SessionControlsJson']
-    $ConfirmName         = $job['ConfirmName']
-    $DryRun              = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-SetCaPolicyJob -Path $JobFile
+        $TenantId            = $job['TenantId']
+        $Action              = $job['Action']
+        $PolicyId            = $job['PolicyId']
+        $DisplayName         = $job['DisplayName']
+        $State               = $job['State']
+        $PolicyJson          = $job['PolicyJson']
+        $ConditionsJson      = $job['ConditionsJson']
+        $GrantControlsJson   = $job['GrantControlsJson']
+        $SessionControlsJson = $job['SessionControlsJson']
+        $ConfirmName         = $job['ConfirmName']
+        $DryRun              = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId            = $TenantId
-    Action              = $Action
-    PolicyId            = $PolicyId
-    DisplayName         = $DisplayName
-    State               = $State
-    PolicyJson          = $PolicyJson
-    ConditionsJson      = $ConditionsJson
-    GrantControlsJson   = $GrantControlsJson
-    SessionControlsJson = $SessionControlsJson
-    ConfirmName         = $ConfirmName
-    DryRun              = [bool]$DryRun
+    $invokeParams = @{
+        TenantId            = $TenantId
+        Action              = $Action
+        PolicyId            = $PolicyId
+        DisplayName         = $DisplayName
+        State               = $State
+        PolicyJson          = $PolicyJson
+        ConditionsJson      = $ConditionsJson
+        GrantControlsJson   = $GrantControlsJson
+        SessionControlsJson = $SessionControlsJson
+        ConfirmName         = $ConfirmName
+        DryRun              = [bool]$DryRun
+    }
+
+    $result = Invoke-SetCaPolicy @invokeParams
+    $result | ConvertTo-Json -Depth 10 -Compress
 }
-
-$result = Invoke-SetCaPolicy @invokeParams
-$result | ConvertTo-Json -Depth 10 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

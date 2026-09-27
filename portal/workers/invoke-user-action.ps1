@@ -63,20 +63,31 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Invoke-UserAction.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-UserActionJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $UserId = $job['UserId']
-    $Action = $job['Action']
-    $OneTimeSecret = $job['OneTimeSecret']
-    if (-not $PSBoundParameters.ContainsKey('DryRun')) {
-        $DryRun = [bool]$job['DryRun']
-    }
-    if (-not $PSBoundParameters.ContainsKey('Confirm')) {
-        $Confirm = [bool]$job['Confirmed']
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-UserActionJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $UserId = $job['UserId']
+        $Action = $job['Action']
+        $OneTimeSecret = $job['OneTimeSecret']
+        if (-not $PSBoundParameters.ContainsKey('DryRun')) {
+            $DryRun = [bool]$job['DryRun']
+        }
+        if (-not $PSBoundParameters.ContainsKey('Confirm')) {
+            $Confirm = [bool]$job['Confirmed']
+        }
+    }
 
-$result = Invoke-TenantUserAction -TenantId $TenantId -UserId $UserId -Action $Action -OneTimeSecret $OneTimeSecret -DryRun:$DryRun -Confirmed:$Confirm
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = Invoke-TenantUserAction -TenantId $TenantId -UserId $UserId -Action $Action -OneTimeSecret $OneTimeSecret -DryRun:$DryRun -Confirmed:$Confirm
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

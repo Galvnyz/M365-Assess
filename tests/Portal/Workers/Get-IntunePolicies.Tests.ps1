@@ -9,6 +9,7 @@ BeforeAll {
     }
 
     . $script:worker
+    . (Join-Path $script:repoRoot 'portal/workers/M365Portal.Workers/Connect-WorkerTenant.ps1')
 }
 
 Describe 'Get-IntunePolicies worker (T-0301)' {
@@ -296,6 +297,9 @@ Describe 'Get-IntunePolicies worker (T-0301)' {
 
     Context 'Entrypoint (T-0812)' {
         It 'reads every filter from the envelope and passes it through' {
+            # Tenant sign-in is Connect-WorkerTenant's concern (T-0826); stub it here.
+            Mock Connect-WorkerTenant { $null }
+            Mock Disconnect-WorkerTenant { }
             Mock Invoke-MgGraphRequest {
                 return @{ value = @(
                         @{ id = 'p1'; displayName = 'Win A'; platform = 'windows10'; lastModifiedDateTime = '2026-09-20T00:00:00Z'; assignments = @(@{ id = 'a'; target = @{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }) },

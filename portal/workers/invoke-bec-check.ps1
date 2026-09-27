@@ -61,29 +61,40 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Invoke-BecCheck.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-BecCheckJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $UserId = $job['UserId']
-    if ($Action.Trim().Length -eq 0) {
-        $Action = $job['Action']
-    }
-    if ($Target.Trim().Length -eq 0) {
-        $Target = $job['Target']
-    }
-    if ($Check.Trim().Length -eq 0) {
-        $Check = $job['Check']
-    }
-    if (-not $PSBoundParameters.ContainsKey('Confirm')) {
-        $Confirm = [bool]$job['Confirmed']
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph, ExchangeOnline
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-BecCheckJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $UserId = $job['UserId']
+        if ($Action.Trim().Length -eq 0) {
+            $Action = $job['Action']
+        }
+        if ($Target.Trim().Length -eq 0) {
+            $Target = $job['Target']
+        }
+        if ($Check.Trim().Length -eq 0) {
+            $Check = $job['Check']
+        }
+        if (-not $PSBoundParameters.ContainsKey('Confirm')) {
+            $Confirm = [bool]$job['Confirmed']
+        }
+    }
 
-if ($Action.Trim().Length -gt 0) {
-    $result = Invoke-BecFindingRemediation -TenantId $TenantId -UserId $UserId -Check $Check -Action $Action -Target $Target -Confirmed:$Confirm
+    if ($Action.Trim().Length -gt 0) {
+        $result = Invoke-BecFindingRemediation -TenantId $TenantId -UserId $UserId -Check $Check -Action $Action -Target $Target -Confirmed:$Confirm
+    }
+    else {
+        $result = Invoke-BecCheck -TenantId $TenantId -UserId $UserId
+    }
+    $result | ConvertTo-Json -Depth 8 -Compress
 }
-else {
-    $result = Invoke-BecCheck -TenantId $TenantId -UserId $UserId
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
 }
-$result | ConvertTo-Json -Depth 8 -Compress

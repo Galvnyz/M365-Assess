@@ -40,27 +40,38 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-GroupGalDelivery.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-SetGroupGalDeliveryJob -Path $JobFile
-    $TenantId                           = $job['TenantId']
-    $GroupId                            = $job['GroupId']
-    $Target                             = $job['Target']
-    $HiddenFromAddressListsEnabled      = [bool]$job['HiddenFromAddressListsEnabled']
-    $RequireSenderAuthenticationEnabled = [bool]$job['RequireSenderAuthenticationEnabled']
-    $GrantSendOnBehalfTo                = $job['GrantSendOnBehalfTo']
-    $DryRun                             = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service ExchangeOnline
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-SetGroupGalDeliveryJob -Path $JobFile
+        $TenantId                           = $job['TenantId']
+        $GroupId                            = $job['GroupId']
+        $Target                             = $job['Target']
+        $HiddenFromAddressListsEnabled      = [bool]$job['HiddenFromAddressListsEnabled']
+        $RequireSenderAuthenticationEnabled = [bool]$job['RequireSenderAuthenticationEnabled']
+        $GrantSendOnBehalfTo                = $job['GrantSendOnBehalfTo']
+        $DryRun                             = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId                           = $TenantId
-    GroupId                            = $GroupId
-    Target                             = $Target
-    HiddenFromAddressListsEnabled      = $HiddenFromAddressListsEnabled
-    RequireSenderAuthenticationEnabled = $RequireSenderAuthenticationEnabled
-    GrantSendOnBehalfTo                = $GrantSendOnBehalfTo
-    DryRun                             = [bool]$DryRun
+    $invokeParams = @{
+        TenantId                           = $TenantId
+        GroupId                            = $GroupId
+        Target                             = $Target
+        HiddenFromAddressListsEnabled      = $HiddenFromAddressListsEnabled
+        RequireSenderAuthenticationEnabled = $RequireSenderAuthenticationEnabled
+        GrantSendOnBehalfTo                = $GrantSendOnBehalfTo
+        DryRun                             = [bool]$DryRun
+    }
+
+    $result = Invoke-SetGroupGalDelivery @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-
-$result = Invoke-SetGroupGalDelivery @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

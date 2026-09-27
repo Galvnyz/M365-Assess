@@ -47,29 +47,40 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/New-JitGrant.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-NewJitGrantJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $UserId = $job['UserId']
-    $RoleId = $job['RoleId']
-    $Action = $job['Action']
-    $AssignmentType = $job['AssignmentType']
-    $DurationHours = $job['DurationHours']
-    $MaxDurationHours = $job['MaxDurationHours']
-    $Justification = $job['Justification']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-NewJitGrantJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $UserId = $job['UserId']
+        $RoleId = $job['RoleId']
+        $Action = $job['Action']
+        $AssignmentType = $job['AssignmentType']
+        $DurationHours = $job['DurationHours']
+        $MaxDurationHours = $job['MaxDurationHours']
+        $Justification = $job['Justification']
+    }
 
-$result = switch ($Action) {
-    'revoke' {
-        Revoke-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType
+    $result = switch ($Action) {
+        'revoke' {
+            Revoke-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType
+        }
+        'extend' {
+            Extend-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AdditionalHours $AdditionalHours -CurrentDurationHours $DurationHours -MaxDurationHours $MaxDurationHours -AssignmentType $AssignmentType
+        }
+        default {
+            New-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType -DurationHours $DurationHours -MaxDurationHours $MaxDurationHours -Justification $Justification
+        }
     }
-    'extend' {
-        Extend-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AdditionalHours $AdditionalHours -CurrentDurationHours $DurationHours -MaxDurationHours $MaxDurationHours -AssignmentType $AssignmentType
-    }
-    default {
-        New-JitGrant -TenantId $TenantId -UserId $UserId -RoleId $RoleId -AssignmentType $AssignmentType -DurationHours $DurationHours -MaxDurationHours $MaxDurationHours -Justification $Justification
-    }
+
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-
-$result | ConvertTo-Json -Depth 6 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

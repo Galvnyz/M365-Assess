@@ -55,37 +55,48 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-CaNamedLocation.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-SetCaNamedLocationJob -Path $JobFile
-    $TenantId                          = $job['TenantId']
-    $Action                            = $job['Action']
-    $LocationId                        = $job['LocationId']
-    $DisplayName                       = $job['DisplayName']
-    $LocationType                      = $job['LocationType']
-    $IpRanges                          = $job['IpRanges']
-    $IsTrusted                         = [bool]$job['IsTrusted']
-    $CountriesAndRegions               = $job['CountriesAndRegions']
-    $IncludeUnknownCountriesAndRegions = [bool]$job['IncludeUnknownCountriesAndRegions']
-    $CountryLookupMethod               = $job['CountryLookupMethod']
-    $ConfirmName                       = $job['ConfirmName']
-    $DryRun                            = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-SetCaNamedLocationJob -Path $JobFile
+        $TenantId                          = $job['TenantId']
+        $Action                            = $job['Action']
+        $LocationId                        = $job['LocationId']
+        $DisplayName                       = $job['DisplayName']
+        $LocationType                      = $job['LocationType']
+        $IpRanges                          = $job['IpRanges']
+        $IsTrusted                         = [bool]$job['IsTrusted']
+        $CountriesAndRegions               = $job['CountriesAndRegions']
+        $IncludeUnknownCountriesAndRegions = [bool]$job['IncludeUnknownCountriesAndRegions']
+        $CountryLookupMethod               = $job['CountryLookupMethod']
+        $ConfirmName                       = $job['ConfirmName']
+        $DryRun                            = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId                          = $TenantId
-    Action                            = $Action
-    LocationId                        = $LocationId
-    DisplayName                       = $DisplayName
-    LocationType                      = $LocationType
-    IpRanges                          = $IpRanges
-    IsTrusted                         = [bool]$IsTrusted
-    CountriesAndRegions               = $CountriesAndRegions
-    IncludeUnknownCountriesAndRegions = [bool]$IncludeUnknownCountriesAndRegions
-    CountryLookupMethod               = $CountryLookupMethod
-    ConfirmName                       = $ConfirmName
-    DryRun                            = [bool]$DryRun
+    $invokeParams = @{
+        TenantId                          = $TenantId
+        Action                            = $Action
+        LocationId                        = $LocationId
+        DisplayName                       = $DisplayName
+        LocationType                      = $LocationType
+        IpRanges                          = $IpRanges
+        IsTrusted                         = [bool]$IsTrusted
+        CountriesAndRegions               = $CountriesAndRegions
+        IncludeUnknownCountriesAndRegions = [bool]$IncludeUnknownCountriesAndRegions
+        CountryLookupMethod               = $CountryLookupMethod
+        ConfirmName                       = $ConfirmName
+        DryRun                            = [bool]$DryRun
+    }
+
+    $result = Invoke-SetCaNamedLocation @invokeParams
+    $result | ConvertTo-Json -Depth 10 -Compress
 }
-
-$result = Invoke-SetCaNamedLocation @invokeParams
-$result | ConvertTo-Json -Depth 10 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

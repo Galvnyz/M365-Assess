@@ -29,14 +29,25 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-GroupUsage.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-GroupUsageJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    if ($job.ContainsKey('InactiveDaysThreshold') -and -not $PSBoundParameters.ContainsKey('InactiveDaysThreshold')) {
-        $InactiveDaysThreshold = $job['InactiveDaysThreshold']
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-GroupUsageJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        if ($job.ContainsKey('InactiveDaysThreshold') -and -not $PSBoundParameters.ContainsKey('InactiveDaysThreshold')) {
+            $InactiveDaysThreshold = $job['InactiveDaysThreshold']
+        }
+    }
 
-$report = Get-GroupUsage -TenantId $TenantId -InactiveDaysThreshold $InactiveDaysThreshold
-$report | ConvertTo-Json -Depth 6 -Compress
+    $report = Get-GroupUsage -TenantId $TenantId -InactiveDaysThreshold $InactiveDaysThreshold
+    $report | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

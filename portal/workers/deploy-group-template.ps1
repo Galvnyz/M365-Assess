@@ -32,23 +32,34 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Deploy-GroupTemplate.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-DeployGroupTemplateJob -Path $JobFile
-    $TenantId  = $job['TenantId']
-    $Template  = $job['Template']
-    $Variables = $job['Variables']
-    $CreatedBy = $job['CreatedBy']
-    $DryRun    = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-DeployGroupTemplateJob -Path $JobFile
+        $TenantId  = $job['TenantId']
+        $Template  = $job['Template']
+        $Variables = $job['Variables']
+        $CreatedBy = $job['CreatedBy']
+        $DryRun    = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId  = $TenantId
-    Template  = $Template
-    Variables = $Variables
-    CreatedBy = $CreatedBy
-    DryRun    = [bool]$DryRun
+    $invokeParams = @{
+        TenantId  = $TenantId
+        Template  = $Template
+        Variables = $Variables
+        CreatedBy = $CreatedBy
+        DryRun    = [bool]$DryRun
+    }
+
+    $result = Invoke-DeployGroupTemplate @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-
-$result = Invoke-DeployGroupTemplate @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

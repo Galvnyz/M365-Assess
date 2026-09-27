@@ -82,29 +82,40 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-TenantUsers.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-TenantUsersJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    foreach ($name in @('Search', 'Status', 'UserType', 'License', 'MfaState', 'Department', 'InactiveDays', 'Top', 'Cursor')) {
-        if (-not $PSBoundParameters.ContainsKey($name)) {
-            Set-Variable -Name $name -Value $job[$name]
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-TenantUsersJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        foreach ($name in @('Search', 'Status', 'UserType', 'License', 'MfaState', 'Department', 'InactiveDays', 'Top', 'Cursor')) {
+            if (-not $PSBoundParameters.ContainsKey($name)) {
+                Set-Variable -Name $name -Value $job[$name]
+            }
         }
     }
-}
 
-$invokeParams = @{
-    TenantId     = $TenantId
-    Search       = $Search
-    Status       = $Status
-    UserType     = $UserType
-    License      = $License
-    MfaState     = $MfaState
-    Department   = $Department
-    InactiveDays = $InactiveDays
-    Top          = $Top
-    Cursor       = $Cursor
-}
+    $invokeParams = @{
+        TenantId     = $TenantId
+        Search       = $Search
+        Status       = $Status
+        UserType     = $UserType
+        License      = $License
+        MfaState     = $MfaState
+        Department   = $Department
+        InactiveDays = $InactiveDays
+        Top          = $Top
+        Cursor       = $Cursor
+    }
 
-$result = Get-TenantUsers @invokeParams
-$result | ConvertTo-Json -Depth 5 -Compress
+    $result = Get-TenantUsers @invokeParams
+    $result | ConvertTo-Json -Depth 5 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

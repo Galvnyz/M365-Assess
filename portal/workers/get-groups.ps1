@@ -47,27 +47,38 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-Groups.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-GroupsJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    foreach ($name in @('Type', 'Hidden', 'Dynamic', 'MembershipSize', 'Search', 'Top', 'Cursor')) {
-        if (-not $PSBoundParameters.ContainsKey($name) -and $job.ContainsKey($name)) {
-            Set-Variable -Name $name -Value $job[$name]
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-GroupsJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        foreach ($name in @('Type', 'Hidden', 'Dynamic', 'MembershipSize', 'Search', 'Top', 'Cursor')) {
+            if (-not $PSBoundParameters.ContainsKey($name) -and $job.ContainsKey($name)) {
+                Set-Variable -Name $name -Value $job[$name]
+            }
         }
     }
-}
 
-$invokeParams = @{
-    TenantId       = $TenantId
-    Type           = $Type
-    Hidden         = $Hidden
-    Dynamic        = $Dynamic
-    MembershipSize = $MembershipSize
-    Search         = $Search
-    Top            = $Top
-    Cursor         = $Cursor
-}
+    $invokeParams = @{
+        TenantId       = $TenantId
+        Type           = $Type
+        Hidden         = $Hidden
+        Dynamic        = $Dynamic
+        MembershipSize = $MembershipSize
+        Search         = $Search
+        Top            = $Top
+        Cursor         = $Cursor
+    }
 
-$result = Get-Groups @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = Get-Groups @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

@@ -64,37 +64,48 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/New-TemporaryAccessPass.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-TapJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $UserId = $job['UserId']
-    foreach ($name in @('LifetimeMinutes', 'OneTime', 'StartTime')) {
-        if (-not $PSBoundParameters.ContainsKey($name)) {
-            Set-Variable -Name $name -Value $job[$name]
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-TapJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $UserId = $job['UserId']
+        foreach ($name in @('LifetimeMinutes', 'OneTime', 'StartTime')) {
+            if (-not $PSBoundParameters.ContainsKey($name)) {
+                Set-Variable -Name $name -Value $job[$name]
+            }
+        }
+        if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
+            $DryRun = [switch]$true
+        }
+        if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
+            $Confirmed = [switch]$true
         }
     }
-    if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
-        $DryRun = [switch]$true
-    }
-    if (-not $PSBoundParameters.ContainsKey('Confirmed') -and $job['Confirmed']) {
-        $Confirmed = [switch]$true
-    }
-}
 
-$invokeParams = @{
-    TenantId        = $TenantId
-    UserId          = $UserId
-    LifetimeMinutes = $LifetimeMinutes
-    OneTime         = $OneTime
-    StartTime       = $StartTime
-}
-if ($DryRun) {
-    $invokeParams['DryRun'] = $true
-}
-if ($Confirmed) {
-    $invokeParams['Confirmed'] = $true
-}
+    $invokeParams = @{
+        TenantId        = $TenantId
+        UserId          = $UserId
+        LifetimeMinutes = $LifetimeMinutes
+        OneTime         = $OneTime
+        StartTime       = $StartTime
+    }
+    if ($DryRun) {
+        $invokeParams['DryRun'] = $true
+    }
+    if ($Confirmed) {
+        $invokeParams['Confirmed'] = $true
+    }
 
-$result = New-TemporaryAccessPass @invokeParams
-$result | ConvertTo-Json -Depth 5 -Compress
+    $result = New-TemporaryAccessPass @invokeParams
+    $result | ConvertTo-Json -Depth 5 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

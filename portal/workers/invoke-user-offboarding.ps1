@@ -60,34 +60,45 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Invoke-UserOffboarding.ps1')
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Rerun-OffboardingStep.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-OffboardingJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $JobId = [string]$job['JobId']
-    if ($JobId.Trim().Length -eq 0) {
-        $JobId = 'job-direct'
-    }
-    $UserIds = @($job['UserIds'])
-    $Steps = @($job['Steps'])
-    $MailboxAccess = $job['MailboxAccess']
-    if (-not $PSBoundParameters.ContainsKey('DryRun')) {
-        $DryRun = [bool]$job['DryRun']
-    }
-    if ($RerunOrder -eq 0) {
-        $RerunOrder = [int]$job['RerunOrder']
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph, ExchangeOnline
 }
-else {
-    $UserIds = @($UserIdsJson | ConvertFrom-Json)
-    $Steps = @($StepsJson | ConvertFrom-Json)
-    $MailboxAccess = @{ mode = 'full'; automap = $false }
-}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-OffboardingJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $JobId = [string]$job['JobId']
+        if ($JobId.Trim().Length -eq 0) {
+            $JobId = 'job-direct'
+        }
+        $UserIds = @($job['UserIds'])
+        $Steps = @($job['Steps'])
+        $MailboxAccess = $job['MailboxAccess']
+        if (-not $PSBoundParameters.ContainsKey('DryRun')) {
+            $DryRun = [bool]$job['DryRun']
+        }
+        if ($RerunOrder -eq 0) {
+            $RerunOrder = [int]$job['RerunOrder']
+        }
+    }
+    else {
+        $UserIds = @($UserIdsJson | ConvertFrom-Json)
+        $Steps = @($StepsJson | ConvertFrom-Json)
+        $MailboxAccess = @{ mode = 'full'; automap = $false }
+    }
 
-if ($RerunOrder -gt 0) {
-    $result = Invoke-OffboardingStepRerun -TenantId $TenantId -JobId $JobId -UserIds $UserIds -Steps $Steps -Order $RerunOrder -MailboxAccess $MailboxAccess -DryRun:$DryRun
+    if ($RerunOrder -gt 0) {
+        $result = Invoke-OffboardingStepRerun -TenantId $TenantId -JobId $JobId -UserIds $UserIds -Steps $Steps -Order $RerunOrder -MailboxAccess $MailboxAccess -DryRun:$DryRun
+    }
+    else {
+        $result = Invoke-UserOffboarding -TenantId $TenantId -JobId $JobId -UserIds $UserIds -Steps $Steps -MailboxAccess $MailboxAccess -DryRun:$DryRun
+    }
+    $result | ConvertTo-Json -Depth 8 -Compress
 }
-else {
-    $result = Invoke-UserOffboarding -TenantId $TenantId -JobId $JobId -UserIds $UserIds -Steps $Steps -MailboxAccess $MailboxAccess -DryRun:$DryRun
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
 }
-$result | ConvertTo-Json -Depth 8 -Compress

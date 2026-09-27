@@ -49,27 +49,38 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-PimAssignments.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-PimAssignmentsJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    foreach ($name in @('Role', 'PrincipalType', 'AssignmentType', 'Scope', 'Search', 'Top', 'Cursor')) {
-        if (-not $PSBoundParameters.ContainsKey($name) -and $job.ContainsKey($name)) {
-            Set-Variable -Name $name -Value $job[$name]
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-PimAssignmentsJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        foreach ($name in @('Role', 'PrincipalType', 'AssignmentType', 'Scope', 'Search', 'Top', 'Cursor')) {
+            if (-not $PSBoundParameters.ContainsKey($name) -and $job.ContainsKey($name)) {
+                Set-Variable -Name $name -Value $job[$name]
+            }
         }
     }
-}
 
-$invokeParams = @{
-    TenantId       = $TenantId
-    Role           = $Role
-    PrincipalType  = $PrincipalType
-    AssignmentType = $AssignmentType
-    Scope          = $Scope
-    Search         = $Search
-    Top            = $Top
-    Cursor         = $Cursor
-}
+    $invokeParams = @{
+        TenantId       = $TenantId
+        Role           = $Role
+        PrincipalType  = $PrincipalType
+        AssignmentType = $AssignmentType
+        Scope          = $Scope
+        Search         = $Search
+        Top            = $Top
+        Cursor         = $Cursor
+    }
 
-$result = Get-PimAssignments @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = Get-PimAssignments @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

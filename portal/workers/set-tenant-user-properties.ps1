@@ -43,18 +43,29 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-TenantUserProperties.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-TenantUserPatchJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    if (-not $PSBoundParameters.ContainsKey('Preview')) {
-        $Preview = [bool]$job['Preview']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
+}
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-TenantUserPatchJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        if (-not $PSBoundParameters.ContainsKey('Preview')) {
+            $Preview = [bool]$job['Preview']
+        }
+        $patches = @($job['Patches'])
     }
-    $patches = @($job['Patches'])
-}
-else {
-    $patches = @($PatchesJson | ConvertFrom-Json)
-}
+    else {
+        $patches = @($PatchesJson | ConvertFrom-Json)
+    }
 
-$result = Set-TenantUserBulkProperties -TenantId $TenantId -Patches $patches -DryRun:$Preview
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = Set-TenantUserBulkProperties -TenantId $TenantId -Patches $patches -DryRun:$Preview
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

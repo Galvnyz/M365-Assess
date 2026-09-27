@@ -56,63 +56,74 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/New-TenantUser.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-function ConvertTo-CreateUser {
-    param(
-        [Parameter(Mandatory)]
-        [object]$Entry,
-
-        [Parameter()]
-        [string]$DefaultUsageLocation = ''
-    )
-
-    $user = [pscustomobject]@{
-        userPrincipalName = [string]$Entry.userPrincipalName
-        displayName       = [string]$Entry.displayName
-        givenName         = [string]$Entry.givenName
-        surname           = [string]$Entry.surname
-        usageLocation     = [string]$Entry.usageLocation
-        licenses          = @($Entry.licenses)
-        groups            = @($Entry.groups)
-        password          = [string]$Entry.password
-    }
-    if ([string]::IsNullOrWhiteSpace($user.usageLocation) -and $DefaultUsageLocation.Trim().Length -gt 0) {
-        $user.usageLocation = $DefaultUsageLocation.Trim()
-    }
-    return $user
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    function ConvertTo-CreateUser {
+        param(
+            [Parameter(Mandatory)]
+            [object]$Entry,
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-TenantUserCreateJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    if (-not $PSBoundParameters.ContainsKey('DryRun')) {
-        $DryRun = [bool]$job['DryRun']
+            [Parameter()]
+            [string]$DefaultUsageLocation = ''
+        )
+
+        $user = [pscustomobject]@{
+            userPrincipalName = [string]$Entry.userPrincipalName
+            displayName       = [string]$Entry.displayName
+            givenName         = [string]$Entry.givenName
+            surname           = [string]$Entry.surname
+            usageLocation     = [string]$Entry.usageLocation
+            licenses          = @($Entry.licenses)
+            groups            = @($Entry.groups)
+            password          = [string]$Entry.password
+        }
+        if ([string]::IsNullOrWhiteSpace($user.usageLocation) -and $DefaultUsageLocation.Trim().Length -gt 0) {
+            $user.usageLocation = $DefaultUsageLocation.Trim()
+        }
+        return $user
     }
-    if ($DefaultUsageLocation.Trim().Length -eq 0) {
-        $DefaultUsageLocation = [string]$job['DefaultUsageLocation']
-    }
-    if ($KnownLicenses.Count -eq 0) {
-        $KnownLicenses = @($job['KnownLicenses'])
-    }
-    $users = foreach ($entry in @($job['Users'])) {
-        ConvertTo-CreateUser -Entry $entry -DefaultUsageLocation $DefaultUsageLocation
-    }
-}
-else {
-    $users = [System.Collections.Generic.List[object]]::new()
-    if ($UserJson.Trim().Length -gt 0) {
-        $users.Add((ConvertTo-CreateUser -Entry ($UserJson | ConvertFrom-Json) -DefaultUsageLocation $DefaultUsageLocation))
-    }
-    if ($UsersJson.Trim().Length -gt 0) {
-        foreach ($entry in @($UsersJson | ConvertFrom-Json)) {
-            $users.Add((ConvertTo-CreateUser -Entry $entry -DefaultUsageLocation $DefaultUsageLocation))
+
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-TenantUserCreateJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        if (-not $PSBoundParameters.ContainsKey('DryRun')) {
+            $DryRun = [bool]$job['DryRun']
+        }
+        if ($DefaultUsageLocation.Trim().Length -eq 0) {
+            $DefaultUsageLocation = [string]$job['DefaultUsageLocation']
+        }
+        if ($KnownLicenses.Count -eq 0) {
+            $KnownLicenses = @($job['KnownLicenses'])
+        }
+        $users = foreach ($entry in @($job['Users'])) {
+            ConvertTo-CreateUser -Entry $entry -DefaultUsageLocation $DefaultUsageLocation
         }
     }
-    if ($users.Count -eq 0) {
-        throw 'Tenant user create needs -UserJson or -UsersJson in direct mode.'
+    else {
+        $users = [System.Collections.Generic.List[object]]::new()
+        if ($UserJson.Trim().Length -gt 0) {
+            $users.Add((ConvertTo-CreateUser -Entry ($UserJson | ConvertFrom-Json) -DefaultUsageLocation $DefaultUsageLocation))
+        }
+        if ($UsersJson.Trim().Length -gt 0) {
+            foreach ($entry in @($UsersJson | ConvertFrom-Json)) {
+                $users.Add((ConvertTo-CreateUser -Entry $entry -DefaultUsageLocation $DefaultUsageLocation))
+            }
+        }
+        if ($users.Count -eq 0) {
+            throw 'Tenant user create needs -UserJson or -UsersJson in direct mode.'
+        }
+        $users = @($users)
     }
-    $users = @($users)
-}
 
-$result = New-TenantUserBulk -TenantId $TenantId -Users $users -DryRun:$DryRun -KnownLicenses $KnownLicenses
-$result | ConvertTo-Json -Depth 6 -Compress
+    $result = New-TenantUserBulk -TenantId $TenantId -Users $users -DryRun:$DryRun -KnownLicenses $KnownLicenses
+    $result | ConvertTo-Json -Depth 6 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

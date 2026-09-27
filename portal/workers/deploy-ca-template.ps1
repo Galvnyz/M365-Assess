@@ -51,35 +51,46 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Deploy-CaTemplate.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-DeployCaTemplateJob -Path $JobFile
-    $TenantId                = $job['TenantId']
-    $TemplateId              = $job['TemplateId']
-    $TemplateJson            = $job['TemplateJson']
-    $PolicyName              = $job['PolicyName']
-    $PolicyState             = $job['PolicyState']
-    $GroupUserHandling       = $job['GroupUserHandling']
-    $CreateGroups            = [bool]$job['CreateGroups']
-    $Overwrite               = [bool]$job['Overwrite']
-    $DisableSecurityDefaults = [bool]$job['DisableSecurityDefaults']
-    $BreakGlassExclusions    = @($job['BreakGlassExclusions'])
-    $DryRun                  = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-DeployCaTemplateJob -Path $JobFile
+        $TenantId                = $job['TenantId']
+        $TemplateId              = $job['TemplateId']
+        $TemplateJson            = $job['TemplateJson']
+        $PolicyName              = $job['PolicyName']
+        $PolicyState             = $job['PolicyState']
+        $GroupUserHandling       = $job['GroupUserHandling']
+        $CreateGroups            = [bool]$job['CreateGroups']
+        $Overwrite               = [bool]$job['Overwrite']
+        $DisableSecurityDefaults = [bool]$job['DisableSecurityDefaults']
+        $BreakGlassExclusions    = @($job['BreakGlassExclusions'])
+        $DryRun                  = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId                = $TenantId
-    TemplateId              = $TemplateId
-    TemplateJson            = $TemplateJson
-    PolicyName              = $PolicyName
-    PolicyState             = $PolicyState
-    GroupUserHandling       = $GroupUserHandling
-    CreateGroups            = [bool]$CreateGroups
-    Overwrite               = [bool]$Overwrite
-    DisableSecurityDefaults = [bool]$DisableSecurityDefaults
-    BreakGlassExclusions    = $BreakGlassExclusions
-    DryRun                  = [bool]$DryRun
+    $invokeParams = @{
+        TenantId                = $TenantId
+        TemplateId              = $TemplateId
+        TemplateJson            = $TemplateJson
+        PolicyName              = $PolicyName
+        PolicyState             = $PolicyState
+        GroupUserHandling       = $GroupUserHandling
+        CreateGroups            = [bool]$CreateGroups
+        Overwrite               = [bool]$Overwrite
+        DisableSecurityDefaults = [bool]$DisableSecurityDefaults
+        BreakGlassExclusions    = $BreakGlassExclusions
+        DryRun                  = [bool]$DryRun
+    }
+
+    $result = Invoke-DeployCaTemplate @invokeParams
+    $result | ConvertTo-Json -Depth 10 -Compress
 }
-
-$result = Invoke-DeployCaTemplate @invokeParams
-$result | ConvertTo-Json -Depth 10 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

@@ -37,11 +37,11 @@ Describe 'CveException schema and CRUD contract (T-0368)' {
             $source | Should -Match 'listExpired'
         }
 
-        It 'guards CVE-exception writes with defender.write' {
+        It 'guards CVE-exception writes with Security.Defender.ReadWrite' {
             Test-Path -LiteralPath $script:routes | Should -BeTrue
             $source = Get-Content -LiteralPath $script:routes -Raw
-            $source | Should -Match 'defender\.write'
-            $source | Should -Match 'defender\.read'
+            $source | Should -Match 'Security\.Defender\.ReadWrite'
+            $source | Should -Match 'Security\.Defender\.Read'
         }
     }
 }

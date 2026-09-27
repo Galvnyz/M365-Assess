@@ -27,19 +27,30 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Get-CaReportOnly.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-CaReportOnlyJob -Path $JobFile
-    $TenantId = $job['TenantId']
-    $PolicyId = $job['PolicyId']
-    $Top      = [int]$job['Top']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-CaReportOnlyJob -Path $JobFile
+        $TenantId = $job['TenantId']
+        $PolicyId = $job['PolicyId']
+        $Top      = [int]$job['Top']
+    }
 
-$invokeParams = @{
-    TenantId = $TenantId
-    PolicyId = $PolicyId
-    Top      = $Top
+    $invokeParams = @{
+        TenantId = $TenantId
+        PolicyId = $PolicyId
+        Top      = $Top
+    }
+
+    $result = Get-CaReportOnly @invokeParams
+    $result | ConvertTo-Json -Depth 10 -Compress
 }
-
-$result = Get-CaReportOnly @invokeParams
-$result | ConvertTo-Json -Depth 10 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

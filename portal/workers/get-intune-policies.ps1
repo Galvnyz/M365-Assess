@@ -11,19 +11,30 @@ $ErrorActionPreference = 'Stop'
 
 $workerPath = Join-Path $PSScriptRoot 'M365Portal.Workers/Get-IntunePolicies.ps1'
 . $workerPath
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-$job    = Read-IntunePoliciesJob -Path $JobFile
-$listParams = @{
-    TenantId     = $job.TenantId
-    Kind         = $job.Kind
-    Top          = $job.Top
-    Cursor       = $job.SkipToken
-    Search       = $job.Search
-    Platform     = $job.Platform
-    PolicyType   = $job.PolicyType
-    Assigned     = $job.Assigned
-    ModifiedDate = $job.ModifiedDate
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
-$result = Get-IntunePolicies @listParams
+try {
+    $job    = Read-IntunePoliciesJob -Path $JobFile
+    $listParams = @{
+        TenantId     = $job.TenantId
+        Kind         = $job.Kind
+        Top          = $job.Top
+        Cursor       = $job.SkipToken
+        Search       = $job.Search
+        Platform     = $job.Platform
+        PolicyType   = $job.PolicyType
+        Assigned     = $job.Assigned
+        ModifiedDate = $job.ModifiedDate
+    }
+    $result = Get-IntunePolicies @listParams
 
-$result | ConvertTo-Json -Depth 10 -Compress
+    $result | ConvertTo-Json -Depth 10 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

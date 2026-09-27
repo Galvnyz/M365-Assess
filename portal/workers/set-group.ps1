@@ -49,33 +49,44 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Set-Group.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
-    $job = Read-SetGroupJob -Path $JobFile
-    $TenantId     = $job['TenantId']
-    $Action       = $job['Action']
-    $GroupId      = $job['GroupId']
-    $DisplayName  = $job['DisplayName']
-    $GroupType    = $job['GroupType']
-    $MailNickname = $job['MailNickname']
-    $Description  = $job['Description']
-    $DynamicRule  = $job['DynamicRule']
-    $ConfirmName  = $job['ConfirmName']
-    $DryRun       = [bool]$job['DryRun']
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
+        $job = Read-SetGroupJob -Path $JobFile
+        $TenantId     = $job['TenantId']
+        $Action       = $job['Action']
+        $GroupId      = $job['GroupId']
+        $DisplayName  = $job['DisplayName']
+        $GroupType    = $job['GroupType']
+        $MailNickname = $job['MailNickname']
+        $Description  = $job['Description']
+        $DynamicRule  = $job['DynamicRule']
+        $ConfirmName  = $job['ConfirmName']
+        $DryRun       = [bool]$job['DryRun']
+    }
 
-$invokeParams = @{
-    TenantId     = $TenantId
-    Action       = $Action
-    GroupId      = $GroupId
-    DisplayName  = $DisplayName
-    GroupType    = $GroupType
-    MailNickname = $MailNickname
-    Description  = $Description
-    DynamicRule  = $DynamicRule
-    ConfirmName  = $ConfirmName
-    DryRun       = [bool]$DryRun
+    $invokeParams = @{
+        TenantId     = $TenantId
+        Action       = $Action
+        GroupId      = $GroupId
+        DisplayName  = $DisplayName
+        GroupType    = $GroupType
+        MailNickname = $MailNickname
+        Description  = $Description
+        DynamicRule  = $DynamicRule
+        ConfirmName  = $ConfirmName
+        DryRun       = [bool]$DryRun
+    }
+
+    $result = Invoke-SetGroup @invokeParams
+    $result | ConvertTo-Json -Depth 6 -Compress
 }
-
-$result = Invoke-SetGroup @invokeParams
-$result | ConvertTo-Json -Depth 6 -Compress
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}

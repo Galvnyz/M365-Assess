@@ -18,24 +18,35 @@ param(
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Sync-ReusableSettings.ps1')
+. (Join-Path -Path $PSScriptRoot -ChildPath 'M365Portal.Workers/Connect-WorkerTenant.ps1')
 
-$job = Read-SyncReusableSettingsJob -Path $JobFile
-
-if ($job['Action'] -eq 'list') {
-    $settings = Get-TenantReusableSetting
-    $result = [pscustomobject]@{
-        tenantId = $job['TenantId']
-        items    = @($settings | Select-Object -Property id, displayName, settingDefinitionId, type, inScope, referencingPolicyCount)
-    }
+# Sign in to the job's tenant (T-0826). Direct-parameter runs manage their own session.
+$tenantSession = $null
+if ($JobFile) {
+    $tenantSession = Connect-WorkerTenant -JobFile $JobFile -Service Graph
 }
-else {
-    $syncParams = @{
-        TenantId      = $job['TenantId']
-        TemplatesJson = $job['TemplatesJson']
-        DryRun        = [bool]$job['DryRun']
-        Actor         = $job['Actor']
-    }
-    $result = Sync-ReusableSettingTemplate @syncParams
-}
+try {
+    $job = Read-SyncReusableSettingsJob -Path $JobFile
 
-$result | ConvertTo-Json -Depth 30 -Compress
+    if ($job['Action'] -eq 'list') {
+        $settings = Get-TenantReusableSetting
+        $result = [pscustomobject]@{
+            tenantId = $job['TenantId']
+            items    = @($settings | Select-Object -Property id, displayName, settingDefinitionId, type, inScope, referencingPolicyCount)
+        }
+    }
+    else {
+        $syncParams = @{
+            TenantId      = $job['TenantId']
+            TemplatesJson = $job['TemplatesJson']
+            DryRun        = [bool]$job['DryRun']
+            Actor         = $job['Actor']
+        }
+        $result = Sync-ReusableSettingTemplate @syncParams
+    }
+
+    $result | ConvertTo-Json -Depth 30 -Compress
+}
+finally {
+    Disconnect-WorkerTenant -Session $tenantSession
+}
