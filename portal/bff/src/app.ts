@@ -14,6 +14,7 @@ import {
   SqliteBecFindingRepository,
   SqliteOffboardingRepository,
   SqliteRepository,
+  SqliteTapRecordRepository,
   SqliteUserTemplateRepository,
   loadMigrations,
   runMigrations,
@@ -31,6 +32,12 @@ import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
 import {
+  createAuthMethodsPolicyProvider,
+  createMfaProviders,
+  createRegistrationCampaignProvider,
+  createTapRecordStore,
+} from "./adapters/mfa.js";
+import {
   createBecFindingStore,
   createBecProviders,
   createOffboardingRunner,
@@ -43,6 +50,7 @@ import {
   createGdapSyncRunner,
   createOnboardRunner,
   createEnvelopeWorker,
+  createTenantWorker,
   createTestConnectionRunner,
   createWorkerRunner,
   type WorkerRunner,
@@ -60,6 +68,7 @@ import { SqliteDeviceActionRepository } from "./repository/device-actions.js";
 import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js";
 import { SqliteKeyAccessAuditRepository } from "./repository/key-access-audit.js";
 import { SqliteReusableSettingTemplateRepository } from "./repository/reusable-setting-templates.js";
+import { createAuthMethodsPolicyRoutes } from "./routes/auth-methods-policy.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
 import { createBecRoutes } from "./routes/bec.js";
 import { createCaCoverageRoutes } from "./routes/ca-coverage.js";
@@ -83,8 +92,10 @@ import { createIntunePoliciesRoutes } from "./routes/intune-policies.js";
 import { createReusableSettingsRoutes } from "./routes/intune-reusable-settings.js";
 import { createIntuneTemplateDeployRoute } from "./routes/intune-templates-deploy.js";
 import { createGdapRoutes } from "./routes/gdap.js";
+import { createMfaRoutes } from "./routes/mfa.js";
 import { createOffboardingRoutes } from "./routes/offboarding.js";
 import { createOnboardRoutes } from "./routes/onboard.js";
+import { createRegistrationCampaignRoute } from "./routes/registration-campaign.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
@@ -290,6 +301,8 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const bec = createBecProviders(envelope);
   const offboardingRepo = new SqliteOffboardingRepository(db, schemaVersion);
   const offboarding = createOffboardingRunner(envelope, offboardingRepo);
+  const tenantWorker = createTenantWorker(run, credentialRows);
+  const mfa = createMfaProviders(envelope);
 
   const routes: Route[] = [
     ...createHealthRoutes({
@@ -393,6 +406,27 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     }),
     ...createUserTemplateRoutes({
       store: createUserTemplateStore(new SqliteUserTemplateRepository(db, schemaVersion)),
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+
+    // EPIC-012 MFA, authentication methods, and the registration campaign (T-0818).
+    ...createMfaRoutes({
+      report: mfa.report,
+      reset: mfa.reset,
+      tap: mfa.tap,
+      tapRecords: createTapRecordStore(new SqliteTapRecordRepository(db)),
+      actions: mfa.actions,
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createAuthMethodsPolicyRoutes({
+      provider: createAuthMethodsPolicyProvider(tenantWorker),
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createRegistrationCampaignRoute({
+      provider: createRegistrationCampaignProvider(tenantWorker),
       recordAudit: routeAudit,
       ...caller,
     }),

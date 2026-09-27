@@ -486,3 +486,41 @@ describe("EPIC-011 users routes (T-0818)", () => {
     expect(calls.filter((c) => c.entrypoint === "invoke-user-offboarding.ps1")).toHaveLength(0);
   });
 });
+
+describe("EPIC-012 MFA routes (T-0818)", () => {
+  function recordingRunner() {
+    const calls: { entrypoint: string; job: Record<string, unknown> }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      calls.push({ entrypoint, job: job as Record<string, unknown> });
+      if (entrypoint === "get-mfa-report.ps1") {
+        return { tenantId: "t-a", rows: [], nextCursor: null, retrievedAt: "2026-09-26T00:00:00Z" } as never;
+      }
+      if (entrypoint === "new-temporary-access-pass.ps1") {
+        return { id: "tap-1", status: "applied", expiresAt: "2026-09-26T01:00:00Z", temporaryAccessPass: "Secret-Pass-1", error: null } as never;
+      }
+      return {} as never;
+    };
+    return { runner, calls };
+  }
+
+  it("serves the MFA report to a read-only caller", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    const res = await api.get("/v1/tenants/t-a/mfa-report?registered=notRegistered");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ tenantId: "t-a", rows: [] });
+    expect(calls[0]!.job).toMatchObject({ payload: { registered: "notRegistered" } });
+  });
+
+  it("issues a TAP once, storing only the non-secret record", async () => {
+    const { runner } = recordingRunner();
+    const db = new Database(":memory:");
+    const api = await adminWithTenant(runner, "admin", db);
+    const res = await api.post("/v1/tenants/t-a/users/u-1/tap", { lifetimeMinutes: 60, oneTime: true, confirm: true, reason: "Lost phone" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ temporaryAccessPass: "Secret-Pass-1" });
+    expect(db.prepare("SELECT userId, createdBy FROM tap_records").all()).toEqual([{ userId: "u-1", createdBy: "dev-user" }]);
+    const stored = JSON.stringify(db.prepare("SELECT * FROM tap_records").all()) + JSON.stringify(db.prepare("SELECT * FROM audit_events").all());
+    expect(stored).not.toContain("Secret-Pass-1");
+  });
+});

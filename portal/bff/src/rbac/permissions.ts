@@ -99,6 +99,13 @@ import { BEC_OPENAPI } from "../routes/bec.js";
 import { OFFBOARDING_OPENAPI } from "../routes/offboarding.js";
 import { USER_TEMPLATES_OPENAPI } from "../routes/user-templates.js";
 import { USERS_OPENAPI } from "../routes/users.js";
+import { AUTH_METHODS_POLICY_OPENAPI } from "../routes/auth-methods-policy.js";
+import { MFA_OPENAPI } from "../routes/mfa.js";
+import {
+  REGISTRATION_CAMPAIGN_PATH,
+  REGISTRATION_CAMPAIGN_READ_PERMISSION,
+  REGISTRATION_CAMPAIGN_WRITE_PERMISSION,
+} from "../routes/registration-campaign.js";
 
 // `Public` bypasses permission evaluation (SPEC §4.1 item 4). It is the only
 // single-segment value the registry may hold.
@@ -376,6 +383,11 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   ...registryEntriesFromOpenApi(BEC_OPENAPI),
   ...registryEntriesFromOpenApi(OFFBOARDING_OPENAPI),
   ...registryEntriesFromOpenApi(USER_TEMPLATES_OPENAPI),
+  // EPIC-012 MFA, authentication methods, and the registration campaign (T-0818).
+  ...registryEntriesFromOpenApi(MFA_OPENAPI),
+  ...registryEntriesFromOpenApi(AUTH_METHODS_POLICY_OPENAPI),
+  { method: "GET", path: REGISTRATION_CAMPAIGN_PATH, permission: REGISTRATION_CAMPAIGN_READ_PERMISSION },
+  { method: "PUT", path: REGISTRATION_CAMPAIGN_PATH, permission: REGISTRATION_CAMPAIGN_WRITE_PERMISSION },
   // EPIC-014 groups (T-0819). /groups/usage precedes /groups/:groupId, as in app.ts.
   // The template deploy route enforces the group write permission.
   { method: "GET", path: GROUP_USAGE_PATH, permission: GROUPS_READ_PERMISSION },

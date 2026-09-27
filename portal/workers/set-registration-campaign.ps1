@@ -62,6 +62,11 @@ try {
     if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
         $job = Read-RegistrationCampaignJob -Path $JobFile
         $TenantId = $job['TenantId']
+        # action 'get' reads the live campaign without changing it.
+        if ($job['Action'] -eq 'get') {
+            Get-TenantRegistrationCampaign -TenantId $TenantId | ConvertTo-Json -Depth 6 -Compress
+            return
+        }
         $State = $job['State']
         $SnoozeDurationInDays = $job['SnoozeDurationInDays']
         $IncludeTargets = $job['IncludeTargets']

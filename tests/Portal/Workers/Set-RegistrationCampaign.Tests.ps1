@@ -67,6 +67,21 @@ Describe 'Set-RegistrationCampaign worker (T-0226)' {
             $res.includeTargets | Should -Contain 'g-inc'
             $res.excludeTargets | Should -Contain 'g-exc'
         }
+
+        It 'throws when Graph fails instead of reporting the campaign disabled' {
+            Mock Invoke-MgGraphRequest { throw 'Graph 403: Forbidden' } -ParameterFilter { $Method -eq 'GET' }
+            { Get-TenantRegistrationCampaign -TenantId 'tenant-x' } | Should -Throw '*403*'
+        }
+
+        It 'reads a get action from the job' {
+            $tmp = New-TemporaryFile
+            try {
+                @{ tenantId = 'tenant-x'; action = 'get' } | ConvertTo-Json | Set-Content -LiteralPath $tmp.FullName -Encoding utf8
+                (Read-RegistrationCampaignJob -Path $tmp.FullName)['Action'] | Should -Be 'get'
+            } finally {
+                Remove-Item -LiteralPath $tmp.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     Context 'Invoke-RegistrationCampaignSet' {

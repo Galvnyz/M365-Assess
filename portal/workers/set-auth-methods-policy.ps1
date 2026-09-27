@@ -51,6 +51,11 @@ try {
     if ($PSCmdlet.ParameterSetName -eq 'ByJobFile') {
         $job = Read-AuthMethodsPolicyJob -Path $JobFile
         $TenantId = $job['TenantId']
+        # action 'get' reads the live policy without applying anything.
+        if ($job['Action'] -eq 'get') {
+            Get-TenantAuthMethodsPolicy -TenantId $TenantId | ConvertTo-Json -Depth 6 -Compress
+            return
+        }
         $policy = $job['Policy']
         if (-not $PSBoundParameters.ContainsKey('DryRun') -and $job['DryRun']) {
             $DryRun = [switch]$true

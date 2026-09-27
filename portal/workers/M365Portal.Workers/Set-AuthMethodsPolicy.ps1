@@ -47,9 +47,11 @@ function Read-AuthMethodsPolicyJob {
     $policy = if ($null -ne $raw.policy) { $raw.policy } else { $raw.Policy }
     $dryRun = if ($null -ne $raw.dryRun) { [bool]$raw.dryRun } elseif ($null -ne $raw.DryRun) { [bool]$raw.DryRun } else { $false }
     $confirmed = if ($null -ne $raw.confirmed) { [bool]$raw.confirmed } elseif ($null -ne $raw.Confirmed) { [bool]$raw.Confirmed } else { $false }
+    $action = if ($raw.action) { [string]$raw.action } else { 'apply' }
 
     return @{
         TenantId  = $tenantId
+        Action    = $action
         Policy    = $policy
         DryRun    = $dryRun
         Confirmed = $confirmed
@@ -68,36 +70,28 @@ function Get-TenantAuthMethodsPolicy {
     $mapping = Get-AuthMethodsPolicyMapping
     $configs = [System.Collections.Generic.List[hashtable]]::new()
 
+    # A failed read throws rather than reporting every method disabled: callers show
+    # this state to admins and diff proposed changes against it.
     $uri = "/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations"
-    try {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
-        $liveMap = @{}
-        foreach ($item in @($response.value)) {
-            if ($null -ne $item -and $item.id) {
-                $liveMap[[string]$item.id] = [string]$item.state
-            }
+    $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+    $liveMap = @{}
+    foreach ($item in @($response.value)) {
+        if ($null -ne $item -and $item.id) {
+            $liveMap[[string]$item.id] = [string]$item.state
         }
+    }
 
-        foreach ($canonicalId in $mapping.Keys) {
-            $graphId = $mapping[$canonicalId]
-            $state = if ($liveMap.ContainsKey($graphId)) {
-                if ($liveMap[$graphId] -eq 'enabled') { 'enabled' } else { 'disabled' }
-            } else {
-                'disabled'
-            }
-            $configs.Add(@{
-                id    = $canonicalId
-                state = $state
-            })
+    foreach ($canonicalId in $mapping.Keys) {
+        $graphId = $mapping[$canonicalId]
+        $state = if ($liveMap.ContainsKey($graphId)) {
+            if ($liveMap[$graphId] -eq 'enabled') { 'enabled' } else { 'disabled' }
+        } else {
+            'disabled'
         }
-    } catch {
-        # Fallback if policy configurations endpoint is unavailable or mocked
-        foreach ($canonicalId in $mapping.Keys) {
-            $configs.Add(@{
-                id    = $canonicalId
-                state = 'disabled'
-            })
-        }
+        $configs.Add(@{
+            id    = $canonicalId
+            state = $state
+        })
     }
 
     return @{

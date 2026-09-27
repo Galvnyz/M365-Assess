@@ -44,6 +44,21 @@ Describe 'Set-AuthMethodsPolicy worker (T-0225)' {
         }
     }
 
+    Context 'Get-TenantAuthMethodsPolicy' {
+        It 'throws when Graph fails instead of reporting every method disabled' {
+            Mock Invoke-MgGraphRequest { throw 'Graph 403: Forbidden' } -ParameterFilter { $Method -eq 'GET' }
+            { Get-TenantAuthMethodsPolicy -TenantId 'tenant-x' } | Should -Throw '*403*'
+        }
+
+        It 'refuses to apply when the current policy cannot be read' {
+            Mock Invoke-MgGraphRequest { throw 'Graph 403: Forbidden' } -ParameterFilter { $Method -eq 'GET' }
+            Mock Invoke-MgGraphRequest { } -ParameterFilter { $Method -eq 'PATCH' }
+            $policy = @{ methods = @(@{ id = 'fido2'; state = 'enabled' }) }
+            { Invoke-AuthMethodsPolicyApply -TenantId 'tenant-x' -Policy $policy -Confirmed } | Should -Throw '*403*'
+            Should -Invoke Invoke-MgGraphRequest -ParameterFilter { $Method -eq 'PATCH' } -Times 0 -Exactly
+        }
+    }
+
     Context 'Invoke-AuthMethodsPolicyApply' {
         BeforeEach {
             Mock Invoke-MgGraphRequest {

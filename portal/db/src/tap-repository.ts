@@ -6,9 +6,8 @@
 import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 
-// A numbered migration is the eventual home for this DDL; it lives here
-// because this ticket's scope does not allow adding files under
-// portal/db/migrations/.
+// Migration 0079 creates this table for the shared database; the DDL stays
+// here (idempotent) for databases opened through openSqliteTapRecordRepository.
 const TAP_RECORDS_DDL = `
 CREATE TABLE IF NOT EXISTS tap_records (
   id              TEXT PRIMARY KEY,

@@ -29,9 +29,11 @@ function Read-RegistrationCampaignJob {
     $includes = if ($raw.includeTargets) { @($raw.includeTargets) } elseif ($raw.IncludeTargets) { @($raw.IncludeTargets) } else { @() }
     $excludes = if ($raw.excludeTargets) { @($raw.excludeTargets) } elseif ($raw.ExcludeTargets) { @($raw.ExcludeTargets) } else { @() }
     $confirmed = if ($null -ne $raw.confirmed) { [bool]$raw.confirmed } elseif ($null -ne $raw.Confirmed) { [bool]$raw.Confirmed } else { $false }
+    $action = if ($raw.action) { [string]$raw.action } else { 'set' }
 
     return @{
         TenantId             = $tenantId
+        Action               = $action
         State                = $state
         SnoozeDurationInDays = $snooze
         IncludeTargets       = $includes
@@ -49,49 +51,38 @@ function Get-TenantRegistrationCampaign {
         [string]$TenantId
     )
 
+    # A failed read throws rather than reporting the campaign disabled.
     $uri = "/v1.0/policies/authenticationMethodsPolicy"
-    try {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
-        $campaign = $response.registrationEnforcement.authenticationMethodsRegistrationCampaign
+    $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+    $campaign = $response.registrationEnforcement.authenticationMethodsRegistrationCampaign
 
-        $state = if ($null -ne $campaign -and $campaign.state -eq 'enabled') { 'enabled' } else { 'disabled' }
-        $snooze = if ($null -ne $campaign -and $null -ne $campaign.snoozeDurationInDays) { [int]$campaign.snoozeDurationInDays } else { 1 }
-        $includes = [System.Collections.Generic.List[string]]::new()
-        if ($null -ne $campaign -and $null -ne $campaign.includeTargets) {
-            foreach ($item in @($campaign.includeTargets)) {
-                if ($null -ne $item -and $item.id) {
-                    $includes.Add([string]$item.id)
-                }
+    $state = if ($null -ne $campaign -and $campaign.state -eq 'enabled') { 'enabled' } else { 'disabled' }
+    $snooze = if ($null -ne $campaign -and $null -ne $campaign.snoozeDurationInDays) { [int]$campaign.snoozeDurationInDays } else { 1 }
+    $includes = [System.Collections.Generic.List[string]]::new()
+    if ($null -ne $campaign -and $null -ne $campaign.includeTargets) {
+        foreach ($item in @($campaign.includeTargets)) {
+            if ($null -ne $item -and $item.id) {
+                $includes.Add([string]$item.id)
             }
         }
-        $excludes = [System.Collections.Generic.List[string]]::new()
-        if ($null -ne $campaign -and $null -ne $campaign.excludeTargets) {
-            foreach ($item in @($campaign.excludeTargets)) {
-                if ($null -ne $item -and $item.id) {
-                    $excludes.Add([string]$item.id)
-                }
+    }
+    $excludes = [System.Collections.Generic.List[string]]::new()
+    if ($null -ne $campaign -and $null -ne $campaign.excludeTargets) {
+        foreach ($item in @($campaign.excludeTargets)) {
+            if ($null -ne $item -and $item.id) {
+                $excludes.Add([string]$item.id)
             }
         }
+    }
 
-        return @{
-            tenantId             = $TenantId
-            state                = $state
-            snoozeDurationInDays = $snooze
-            includeTargets       = @($includes)
-            excludeTargets       = @($excludes)
-            eligibleUserCount    = 0
-            retrievedAt          = (Get-Date).ToUniversalTime().ToString('o')
-        }
-    } catch {
-        return @{
-            tenantId             = $TenantId
-            state                = 'disabled'
-            snoozeDurationInDays = 1
-            includeTargets       = @()
-            excludeTargets       = @()
-            eligibleUserCount    = 0
-            retrievedAt          = (Get-Date).ToUniversalTime().ToString('o')
-        }
+    return @{
+        tenantId             = $TenantId
+        state                = $state
+        snoozeDurationInDays = $snooze
+        includeTargets       = @($includes)
+        excludeTargets       = @($excludes)
+        eligibleUserCount    = 0
+        retrievedAt          = (Get-Date).ToUniversalTime().ToString('o')
     }
 }
 
