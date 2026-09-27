@@ -136,7 +136,7 @@ describe("PIM role settings apply with plan preview (T-0244)", () => {
       },
       resolveCaller: () => ({
         tenantScope: tenantScope(["tenant-a"]),
-        permissions: ["roles.read", REMEDIATION_APPLY_PERMISSION],
+        permissions: ["Identity.Role.Read", REMEDIATION_APPLY_PERMISSION],
       }),
     });
 

@@ -10,10 +10,10 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const CA_NAMED_LOCATIONS_BASE_PATH = "/v1/tenants/:tenantId/ca/named-locations";
 export const CA_NAMED_LOCATIONS_ITEM_PATH = "/v1/tenants/:tenantId/ca/named-locations/:locationId";
 
-export const CA_READ_PERMISSION = "ca.read";
-export const CA_WRITE_PERMISSION = "ca.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
-export const CA_DEPLOY_PERMISSION = "ca.deploy";
+export const CA_READ_PERMISSION = "Tenant.ConditionalAccess.Read";
+export const CA_WRITE_PERMISSION = "Tenant.ConditionalAccess.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
+export const CA_DEPLOY_PERMISSION = "Tenant.ConditionalAccess.ReadWrite";
 export const CA_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface ReferencingPolicy {

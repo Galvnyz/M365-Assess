@@ -101,7 +101,7 @@ function optionsFor(
     store,
     resolveCaller: () => caller,
     authorize: async (_caller, permission) => {
-      if (!allowed || !permission.startsWith("users.")) {
+      if (!allowed || !permission.startsWith("Identity.User.")) {
         throw new AppError("auth.forbidden", "not permitted to perform this action", 403);
       }
     },

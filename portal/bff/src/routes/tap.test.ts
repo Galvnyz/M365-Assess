@@ -213,6 +213,6 @@ describe("Temporary Access Pass creation (T-0223)", () => {
       resolveCaller: () => callerFor("all"),
     });
     expect(routes.map((route) => `${route.method} ${route.path}`)).toContain(`POST ${MFA_TAP_PATH}`);
-    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/tap"].post.permission).toBe("mfa.write");
+    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/tap"].post.permission).toBe("Identity.Mfa.ReadWrite");
   });
 });

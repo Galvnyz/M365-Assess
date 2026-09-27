@@ -22,8 +22,8 @@ export const USER_TEMPLATES_PATH = "/v1/user-templates";
 export const USER_TEMPLATE_PATH = "/v1/user-templates/:id";
 
 export const USER_TEMPLATE_PERMISSIONS = {
-  read: "users.read",
-  write: "users.write",
+  read: "Identity.User.Read",
+  write: "Identity.User.ReadWrite",
 } as const;
 
 export const USER_TEMPLATE_NOT_FOUND = "user-template.not_found";

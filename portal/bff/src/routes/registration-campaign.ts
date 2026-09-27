@@ -9,8 +9,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const REGISTRATION_CAMPAIGN_PATH = "/v1/tenants/:tenantId/registration-campaign";
 
-export const REGISTRATION_CAMPAIGN_READ_PERMISSION = "mfa.read";
-export const REGISTRATION_CAMPAIGN_WRITE_PERMISSION = "mfa.policy";
+export const REGISTRATION_CAMPAIGN_READ_PERMISSION = "Identity.Mfa.Read";
+export const REGISTRATION_CAMPAIGN_WRITE_PERMISSION = "Identity.AuthMethodsPolicy.ReadWrite";
 
 export const REGISTRATION_CAMPAIGN_UNAUTHENTICATED = "request.unauthenticated";
 export const REGISTRATION_CAMPAIGN_CONFIRM_REQUIRED = "registrationCampaign.confirm_required";

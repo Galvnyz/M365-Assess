@@ -116,7 +116,7 @@ describe("Group bulk membership routes (T-0268)", () => {
     const provider = new FakeGroupMembersProvider();
     const caller: GroupMembersCaller = {
       tenantScope: tenantScope([TENANT]),
-      permissions: ["groups.read"],
+      permissions: ["Identity.Group.Read"],
     };
     const routes = getRoutes(provider, caller);
     const memberRoute = routes.find((r) => r.path === GROUP_MEMBERS_BULK_PATH)!;

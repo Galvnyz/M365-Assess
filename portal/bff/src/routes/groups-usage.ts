@@ -6,7 +6,7 @@ import { requireTenantInScope, type Caller } from "../rbac/authorize.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const GROUP_USAGE_PATH = "/v1/tenants/:tenantId/groups/usage";
-export const GROUPS_READ_PERMISSION = "groups.read";
+export const GROUPS_READ_PERMISSION = "Identity.Group.Read";
 export const GROUPS_USAGE_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface GroupUsageSummary {
@@ -117,7 +117,7 @@ async function authorizeRead(
     const permissions = caller.permissions ?? [];
     const hasPermission =
       permissions.includes(GROUPS_READ_PERMISSION) ||
-      permissions.includes("groups.write") ||
+      permissions.includes("Identity.Group.ReadWrite") ||
       permissions.includes("*");
     if (!hasPermission) {
       throw new AppError(

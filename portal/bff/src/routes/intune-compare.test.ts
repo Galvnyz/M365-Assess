@@ -158,7 +158,7 @@ describe("GET /v1/tenants/:tenantId/intune/compare (T-0310)", () => {
       status: 403,
     });
     await expect(
-      route.handler(ctx("left=policy:compliance:p1&right=policy:compliance:p2", T1, ["intune.write"])),
+      route.handler(ctx("left=policy:compliance:p1&right=policy:compliance:p2", T1, ["Endpoint.Intune.ReadWrite"])),
     ).rejects.toMatchObject({ status: 403 });
   });
 

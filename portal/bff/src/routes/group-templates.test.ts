@@ -93,7 +93,7 @@ describe("Group templates CRUD routes and persistence (T-0265)", () => {
   it("rejects callers missing groups.templates with 403", async () => {
     const repo = new InMemoryGroupTemplateRepository();
     const caller: GroupTemplatesCaller = {
-      permissions: ["groups.read"],
+      permissions: ["Identity.Group.Read"],
     };
     const routes = createGroupTemplatesRoutes({
       repository: repo,

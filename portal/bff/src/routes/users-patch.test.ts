@@ -115,7 +115,7 @@ describe("tenant users bulk patch (T-0203)", () => {
     expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users/bulk-patch"].post.operationId).toBe(
       "bulkPatchTenantUsers",
     );
-    expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users/bulk-patch"].post.permission).toBe("users.write");
+    expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users/bulk-patch"].post.permission).toBe("Identity.User.ReadWrite");
   });
 
   it("previews the per-user diff with no tenant write and no audit", async () => {

@@ -27,10 +27,10 @@ export const FILTER_TEMPLATE_PATH = "/v1/intune-assignment-filter-templates/:id"
 export const FILTER_TEMPLATE_DEPLOY_PATH = "/v1/intune-assignment-filter-templates/:id/deploy";
 
 export const ASSIGNMENT_FILTER_PERMISSIONS = {
-  read: "intune.read",
-  write: "intune.write",
-  remediationApply: "remediation.apply",
-  templates: "intune.templates",
+  read: "Endpoint.Intune.Read",
+  write: "Endpoint.Intune.ReadWrite",
+  remediationApply: "Remediation.Apply",
+  templates: "Endpoint.IntuneTemplate.ReadWrite",
 } as const;
 
 export const ErrorCodesFilterTemplateNotFound = "assignment_filter_template.not_found" as const;

@@ -217,9 +217,9 @@ describe("device bitlocker route", () => {
   it("publishes the devices.keys permission through the route module", () => {
     const path =
       DEVICE_BITLOCKER_OPENAPI.paths["/tenants/{tenantId}/devices/{deviceId}/bitlocker"];
-    expect(path.get.permission).toBe("devices.keys");
+    expect(path.get.permission).toBe("Endpoint.DeviceKeys.Reveal");
     expect(path.get.operationId).toBe("getDeviceBitLockerKeys");
-    expect(DEVICE_BITLOCKER_PERMISSION).toBe("devices.keys");
+    expect(DEVICE_BITLOCKER_PERMISSION).toBe("Endpoint.DeviceKeys.Reveal");
     expect(DEVICE_BITLOCKER_PATH).toBe("/v1/tenants/:tenantId/devices/:deviceId/bitlocker");
   });
 });

@@ -25,7 +25,7 @@ const OPERATOR: IntuneDeployCaller = {
   roles: ["operator"],
   tenantScope: tenantScope([T1, T2, T3]),
 };
-const DEPLOYER = ["intune.templates", "intune.write"];
+const DEPLOYER = ["Endpoint.IntuneTemplate.ReadWrite", "Endpoint.Intune.ReadWrite"];
 
 async function seededRepo(): Promise<InMemoryIntuneTemplateRepository> {
   const repo = new InMemoryIntuneTemplateRepository();
@@ -134,13 +134,13 @@ describe("Intune template deploy route (T-0306)", () => {
 
   it("requires intune.templates and write semantics", async () => {
     const { route } = await setup();
-    for (const permissions of [["intune.write"], ["intune.templates"], ["intune.read"]]) {
+    for (const permissions of [["Endpoint.Intune.ReadWrite"], ["Endpoint.IntuneTemplate.ReadWrite"], ["Endpoint.Intune.Read"]]) {
       await expect(route.handler(request({ targets: [T1] }, permissions))).rejects.toMatchObject({
         status: 403,
       });
     }
     const res = await route.handler(
-      request({ targets: [T1], preview: true }, ["intune.templates", "remediation.apply"]),
+      request({ targets: [T1], preview: true }, ["Endpoint.IntuneTemplate.ReadWrite", "Remediation.Apply"]),
     );
     expect(res.status).toBe(200);
   });

@@ -32,10 +32,10 @@ export const REUSABLE_SETTING_TEMPLATES_PATH = "/v1/intune-reusable-setting-temp
 export const REUSABLE_SETTING_TEMPLATE_PATH = "/v1/intune-reusable-setting-templates/:id";
 
 export const REUSABLE_SETTINGS_PERMISSIONS = {
-  read: "intune.read",
-  write: "intune.write",
-  remediationApply: "remediation.apply",
-  templates: "intune.templates",
+  read: "Endpoint.Intune.Read",
+  write: "Endpoint.Intune.ReadWrite",
+  remediationApply: "Remediation.Apply",
+  templates: "Endpoint.IntuneTemplate.ReadWrite",
 } as const;
 
 export const ErrorCodesReusableTemplateNotFound = "reusable_setting_template.not_found" as const;

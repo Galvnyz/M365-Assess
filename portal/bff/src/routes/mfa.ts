@@ -2,8 +2,8 @@
 // The BFF owns validation, RBAC/tenant scope, and response shaping; every
 // tenant read or write runs in the PowerShell workers through injected
 // provider seams, so this module holds no Graph client and issues no tenant
-// write itself. Reads require `mfa.read`; per-user writes require
-// `mfa.write`; policy writes additionally require `mfa.policy` (SPEC §7)
+// write itself. Reads require `Identity.Mfa.Read`; per-user writes require
+// `Identity.Mfa.ReadWrite`; policy writes additionally require `Identity.AuthMethodsPolicy.ReadWrite` (SPEC §7)
 // intersected with the caller tenant scope.
 import { AppError, ErrorCodes } from "../errors.js";
 import { parsePagination } from "../pagination.js";
@@ -13,9 +13,9 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const MFA_REPORT_PATH = "/v1/tenants/:tenantId/mfa-report";
 
 export const MFA_PERMISSIONS = {
-  read: "mfa.read",
-  write: "mfa.write",
-  policy: "mfa.policy",
+  read: "Identity.Mfa.Read",
+  write: "Identity.Mfa.ReadWrite",
+  policy: "Identity.AuthMethodsPolicy.ReadWrite",
 } as const;
 
 export const MFA_UNAUTHENTICATED = "request.unauthenticated";

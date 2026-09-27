@@ -6,7 +6,7 @@
 // Exchange Online or Purview, mirroring the worker-side
 // `Resolve-TenantCredential` compatibility check (T-0011) so the failure is
 // stable and never depends on per-service connect loops. Every mutation appends
-// an AuditEvent; `tenants.credentials` is admin-only (SPEC.md §7).
+// an AuditEvent; `CIPP.Admin.TenantCredentials` is admin-only (SPEC.md §7).
 import { randomUUID } from "node:crypto";
 import { deriveCredentialState, type CredentialState } from "../credentials/expiry.js";
 import {
@@ -20,7 +20,7 @@ import type { RequestContext, Route } from "../server.js";
 
 export const TENANT_CREDENTIAL_PATH = "/v1/tenants/:id/credential";
 
-export const CREDENTIALS_PERMISSION = "tenants.credentials";
+export const CREDENTIALS_PERMISSION = "CIPP.Admin.TenantCredentials";
 
 export const CREDENTIAL_NOT_FOUND = "credential.not_found";
 export const CREDENTIAL_UNSUPPORTED = "credential.unsupported";

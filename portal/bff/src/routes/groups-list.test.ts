@@ -120,7 +120,7 @@ describe("Groups list route (T-0261)", () => {
       provider,
       resolveCaller: () => ({
         tenantScope: tenantScope([TENANT]),
-        permissions: ["users.read"],
+        permissions: ["Identity.User.Read"],
       }),
     });
 

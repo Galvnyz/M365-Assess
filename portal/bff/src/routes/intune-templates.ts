@@ -1,6 +1,6 @@
 // IntuneTemplate CRUD routes (EPIC-016 §6) over the repository in
 // ../repository/intune-templates. Template management is gated behind RBAC
-// `intune.templates`; reads need `intune.read` (SPEC §7). The gate is an injected
+// `Endpoint.IntuneTemplate.ReadWrite`; reads need `Endpoint.Intune.Read` (SPEC §7). The gate is an injected
 // `authorize` seam so EPIC-038's resolver can supply the real permission set
 // without touching route code.
 import { AppError, ErrorCodes, type ErrorDetail } from "../errors.js";
@@ -17,8 +17,8 @@ import {
 } from "../repository/intune-templates.js";
 
 export const INTUNE_TEMPLATE_PERMISSIONS = {
-  read: "intune.read",
-  templates: "intune.templates",
+  read: "Endpoint.Intune.Read",
+  templates: "Endpoint.IntuneTemplate.ReadWrite",
 } as const;
 
 export const INTUNE_TEMPLATE_ADMIN_SCOPE = "CIPP.Admin.*" as const;

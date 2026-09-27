@@ -223,9 +223,9 @@ describe("GET /v1/standards/compare/{tenantId} (T-0148)", () => {
   });
 
   it("publishes both operations with the read permission", () => {
-    expect(STANDARDS_ALIGNMENT_OPENAPI["/v1/standards/alignment"].get.permission).toBe("standards.read");
+    expect(STANDARDS_ALIGNMENT_OPENAPI["/v1/standards/alignment"].get.permission).toBe("Tenant.Standards.Read");
     expect(STANDARDS_ALIGNMENT_OPENAPI["/v1/standards/compare/{tenantId}"].get.permission).toBe(
-      "standards.read",
+      "Tenant.Standards.Read",
     );
   });
 });

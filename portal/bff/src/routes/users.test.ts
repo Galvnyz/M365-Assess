@@ -272,9 +272,9 @@ describe("tenant users route", () => {
 
   it("publishes the users.read permission through the route module", () => {
     const operation = USERS_OPENAPI.paths["/tenants/{tenantId}/users"].get;
-    expect(operation.permission).toBe("users.read");
+    expect(operation.permission).toBe("Identity.User.Read");
     expect(operation.operationId).toBe("listTenantUsers");
-    expect(USERS_PERMISSION).toBe("users.read");
+    expect(USERS_PERMISSION).toBe("Identity.User.Read");
     expect(TENANT_USERS_PATH).toBe("/v1/tenants/:tenantId/users");
     const names = operation.parameters.map((parameter) => parameter.name);
     for (const name of [

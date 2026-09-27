@@ -23,8 +23,8 @@ export const TENANT_VARIABLES_PATH = "/v1/tenant-variables";
 export const TENANT_VARIABLE_PATH = "/v1/tenant-variables/:id";
 
 export const TENANT_VARIABLE_PERMISSIONS = {
-  read: "tenants.read",
-  write: "tenants.write",
+  read: "Tenant.Administration.Read",
+  write: "Tenant.Administration.ReadWrite",
 } as const;
 
 export const TENANT_VARIABLE_NOT_FOUND = "tenant-variable.not_found";

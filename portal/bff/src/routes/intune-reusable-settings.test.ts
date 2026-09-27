@@ -49,7 +49,7 @@ const OPERATOR: ReusableSettingsCaller = {
   tenantScope: tenantScope([T1]),
 };
 
-const ALL_PERMISSIONS = ["intune.read", "intune.write", "intune.templates"];
+const ALL_PERMISSIONS = ["Endpoint.Intune.Read", "Endpoint.Intune.ReadWrite", "Endpoint.IntuneTemplate.ReadWrite"];
 
 class FakeProvider implements ReusableSettingsProvider {
   readonly syncCalls: { tenantId: string; templateIds: string[]; preview: boolean; actor: string }[] = [];
@@ -222,11 +222,11 @@ describe("reusable settings tenant routes (T-0308)", () => {
     ).rejects.toMatchObject({ status: 403 });
     await expect(
       route("POST", REUSABLE_SETTINGS_SYNC_PATH).handler(
-        ctx(REUSABLE_SETTINGS_SYNC_PATH, { tenantId: T1 }, {}, ["intune.read"]),
+        ctx(REUSABLE_SETTINGS_SYNC_PATH, { tenantId: T1 }, {}, ["Endpoint.Intune.Read"]),
       ),
     ).rejects.toMatchObject({ status: 403 });
     const res = await route("POST", REUSABLE_SETTINGS_SYNC_PATH).handler(
-      ctx(REUSABLE_SETTINGS_SYNC_PATH, { tenantId: T1 }, {}, ["remediation.apply"]),
+      ctx(REUSABLE_SETTINGS_SYNC_PATH, { tenantId: T1 }, {}, ["Remediation.Apply"]),
     );
     expect(res.status).toBe(200);
   });
@@ -362,7 +362,7 @@ describe("reusable setting template routes (T-0308)", () => {
     });
     await expect(
       route("POST", REUSABLE_SETTING_TEMPLATES_PATH).handler(
-        ctx(REUSABLE_SETTING_TEMPLATES_PATH, {}, { name: "x", settingsJson: firewallSettings("x") }, ["intune.read"]),
+        ctx(REUSABLE_SETTING_TEMPLATES_PATH, {}, { name: "x", settingsJson: firewallSettings("x") }, ["Endpoint.Intune.Read"]),
       ),
     ).rejects.toMatchObject({ status: 403 });
   });

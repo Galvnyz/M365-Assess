@@ -7,7 +7,7 @@
 //   DELETE /v1/baselines/:baselineId           -> delete
 //   POST   /v1/baselines/:baselineId/assign    -> replace assignments
 //
-// Reads require `baselines.read`; mutations require `baselines.write`.
+// Reads require `Tenant.Baselines.Read`; mutations require `Tenant.Baselines.ReadWrite`.
 // Assignment reuses the tenants/groups model owned by EPIC-002: a `tenant`
 // target must be inside the caller's tenant scope, while `group` and
 // `allTenants` targets pass through for EPIC-002's filter resolution.
@@ -30,8 +30,8 @@ export const BASELINE_DETAIL_PATH = "/v1/baselines/:baselineId";
 export const BASELINE_ASSIGN_PATH = "/v1/baselines/:baselineId/assign";
 
 export const BASELINES_PERMISSIONS = {
-  read: "baselines.read",
-  write: "baselines.write",
+  read: "Tenant.Baselines.Read",
+  write: "Tenant.Baselines.ReadWrite",
 } as const;
 
 export const BASELINES_UNAUTHENTICATED = "request.unauthenticated";

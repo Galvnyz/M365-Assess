@@ -8,8 +8,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const GROUP_MEMBERS_BULK_PATH = "/v1/tenants/:tenantId/groups/:groupId/members/bulk";
 export const GROUP_OWNERS_BULK_PATH = "/v1/tenants/:tenantId/groups/:groupId/owners/bulk";
 
-export const GROUPS_WRITE_PERMISSION = "groups.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const GROUPS_WRITE_PERMISSION = "Identity.Group.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const GROUPS_MEMBERS_UNAUTHENTICATED = "request.unauthenticated";
 
 export type BulkMembershipRole = "members" | "owners";

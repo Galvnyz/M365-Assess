@@ -20,7 +20,7 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const STANDARDS_ALIGNMENT_PATH = "/v1/standards/alignment";
 export const STANDARDS_COMPARE_PATH = "/v1/standards/compare/:tenantId";
 
-export const STANDARDS_ALIGNMENT_PERMISSION = "standards.read";
+export const STANDARDS_ALIGNMENT_PERMISSION = "Tenant.Standards.Read";
 export const STANDARDS_ALIGNMENT_UNAUTHENTICATED = "request.unauthenticated";
 
 // Shared with EPIC-009 (§3.3); drift adds accepted deviation / customer specific.

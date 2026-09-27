@@ -19,7 +19,7 @@ export const OFFBOARDING_JOBS_PATH = "/v1/tenants/:tenantId/offboarding";
 export const OFFBOARDING_JOB_PATH = "/v1/tenants/:tenantId/offboarding/:jobId";
 export const OFFBOARDING_RERUN_PATH = "/v1/offboarding/:jobId/steps/:order/rerun";
 
-export const OFFBOARDING_PERMISSION = "users.offboard";
+export const OFFBOARDING_PERMISSION = "Identity.User.ReadWrite";
 
 export const OFFBOARDING_UNAUTHENTICATED = "request.unauthenticated";
 export const OFFBOARDING_JOB_NOT_FOUND = "offboarding.job_not_found";

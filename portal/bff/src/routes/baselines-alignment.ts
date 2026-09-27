@@ -5,7 +5,7 @@
 // Stage progress aggregates the T-0185 rollout rows per stage; run events
 // read the T-0188 append-only history newest-first (never mutated here);
 // trend points feed the T-0188 fleet chart. Rows are filtered to the
-// caller's tenant scope (read-model intersection). Requires `baselines.read`.
+// caller's tenant scope (read-model intersection). Requires `Tenant.Baselines.Read`.
 //
 // Route ordering matters: this static-suffix path sits under the
 // `/v1/baselines/:baselineId` detail route, so routers matching
@@ -25,7 +25,7 @@ import type { HistoryEvent, TrendPoint } from "../domain/baseline-history.js";
 
 export const BASELINE_ALIGNMENT_PATH = "/v1/baselines/:baselineId/alignment";
 
-export const BASELINE_ALIGNMENT_PERMISSION = "baselines.read";
+export const BASELINE_ALIGNMENT_PERMISSION = "Tenant.Baselines.Read";
 export const BASELINE_ALIGNMENT_UNAUTHENTICATED = "request.unauthenticated";
 export const BASELINE_NOT_FOUND = "baseline.not_found";
 

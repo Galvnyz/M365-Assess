@@ -12,7 +12,7 @@ import type {
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const DEVICE_BITLOCKER_PATH = "/v1/tenants/:tenantId/devices/:deviceId/bitlocker";
-export const DEVICE_BITLOCKER_PERMISSION = "devices.keys";
+export const DEVICE_BITLOCKER_PERMISSION = "Endpoint.DeviceKeys.Reveal";
 
 const FORBIDDEN_CODE = "rbac.forbidden";
 
@@ -134,7 +134,7 @@ export const DEVICE_BITLOCKER_OPENAPI = {
       get: {
         operationId: "getDeviceBitLockerKeys",
         summary: "Reveal a device's BitLocker recovery keys; every reveal is audited",
-        permission: "devices.keys",
+        permission: "Endpoint.DeviceKeys.Reveal",
         security: [{ bearerAuth: [] }],
         parameters: [
           {

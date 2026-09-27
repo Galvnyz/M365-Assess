@@ -13,7 +13,7 @@ import type { TenantAuditInput, TenantRecord, TenantStore } from "./tenants.js";
 import type { CredentialRecord, CredentialStoreRow } from "./credentials.js";
 
 export const TEST_CONNECTION_PATH = "/v1/tenants/:id/test-connection";
-export const TEST_CONNECTION_PERMISSION = "tenants.read";
+export const TEST_CONNECTION_PERMISSION = "Tenant.Administration.Read";
 
 export const TENANT_NOT_FOUND = "tenant.not_found";
 export const CREDENTIAL_NOT_FOUND = "credential.not_found";

@@ -123,7 +123,7 @@ describe("Role assignments route (T-0241)", () => {
       provider,
       resolveCaller: () => ({
         tenantScope: tenantScope([TENANT]),
-        permissions: ["users.read"],
+        permissions: ["Identity.User.Read"],
       }),
     });
 

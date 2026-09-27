@@ -217,8 +217,8 @@ describe("reset route wiring (T-0222)", () => {
     expect(routes.map((route) => `${route.method} ${route.path}`)).toContain(`POST ${MFA_RESET_PATH}`);
     expect(routes.map((route) => `${route.method} ${route.path}`)).toContain(`POST ${MFA_BULK_RESET_PATH}`);
     const single = MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/mfa/reset"].post;
-    expect(single.permission).toBe("mfa.write");
+    expect(single.permission).toBe("Identity.Mfa.ReadWrite");
     const bulk = MFA_OPENAPI.paths["/tenants/{tenantId}/users/mfa/reset"].post;
-    expect(bulk.permission).toBe("mfa.write");
+    expect(bulk.permission).toBe("Identity.Mfa.ReadWrite");
   });
 });

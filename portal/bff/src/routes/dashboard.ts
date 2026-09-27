@@ -63,7 +63,7 @@ export const DASHBOARD_TENANT_PATH = "/v1/dashboard/:tenantId";
 export const DASHBOARD_FLEET_PATH = "/v1/dashboard";
 export const DASHBOARD_WIDGETS_PATH = "/v1/dashboard/widgets";
 
-export const DASHBOARD_READ_PERMISSION = "dashboard.read";
+export const DASHBOARD_READ_PERMISSION = "Portal.Dashboard.Read";
 export const DASHBOARD_UNAUTHENTICATED = "request.unauthenticated";
 export const DASHBOARD_FORBIDDEN = "auth.forbidden";
 export const DASHBOARD_TENANT_NOT_FOUND = "tenant.not_found";
@@ -83,7 +83,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Tenant Overview",
     category: "overview",
     description: "Tenant details, domains, and assessment status.",
-    requiredPermission: "dashboard.read",
+    requiredPermission: "Portal.Dashboard.Read",
     defaultSize: { width: 4, height: 2 },
   },
   {
@@ -91,7 +91,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Key Metrics",
     category: "overview",
     description: "Headline score and security metric breakdown.",
-    requiredPermission: "dashboard.read",
+    requiredPermission: "Portal.Dashboard.Read",
     defaultSize: { width: 4, height: 2 },
   },
   {
@@ -107,7 +107,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Alerts Overview",
     category: "alerts",
     description: "Open security alerts by severity (Critical, High, Medium, Low).",
-    requiredPermission: "alerts.read",
+    requiredPermission: "Tenant.Alert.Read",
     defaultSize: { width: 12, height: 2 },
   },
   {
@@ -115,7 +115,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Secure Score",
     category: "identity",
     description: "Compliance posture and benchmark score.",
-    requiredPermission: "dashboard.read",
+    requiredPermission: "Portal.Dashboard.Read",
     defaultSize: { width: 3, height: 2 },
   },
   {
@@ -123,7 +123,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Authentication Methods",
     category: "identity",
     description: "Phishing-resistant, Authenticator, SMS, and password-only mix.",
-    requiredPermission: "identity.read",
+    requiredPermission: "Identity.User.Read",
     defaultSize: { width: 3, height: 2 },
   },
   {
@@ -131,7 +131,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "MFA Adoption",
     category: "identity",
     description: "Multi-Factor Authentication enforcement and registration coverage.",
-    requiredPermission: "identity.read",
+    requiredPermission: "Identity.User.Read",
     defaultSize: { width: 3, height: 2 },
   },
   {
@@ -139,7 +139,7 @@ export const STOCK_V1_WIDGETS: readonly StockWidgetDefinition[] = [
     name: "Licensing",
     category: "licensing",
     description: "License assignment and available seat counts.",
-    requiredPermission: "licensing.read",
+    requiredPermission: "Tenant.Licensing.Read",
     defaultSize: { width: 3, height: 2 },
   },
 ];
@@ -182,7 +182,7 @@ function checkCallerPermission(
   // Built-in roles check
   if (caller.roles.includes("admin")) return true;
   if (caller.roles.includes("operator")) {
-    if (permission === "dashboard.read" || permission === RunPermissions.read) {
+    if (permission === "Portal.Dashboard.Read" || permission === RunPermissions.read) {
       return true;
     }
   }

@@ -183,7 +183,7 @@ describe("POST /v1/tenants/:tenantId/intune/:kind (T-0302 create)", () => {
     const harness = createHarness();
     harness.setCaller({
       userId: "user-2",
-      permissions: ["intune.read"],
+      permissions: ["Endpoint.Intune.Read"],
       tenantScope: tenantScope([TENANT]),
     });
     const route = harness.getRoute("POST", INTUNE_CRUD_BASE_PATH);

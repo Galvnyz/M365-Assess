@@ -8,7 +8,7 @@
 // and the artifact itself is produced through the EPIC-005 report pipeline
 // (POST /v1/reports/render with the summary as the custom document). The
 // trend series over time is a documented follow-on from EPIC-010's history
-// and is not computed here. Reads require `drift.read`; tenant scope is
+// and is not computed here. Reads require `Tenant.Drift.Read`; tenant scope is
 // enforced through the shared RBAC seam.
 
 import { AppError, ErrorCodes } from "../errors.js";
@@ -24,7 +24,7 @@ import {
 
 export const DRIFT_REPORT_PATH = "/v1/drift/:tenantId/report";
 
-export const DRIFT_REPORT_PERMISSION = "drift.read";
+export const DRIFT_REPORT_PERMISSION = "Tenant.Drift.Read";
 export const DRIFT_REPORT_UNAUTHENTICATED = "request.unauthenticated";
 
 /** Maximum categories returned in the top-deviation list. */

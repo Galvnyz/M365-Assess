@@ -2,7 +2,7 @@
 // T-0143).
 //
 // Routes over the standards template store (T-0142). Reads require
-// `standards.read`, mutations `standards.write`; a request that names a tenant is
+// `Tenant.Standards.Read`, mutations `Tenant.Standards.ReadWrite`; a request that names a tenant is
 // scope-checked through the shared RBAC seam. `Convert` (a `kind` change on
 // PATCH) is validated: drift is observe-only, so a template that still remediates
 // cannot become a drift template. Storage is injected as a structural seam so
@@ -25,8 +25,8 @@ export const STANDARDS_TEMPLATE_DETAIL_PATH = "/v1/standards/templates/:template
 export const STANDARDS_TEMPLATE_CLONE_PATH = "/v1/standards/templates/:templateId/clone";
 
 export const STANDARDS_PERMISSIONS = {
-  read: "standards.read",
-  write: "standards.write",
+  read: "Tenant.Standards.Read",
+  write: "Tenant.Standards.ReadWrite",
 } as const;
 
 export const STANDARDS_UNAUTHENTICATED = "request.unauthenticated";

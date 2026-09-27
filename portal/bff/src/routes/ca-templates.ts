@@ -1,6 +1,6 @@
 // CaTemplate CRUD routes (EPIC-015 §6) over the repository in
-// ../repository/ca-templates. Writes are gated behind RBAC `ca.deploy`; reads
-// need `ca.read`. The gate is an injected `authorize` seam so EPIC-038's
+// ../repository/ca-templates. Writes are gated behind RBAC `Tenant.ConditionalAccess.ReadWrite`; reads
+// need `Tenant.ConditionalAccess.Read`. The gate is an injected `authorize` seam so EPIC-038's
 // resolver can supply the real permission set without touching route code.
 import { AppError, ErrorCodes, type ErrorDetail } from "../errors.js";
 import { paginate, parsePagination } from "../pagination.js";
@@ -15,8 +15,8 @@ import {
 } from "../repository/ca-templates.js";
 
 export const CA_TEMPLATE_PERMISSIONS = {
-  read: "ca.read",
-  deploy: "ca.deploy",
+  read: "Tenant.ConditionalAccess.Read",
+  deploy: "Tenant.ConditionalAccess.ReadWrite",
 } as const;
 
 export const CA_TEMPLATE_ADMIN_SCOPE = "CIPP.Admin.*" as const;

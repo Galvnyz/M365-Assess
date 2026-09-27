@@ -7,7 +7,7 @@
 // never deleted synchronously. The request must set `confirm: true`; an optional
 // `delayDays` grace window defers deletion. The actual delete is handed to the
 // EPIC-006 remediation contract through an injected seam — there is no drift-
-// specific executor. Requires `drift.remediate` and `Remediation.Apply`.
+// specific executor. Requires `Remediation.Apply`.
 
 import { AppError, ErrorCodes } from "../errors.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
@@ -28,7 +28,7 @@ import {
 export const DRIFT_DENY_PATH = "/v1/drift/deviations/:deviationId/deny";
 
 export const DRIFT_DENY_PERMISSIONS = {
-  triage: "drift.remediate",
+  triage: "Remediation.Apply",
   remediate: "Remediation.Apply",
 } as const;
 export const DRIFT_DENY_UNAUTHENTICATED = "request.unauthenticated";

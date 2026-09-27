@@ -115,7 +115,7 @@ describe("tenant user lifecycle actions (T-0204)", () => {
       "executeUserAction",
     );
     expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/actions/{action}"].post.permission).toBe(
-      "users.write",
+      "Identity.User.ReadWrite",
     );
   });
 

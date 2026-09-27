@@ -237,6 +237,6 @@ describe("MFA report handler (T-0221)", () => {
   it("publishes the report operation with the mfa.read permission", () => {
     const operation = MFA_OPENAPI.paths["/tenants/{tenantId}/mfa-report"].get;
     expect(operation.operationId).toBe("getMfaReport");
-    expect(operation.permission).toBe("mfa.read");
+    expect(operation.permission).toBe("Identity.Mfa.Read");
   });
 });

@@ -30,7 +30,7 @@ const OPERATOR: AssignmentFilterCaller = {
   roles: ["operator"],
   tenantScope: tenantScope([T1, T2]),
 };
-const ALL = ["intune.read", "intune.write", "intune.templates"];
+const ALL = ["Endpoint.Intune.Read", "Endpoint.Intune.ReadWrite", "Endpoint.IntuneTemplate.ReadWrite"];
 
 describe("filter rule grammar (T-0309)", () => {
   it.each([
@@ -233,7 +233,7 @@ describe("assignment filter tenant routes (T-0309)", () => {
     ).rejects.toMatchObject({ status: 403 });
     await expect(
       route("POST", ASSIGNMENT_FILTERS_PATH).handler(
-        ctx(ASSIGNMENT_FILTERS_PATH, { tenantId: T1 }, { displayName: "x", platform: "windows", rule: RULE }, ["intune.read"]),
+        ctx(ASSIGNMENT_FILTERS_PATH, { tenantId: T1 }, { displayName: "x", platform: "windows", rule: RULE }, ["Endpoint.Intune.Read"]),
       ),
     ).rejects.toMatchObject({ status: 403 });
   });
@@ -257,7 +257,7 @@ describe("assignment filter templates and deploy (T-0309)", () => {
     ).rejects.toMatchObject({ status: 400, details: [expect.objectContaining({ field: "rule" })] });
     await expect(
       route("POST", FILTER_TEMPLATES_PATH).handler(
-        ctx(FILTER_TEMPLATES_PATH, {}, { name: "x", platform: "ios", rule: RULE }, ["intune.read"]),
+        ctx(FILTER_TEMPLATES_PATH, {}, { name: "x", platform: "ios", rule: RULE }, ["Endpoint.Intune.Read"]),
       ),
     ).rejects.toMatchObject({ status: 403 });
   });

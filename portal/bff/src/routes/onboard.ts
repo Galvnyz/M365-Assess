@@ -1,6 +1,6 @@
 // Tenant onboarding route (EPIC-002 SPEC.md §4.1, §6, §8, §10).
 // POST /v1/tenants/{id}/onboard invokes Grant-M365AssessConsent via the worker pool.
-// High-impact setup write: requires explicit confirmation and `tenants.onboard` permission.
+// High-impact setup write: requires explicit confirmation and `Tenant.Administration.ReadWrite` permission.
 // An unconfirmed path is rejected with 400 and never invokes the worker with -Force.
 // Success records an audit event with before/after and stores a credential reference.
 // Partial or half-provisioned failures still record an audit event and return a precise error.
@@ -14,7 +14,7 @@ import type { CredentialStoreRow } from "./credentials.js";
 import type { TenantAuditInput, TenantRecord, TenantStore } from "./tenants.js";
 
 export const ONBOARD_PATH = "/v1/tenants/:id/onboard";
-export const ONBOARD_PERMISSION = "tenants.onboard";
+export const ONBOARD_PERMISSION = "Tenant.Administration.ReadWrite";
 
 export const ONBOARD_CONFIRMATION_REQUIRED = "onboard.confirmation_required";
 export const ONBOARD_FAILED = "onboard.failed";

@@ -20,8 +20,8 @@ import {
 
 export const INTUNE_TEMPLATE_DEPLOY_PATH = "/v1/intune-templates/:id/deploy";
 
-export const INTUNE_WRITE_PERMISSION = "intune.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const INTUNE_WRITE_PERMISSION = "Endpoint.Intune.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const INTUNE_DEPLOY_UNAUTHENTICATED = "request.unauthenticated";
 
 export const INTUNE_ASSIGNMENT_MODES = [

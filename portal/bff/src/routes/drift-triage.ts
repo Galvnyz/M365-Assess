@@ -5,7 +5,7 @@
 //   DELETE /v1/drift/deviations/{deviationId}/override  -> revert to the template value
 //
 // Accept and override are non-destructive. Deny/queue-deletion is T-0166. Writes
-// require `drift.triage` and are audited. The store seam applies the triage by
+// require `Tenant.Drift.ReadWrite` and are audited. The store seam applies the triage by
 // deviation id (the concrete adapter resolves the id to the T-0162 triage key).
 
 import { AppError, ErrorCodes } from "../errors.js";
@@ -26,7 +26,7 @@ import type { DriftDeviationRecord } from "./drift.js";
 export const DRIFT_ACCEPT_PATH = "/v1/drift/deviations/:deviationId/accept";
 export const DRIFT_OVERRIDE_PATH = "/v1/drift/deviations/:deviationId/override";
 
-export const DRIFT_TRIAGE_PERMISSION = "drift.triage";
+export const DRIFT_TRIAGE_PERMISSION = "Tenant.Drift.ReadWrite";
 export const DRIFT_TRIAGE_UNAUTHENTICATED = "request.unauthenticated";
 export const DRIFT_DEVIATION_NOT_FOUND = "drift.deviation_not_found";
 

@@ -19,8 +19,8 @@ export const TENANTS_PATH = "/v1/tenants";
 export const TENANT_PATH = "/v1/tenants/:id";
 
 export const TENANT_PERMISSIONS = {
-  read: "tenants.read",
-  write: "tenants.write",
+  read: "Tenant.Administration.Read",
+  write: "Tenant.Administration.ReadWrite",
 } as const;
 
 export const TENANT_NOT_FOUND = "tenant.not_found";

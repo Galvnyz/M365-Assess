@@ -7,7 +7,7 @@
 // - Bundle gathers run artifacts for the tenant's latest run so the caller
 //   gets a single zip-ready listing (download is streamed by the artifact
 //   tier, not this route).
-// - Permissions: `reports.read` for GET, `reports.generate` for POST render
+// - Permissions: `Tenant.Reports.Read` for GET, `Tenant.Reports.ReadWrite` for POST render
 //   and bundle. Template writes are owned by report-templates.ts.
 // - Tenant scoping: every write/generation operation requires a `tenantId`;
 //   history is filterable by tenantId.
@@ -25,8 +25,8 @@ import type { RequestContext, RouteResponse } from "../server.js";
 // ─── Permission tokens ────────────────────────────────────────────────────────
 
 export const REPORTS_PERMISSIONS = {
-  read: "reports.read",
-  generate: "reports.generate",
+  read: "Tenant.Reports.Read",
+  generate: "Tenant.Reports.ReadWrite",
 } as const;
 
 // ─── Error codes ──────────────────────────────────────────────────────────────

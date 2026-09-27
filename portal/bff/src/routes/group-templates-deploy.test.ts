@@ -109,7 +109,7 @@ describe("Group template deploy route (T-0266)", () => {
     const repo = new InMemoryGroupTemplateRepository();
     const caller: GroupTemplateDeployCaller = {
       tenantScope: tenantScope([TENANT_1]),
-      permissions: ["groups.read"],
+      permissions: ["Identity.Group.Read"],
     };
     const route = createGroupTemplatesDeployRoute({
       repository: repo,

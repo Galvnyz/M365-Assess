@@ -274,7 +274,7 @@ describe("Dashboard routes (T-0062)", () => {
         roles: ["operator"],
         tenantScope: ALL_TENANTS,
         ...({
-          permissions: ["dashboard.read", "runs.read", "identity.read"],
+          permissions: ["Portal.Dashboard.Read", "runs.read", "Identity.User.Read"],
         } as any),
       };
 

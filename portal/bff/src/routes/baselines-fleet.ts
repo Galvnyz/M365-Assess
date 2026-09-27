@@ -6,7 +6,7 @@
 // Tenants need attention when they carry open deviations or sit in a
 // non-advanced rollout stage. The Fleet Compliance Trend chart is
 // contributed by T-0188; this payload leaves the trend to that ticket and
-// the page renders a container for it. Requires `baselines.read`.
+// the page renders a container for it. Requires `Tenant.Baselines.Read`.
 //
 // Route ordering matters: `/v1/baselines/fleet` is a static path at the same
 // depth as `/v1/baselines/:baselineId`, so it must be registered before the
@@ -21,7 +21,7 @@ import type { BaselineRollout } from "../domain/baseline-rollout.js";
 
 export const BASELINES_FLEET_PATH = "/v1/baselines/fleet";
 
-export const BASELINES_FLEET_PERMISSION = "baselines.read";
+export const BASELINES_FLEET_PERMISSION = "Tenant.Baselines.Read";
 export const BASELINES_FLEET_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface FleetDeviationStates {

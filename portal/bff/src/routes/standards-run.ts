@@ -27,8 +27,8 @@ import {
 export const STANDARDS_RUN_PATH = "/v1/standards/templates/:templateId/run";
 export const STANDARDS_SCHEDULE_PATH = "/v1/standards/templates/:templateId/schedule";
 
-export const STANDARDS_RUN_PERMISSION = "standards.run";
-export const STANDARDS_SCHEDULE_PERMISSION = "standards.write";
+export const STANDARDS_RUN_PERMISSION = "Tenant.Standards.ReadWrite";
+export const STANDARDS_SCHEDULE_PERMISSION = "Tenant.Standards.ReadWrite";
 export const STANDARDS_RUN_UNAUTHENTICATED = "request.unauthenticated";
 export const STANDARDS_TEMPLATE_NOT_FOUND = "standards.template_not_found";
 export const STANDARDS_UNRESOLVED_VARIABLE = "standards.unresolved_variable";

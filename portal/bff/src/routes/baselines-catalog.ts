@@ -6,7 +6,7 @@
 // that seed a new baseline (pair with a tenant/group assignment to satisfy
 // the T-0182 save gate). No EPIC-039 dependency is introduced: the community
 // source is represented as explicitly unavailable until that epic lands.
-// Requires `baselines.read`.
+// Requires `Tenant.Baselines.Read`.
 //
 // Route ordering matters: `/v1/baselines/catalog` is a static path at the
 // same depth as `/v1/baselines/:baselineId`, so it must be registered before
@@ -22,7 +22,7 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const BASELINES_CATALOG_PATH = "/v1/baselines/catalog";
 
-export const BASELINES_CATALOG_PERMISSION = "baselines.read";
+export const BASELINES_CATALOG_PERMISSION = "Tenant.Baselines.Read";
 export const BASELINES_CATALOG_UNAUTHENTICATED = "request.unauthenticated";
 export const BASELINE_CATALOG_INVALID = "baseline.catalog_invalid";
 

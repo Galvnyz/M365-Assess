@@ -135,7 +135,7 @@ describe("CA Policy CRUD Routes (T-0282)", () => {
 
   it("rejects missing ca.write permission with 403", async () => {
     const provider = new FakeCaCrudProvider();
-    const routes = createCaPoliciesCrudRoutes(makeOptions(provider, ["ca.read"]));
+    const routes = createCaPoliciesCrudRoutes(makeOptions(provider, ["Tenant.ConditionalAccess.Read"]));
     const postRoute = routes.find((r) => r.method === "POST")!;
 
     await expect(

@@ -104,7 +104,7 @@ describe("device action history route", () => {
 
   it("publishes the devices.read permission through the route module", () => {
     const path = DEVICE_ACTIONS_HISTORY_OPENAPI.paths["/tenants/{tenantId}/devices/{deviceId}/actions"];
-    expect(path.get.permission).toBe("devices.read");
+    expect(path.get.permission).toBe("Endpoint.Device.Read");
     expect(path.get.operationId).toBe("listDeviceActions");
     expect(DEVICE_ACTIONS_HISTORY_PATH).toBe("/v1/tenants/:tenantId/devices/:deviceId/actions");
   });

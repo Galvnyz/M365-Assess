@@ -2,14 +2,14 @@
 // Exposes GET /v1/tenants/:tenantId/groups with §3.1 columns:
 // Name, Type, Membership count, Owners, Hidden from GAL, Delivery mgmt, Dynamic rule
 // and filters (type, hidden, dynamic, membership size, search).
-// Requires RBAC `groups.read` and tenant in caller scope.
+// Requires RBAC `Identity.Group.Read` and tenant in caller scope.
 import { AppError, ErrorCodes } from "../errors.js";
 import { parsePagination } from "../pagination.js";
 import { requireTenantInScope, type Caller } from "../rbac/authorize.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const GROUPS_PATH = "/v1/tenants/:tenantId/groups";
-export const GROUPS_READ_PERMISSION = "groups.read";
+export const GROUPS_READ_PERMISSION = "Identity.Group.Read";
 export const GROUPS_UNAUTHENTICATED = "request.unauthenticated";
 
 export type GroupType = "m365" | "security" | "mailEnabledSecurity" | "distribution" | "dynamic";

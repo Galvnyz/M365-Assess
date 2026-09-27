@@ -171,7 +171,7 @@ const START_BODY = {
 
 describe("offboarding run routes (T-0206)", () => {
   it("publishes the offboarding operations with the users.offboard permission", () => {
-    expect(OFFBOARDING_PERMISSION).toBe("users.offboard");
+    expect(OFFBOARDING_PERMISSION).toBe("Identity.User.ReadWrite");
     expect(OFFBOARDING_OPENAPI.paths["/tenants/{tenantId}/offboarding"].post.operationId).toBe(
       "startOffboarding",
     );

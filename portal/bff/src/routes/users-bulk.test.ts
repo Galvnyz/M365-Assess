@@ -107,8 +107,8 @@ describe("tenant users create (T-0202)", () => {
 
     expect(post?.path).toBe(TENANT_USERS_PATH);
     expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users"].post.operationId).toBe("createTenantUsers");
-    expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users"].post.permission).toBe("users.write");
-    expect(USERS_WRITE_PERMISSION).toBe("users.write");
+    expect(USERS_OPENAPI.paths["/tenants/{tenantId}/users"].post.permission).toBe("Identity.User.ReadWrite");
+    expect(USERS_WRITE_PERMISSION).toBe("Identity.User.ReadWrite");
   });
 
   it("creates a single user and audits the write", async () => {

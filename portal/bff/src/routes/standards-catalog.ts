@@ -19,7 +19,7 @@ import {
 } from "../domain/standards-license.js";
 
 export const STANDARDS_CATALOG_PATH = "/v1/standards/catalog";
-export const STANDARDS_CATALOG_PERMISSION = "standards.read";
+export const STANDARDS_CATALOG_PERMISSION = "Tenant.Standards.Read";
 export const STANDARDS_CATALOG_UNAUTHENTICATED = "request.unauthenticated";
 
 // ─── Records and seams ────────────────────────────────────────────────────────

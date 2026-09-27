@@ -16,7 +16,7 @@ import type { IntuneTemplateRepository } from "../repository/intune-templates.js
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const INTUNE_COMPARE_PATH = "/v1/tenants/:tenantId/intune/compare";
-export const INTUNE_COMPARE_PERMISSION = "intune.read";
+export const INTUNE_COMPARE_PERMISSION = "Endpoint.Intune.Read";
 export const ErrorCodesCrossTenantDeferred = "intune.compare.cross_tenant_deferred" as const;
 export const ErrorCodesCompareNotFound = "intune.compare.not_found" as const;
 

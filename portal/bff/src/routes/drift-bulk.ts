@@ -32,8 +32,8 @@ export const DRIFT_BULK_ACTIONS = ["accept", "deny-delete", "deny-remediate"] as
 export type DriftBulkAction = (typeof DRIFT_BULK_ACTIONS)[number];
 
 export const DRIFT_BULK_PERMISSIONS = {
-  triage: "drift.triage",
-  remediate: "drift.remediate",
+  triage: "Tenant.Drift.ReadWrite",
+  remediate: "Remediation.Apply",
   apply: "Remediation.Apply",
 } as const;
 

@@ -1,5 +1,5 @@
 // Group templates CRUD API (EPIC-014 SPEC.md §3.2, §5, §6, §7; T-0265).
-// Exposes GET/POST/PATCH/DELETE /v1/group-templates behind RBAC `groups.templates`.
+// Exposes GET/POST/PATCH/DELETE /v1/group-templates behind RBAC `Identity.GroupTemplate.ReadWrite`.
 // Templates persist only locally in SQLite repository; no tenant writes are introduced here.
 import { AppError, ErrorCodes } from "../errors.js";
 import type { Caller } from "../rbac/authorize.js";
@@ -13,7 +13,7 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const GROUP_TEMPLATES_PATH = "/v1/group-templates";
 export const GROUP_TEMPLATE_ITEM_PATH = "/v1/group-templates/:id";
 
-export const GROUP_TEMPLATES_PERMISSION = "groups.templates";
+export const GROUP_TEMPLATES_PERMISSION = "Identity.GroupTemplate.ReadWrite";
 export const GROUP_TEMPLATES_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface GroupTemplatesCaller extends Caller {

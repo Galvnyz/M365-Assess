@@ -4,7 +4,7 @@
 //   POST /v1/drift/{tenantId}/refresh     -> recompute now (upsert, triage preserved)
 //   GET  /v1/drift/alignment             -> shared alignment views + extra-policy dimension
 //
-// Reads require `drift.read`; a refresh requires `drift.triage` (it recomputes and
+// Reads require `Tenant.Drift.Read`; a refresh requires `Tenant.Drift.ReadWrite` (it recomputes and
 // upserts stored deviation rows). Tenant scope is enforced through the shared RBAC
 // seam. The refresh delegates to an injected recompute seam so the BFF stays thin
 // (the worker performs the tenant reads; T-0162's upsert preserves triage state).
@@ -23,8 +23,8 @@ export const DRIFT_REFRESH_PATH = "/v1/drift/:tenantId/refresh";
 export const DRIFT_ALIGNMENT_PATH = "/v1/drift/alignment";
 
 export const DRIFT_PERMISSIONS = {
-  read: "drift.read",
-  triage: "drift.triage",
+  read: "Tenant.Drift.Read",
+  triage: "Tenant.Drift.ReadWrite",
 } as const;
 
 export const DRIFT_UNAUTHENTICATED = "request.unauthenticated";

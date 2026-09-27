@@ -2,14 +2,14 @@
 // Exposes GET /v1/tenants/:tenantId/ca/policies with §3.1 columns:
 // Name, State, Users targeted, Apps, Grant/block controls, Conditions, Modified, Modified by
 // and filters (state, target, control, condition, modified date, search).
-// Requires RBAC `ca.read` and tenant in caller scope.
+// Requires RBAC `Tenant.ConditionalAccess.Read` and tenant in caller scope.
 import { AppError, ErrorCodes } from "../errors.js";
 import { parsePagination } from "../pagination.js";
 import { requireTenantInScope, type Caller } from "../rbac/authorize.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const CA_POLICIES_PATH = "/v1/tenants/:tenantId/ca/policies";
-export const CA_READ_PERMISSION = "ca.read";
+export const CA_READ_PERMISSION = "Tenant.ConditionalAccess.Read";
 export const CA_UNAUTHENTICATED = "request.unauthenticated";
 
 export type CaPolicyState = "enabled" | "disabled" | "enabledForReportingButNotEnforced";

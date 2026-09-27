@@ -21,8 +21,8 @@ export const PIM_TEMPLATE_ITEM_PATH = "/v1/pim-settings-templates/:id";
 export const PIM_TEMPLATE_COMPARE_PATH = "/v1/pim-settings-templates/:id/compare";
 export const PIM_TEMPLATE_APPLY_PATH = "/v1/pim-settings-templates/:id/apply";
 
-export const PIM_TEMPLATES_READ_PERMISSION = "roles.read";
-export const PIM_TEMPLATES_WRITE_PERMISSION = "roles.write";
+export const PIM_TEMPLATES_READ_PERMISSION = "Identity.Role.Read";
+export const PIM_TEMPLATES_WRITE_PERMISSION = "Identity.Role.ReadWrite";
 export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 
 export const PIM_TEMPLATES_UNAUTHENTICATED = "request.unauthenticated";

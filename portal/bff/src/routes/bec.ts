@@ -20,7 +20,7 @@ export const BEC_CHECK_PATH = "/v1/tenants/:tenantId/users/:userId/bec-check";
 export const BEC_FINDINGS_PATH = "/v1/tenants/:tenantId/users/:userId/bec-findings";
 export const BEC_REMEDIATE_PATH = "/v1/tenants/:tenantId/users/:userId/bec-findings/:findingId/remediate";
 
-export const BEC_PERMISSION = "users.bec";
+export const BEC_PERMISSION = "Identity.User.ReadWrite";
 
 export const BEC_UNAUTHENTICATED = "request.unauthenticated";
 export const BEC_FINDING_NOT_FOUND = "users.bec_finding_not_found";

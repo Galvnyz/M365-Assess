@@ -51,7 +51,7 @@ describe("route errors carry a defined code (T-0813)", () => {
   it("a 404 from a route using ErrorCodes.notFound", async () => {
     const routes = createGroupTemplatesRoutes({
       repository: new InMemoryGroupTemplateRepository(),
-      resolveCaller: () => caller(["groups.templates"]),
+      resolveCaller: () => caller(["Identity.GroupTemplate.ReadWrite"]),
     });
     const get = routes.find((r) => r.method === "GET" && r.path === GROUP_TEMPLATE_ITEM_PATH)!;
     await expect(get.handler(request("/v1/group-templates/missing", { id: "missing" }))).rejects.toMatchObject({

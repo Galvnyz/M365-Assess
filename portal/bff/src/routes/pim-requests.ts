@@ -17,9 +17,9 @@ export const PIM_REQUESTS_PATH = "/v1/tenants/:tenantId/pim/requests";
 export const PIM_REQUEST_ITEM_PATH = "/v1/tenants/:tenantId/pim/requests/:id";
 export const PIM_REQUEST_TRANSITION_PATH = "/v1/tenants/:tenantId/pim/requests/:id/transition";
 
-export const ROLES_READ_PERMISSION = "roles.read";
-export const ROLES_WRITE_PERMISSION = "roles.write";
-export const ROLES_PIM_PERMISSION = "roles.pim";
+export const ROLES_READ_PERMISSION = "Identity.Role.Read";
+export const ROLES_WRITE_PERMISSION = "Identity.Role.ReadWrite";
+export const ROLES_PIM_PERMISSION = "Identity.Pim.ReadWrite";
 export const PIM_REQUESTS_UNAUTHENTICATED = "request.unauthenticated";
 export const PIM_JUSTIFICATION_REQUIRED = "roles.justification_required";
 

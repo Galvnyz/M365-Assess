@@ -11,8 +11,8 @@ import type { GroupType } from "./groups-list.js";
 export const GROUPS_BASE_PATH = "/v1/tenants/:tenantId/groups";
 export const GROUPS_ITEM_PATH = "/v1/tenants/:tenantId/groups/:groupId";
 
-export const GROUPS_WRITE_PERMISSION = "groups.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const GROUPS_WRITE_PERMISSION = "Identity.Group.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const GROUPS_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface GroupPlan {

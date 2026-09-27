@@ -9,9 +9,9 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const GROUP_TEMPLATE_DEPLOY_PATH = "/v1/group-templates/:id/deploy";
 
-export const GROUPS_TEMPLATES_PERMISSION = "groups.templates";
-export const GROUPS_WRITE_PERMISSION = "groups.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const GROUPS_TEMPLATES_PERMISSION = "Identity.GroupTemplate.ReadWrite";
+export const GROUPS_WRITE_PERMISSION = "Identity.Group.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const GROUPS_DEPLOY_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface GroupTemplateDeployment {

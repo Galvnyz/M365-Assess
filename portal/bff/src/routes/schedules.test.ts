@@ -481,14 +481,14 @@ describe("schedule routes", () => {
     await invoke(value.routes, "GET", SCHEDULE_SYSTEM_PATH);
     await invoke(value.routes, "DELETE", SCHEDULE_PATH, { params: { id: "sch-1" } });
     expect(value.seenPermissions).toEqual([
-      "scheduler.read",
-      "scheduler.write",
-      "scheduler.read",
-      "scheduler.write",
-      "scheduler.run",
-      "scheduler.read",
-      "scheduler.read",
-      "scheduler.write",
+      "CIPP.Scheduler.Read",
+      "CIPP.Scheduler.ReadWrite",
+      "CIPP.Scheduler.Read",
+      "CIPP.Scheduler.ReadWrite",
+      "CIPP.Scheduler.ReadWrite",
+      "CIPP.Scheduler.Read",
+      "CIPP.Scheduler.Read",
+      "CIPP.Scheduler.ReadWrite",
     ]);
   });
 

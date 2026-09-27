@@ -1,5 +1,5 @@
 // Defender deployment-template CRUD routes (EPIC-019 §5, §11.4; SPEC §7).
-// Reads require `defender.read` and writes require `defender.write`; the
+// Reads require `Security.Defender.Read` and writes require `Security.Defender.ReadWrite`; the
 // permission travels with each route so the EPIC-038 registry can publish it.
 // Every handler is tenant-scoped by the `:tenantId` path parameter and never
 // touches a tenant — templates are portal-local records.
@@ -16,8 +16,8 @@ import {
 } from "../repository/defender-deployment-templates.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
-export const DEFENDER_TEMPLATE_READ_PERMISSION = "defender.read";
-export const DEFENDER_TEMPLATE_WRITE_PERMISSION = "defender.write";
+export const DEFENDER_TEMPLATE_READ_PERMISSION = "Security.Defender.Read";
+export const DEFENDER_TEMPLATE_WRITE_PERMISSION = "Security.Defender.ReadWrite";
 
 export const DEFENDER_TEMPLATES_PATH = "/v1/tenants/:tenantId/defender/templates";
 export const DEFENDER_TEMPLATE_PATH = "/v1/tenants/:tenantId/defender/templates/:templateId";

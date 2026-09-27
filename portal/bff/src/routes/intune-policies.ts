@@ -5,7 +5,7 @@
 //
 // v1 supports Windows configuration and compliance only.
 // Unknown kinds return 400; known-but-unsupported kinds return 501.
-// Requires RBAC `intune.read` and the tenant in caller scope (T-0013).
+// Requires RBAC `Endpoint.Intune.Read` and the tenant in caller scope (T-0013).
 import { AppError, ErrorCodes } from "../errors.js";
 import { parsePagination } from "../pagination.js";
 import { requireTenantInScope, type Caller } from "../rbac/authorize.js";
@@ -13,8 +13,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 import { isKnownKind, supportedEntriesForKind } from "../domain/intune-policy-types.js";
 
 export const INTUNE_POLICIES_PATH = "/v1/tenants/:tenantId/intune/:kind";
-export const INTUNE_READ_PERMISSION = "intune.read";
-export const INTUNE_WRITE_PERMISSION = "intune.write";
+export const INTUNE_READ_PERMISSION = "Endpoint.Intune.Read";
+export const INTUNE_WRITE_PERMISSION = "Endpoint.Intune.ReadWrite";
 export const INTUNE_UNAUTHENTICATED = "request.unauthenticated";
 
 export type IntunePlatformFilter = string;

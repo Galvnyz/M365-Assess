@@ -1,7 +1,7 @@
 // Report template CRUD, clone, and generate-from-template (EPIC-005 SPEC.md §6,
 // §3.3). The BFF stays thin: validation is the injected T-0081 contract, storage
 // is the injected repository, and generation is the injected T-0084 render path.
-// Writes are gated on `reports.templates.write` (SPEC §7); the concrete RBAC
+// Writes are gated on `Tenant.ReportTemplate.ReadWrite` (SPEC §7); the concrete RBAC
 // resolver is injected so this module does not depend on the auth implementation.
 import { randomUUID } from "node:crypto";
 import { AppError, ErrorCodes } from "../errors.js";
@@ -9,9 +9,9 @@ import { paginate, parsePagination } from "../pagination.js";
 import type { RequestContext, RouteResponse } from "../server.js";
 
 export const REPORT_TEMPLATE_PERMISSIONS = {
-  read: "reports.read",
-  write: "reports.templates.write",
-  generate: "reports.generate",
+  read: "Tenant.Reports.Read",
+  write: "Tenant.ReportTemplate.ReadWrite",
+  generate: "Tenant.Reports.ReadWrite",
 } as const;
 
 export const REPORT_TEMPLATE_INVALID = "report_template.invalid";

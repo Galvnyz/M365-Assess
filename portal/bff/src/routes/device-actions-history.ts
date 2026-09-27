@@ -1,7 +1,7 @@
 // Per-device action history (EPIC-018 SPEC §6, §3.2 "Actions" tab). Read-only:
 // the route returns the append-only DeviceAction records for one device, newest
 // first, scoped by the tenant in the path so a caller cannot read another
-// tenant's history. RBAC (`devices.read`, SPEC §7) is declared for the OpenAPI
+// tenant's history. RBAC (`Endpoint.Device.Read`, SPEC §7) is declared for the OpenAPI
 // path item and enforced by the shared authorize layer (T-0013).
 import { AppError, ErrorCodes } from "../errors.js";
 import type { DeviceAction, DeviceActionRepository } from "../repository/device-actions.js";
@@ -58,7 +58,7 @@ export const DEVICE_ACTIONS_HISTORY_OPENAPI = {
       get: {
         operationId: "listDeviceActions",
         summary: "List a device's append-only action history, newest first",
-        permission: "devices.read",
+        permission: "Endpoint.Device.Read",
         security: [{ bearerAuth: [] }],
         parameters: [
           {

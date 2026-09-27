@@ -6,7 +6,7 @@
 // same provider call with preset filters. User objects are never mirrored;
 // the injected provider is backed by the worker queue (T-0010) running the
 // Get-TenantUsers child job live against Graph, so this module holds no Graph
-// client and issues no tenant write. Reads require `users.read` (SPEC §7)
+// client and issues no tenant write. Reads require `Identity.User.Read` (SPEC §7)
 // intersected with the caller tenant scope.
 import { AppError, ErrorCodes } from "../errors.js";
 import {
@@ -26,8 +26,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const TENANT_USERS_PATH = "/v1/tenants/:tenantId/users";
 export const USER_ACTION_PATH = "/v1/tenants/:tenantId/users/:userId/actions/:action";
-export const USERS_PERMISSION = "users.read";
-export const USERS_WRITE_PERMISSION = "users.write";
+export const USERS_PERMISSION = "Identity.User.Read";
+export const USERS_WRITE_PERMISSION = "Identity.User.ReadWrite";
 
 export const USERS_UNAUTHENTICATED = "request.unauthenticated";
 export const USERS_REPORT_CONFLICT = "users.report_conflict";

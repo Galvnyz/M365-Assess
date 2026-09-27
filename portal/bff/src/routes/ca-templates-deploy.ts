@@ -14,8 +14,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const CA_TEMPLATE_DEPLOY_PATH = "/v1/ca-templates/:id/deploy";
 
-export const CA_DEPLOY_PERMISSION = "ca.deploy";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const CA_DEPLOY_PERMISSION = "Tenant.ConditionalAccess.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const CA_DEPLOY_UNAUTHENTICATED = "request.unauthenticated";
 export const ErrorCodesTemplateNotFound = "ca_template.not_found" as const;
 

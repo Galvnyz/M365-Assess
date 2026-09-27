@@ -3,7 +3,7 @@
 //
 // Routes over T-0125's repository and T-0126's sandbox, both injected as
 // structural seams so this module stays free of the SQL implementation and the
-// PowerShell runtime. `scripts.run` is higher privilege because a custom script
+// PowerShell runtime. `CIPP.Scripts.Execute` is higher privilege because a custom script
 // is arbitrary code (SPEC §7).
 //
 // Dry-run contract (SPEC §11.3): a script opts in via
@@ -28,9 +28,9 @@ export const SCRIPT_VERSIONS_PATH = "/v1/scripts/:scriptId/versions";
 export const SCRIPT_RUN_PATH = "/v1/scripts/:scriptId/run";
 
 export const SCRIPTS_PERMISSIONS = {
-  read: "scripts.read",
-  write: "scripts.write",
-  run: "scripts.run",
+  read: "CIPP.Scripts.Read",
+  write: "CIPP.Scripts.ReadWrite",
+  run: "CIPP.Scripts.Execute",
 } as const;
 
 export const SCRIPTS_UNAUTHENTICATED = "request.unauthenticated";

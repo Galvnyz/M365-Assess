@@ -12,11 +12,11 @@
 // @m365-assess/contracts, so records are declared locally and structurally
 // mirror the db package's RemediationPlan/RemediationAction.
 //
-// Permissions: `remediation.plan` for generation, `remediation.apply` for apply,
-// `remediation.read` for reads. The remediation permission tokens are declared
-// here because the roles.ts union is still the EPIC-001 minimal set; wiring them
-// into the RBAC registry is EPIC-038's scope. Callers supply the `authorize`
-// seam until then.
+// Permissions (EPIC-038 taxonomy, T-0816): `Remediation.Plan.Read` for reads,
+// `Remediation.Plan` for generating and verifying plans, `Remediation.Apply` for
+// apply. Plan and Apply are admin-only by default: neither is a Read/ReadWrite
+// action, so the readonly and editor base roles do not grant them. Callers supply
+// the `authorize` seam.
 
 import { randomUUID } from "node:crypto";
 import type { JobEnvelope } from "@m365-assess/contracts";
@@ -49,10 +49,10 @@ export const REMEDIATION_VERIFY_PATH = "/v1/remediation/actions/:actionId/verify
 export const REMEDIATION_INSTRUCTION_PATH = "/v1/remediation/instructions/:check";
 
 export const REMEDIATION_PERMISSIONS = {
-  read: "remediation.read",
-  plan: "remediation.plan",
-  apply: "remediation.apply",
-  verify: "remediation.verify",
+  read: "Remediation.Plan.Read",
+  plan: "Remediation.Plan",
+  apply: "Remediation.Apply",
+  verify: "Remediation.Plan",
 } as const;
 
 export const REMEDIATION_UNAUTHENTICATED = "request.unauthenticated";

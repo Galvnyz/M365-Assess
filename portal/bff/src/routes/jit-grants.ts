@@ -17,9 +17,9 @@ export const JIT_GRANT_ITEM_PATH = "/v1/tenants/:tenantId/jit-grants/:id";
 export const JIT_GRANT_REVOKE_PATH = "/v1/jit-grants/:id/revoke";
 export const JIT_GRANT_EXTEND_PATH = "/v1/jit-grants/:id/extend";
 
-export const ROLES_READ_PERMISSION = "roles.read";
-export const ROLES_WRITE_PERMISSION = "roles.write";
-export const ROLES_JIT_PERMISSION = "roles.jit";
+export const ROLES_READ_PERMISSION = "Identity.Role.Read";
+export const ROLES_WRITE_PERMISSION = "Identity.Role.ReadWrite";
+export const ROLES_JIT_PERMISSION = "Identity.Jit.ReadWrite";
 
 export const JIT_UNAUTHENTICATED = "request.unauthenticated";
 export const JIT_DURATION_EXCEEDED = "roles.jit_duration_exceeded";

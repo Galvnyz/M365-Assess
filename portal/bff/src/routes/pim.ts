@@ -14,7 +14,7 @@ import {
 } from "../domain/pim/license-gate.js";
 
 export const PIM_ASSIGNMENTS_PATH = "/v1/tenants/:tenantId/pim";
-export const PIM_READ_PERMISSION = "roles.read";
+export const PIM_READ_PERMISSION = "Identity.Role.Read";
 export const PIM_UNAUTHENTICATED = "request.unauthenticated";
 
 export type PimAssignmentType = "eligible" | "active";
@@ -174,7 +174,7 @@ export function createPimAssignmentsRoute(options: PimRouteOptions): Route {
         const permissions = caller.permissions ?? [];
         if (
           !permissions.includes(PIM_READ_PERMISSION) &&
-          !permissions.includes("roles.pim") &&
+          !permissions.includes("Identity.Pim.ReadWrite") &&
           !permissions.includes("*")
         ) {
           throw new AppError(ErrorCodes.forbidden, "forbidden: missing roles.read", 403);

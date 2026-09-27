@@ -202,7 +202,7 @@ export const DASHBOARD_LAYOUT_OPENAPI = {
       get: {
         operationId: "getDashboardLayout",
         summary: "Load the caller's dashboard layout for a tenant",
-        permission: "dashboard.read",
+        permission: "Portal.Dashboard.Read",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -221,7 +221,7 @@ export const DASHBOARD_LAYOUT_OPENAPI = {
       put: {
         operationId: "putDashboardLayout",
         summary: "Save or reset the caller's dashboard layout for a tenant",
-        permission: "dashboard.readWrite",
+        permission: "Portal.Dashboard.ReadWrite",
         security: [{ bearerAuth: [] }],
         parameters: [
           {

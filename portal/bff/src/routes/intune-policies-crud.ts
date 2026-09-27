@@ -18,9 +18,9 @@ import { isKnownKind, supportedEntriesForKind } from "../domain/intune-policy-ty
 export const INTUNE_CRUD_BASE_PATH = "/v1/tenants/:tenantId/intune/:kind";
 export const INTUNE_CRUD_ITEM_PATH = "/v1/tenants/:tenantId/intune/:kind/:policyId";
 
-export const INTUNE_WRITE_PERMISSION = "intune.write";
-export const INTUNE_READ_PERMISSION = "intune.read";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const INTUNE_WRITE_PERMISSION = "Endpoint.Intune.ReadWrite";
+export const INTUNE_READ_PERMISSION = "Endpoint.Intune.Read";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const INTUNE_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface IntunePolicyAssignment {

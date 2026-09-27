@@ -25,9 +25,9 @@ export const SCHEDULE_RUN_NOW_PATH = "/v1/schedules/:id/run-now";
 export const SCHEDULE_HISTORY_PATH = "/v1/schedules/:id/history";
 
 export const SCHEDULE_PERMISSIONS = {
-  read: "scheduler.read",
-  write: "scheduler.write",
-  run: "scheduler.run",
+  read: "CIPP.Scheduler.Read",
+  write: "CIPP.Scheduler.ReadWrite",
+  run: "CIPP.Scheduler.ReadWrite",
 } as const;
 
 export const SCHEDULE_NOT_FOUND = "schedule.not_found";
@@ -466,7 +466,7 @@ function computeNextRunAt(cron: string, timezone: string, nowIso: string): strin
 
 // Tenant scope only constrains tenant-targeted tasks: group/all targets carry
 // no single tenant to intersect, so the SPEC §7 permission gate is the check
-// and the task stays visible to any caller holding `scheduler.read`.
+// and the task stays visible to any caller holding `CIPP.Scheduler.Read`.
 function requireScheduleInScope(caller: ScheduleCaller, schedule: ScheduleRecord): void {
   if (schedule.targetScope.type === "tenant" && schedule.targetScope.id !== undefined) {
     requireTenantInScope(caller, schedule.targetScope.id);

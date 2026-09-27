@@ -274,8 +274,8 @@ describe("dashboard layout routes", () => {
 
   it("publishes both operations and their permissions through the route module", () => {
     const path = DASHBOARD_LAYOUT_OPENAPI.paths["/dashboard/layout"];
-    expect(path.get.permission).toBe("dashboard.read");
-    expect(path.put.permission).toBe("dashboard.readWrite");
+    expect(path.get.permission).toBe("Portal.Dashboard.Read");
+    expect(path.put.permission).toBe("Portal.Dashboard.ReadWrite");
     expect(DASHBOARD_LAYOUT_OPENAPI.schemas.DashboardWidgetPlacement).toBeDefined();
   });
 });

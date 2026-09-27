@@ -170,7 +170,7 @@ describe("Group GAL and delivery management routes (T-0269)", () => {
     const provider = new FakeGroupGalDeliveryProvider();
     const caller: GroupGalCaller = {
       tenantScope: tenantScope([TENANT]),
-      permissions: ["groups.read"],
+      permissions: ["Identity.Group.Read"],
     };
     const routes = getRoutes(provider, caller);
     const galRoute = routes.find((r) => r.path === GROUP_GAL_PATH)!;

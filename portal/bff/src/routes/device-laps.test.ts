@@ -257,9 +257,9 @@ describe("device laps route", () => {
   it("publishes the devices.keys permission through the route module", () => {
     const path =
       DEVICE_LAPS_OPENAPI.paths["/tenants/{tenantId}/devices/{deviceId}/laps"];
-    expect(path.get.permission).toBe("devices.keys");
+    expect(path.get.permission).toBe("Endpoint.DeviceKeys.Reveal");
     expect(path.get.operationId).toBe("getDeviceLapsCredentials");
-    expect(DEVICE_LAPS_PERMISSION).toBe("devices.keys");
+    expect(DEVICE_LAPS_PERMISSION).toBe("Endpoint.DeviceKeys.Reveal");
     expect(DEVICE_LAPS_PATH).toBe("/v1/tenants/:tenantId/devices/:deviceId/laps");
   });
 });

@@ -6,7 +6,7 @@
 // satisfies the stage conditions. The move is allowed only when the tenant's
 // rollout is currently marked `eligible` (T-0185 computes that marker from
 // the stage conditions), so an advance never skips an unsatisfied stage.
-// Requires `baselines.advance`; the tenant must be inside the caller's
+// Requires `Tenant.Baselines.ReadWrite`; the tenant must be inside the caller's
 // scope. Every advance is audited and appended as a history event through
 // injected ports (the concrete history store lands in T-0188).
 
@@ -19,7 +19,7 @@ import type { BaselineRollout } from "../domain/baseline-rollout.js";
 
 export const BASELINE_ADVANCE_PATH = "/v1/baselines/:baselineId/stages/:order/advance";
 
-export const BASELINE_ADVANCE_PERMISSION = "baselines.advance";
+export const BASELINE_ADVANCE_PERMISSION = "Tenant.Baselines.ReadWrite";
 export const BASELINE_ADVANCE_UNAUTHENTICATED = "request.unauthenticated";
 export const BASELINE_NOT_FOUND = "baseline.not_found";
 export const BASELINE_STAGE_NOT_FOUND = "baseline.stage_not_found";

@@ -14,7 +14,7 @@ import type {
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const DEVICE_LAPS_PATH = "/v1/tenants/:tenantId/devices/:deviceId/laps";
-export const DEVICE_LAPS_PERMISSION = "devices.keys";
+export const DEVICE_LAPS_PERMISSION = "Endpoint.DeviceKeys.Reveal";
 export const DEVICE_LAPS_NOT_FOUND_CODE = "laps.not_found";
 
 const FORBIDDEN_CODE = "rbac.forbidden";
@@ -153,7 +153,7 @@ export const DEVICE_LAPS_OPENAPI = {
       get: {
         operationId: "getDeviceLapsCredentials",
         summary: "Reveal a device's LAPS credential; every reveal is audited",
-        permission: "devices.keys",
+        permission: "Endpoint.DeviceKeys.Reveal",
         security: [{ bearerAuth: [] }],
         parameters: [
           {

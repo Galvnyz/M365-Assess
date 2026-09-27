@@ -113,7 +113,7 @@ describe("Group usage routes (T-0270)", () => {
     const provider = new FakeGroupUsageProvider();
     const caller: GroupUsageCaller = {
       tenantScope: tenantScope([TENANT]),
-      permissions: ["remediation.read"],
+      permissions: ["Remediation.Plan.Read"],
     };
     const routes = getRoutes(provider, caller);
     const usageRoute = routes.find((r) => r.path === GROUP_USAGE_PATH)!;

@@ -195,7 +195,7 @@ describe("action route wiring (T-0224)", () => {
     });
     expect(routes.map((route) => `${route.method} ${route.path}`)).toContain(`POST ${MFA_PUSH_PATH}`);
     expect(routes.map((route) => `${route.method} ${route.path}`)).toContain(`POST ${MFA_DEFAULT_METHOD_PATH}`);
-    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/push"].post.permission).toBe("mfa.write");
-    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/default-method"].post.permission).toBe("mfa.write");
+    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/push"].post.permission).toBe("Identity.Mfa.ReadWrite");
+    expect(MFA_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/default-method"].post.permission).toBe("Identity.Mfa.ReadWrite");
   });
 });

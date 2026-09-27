@@ -4,14 +4,14 @@
 // and filters (role, principalType, assignmentType, scope, search).
 // The BFF route holds no M365 SDK call and issues no tenant write; reads are backed
 // by the injected provider seam running the worker job live against Graph.
-// Reads require `roles.read` intersected with the caller tenant scope.
+// Reads require `Identity.Role.Read` intersected with the caller tenant scope.
 import { AppError, ErrorCodes } from "../errors.js";
 import { parsePagination } from "../pagination.js";
 import { requireTenantInScope, type Caller } from "../rbac/authorize.js";
 import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const ROLE_ASSIGNMENTS_PATH = "/v1/tenants/:tenantId/role-assignments";
-export const ROLES_READ_PERMISSION = "roles.read";
+export const ROLES_READ_PERMISSION = "Identity.Role.Read";
 export const ROLES_UNAUTHENTICATED = "request.unauthenticated";
 
 export type RoleAssignmentType = "permanent" | "eligible" | "active";

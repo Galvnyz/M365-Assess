@@ -10,10 +10,10 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const CA_COVERAGE_PATH = "/v1/tenants/:tenantId/ca/coverage";
 export const CA_HISTORY_PATH = "/v1/tenants/:tenantId/ca/history";
 
-export const CA_READ_PERMISSION = "ca.read";
-export const CA_WRITE_PERMISSION = "ca.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
-export const CA_DEPLOY_PERMISSION = "ca.deploy";
+export const CA_READ_PERMISSION = "Tenant.ConditionalAccess.Read";
+export const CA_WRITE_PERMISSION = "Tenant.ConditionalAccess.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
+export const CA_DEPLOY_PERMISSION = "Tenant.ConditionalAccess.ReadWrite";
 export const CA_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface PolicyRef {

@@ -17,8 +17,8 @@ import type { JitTemplatesRepository } from "../../../db/src/jit-templates-repos
 export const JIT_TEMPLATES_PATH = "/v1/jit-templates";
 export const JIT_TEMPLATE_ITEM_PATH = "/v1/jit-templates/:id";
 
-export const ROLES_READ_PERMISSION = "roles.read";
-export const ROLES_WRITE_PERMISSION = "roles.write";
+export const ROLES_READ_PERMISSION = "Identity.Role.Read";
+export const ROLES_WRITE_PERMISSION = "Identity.Role.ReadWrite";
 export const JIT_TEMPLATES_UNAUTHENTICATED = "request.unauthenticated";
 export const JIT_TEMPLATE_IN_USE = "roles.jit_template_in_use";
 export const JIT_ROLE_NOT_ALLOWED = "roles.role_not_allowed_by_template";

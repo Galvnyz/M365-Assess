@@ -174,7 +174,7 @@ describe("BEC check routes (T-0207)", () => {
       "signinLocations",
       "sharingLinks",
     ]);
-    expect(BEC_PERMISSION).toBe("users.bec");
+    expect(BEC_PERMISSION).toBe("Identity.User.ReadWrite");
     expect(BEC_OPENAPI.paths["/tenants/{tenantId}/users/{userId}/bec-check"].post.operationId).toBe(
       "runBecCheck",
     );

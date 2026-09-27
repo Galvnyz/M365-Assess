@@ -115,7 +115,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     const harness = createHarness();
     harness.setCaller({
       userId: "user-2",
-      permissions: ["ca.read"],
+      permissions: ["Tenant.ConditionalAccess.Read"],
       tenantScope: tenantScope([TENANT]),
     });
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);

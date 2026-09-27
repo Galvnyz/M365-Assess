@@ -142,7 +142,7 @@ describe("Group CRUD routes (T-0262)", () => {
     const provider = new FakeGroupCrudProvider();
     const caller: GroupCrudCaller = {
       tenantScope: tenantScope([TENANT]),
-      permissions: ["groups.read"],
+      permissions: ["Identity.Group.Read"],
     };
     const routes = getRoutes(provider, caller);
     const postRoute = routes.find((r) => r.method === "POST")!;

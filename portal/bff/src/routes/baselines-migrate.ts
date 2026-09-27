@@ -7,7 +7,7 @@
 // template's assignments carry over so the T-0182 save gate (name +
 // assignment + staged standard) passes unchanged, and the source template is
 // never mutated. Drift-kind templates are observe-only (EPIC-009 compares
-// desired vs current) and cannot migrate. Requires `baselines.write`.
+// desired vs current) and cannot migrate. Requires `Tenant.Baselines.ReadWrite`.
 
 import { AppError, ErrorCodes } from "../errors.js";
 import { requirePermission, requireTenantInScope, type Caller } from "../rbac/authorize.js";

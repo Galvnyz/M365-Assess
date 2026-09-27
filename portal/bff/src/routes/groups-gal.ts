@@ -8,8 +8,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 export const GROUP_GAL_PATH = "/v1/tenants/:tenantId/groups/:groupId/gal";
 export const GROUP_DELIVERY_PATH = "/v1/tenants/:tenantId/groups/:groupId/delivery";
 
-export const GROUPS_WRITE_PERMISSION = "groups.write";
-export const REMEDIATION_APPLY_PERMISSION = "remediation.apply";
+export const GROUPS_WRITE_PERMISSION = "Identity.Group.ReadWrite";
+export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 export const GROUPS_GAL_UNAUTHENTICATED = "request.unauthenticated";
 
 export interface GroupGalInput {

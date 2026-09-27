@@ -2,7 +2,7 @@
 // T-0225). GET returns the current tenant policy; PUT takes a named v1 preset
 // or a concrete policy shape and supports a preview mode returning the
 // current-vs-proposed diff with no write. Apply is the highest-risk MFA write:
-// it requires `mfa.policy` plus `Remediation.Apply` (SPEC §4.3), an explicit
+// it requires `Identity.AuthMethodsPolicy.ReadWrite` plus `Remediation.Apply` (SPEC §4.3), an explicit
 // confirmation with a reason, and an audit record. The BFF validates and
 // expands here; the worker applies the concrete shape through the EPIC-006
 // gated executor path.
@@ -20,8 +20,8 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 
 export const AUTH_METHODS_POLICY_PATH = "/v1/tenants/:tenantId/auth-methods-policy";
 
-export const AUTH_METHODS_READ_PERMISSION = "mfa.read";
-export const AUTH_METHODS_POLICY_PERMISSION = "mfa.policy";
+export const AUTH_METHODS_READ_PERMISSION = "Identity.Mfa.Read";
+export const AUTH_METHODS_POLICY_PERMISSION = "Identity.AuthMethodsPolicy.ReadWrite";
 export const REMEDIATION_APPLY_PERMISSION = "Remediation.Apply";
 
 export const AUTH_METHODS_UNAUTHENTICATED = "request.unauthenticated";

@@ -13,7 +13,7 @@ import type { GdapRelationship, GdapRelationshipStore } from "../tenants/gdap-te
 import type { TenantAuditInput, TenantRecord, TenantStore } from "./tenants.js";
 
 export const GDAP_SYNC_PATH = "/v1/gdap/sync";
-export const GDAP_PERMISSION = "tenants.write";
+export const GDAP_PERMISSION = "Tenant.Administration.ReadWrite";
 
 export const GDAP_UNAUTHENTICATED = "request.unauthenticated";
 export const GDAP_DISABLED = "gdap.disabled";
