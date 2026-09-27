@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "assessment-bridge 1.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "findings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.1"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "checkId",
+          "status",
+          "frameworks"
+        ],
+        "properties": {
+          "checkId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "Pass",
+              "Fail",
+              "Warning",
+              "Review",
+              "Info",
+              "Skipped",
+              "Unknown",
+              "NotApplicable",
+              "NotLicensed"
+            ]
+          },
+          "frameworks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fwMeta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "profiles"
+              ],
+              "properties": {
+                "profiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

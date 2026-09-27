@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -50,7 +52,7 @@ try {
         Uri         = '/beta/deviceManagement/managedDeviceOverview'
         ErrorAction = 'Stop'
     }
-    $overview = Invoke-MgGraphRequest @overviewParams
+    $overview = Invoke-SafeGraphRequest @overviewParams
 
     $enrolledCount = 0
     if ($null -ne $overview -and $null -ne $overview['enrolledDeviceCount']) {
@@ -63,7 +65,7 @@ try {
         Uri         = '/beta/deviceManagement/deviceCategories'
         ErrorAction = 'Stop'
     }
-    $categories = Invoke-MgGraphRequest @categoryParams
+    $categories = Invoke-SafeGraphRequest -ExpectCollection @categoryParams
 
     $categoryCount = 0
     if ($categories -and $categories['value']) {

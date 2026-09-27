@@ -226,17 +226,17 @@ Describe 'EntraPasswordAuthChecks' {
         $check.Status | Should -Be 'Pass'
     }
 
-    It 'Security defaults enabled check passes when SD is off but CA policies are active' {
+    It 'Security defaults enabled check requires review when SD is off but CA policies are active' {
         $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Enabled' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Pass' -Because 'CA policies provide equivalent coverage'
+        $check.Status | Should -Be 'Review' -Because 'policy presence does not prove equivalent coverage'
         $check.CurrentValue | Should -Match 'Conditional Access active'
     }
 
-    It 'Security defaults gap analysis passes when all areas covered by CA' {
+    It 'Security defaults gap analysis requires verification of apparent CA coverage' {
         $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Gap Analysis' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Pass'
+        $check.Status | Should -Be 'Review'
     }
 
     It 'All checks use ENTRA- prefix' {
@@ -524,10 +524,10 @@ Describe 'EntraPasswordAuthChecks - Security Defaults OFF no CA' {
         $check.CurrentValue | Should -Be 'False'
     }
 
-    It 'Security defaults gap analysis fails when no CA areas are covered' {
+    It 'Security defaults gap analysis requires verification when no CA areas are proven' {
         $check = $settings | Where-Object { $_.Setting -eq 'Security Defaults Gap Analysis' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Fail'
+        $check.Status | Should -Be 'Review'
     }
 
     AfterAll {

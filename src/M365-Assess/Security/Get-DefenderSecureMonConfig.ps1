@@ -31,6 +31,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -51,7 +53,7 @@ try {
         Uri         = '/v1.0/security/secureScores?$top=5'
         ErrorAction = 'Stop'
     }
-    $secureScores = Invoke-MgGraphRequest @graphParams
+    $secureScores = Invoke-SafeGraphRequest -FirstPageOnly -ExpectCollection @graphParams
 
     $scoreExists = $false
     $isRecent = $false

@@ -37,6 +37,10 @@ jobs:
               - 'tests/**'
               - '.github/workflows/ci.yml'
               - 'PSScriptAnalyzerSettings.psd1'
+              - 'scripts/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'babel.config.json'
             docs:
               - 'README.md'
               - 'CHANGELOG.md'
@@ -86,7 +90,7 @@ jobs:
 
   quality-gates:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: always() && (github.event_name == 'schedule' || needs.changes.outputs.code == 'true')
     name: Quality Gates
     runs-on: windows-latest
     steps:
@@ -103,7 +107,7 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
-          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+          Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: PSScriptAnalyzer
         shell: pwsh
@@ -119,11 +123,17 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: All checks passed" -ForegroundColor Green
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
       - name: JS build check
         shell: bash
         run: |
           npm ci --ignore-scripts
           npm run build
+          npm test
           node --check src/M365-Assess/assets/report-app.js
           if git diff --name-only | grep -q "report-app.js"; then
             echo "::error::report-app.js is out of sync with report-app.jsx — run 'npm run build' and commit the result"
@@ -224,7 +234,7 @@ jobs:
 
   test:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: always() && (github.event_name == 'schedule' || needs.changes.outputs.code == 'true')
     name: Pester Tests (PS ${{ matrix.ps-version }})
     runs-on: windows-latest
     strategy:
@@ -259,7 +269,7 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+          Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Run Pester
         shell: pwsh
@@ -344,7 +354,7 @@ jobs:
 
   cross-platform-smoke:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: always() && (github.event_name == 'schedule' || needs.changes.outputs.code == 'true')
     name: Cross-Platform Smoke (${{ matrix.os }})
     # B6 #777: catches platform-shaped bugs (path separators, case-sensitivity in
     # dot-source paths, line endings) without paying the heavy install cost of
@@ -367,7 +377,7 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+          Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Run cross-platform smoke
         shell: pwsh
@@ -380,7 +390,7 @@ jobs:
 
   ci-status:
     name: CI
-    needs: [quality-gates, test, docs-gates]
+    needs: [changes, quality-gates, test, docs-gates, cross-platform-smoke]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -389,6 +399,11 @@ jobs:
           qg="${{ needs.quality-gates.result }}"
           t="${{ needs.test.result }}"
           d="${{ needs.docs-gates.result }}"
+          s="${{ needs.cross-platform-smoke.result }}"
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ needs.changes.outputs.code }}" == "true" ]]; then
+            [[ "$qg" == "success" && "$t" == "success" && "$s" == "success" ]] || exit 1
+          fi
+          [[ "${{ needs.changes.result }}" != "failure" && "${{ needs.changes.result }}" != "cancelled" ]] || exit 1
           if [[ "$qg" == "success" || "$qg" == "skipped" ]] && \
              [[ "$t"  == "success" || "$t"  == "skipped" ]] && \
              [[ "$d"  == "success" || "$d"  == "skipped" ]]; then

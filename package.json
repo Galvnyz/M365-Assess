@@ -4,11 +4,14 @@
   "private": true,
   "description": "Build tooling for the M365-Assess React HTML report",
   "scripts": {
-    "build": "babel src/M365-Assess/assets/report-app.jsx --out-file src/M365-Assess/assets/report-app.js"
+    "build": "node scripts/build-report.mjs",
+    "test": "node --test tests/JavaScript/*.test.mjs"
   },
   "devDependencies": {
-    "@babel/cli": "^8.0.1",
     "@babel/core": "^8.0.1",
-    "@babel/preset-react": "^8.0.1"
+    "@babel/preset-react": "^8.0.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "jsdom": "^26.1.0"
   }
 }

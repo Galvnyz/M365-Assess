@@ -129,6 +129,10 @@ function Export-AssessmentBaseline {
         }
     }
 
+    $decisionPath = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Decisions.json'
+    $savedDecisions = Join-Path -Path $baselineDir -ChildPath '_Assessment-Decisions.json'
+    if (Test-Path -LiteralPath $decisionPath) { Copy-Item -LiteralPath $decisionPath -Destination $savedDecisions -Force }
+    elseif (Test-Path -LiteralPath $savedDecisions) { Remove-Item -LiteralPath $savedDecisions -Force }
     # Write manifest after CSV scan (includes accurate CheckCount).
     # C1 #780: enriched identity fields (TenantGuid + DisplayName + PrimaryDomain
     # + Environment) live alongside the legacy TenantId. Older readers ignore

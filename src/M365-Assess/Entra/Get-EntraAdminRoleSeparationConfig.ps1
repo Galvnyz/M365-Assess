@@ -32,6 +32,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -73,7 +75,7 @@ try {
                 Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$roleId'&`$top=999"
                 ErrorAction = 'Stop'
             }
-            $assignments = Invoke-MgGraphRequest @assignParams
+            $assignments = Invoke-SafeGraphRequest -ExpectCollection @assignParams
             if ($assignments -and $assignments['value']) {
                 foreach ($a in @($assignments['value'])) {
                     $principalId = $a['principalId']
@@ -119,7 +121,7 @@ try {
             ErrorAction = 'Stop'
         }
         try {
-            $licDetails = Invoke-MgGraphRequest @licParams
+            $licDetails = Invoke-SafeGraphRequest @licParams
         }
         catch {
             # 404 = service principal or deleted user assigned to the role — skip

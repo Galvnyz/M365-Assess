@@ -31,6 +31,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -53,7 +55,7 @@ try {
         Uri         = '/beta/deviceManagement/deviceEnrollmentConfigurations'
         ErrorAction = 'Stop'
     }
-    $enrollConfigs = Invoke-MgGraphRequest @graphParams
+    $enrollConfigs = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $configList = @()
     if ($enrollConfigs -and $enrollConfigs['value']) {
@@ -102,7 +104,7 @@ try {
             Uri         = '/beta/deviceManagement/windowsAutopilotDeploymentProfiles'
             ErrorAction = 'Stop'
         }
-        $autopilotProfiles = Invoke-MgGraphRequest @autopilotParams
+        $autopilotProfiles = Invoke-SafeGraphRequest -ExpectCollection @autopilotParams
 
         if ($autopilotProfiles -and $autopilotProfiles['value']) {
             foreach ($apProfile in @($autopilotProfiles['value'])) {

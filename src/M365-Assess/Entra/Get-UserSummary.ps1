@@ -7,7 +7,7 @@
     accounts, cloud-only accounts, and users with recent sign-in activity. Useful
     for tenant health checks and security assessments.
 
-    Uses Invoke-MgGraphRequest with pagination for reliable operation across all
+    Uses Invoke-SafeGraphRequest with pagination for reliable operation across all
     tenant types and licensing tiers.
 
     Requires Microsoft.Graph.Authentication module and an active Graph connection
@@ -35,6 +35,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -54,7 +56,7 @@ $uri = "/v1.0/users?`$select=$selectFields&`$top=999"
 $fallback = $false
 do {
     try {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri -Headers @{ 'ConsistencyLevel' = 'eventual' }
+        $response = Invoke-SafeGraphRequest -Method GET -Uri $uri -Headers @{ 'ConsistencyLevel' = 'eventual' }
     }
     catch {
         # signInActivity requires AuditLog.Read.All + AAD Premium; retry without it

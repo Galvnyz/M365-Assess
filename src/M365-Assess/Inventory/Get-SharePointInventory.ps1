@@ -40,6 +40,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -59,7 +61,7 @@ try {
     $uri = "/v1.0/sites/getAllSites?`$select=id,displayName,webUrl,createdDateTime,lastModifiedDateTime,isPersonalSite&`$top=999"
 
     do {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+        $response = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $uri
         if ($response.value) {
             foreach ($site in $response.value) {
                 if (-not $site.isPersonalSite) {
@@ -92,7 +94,7 @@ try {
         $ownerPrincipalName = $null
 
         try {
-            $driveInfo = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/sites/$($site.id)/drive?`$select=quota,owner"
+            $driveInfo = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/sites/$($site.id)/drive?`$select=quota,owner"
             if ($driveInfo.quota) {
                 if ($null -ne $driveInfo.quota.used) {
                     $storageUsedMB = [math]::Round([long]$driveInfo.quota.used / 1MB, 2)
@@ -151,7 +153,7 @@ if (-not $usedDirectApi) {
 
     $tempFile = [System.IO.Path]::GetTempFileName()
     try {
-        Invoke-MgGraphRequest -Method GET -Uri $reportUri -OutputFilePath $tempFile
+        Invoke-SafeGraphRequest -Method GET -Uri $reportUri -OutputFilePath $tempFile
         $reportData = @(Import-Csv -Path $tempFile)
     }
     catch {

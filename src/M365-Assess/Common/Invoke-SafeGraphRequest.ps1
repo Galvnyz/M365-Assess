@@ -22,9 +22,18 @@
     so call sites can migrate uniformly.
 .PARAMETER Body
     Optional request body, passed through to Invoke-MgGraphRequest.
+.PARAMETER Headers
+    Optional Graph headers, preserved across pages and retries.
+.PARAMETER ExpectCollection
+    Reject missing value arrays on known list endpoints, including the first page.
+.PARAMETER FirstPageOnly
+    Explicitly bounded evidence sampling or access probes only. Does not establish
+    complete collection. Assessment configuration lists must not use this switch.
+.PARAMETER OutputFilePath
+    Download a Graph report file; preserves the SDK file-response behavior.
 .PARAMETER MaxPages
-    Safety cap on pages followed (default 100). A warning is written when the
-    cap is hit so truncation is never silent.
+    Safety cap on pages followed (default 100). A terminating error is raised when the
+    cap is hit so partial data cannot produce assessment conclusions.
 .PARAMETER MaxRetries
     Retries per page for transient errors (default 4; ~2/4/8/16s backoff).
 .EXAMPLE
@@ -47,6 +56,18 @@ function Invoke-SafeGraphRequest {
         [object]$Body,
 
         [Parameter()]
+        [hashtable]$Headers,
+
+        [Parameter()]
+        [switch]$ExpectCollection,
+
+        [Parameter()]
+        [switch]$FirstPageOnly,
+
+        [Parameter()]
+        [string]$OutputFilePath,
+
+        [Parameter()]
         [ValidateRange(1, 1000)]
         [int]$MaxPages = 100,
 
@@ -63,8 +84,7 @@ function Invoke-SafeGraphRequest {
     while ($currentUri) {
         $pageCount++
         if ($pageCount -gt $MaxPages) {
-            Write-Warning "Invoke-SafeGraphRequest: page cap ($MaxPages) reached for '$Uri' — results may be incomplete. Raise -MaxPages if the tenant legitimately has more data."
-            break
+            Write-Warning 'GraphCollectionIncomplete: no complete collection available.'; throw "GraphCollectionIncomplete: page cap ($MaxPages) reached. No partial collection may be used for assessment."
         }
 
         $attempt = 0
@@ -73,36 +93,41 @@ function Invoke-SafeGraphRequest {
             try {
                 $requestParams = @{ Uri = $currentUri; Method = $Method; ErrorAction = 'Stop' }
                 if ($null -ne $Body) { $requestParams['Body'] = $Body }
+                if ($Headers) { $requestParams['Headers'] = $Headers }
+                if ($OutputFilePath) { $requestParams['OutputFilePath'] = $OutputFilePath }
                 $response = Invoke-MgGraphRequest @requestParams
                 break
             } catch {
                 $attempt++
                 $delay = Get-GraphRetryDelay -ErrorRecord $_ -Attempt $attempt
-                if ($null -eq $delay -or $attempt -gt $MaxRetries) { throw }
+                if ($null -eq $delay -or $attempt -gt $MaxRetries) { Write-Warning 'GraphCollectionIncomplete: an authoritative Graph query failed; inspect the collector log.'; throw }
                 Write-Verbose "Invoke-SafeGraphRequest: transient Graph error (attempt $attempt of $MaxRetries), retrying in ${delay}s: $($_.Exception.Message)"
                 Start-Sleep -Seconds $delay
             }
         }
 
+        if ($OutputFilePath) { return }
+        if ($null -eq $response) { Write-Warning 'GraphCollectionIncomplete: null response.'; throw 'GraphCollectionIncomplete: null response.' }
         if ($null -eq $firstPage) { $firstPage = $response }
 
         # Non-collection response: nothing to merge, return as-is.
-        $hasValue = if ($response -is [hashtable]) { $response.ContainsKey('value') }
+        $hasValue = if ($response -is [System.Collections.IDictionary]) { $response.Contains('value') }
                     else { $null -ne $response.PSObject.Properties['value'] }
         if (-not $hasValue) {
-            if ($pageCount -eq 1) { return $response }
-            break
+            if ($pageCount -eq 1 -and -not $ExpectCollection) { return $response }
+            Write-Warning 'GraphCollectionIncomplete: no complete collection available.'; throw 'GraphCollectionIncomplete: missing or malformed collection page.'
         }
 
+        if ($response.value -isnot [System.Collections.IList]) { Write-Warning 'GraphCollectionIncomplete: no complete collection available.'; throw 'GraphCollectionIncomplete: invalid value array.' }
         foreach ($item in @($response.value)) { $allValues.Add($item) }
 
-        $currentUri = if ($response -is [hashtable]) { $response['@odata.nextLink'] }
+        $currentUri = if ($Method -ne 'GET' -or $FirstPageOnly) { $null } elseif ($response -is [System.Collections.IDictionary]) { $response['@odata.nextLink'] }
                       else { $response.'@odata.nextLink' }
     }
 
     # Rebuild the familiar response shape: first page's metadata + merged value.
     $result = @{}
-    if ($firstPage -is [hashtable]) {
+    if ($firstPage -is [System.Collections.IDictionary]) {
         foreach ($key in $firstPage.Keys) {
             if ($key -ne 'value' -and $key -ne '@odata.nextLink') { $result[$key] = $firstPage[$key] }
         }
@@ -157,6 +182,7 @@ function Get-GraphRetryDelay {
     # Honor Retry-After when the response surfaces it.
     try {
         $retryAfter = $exception.Response.Headers.RetryAfter
+        if ($retryAfter -and $retryAfter.Date) { return [int][math]::Max(1, [math]::Ceiling(($retryAfter.Date - [datetimeoffset]::UtcNow).TotalSeconds)) }
         if ($retryAfter -and $retryAfter.Delta) {
             return [int]([math]::Ceiling($retryAfter.Delta.TotalSeconds) + 1)
         }

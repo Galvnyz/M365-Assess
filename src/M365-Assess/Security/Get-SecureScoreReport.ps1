@@ -37,6 +37,8 @@ param(
     [Parameter()]
     [string]$ImprovementActionsPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -105,7 +107,7 @@ try {
     $profileMap  = @{}
     $profilesUri = '/v1.0/security/secureScoreControlProfiles?$top=250'
     do {
-        $profilesResp = Invoke-MgGraphRequest -Method GET -Uri $profilesUri -ErrorAction Stop
+        $profilesResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $profilesUri -ErrorAction Stop
         foreach ($prof in $profilesResp.value) { $profileMap[$prof.id] = $prof.actionType }
         $profilesUri = $profilesResp.'@odata.nextLink'
     } while ($profilesUri)

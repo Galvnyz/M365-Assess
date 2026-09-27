@@ -31,6 +31,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -53,7 +55,7 @@ try {
         Uri         = '/beta/deviceManagement/deviceCompliancePolicies'
         ErrorAction = 'Stop'
     }
-    $policies = Invoke-MgGraphRequest @graphParams
+    $policies = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $policyList = @()
     if ($policies -and $policies['value']) {

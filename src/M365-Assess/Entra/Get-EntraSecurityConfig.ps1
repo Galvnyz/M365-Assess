@@ -33,6 +33,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Continue on errors: non-critical checks should not block remaining assessments.
 $ErrorActionPreference = 'Continue'
@@ -65,7 +67,7 @@ try {
         Uri         = '/v1.0/policies/authorizationPolicy'
         ErrorAction = 'Stop'
     }
-    $authPolicy = Invoke-MgGraphRequest @graphParams
+    $authPolicy = Invoke-SafeGraphRequest @graphParams
 }
 catch {
     Write-Warning "Could not retrieve authorization policy: $_"

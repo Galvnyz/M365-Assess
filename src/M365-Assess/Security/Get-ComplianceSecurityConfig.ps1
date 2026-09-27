@@ -45,39 +45,23 @@ $settings = $ctx.Settings
 # ------------------------------------------------------------------
 # 1. Unified Audit Log (CIS 3.1.1)
 # ------------------------------------------------------------------
+ . (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Get-ExoAuditConfig.ps1')
 try {
-    Write-Verbose "Checking unified audit log configuration..."
-    $auditLogAvailable = Get-Command -Name Get-AdminAuditLogConfig -ErrorAction SilentlyContinue
-    if ($auditLogAvailable) {
-        $auditConfig = Get-AdminAuditLogConfig -ErrorAction Stop
-        $auditEnabled = $auditConfig.UnifiedAuditLogIngestionEnabled
-
-        $settingParams = @{
-            Category         = 'Audit'
-            Setting          = 'Unified Audit Log (UAL) Ingestion'
-            CurrentValue     = "$auditEnabled"
-            RecommendedValue = 'True'
-            Status           = if ($auditEnabled) { 'Pass' } else { 'Fail' }
-            CheckId          = 'COMPLIANCE-AUDIT-001'
-            Remediation      = 'Run: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true. Microsoft Purview > Audit > Start recording user and admin activity.'
-        }
-        Add-Setting @settingParams
+    $audit = Get-ExoAuditConfig
+    $settingParams = @{
+        Category = 'Audit'; Setting = 'Unified Audit Log (UAL) Ingestion'
+        CurrentValue = [string]$audit.Enabled; RecommendedValue = 'True'
+        Status = if ($audit.Enabled) { 'Pass' } else { 'Fail' }
+        CheckId = 'COMPLIANCE-AUDIT-001'
+        Remediation = if ($audit.Enabled) { 'No action needed.' } else { 'Verify and enable unified auditing through Exchange Online PowerShell. https://learn.microsoft.com/purview/audit-log-enable-disable' }
+        ObservedValue = [string]$audit.Enabled; ExpectedValue = 'True'
+        EvidenceSource = $audit.Source; EvidenceTimestamp = $audit.CollectedAt
+        CollectionMethod = 'Direct'
     }
-    else {
-        $settingParams = @{
-            Category         = 'Audit'
-            Setting          = 'Unified Audit Log (UAL) Ingestion'
-            CurrentValue     = 'Cmdlet not available'
-            RecommendedValue = 'True'
-            Status           = 'Review'
-            CheckId          = 'COMPLIANCE-AUDIT-001'
-            Remediation      = 'Connect to Security & Compliance PowerShell to check audit log configuration.'
-        }
-        Add-Setting @settingParams
-    }
-}
-catch {
-    Write-Warning "Could not check unified audit log: $_"
+    Add-Setting @settingParams
+} catch {
+    Add-Setting -Category 'Audit' -Setting 'Unified Audit Log (UAL) Ingestion' -CurrentValue 'Unable to verify through Exchange Online' -RecommendedValue 'True' -Status 'Unknown' -CheckId 'COMPLIANCE-AUDIT-001' -EvidenceSource 'Exchange Online / Get-AdminAuditLogConfig' -Limitations 'Purview returns False by design. An identifiable Exchange Online session and audit-read permissions are required.' -Remediation 'Verify in Exchange Online PowerShell: https://learn.microsoft.com/purview/audit-log-enable-disable'
+    Write-Warning "Could not verify unified audit log: $_"
 }
 
 # ------------------------------------------------------------------
@@ -168,7 +152,7 @@ try {
             Setting          = 'DLP Policies'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'At least 1 enabled'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'COMPLIANCE-DLP-001'
             Remediation      = 'Connect to Security & Compliance PowerShell to check DLP policies.'
         }
@@ -177,6 +161,9 @@ try {
 }
 catch {
     Write-Warning "Could not check DLP policies: $_"
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-DLP-001.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'DLP Policies' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-DLP-001' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-DLP-002.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'DLP Covers Teams' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-DLP-002' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-DLP-003.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'DLP Workload Coverage' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-DLP-003' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
 }
 
 # ------------------------------------------------------------------
@@ -219,7 +206,7 @@ try {
             Setting          = 'Sensitivity Label Policies'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'At least 1 published'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'COMPLIANCE-LABELS-001'
             Remediation      = 'Connect to Security & Compliance PowerShell to check sensitivity labels.'
         }
@@ -228,6 +215,7 @@ try {
 }
 catch {
     Write-Warning "Could not check sensitivity labels: $_"
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-LABELS-001.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'Sensitivity Labels Published' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-LABELS-001' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
 }
 
 # ------------------------------------------------------------------
@@ -257,7 +245,7 @@ try {
             Setting          = 'Security Alert Policies Enabled'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'At least 1 enabled'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'COMPLIANCE-ALERTPOLICY-001'
             Remediation      = 'Connect to Security & Compliance PowerShell to check alert policies.'
         }
@@ -266,6 +254,7 @@ try {
 }
 catch {
     Write-Warning "Could not check alert policies: $_"
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-ALERTPOLICY-001.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'Alert Policies' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-ALERTPOLICY-001' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
 }
 
 # ------------------------------------------------------------------
@@ -309,7 +298,7 @@ try {
             Setting          = 'Auto-Sensitivity Labeling Policies'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'At least 1 enabled'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'COMPLIANCE-LABELS-002'
             Remediation      = 'Auto-labeling requires Azure Information Protection P2 (E5 or E5 Compliance). Connect to Security & Compliance PowerShell to verify.'
         }
@@ -318,6 +307,7 @@ try {
 }
 catch {
     Write-Warning "Could not check auto-labeling policies: $_"
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-LABELS-002.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'Auto-Labeling Policies' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-LABELS-002' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
 }
 
 # ------------------------------------------------------------------
@@ -361,7 +351,7 @@ try {
             Setting          = 'Communication Compliance Policies'
             CurrentValue     = 'Cmdlet not available'
             RecommendedValue = 'At least 1 enabled'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'COMPLIANCE-COMMS-001'
             Remediation      = 'Communication compliance requires E5 Compliance licensing. Connect to Security & Compliance PowerShell to verify policy status.'
         }
@@ -370,9 +360,26 @@ try {
 }
 catch {
     Write-Warning "Could not check communication compliance policies: $_"
+    if (-not @($settings | Where-Object { $_.CheckId -like 'COMPLIANCE-COMMS-001.*' }).Count) { Add-Setting -Category 'Collection' -Setting 'Communication Compliance Policies' -CurrentValue 'Collection failed' -RecommendedValue 'Verify configuration' -Status 'Unknown' -CheckId 'COMPLIANCE-COMMS-001' -Limitations 'The authoritative query failed; no configuration conclusion is available.' }
 }
 
 # ------------------------------------------------------------------
 # Output
 # ------------------------------------------------------------------
+# Every expected check remains represented even if an optional command was absent.
+$expectedChecks = [ordered]@{
+    'COMPLIANCE-AUDIT-001' = 'Unified Audit Log (UAL) Ingestion'
+    'COMPLIANCE-DLP-001' = 'DLP Policies'
+    'COMPLIANCE-DLP-002' = 'DLP Covers Teams'
+    'COMPLIANCE-DLP-003' = 'DLP Workload Coverage'
+    'COMPLIANCE-LABELS-001' = 'Sensitivity Label Policies'
+    'COMPLIANCE-LABELS-002' = 'Auto-Labeling Policies'
+    'COMPLIANCE-ALERTPOLICY-001' = 'Alert Policies'
+    'COMPLIANCE-COMMS-001' = 'Communication Compliance Policies'
+}
+foreach ($expectedId in $expectedChecks.Keys) {
+    if (-not @($settings | Where-Object { $_.CheckId -like "$expectedId.*" }).Count) {
+        Add-Setting -CheckId $expectedId -Category 'Collection' -Setting $expectedChecks[$expectedId] -CurrentValue 'Not collected' -RecommendedValue 'Verify configuration' -Status 'Unknown' -Limitations 'Required command or evidence unavailable.'
+    }
+}
 Export-SecurityConfigReport -Settings $settings -OutputPath $OutputPath -ServiceLabel 'Compliance'

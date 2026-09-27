@@ -37,6 +37,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -273,7 +275,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "C-07: Checking guest invitation settings..."
-    $authPolicy = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/authorizationPolicy' -ErrorAction Stop
+    $authPolicy = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/authorizationPolicy' -ErrorAction Stop
 
     $allowInvitesFrom = $authPolicy['allowInvitesFrom']
     # Values: everyone, adminsAndGuestInviters, adminsGuestInvitersAndAllMembers, none

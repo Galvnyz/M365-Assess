@@ -27,6 +27,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Continue on errors: non-critical checks should not block remaining assessments.
 $ErrorActionPreference = 'Continue'
@@ -100,7 +102,7 @@ try {
         Uri         = '/v1.0/teamwork/teamsAppSettings'
         ErrorAction = 'Stop'
     }
-    $teamsSettings = Invoke-MgGraphRequest @graphParams
+    $teamsSettings = Invoke-SafeGraphRequest @graphParams
 
     $isSideloadingAllowed = $teamsSettings['isChatResourceSpecificConsentEnabled']
     $settingParams = @{
@@ -128,7 +130,7 @@ try {
         Uri         = '/beta/teamwork/teamsClientConfiguration'
         ErrorAction = 'Stop'
     }
-    $teamsClientConfig = Invoke-MgGraphRequest @graphParams
+    $teamsClientConfig = Invoke-SafeGraphRequest @graphParams
 
     if ($teamsClientConfig) {
         $allowConsumer = $teamsClientConfig['allowTeamsConsumer']
@@ -256,7 +258,7 @@ try {
         Uri         = '/beta/teamwork/teamsMeetingPolicy'
         ErrorAction = 'Stop'
     }
-    $meetingPolicy = Invoke-MgGraphRequest @graphParams
+    $meetingPolicy = Invoke-SafeGraphRequest @graphParams
 
     if ($meetingPolicy) {
         $anonymousJoin = $meetingPolicy['allowAnonymousUsersToJoinMeeting']
@@ -419,7 +421,7 @@ try {
         Uri         = '/v1.0/teamwork'
         ErrorAction = 'Stop'
     }
-    $teamSettings = Invoke-MgGraphRequest @graphParams
+    $teamSettings = Invoke-SafeGraphRequest @graphParams
 
     if ($teamSettings) {
         $settingParams = @{

@@ -6,6 +6,8 @@
 # -------------------------------------------------------------------
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 param()
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # ------------------------------------------------------------------
 # 1. Security Defaults
@@ -13,9 +15,10 @@ param()
 $secDefaultsCaPolicies = $null  # pre-fetched here, reused in check 1b
 try {
     Write-Verbose "Checking security defaults..."
-    $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $secDefaults = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
     if (-not $secDefaults) { throw "API returned null response" }
     $isEnabled = $secDefaults['isEnabled']
+    if ($isEnabled -isnot [bool]) { throw 'Security Defaults response has no Boolean isEnabled value.' }
 
     # When SD is disabled, check whether CA policies provide equivalent coverage.
     # SD disabled is the correct state for any tenant using Conditional Access — Microsoft
@@ -23,12 +26,12 @@ try {
     # no MFA control at all (no CA and no SD).
     if (-not $isEnabled) {
         try {
-            $caResp = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
-            $secDefaultsCaPolicies = if ($caResp -and $caResp['value']) { @($caResp['value']) } else { @() }
+            $caResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+            $secDefaultsCaPolicies = @($caResp['value'])
         }
         catch {
             Write-Verbose "Could not pre-fetch CA policies for security defaults check: $_"
-            $secDefaultsCaPolicies = @()
+            $secDefaultsCaPolicies = $null
         }
     }
 
@@ -37,7 +40,8 @@ try {
     } else { 0 }
 
     $sdStatus = if ($isEnabled) { 'Pass' }
-                elseif ($caEnabledCount -gt 0) { 'Pass' }
+                elseif ($null -eq $secDefaultsCaPolicies) { 'Unknown' }
+                elseif ($caEnabledCount -gt 0) { 'Review' }
                 else { 'Fail' }
 
     $sdCurrentValue = if ($isEnabled) {
@@ -67,7 +71,7 @@ catch {
         Setting          = 'Security Defaults Enabled'
         CurrentValue     = 'Unable to retrieve'
         RecommendedValue = 'True (if no CA)'
-        Status           = 'Review'
+        Status           = 'Unknown'
         CheckId          = 'ENTRA-SECDEFAULT-001'
         Remediation      = 'Run: Update-MgPolicyIdentitySecurityDefaultsEnforcementPolicy -IsEnabled $true. Entra admin center > Properties > Manage security defaults.'
     }
@@ -84,64 +88,13 @@ if ($isEnabled -eq $false) {
         $caPolicies = if ($null -ne $secDefaultsCaPolicies) {
             $secDefaultsCaPolicies
         } else {
-            $caResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+            $caResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
             if ($caResponse -and $caResponse['value']) { @($caResponse['value']) } else { @() }
         }
         $caEnabled = @($caPolicies | Where-Object { $_['state'] -eq 'enabled' })
 
-        $coverageAreas = [ordered]@{
-            'MFA for all users' = $false
-            'Legacy auth blocked' = $false
-            'Admin MFA' = $false
-            'Azure Management MFA' = $false
-        }
-
-        # Well-known admin role template IDs (subset of CIS-recommended roles)
-        $sdAdminRoles = @(
-            '62e90394-69f5-4237-9190-012177145e10'  # Global Administrator
-            'e8611ab8-c189-46e8-94e1-60213ab1f814'  # Privileged Role Administrator
-            'fe930be7-5e62-47db-91af-98c3a49a38b1'  # User Administrator
-            'f28a1f50-f6e7-4571-818b-6a12f2af6b6c'  # SharePoint Administrator
-            '29232cdf-9323-42fd-ade2-1d097af3e4de'  # Exchange Administrator
-        )
-
-        # Azure Management well-known app ID
-        $azureMgmtAppId = '797f4846-ba00-4fd7-ba43-dac1f8f63013'
-
-        foreach ($policy in $caEnabled) {
-            $grants = if ($null -ne $policy['grantControls']) { $policy['grantControls']['builtInControls'] } else { @() }
-            $users = $policy['conditions']['users']
-            $clientApps = $policy['conditions']['clientAppTypes']
-            $apps = $policy['conditions']['applications']
-
-            # MFA for all users
-            if (($users['includeUsers'] -contains 'All') -and ($grants -contains 'mfa')) {
-                $coverageAreas['MFA for all users'] = $true
-            }
-
-            # Legacy auth blocked
-            if (($clientApps -contains 'exchangeActiveSync' -or $clientApps -contains 'other') -and ($grants -contains 'block')) {
-                $coverageAreas['Legacy auth blocked'] = $true
-            }
-
-            # Admin MFA
-            $includeRoles = $users['includeRoles']
-            if ($includeRoles) {
-                $hasAdminRole = $false
-                foreach ($role in $includeRoles) {
-                    if ($role -in $sdAdminRoles) { $hasAdminRole = $true; break }
-                }
-                if ($hasAdminRole -and ($grants -contains 'mfa')) {
-                    $coverageAreas['Admin MFA'] = $true
-                }
-            }
-
-            # Azure Management MFA
-            $includeApps = $apps['includeApplications']
-            if (($includeApps -contains $azureMgmtAppId -or $includeApps -contains 'All') -and ($grants -contains 'mfa')) {
-                $coverageAreas['Azure Management MFA'] = $true
-            }
-        }
+        . (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Get-CaCoverageEvidence.ps1')
+        $coverageAreas = Get-CaCoverageEvidence -Policies $caEnabled
 
         $coveredCount = ($coverageAreas.Values | Where-Object { $_ -eq $true }).Count
         $totalAreas = $coverageAreas.Count
@@ -151,11 +104,11 @@ if ($isEnabled -eq $false) {
             $settingParams = @{
                 Category         = 'Security Defaults'
                 Setting          = 'Security Defaults Gap Analysis'
-                CurrentValue     = "All $totalAreas areas covered by Conditional Access"
+                CurrentValue     = "Evidence found for $totalAreas/$totalAreas areas; verify effective scope and exclusions"
                 RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
-                Status           = 'Pass'
+                Status           = 'Review'
                 CheckId          = 'ENTRA-SECDEFAULT-002'
-                Remediation      = 'No action needed. Conditional Access policies provide equivalent coverage to Security Defaults.'
+                Remediation      = 'Validate effective Conditional Access coverage, exclusions and emergency access. Configuration matching alone does not establish Security Defaults equivalence.'
             }
         }
         elseif ($coveredCount -gt 0) {
@@ -167,16 +120,16 @@ if ($isEnabled -eq $false) {
                 RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
                 Status           = 'Review'
                 CheckId          = 'ENTRA-SECDEFAULT-002'
-                Remediation      = "Create CA policies to cover: $gapList. Entra admin center > Protection > Conditional Access."
+                Remediation      = "Validate effective coverage for: $gapList; create policies only after confirming a gap. Entra admin center > Protection > Conditional Access."
             }
         }
         else {
             $settingParams = @{
                 Category         = 'Security Defaults'
                 Setting          = 'Security Defaults Gap Analysis'
-                CurrentValue     = "0/$totalAreas areas covered -- no CA policy protection"
+                CurrentValue     = "0/$totalAreas areas proven by unconditional policy matching; manual validation required"
                 RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
-                Status           = 'Fail'
+                Status           = 'Review'
                 CheckId          = 'ENTRA-SECDEFAULT-002'
                 Remediation      = 'Either enable Security Defaults or create CA policies for: MFA for all users, legacy auth block, admin MFA, Azure Management MFA. Entra admin center > Protection > Conditional Access.'
             }
@@ -190,7 +143,7 @@ if ($isEnabled -eq $false) {
             Setting          = 'Security Defaults Gap Analysis'
             CurrentValue     = 'Unable to evaluate'
             RecommendedValue = 'Full CA coverage when Security Defaults is OFF'
-            Status           = 'Review'
+            Status           = 'Unknown'
             CheckId          = 'ENTRA-SECDEFAULT-002'
             Remediation      = 'Verify CA policies are configured. Entra admin center > Protection > Conditional Access.'
         }
@@ -208,7 +161,7 @@ try {
         Uri         = '/v1.0/policies/authenticationMethodsPolicy'
         ErrorAction = 'Stop'
     }
-    $sspr = Invoke-MgGraphRequest @graphParams
+    $sspr = Invoke-SafeGraphRequest @graphParams
     $ssprRegistration = $sspr['registrationEnforcement']['authenticationMethodsRegistrationCampaign']['state']
 
     $settingParams = @{
@@ -314,7 +267,7 @@ try {
         Uri         = '/v1.0/settings'
         ErrorAction = 'Stop'
     }
-    $passwordProtection = Invoke-MgGraphRequest @graphParams
+    $passwordProtection = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     $pwSettings = $passwordProtection['value'] | Where-Object {
         $_['displayName'] -eq 'Password Rule Settings'
     }
@@ -388,7 +341,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking password expiration..."
-    $domains = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/domains' -ErrorAction Stop
+    $domains = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/domains' -ErrorAction Stop
     $domainList = if ($domains -and $domains['value']) { @($domains['value']) } else { @() }
     foreach ($domain in $domainList) {
         if (-not $domain['isVerified']) { continue }
@@ -576,7 +529,7 @@ try {
         Uri         = '/v1.0/organization'
         ErrorAction = 'Stop'
     }
-    $orgInfo = Invoke-MgGraphRequest @graphParams
+    $orgInfo = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $orgValue = if ($orgInfo -and $orgInfo['value']) { @($orgInfo['value']) } else { @() }
     $org = if ($orgValue.Count -gt 0) { $orgValue[0] } else { $null }

@@ -37,6 +37,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -78,11 +80,11 @@ function Add-ControlResult {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "S-01: Checking MFA enforcement via Conditional Access..."
-    $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+    $caPolicies = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
     $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
 
     # Check for Security Defaults first
-    $secDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $secDefaults = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
     $secDefaultsEnabled = $secDefaults['isEnabled']
 
     # Check for CA policy requiring MFA for all users
@@ -138,7 +140,7 @@ try {
     Write-Verbose "S-02: Checking for sign-in risk Conditional Access policies..."
     # Reuse $policies from S-01 if available
     if (-not $policies) {
-        $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+        $caPolicies = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
         $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     }
 
@@ -180,7 +182,7 @@ catch {
 try {
     Write-Verbose "S-03: Checking for user risk Conditional Access policies..."
     if (-not $policies) {
-        $caPolicies = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
+        $caPolicies = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies' -ErrorAction Stop
         $policies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     }
 
@@ -223,12 +225,12 @@ try {
     Write-Verbose "S-04: Checking admin accounts for phishing-resistant MFA..."
 
     # Get Global Admin role members
-    $globalAdminRole = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
+    $globalAdminRole = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
     $gaRole = if ($globalAdminRole -and $globalAdminRole['value']) { $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' } } else { $null }
 
     $adminUserIds = @()
     if ($gaRole) {
-        $members = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
+        $members = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
         $memberList = if ($members -and $members['value']) { @($members['value']) } else { @() }
         $adminUserIds = @($memberList | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' } | ForEach-Object { $_['id'] })
     }
@@ -238,7 +240,7 @@ try {
     $totalAdmins = $adminUserIds.Count
     foreach ($userId in $adminUserIds) {
         try {
-            $regDetails = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/reports/authenticationMethods/userRegistrationDetails?`$filter=id eq '$userId'" -ErrorAction Stop
+            $regDetails = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/reports/authenticationMethods/userRegistrationDetails?`$filter=id eq '$userId'" -ErrorAction Stop
             $details = if ($regDetails -and $regDetails['value']) { @($regDetails['value']) } else { @() }
             if ($details.Count -gt 0) {
                 $methods = @($details[0]['methodsRegistered'])
@@ -277,13 +279,13 @@ try {
     Write-Verbose "S-05: Checking Global Administrator count..."
 
     if (-not $gaRole) {
-        $globalAdminRole = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
+        $globalAdminRole = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/directoryRoles' -ErrorAction Stop
         $gaRole = if ($globalAdminRole -and $globalAdminRole['value']) { $globalAdminRole['value'] | Where-Object { $_['displayName'] -eq 'Global Administrator' } } else { $null }
     }
 
     $gaCount = 0
     if ($gaRole) {
-        $members = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
+        $members = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/directoryRoles/$($gaRole['id'])/members" -ErrorAction Stop
         $memberList = if ($members -and $members['value']) { @($members['value']) } else { @() }
         $gaCount = @($memberList | Where-Object { $_['@odata.type'] -eq '#microsoft.graph.user' }).Count
     }
@@ -324,7 +326,7 @@ try {
         Write-Verbose "EXO cmdlet not available, attempting Graph-based audit log check..."
         # If we can query audit logs via Graph, UAL is likely enabled
         try {
-            $testAudit = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/auditLogs/directoryAudits?$top=1' -ErrorAction Stop
+            $testAudit = Invoke-SafeGraphRequest -FirstPageOnly -ExpectCollection -Method GET -Uri '/v1.0/auditLogs/directoryAudits?$top=1' -ErrorAction Stop
             if ($null -ne $testAudit['value']) {
                 $ualEnabled = $true
             }
@@ -364,7 +366,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "S-07: Checking Defender alert policies..."
-    $alerts = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/security/alerts_v2?$top=10' -ErrorAction Stop
+    $alerts = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/security/alerts_v2?$top=10' -ErrorAction Stop
     $alertList = if ($alerts -and $alerts['value']) { @($alerts['value']) } else { @() }
 
     $currentValue = if ($alertList.Count -gt 0) {
@@ -400,10 +402,10 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "S-08: Checking alert triage activity..."
-    $resolvedAlerts = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/security/alerts_v2?`$filter=status ne 'new'&`$top=10" -ErrorAction Stop
+    $resolvedAlerts = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/security/alerts_v2?`$filter=status ne 'new'&`$top=10" -ErrorAction Stop
     $null = $resolvedAlerts  # Response used only to confirm API access; counts derived from allAlerts below
 
-    $allAlerts = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/security/alerts_v2?$top=50' -ErrorAction Stop
+    $allAlerts = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/security/alerts_v2?$top=50' -ErrorAction Stop
     $allList = if ($allAlerts -and $allAlerts['value']) { @($allAlerts['value']) } else { @() }
     $newCount = @($allList | Where-Object { $_['status'] -eq 'new' }).Count
     $triagedCount = $allList.Count - $newCount
