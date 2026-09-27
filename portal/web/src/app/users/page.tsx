@@ -8,8 +8,9 @@
 // shown once in a dismissible banner and never persisted. Strictly uses
 // report theme tokens with zero colour literals.
 
-import React, { useCallback, useState, type CSSProperties, type ReactElement } from "react";
+import React, { useEffect, useCallback, useState, type CSSProperties, type ReactElement } from "react";
 import { UsersTable, type UserRowAction } from "../../components/users/UsersTable";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 import {
   createTenantUsers,
   executeUserAction,
@@ -97,6 +98,14 @@ const CONFIRM_ACTIONS: ReadonlySet<string> = new Set(["revokeSessions", "disable
 
 export default function UsersPage(): ReactElement {
   const [tenantId, setTenantId] = useState("");
+  // Follow the tenant chosen in the shell; the box still accepts another id.
+  const currentTenant = useCurrentTenantId();
+  useEffect(() => {
+    if (currentTenant) {
+      setTenantId(currentTenant);
+      void fetchUsers(currentTenant);
+    }
+  }, [currentTenant]);
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

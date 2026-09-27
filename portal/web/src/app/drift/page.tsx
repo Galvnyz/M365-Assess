@@ -33,6 +33,7 @@ import {
   type OverrideDeviationInput,
 } from "../../lib/driftApi";
 import { runStandardTemplateNow } from "../../lib/standardsApi";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 
 const pageStyle: CSSProperties = {
   padding: "32px",
@@ -121,6 +122,14 @@ type DialogState =
 export default function DriftPage({ fetcher, tenantId = "", templateId = "" }: DriftPageProps): ReactElement {
   const doFetch = fetcher ?? fetch;
   const [tenant, setTenant] = useState(tenantId);
+  // Follow the tenant chosen in the shell; the box still accepts another id.
+  const currentTenant = useCurrentTenantId();
+  useEffect(() => {
+    if (currentTenant) {
+      setTenant(currentTenant);
+      void load(currentTenant);
+    }
+  }, [currentTenant]);
   const [deviations, setDeviations] = useState<readonly DriftDeviation[]>([]);
   const [breakdown, setBreakdown] = useState<DriftBreakdown | null>(null);
   const [loading, setLoading] = useState(false);

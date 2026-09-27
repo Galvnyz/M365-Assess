@@ -5,8 +5,9 @@
 // T-0201 read path via ?report= presets. Strictly uses report theme tokens
 // with zero colour literals.
 
-import React, { useState, type CSSProperties, type ReactElement } from "react";
+import React, { useEffect, useState, type CSSProperties, type ReactElement } from "react";
 import { listTenantUsers, type TenantUser, type TenantUsersReport } from "../../../lib/usersApi";
+import { useCurrentTenantId } from "../../../lib/useCurrentTenant";
 
 const pageStyle: CSSProperties = {
   padding: "32px",
@@ -100,6 +101,13 @@ const REPORTS: ReadonlyArray<{ report: TenantUsersReport; title: string; descrip
 
 export default function UserReportsPage(): ReactElement {
   const [tenantId, setTenantId] = useState("");
+  // Follow the tenant chosen in the shell; the box still accepts another id.
+  const currentTenant = useCurrentTenantId();
+  useEffect(() => {
+    if (currentTenant) {
+      setTenantId(currentTenant);
+    }
+  }, [currentTenant]);
   const [inactiveDays, setInactiveDays] = useState("90");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

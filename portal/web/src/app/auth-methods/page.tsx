@@ -5,9 +5,10 @@
 // and RegistrationCampaignPanel for campaign configuration and eligible user tracking.
 // Strictly uses report theme tokens with zero colour literals.
 
-import React, { useState, type CSSProperties, type ReactElement } from "react";
+import React, { useEffect, useState, type CSSProperties, type ReactElement } from "react";
 import { AuthMethodsPolicyEditor } from "../../components/auth-methods/AuthMethodsPolicyEditor";
 import { RegistrationCampaignPanel } from "../../components/auth-methods/RegistrationCampaignPanel";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 
 const pageStyle: CSSProperties = {
   padding: "32px",
@@ -55,6 +56,14 @@ const inputStyle: CSSProperties = {
 export default function AuthMethodsPage(): ReactElement {
   const [tenantId, setTenantId] = useState("");
   const [activeTenant, setActiveTenant] = useState("");
+  // Follow the tenant chosen in the shell; the box still accepts another id.
+  const currentTenant = useCurrentTenantId();
+  useEffect(() => {
+    if (currentTenant) {
+      setTenantId(currentTenant);
+      setActiveTenant(currentTenant);
+    }
+  }, [currentTenant]);
 
   const handleLoad = (): void => {
     setActiveTenant(tenantId.trim());

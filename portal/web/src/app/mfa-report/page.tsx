@@ -6,10 +6,11 @@
 // and bulk actions wired to the typed mfaApi client.
 // Strictly uses report theme tokens with zero colour literals.
 
-import React, { useCallback, useState, type CSSProperties, type ReactElement } from "react";
+import React, { useEffect, useCallback, useState, type CSSProperties, type ReactElement } from "react";
 import { MfaKpiStrip } from "../../components/mfa/MfaKpiStrip";
 import { MfaReportTable, type MfaRowAction } from "../../components/mfa/MfaReportTable";
 import { fetchMfaReport, type MfaReport, type MfaUserRow } from "../../lib/mfaApi";
+import { useCurrentTenantId } from "../../lib/useCurrentTenant";
 
 const pageStyle: CSSProperties = {
   padding: "32px",
@@ -77,6 +78,14 @@ const DISABLED_REASONS = {
 
 export default function MfaReportPage(): ReactElement {
   const [tenantId, setTenantId] = useState("");
+  // Follow the tenant chosen in the shell; the box still accepts another id.
+  const currentTenant = useCurrentTenantId();
+  useEffect(() => {
+    if (currentTenant) {
+      setTenantId(currentTenant);
+      void loadReport(currentTenant);
+    }
+  }, [currentTenant]);
   const [report, setReport] = useState<MfaReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
