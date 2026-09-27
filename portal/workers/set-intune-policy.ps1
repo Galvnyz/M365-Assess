@@ -4,7 +4,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string]$JobPath
+    [string]$JobFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 $workerPath = Join-Path $PSScriptRoot 'M365Portal.Workers/Set-IntunePolicy.ps1'
 . $workerPath
 
-$job    = Read-IntunePolicyCrudJob -Path $JobPath
+$job    = Read-IntunePolicyCrudJob -Path $JobFile
 $result = Invoke-SetIntunePolicy `
     -TenantId       $job.TenantId `
     -Kind           $job.Kind `

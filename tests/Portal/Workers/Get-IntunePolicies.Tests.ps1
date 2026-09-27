@@ -307,7 +307,7 @@ Describe 'Get-IntunePolicies worker (T-0301)' {
                 ConvertTo-Json | Set-Content -LiteralPath $path
             $job = Read-IntunePoliciesJob -Path $path
             $job.Assigned | Should -Be 'true'
-            $out = & $script:entrypoint -JobPath $path | ConvertFrom-Json
+            $out = & $script:entrypoint -JobFile $path | ConvertFrom-Json
             @($out.items.id) | Should -Be @('p1')
         }
     }

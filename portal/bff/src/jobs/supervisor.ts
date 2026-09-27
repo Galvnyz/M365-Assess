@@ -164,36 +164,58 @@ function forwardProgressLines(
   }
 }
 
-export async function superviseJob(
-  envelopeInput: unknown,
-  options: SuperviseJobOptions,
-): Promise<ResultEnvelope> {
-  // Rejected here, before any process is spawned: a schema mismatch must
-  // never silently start a worker.
-  const envelope = parseJobEnvelope(envelopeInput);
+export interface SupervisedProcessOptions {
+  /** Identifies the job in timeout/cancellation errors. */
+  readonly jobId: string;
+  readonly pwshPath?: string;
+  readonly timeoutMs?: number;
+  readonly signal?: AbortSignal;
+  readonly spawnImpl?: SpawnFn;
+  /** Called with each stdout chunk as it arrives. */
+  readonly onStdout?: (chunk: unknown) => void;
+  /** Keep the full stdout text for the caller (feature workers print their result there). */
+  readonly collectStdout?: boolean;
+}
+
+export interface SupervisedProcessExit {
+  readonly exitCode: number | null;
+  readonly stdout: string;
+  /** Last 2 KiB of stderr, for diagnostics. */
+  readonly stderrTail: string;
+}
+
+/**
+ * The one place a worker process is spawned and supervised: timeout and cancellation
+ * kill the whole process tree, and a spawn failure is a WorkerResultError. Resolves on
+ * exit with the exit code; interpreting the result is the caller's job.
+ */
+export function runSupervisedProcess(
+  args: readonly string[],
+  options: SupervisedProcessOptions,
+): Promise<SupervisedProcessExit> {
   const {
-    workerScriptPath,
+    jobId,
     pwshPath = "pwsh",
     timeoutMs = DEFAULT_JOB_TIMEOUT_MS,
     signal,
     spawnImpl = defaultSpawn,
-    readResultFile = (filePath) => readFile(filePath, "utf8"),
-    onProgress,
+    onStdout,
+    collectStdout = false,
   } = options;
 
   if (signal?.aborted === true) {
-    throw new JobCancelledError(envelope.jobId);
+    return Promise.reject(new JobCancelledError(jobId));
   }
 
-  const child = spawnImpl(pwshPath, buildWorkerArgs(envelope, workerScriptPath), {
+  const child = spawnImpl(pwshPath, args, {
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
 
-  return new Promise<ResultEnvelope>((resolve, reject) => {
+  return new Promise<SupervisedProcessExit>((resolve, reject) => {
     let settled = false;
-    const carried = { text: "" };
+    let stdout = "";
     let stderrTail = "";
 
     const settle = (fn: () => void): void => {
@@ -208,7 +230,7 @@ export async function superviseJob(
 
     const timer = setTimeout(() => {
       killProcessTree(child);
-      settle(() => reject(new JobTimeoutError(envelope.jobId, timeoutMs)));
+      settle(() => reject(new JobTimeoutError(jobId, timeoutMs)));
     }, timeoutMs);
     if (typeof timer.unref === "function") {
       timer.unref();
@@ -216,60 +238,76 @@ export async function superviseJob(
 
     const onAbort = (): void => {
       killProcessTree(child);
-      settle(() => reject(new JobCancelledError(envelope.jobId)));
+      settle(() => reject(new JobCancelledError(jobId)));
     };
     signal?.addEventListener("abort", onAbort, { once: true });
 
     child.stdout?.on("data", (chunk: unknown) => {
-      forwardProgressLines(chunk, carried, onProgress);
+      if (collectStdout) stdout += String(chunk);
+      onStdout?.(chunk);
     });
     child.stderr?.on("data", (chunk: unknown) => {
       stderrTail = `${stderrTail}${String(chunk)}`.slice(-2048);
     });
     child.once("error", (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      settle(
-        () => reject(new WorkerResultError("worker.spawn_failed", message)),
-      );
+      settle(() => reject(new WorkerResultError("worker.spawn_failed", message)));
     });
-    child.once("exit", () => {
-      void (async () => {
-        try {
-          const raw = await readResultFile(resultFilePath(envelope));
-          const result = parseResultEnvelope(raw);
-          if (
-            result.jobId !== envelope.jobId ||
-            result.runId !== envelope.runId ||
-            result.tenantId !== envelope.tenantId
-          ) {
-            throw new EnvelopeValidationError(
-              "envelope.invalid",
-              "Result envelope does not belong to the supervised job",
-              undefined,
-            );
-          }
-          settle(() => resolve(result));
-        } catch (error) {
-          if (error instanceof EnvelopeValidationError) {
-            settle(() => reject(error));
-            return;
-          }
-          const detail =
-            error instanceof Error ? error.message : String(error);
-          const suffix = stderrTail.length > 0 ? ` diagnostics: ${stderrTail}` : "";
-          settle(
-            () =>
-              reject(
-                new WorkerResultError(
-                  "worker.result_missing",
-                  `worker for job ${envelope.jobId} left no readable result envelope: ${detail}${suffix}`,
-                ),
-              ),
-          );
-        }
-      })();
+    child.once("exit", (code: unknown) => {
+      settle(() => resolve({ exitCode: typeof code === "number" ? code : null, stdout, stderrTail }));
     });
   });
+}
+
+export async function superviseJob(
+  envelopeInput: unknown,
+  options: SuperviseJobOptions,
+): Promise<ResultEnvelope> {
+  // Rejected here, before any process is spawned: a schema mismatch must
+  // never silently start a worker.
+  const envelope = parseJobEnvelope(envelopeInput);
+  const {
+    workerScriptPath,
+    readResultFile = (filePath) => readFile(filePath, "utf8"),
+    onProgress,
+  } = options;
+
+  const carried = { text: "" };
+  const { stderrTail } = await runSupervisedProcess(buildWorkerArgs(envelope, workerScriptPath), {
+    jobId: envelope.jobId,
+    ...(options.pwshPath !== undefined ? { pwshPath: options.pwshPath } : {}),
+    ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    ...(options.spawnImpl !== undefined ? { spawnImpl: options.spawnImpl } : {}),
+    onStdout: (chunk) => forwardProgressLines(chunk, carried, onProgress),
+  });
+
+  try {
+    const raw = await readResultFile(resultFilePath(envelope));
+    const result = parseResultEnvelope(raw);
+    if (
+      result.jobId !== envelope.jobId ||
+      result.runId !== envelope.runId ||
+      result.tenantId !== envelope.tenantId
+    ) {
+      throw new EnvelopeValidationError(
+        "envelope.invalid",
+        "Result envelope does not belong to the supervised job",
+        undefined,
+      );
+    }
+    return result;
+  } catch (error) {
+    if (error instanceof EnvelopeValidationError) {
+      throw error;
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    const suffix = stderrTail.length > 0 ? ` diagnostics: ${stderrTail}` : "";
+    throw new WorkerResultError(
+      "worker.result_missing",
+      `worker for job ${envelope.jobId} left no readable result envelope: ${detail}${suffix}`,
+    );
+  }
 }
 
 // Binds a supervisor configuration to the runner shape the queue consumes so
