@@ -95,6 +95,10 @@ import { GROUP_DELIVERY_PATH, GROUP_GAL_PATH } from "../routes/groups-gal.js";
 import { GROUPS_READ_PERMISSION } from "../routes/groups-list.js";
 import { GROUP_MEMBERS_BULK_PATH, GROUP_OWNERS_BULK_PATH } from "../routes/groups-members.js";
 import { GROUP_USAGE_PATH } from "../routes/groups-usage.js";
+import { BEC_OPENAPI } from "../routes/bec.js";
+import { OFFBOARDING_OPENAPI } from "../routes/offboarding.js";
+import { USER_TEMPLATES_OPENAPI } from "../routes/user-templates.js";
+import { USERS_OPENAPI } from "../routes/users.js";
 
 // `Public` bypasses permission evaluation (SPEC §4.1 item 4). It is the only
 // single-segment value the registry may hold.
@@ -367,6 +371,11 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
+  // EPIC-011 users, BEC, offboarding, and user templates (T-0818).
+  ...registryEntriesFromOpenApi(USERS_OPENAPI),
+  ...registryEntriesFromOpenApi(BEC_OPENAPI),
+  ...registryEntriesFromOpenApi(OFFBOARDING_OPENAPI),
+  ...registryEntriesFromOpenApi(USER_TEMPLATES_OPENAPI),
   // EPIC-014 groups (T-0819). /groups/usage precedes /groups/:groupId, as in app.ts.
   // The template deploy route enforces the group write permission.
   { method: "GET", path: GROUP_USAGE_PATH, permission: GROUPS_READ_PERMISSION },

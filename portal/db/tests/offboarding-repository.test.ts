@@ -81,6 +81,21 @@ describe("offboarding migration", () => {
 });
 
 describe("offboarding repository", () => {
+  it("appends pending steps to an existing job in order", async () => {
+    const filename = tempDbPath();
+    await seedTenant(filename);
+
+    const repo = await openSqliteOffboardingRepository({ filename });
+    await repo.createOffboardingJob({ id: JOB_ID, tenantId: TENANT_ID, userIds: [USER_ID], options: {}, createdBy: "operator-1" });
+    await repo.createOffboardingSteps(JOB_ID, V1_ACTIONS.slice(0, 2));
+    const steps = await repo.createOffboardingSteps(JOB_ID, V1_ACTIONS.slice(2));
+
+    expect(steps.map((step) => [step.order, step.action, step.state])).toEqual(
+      V1_ACTIONS.map((action, index) => [index + 1, action, "pending"]),
+    );
+    repo.close();
+  });
+
   it("round-trips a job with its steps, updates a step, and re-runs it", async () => {
     const filename = tempDbPath();
     await seedTenant(filename);

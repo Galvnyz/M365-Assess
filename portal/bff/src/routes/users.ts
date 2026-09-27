@@ -321,6 +321,9 @@ export interface UserCreateRowResult {
   readonly status: UserCreateRowStatus;
   readonly id: string | null;
   readonly error: string | null;
+  // The generated one-time password for a created user, returned in this
+  // response only (never stored, logged, or audited), like resetPassword.
+  readonly password?: string | null;
 }
 
 export interface UserCreateSummary {
@@ -340,6 +343,7 @@ export interface ProviderCreateRowResult {
   readonly status: "created" | "failed";
   readonly id?: string | null;
   readonly error?: string | null;
+  readonly password?: string | null;
 }
 
 // Queue-backed seam for the create path: the production wiring enqueues one
@@ -587,6 +591,7 @@ export async function postTenantUsers(
       status: "created",
       id: outcome.id ?? null,
       error: null,
+      password: outcome.password ?? null,
     });
     if (options.recordAudit) {
       await options.recordAudit({

@@ -10,7 +10,14 @@
 // have no implementation yet are mounted by later tickets (T-0818, T-0821..T-0825).
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { SqliteRepository, loadMigrations, runMigrations } from "@m365-assess/db";
+import {
+  SqliteBecFindingRepository,
+  SqliteOffboardingRepository,
+  SqliteRepository,
+  SqliteUserTemplateRepository,
+  loadMigrations,
+  runMigrations,
+} from "@m365-assess/db";
 import Database from "better-sqlite3";
 import {
   createCredentialRowStore,
@@ -24,8 +31,18 @@ import { createCaProviders } from "./adapters/conditional-access.js";
 import { createGroupProviders } from "./adapters/groups.js";
 import { createIntuneProviders } from "./adapters/intune.js";
 import {
+  createBecFindingStore,
+  createBecProviders,
+  createOffboardingRunner,
+  createOffboardingStore,
+  createUserProviders,
+  createUserTemplateStore,
+  type OffboardingRunner,
+} from "./adapters/users.js";
+import {
   createGdapSyncRunner,
   createOnboardRunner,
+  createEnvelopeWorker,
   createTestConnectionRunner,
   createWorkerRunner,
   type WorkerRunner,
@@ -44,6 +61,7 @@ import { SqliteIntuneTemplateRepository } from "./repository/intune-templates.js
 import { SqliteKeyAccessAuditRepository } from "./repository/key-access-audit.js";
 import { SqliteReusableSettingTemplateRepository } from "./repository/reusable-setting-templates.js";
 import { createBaselinesCatalogRoutes } from "./routes/baselines-catalog.js";
+import { createBecRoutes } from "./routes/bec.js";
 import { createCaCoverageRoutes } from "./routes/ca-coverage.js";
 import { createCaNamedLocationsRoutes } from "./routes/ca-named-locations.js";
 import { createCaPoliciesCrudRoutes } from "./routes/ca-policies-crud.js";
@@ -65,11 +83,14 @@ import { createIntunePoliciesRoutes } from "./routes/intune-policies.js";
 import { createReusableSettingsRoutes } from "./routes/intune-reusable-settings.js";
 import { createIntuneTemplateDeployRoute } from "./routes/intune-templates-deploy.js";
 import { createGdapRoutes } from "./routes/gdap.js";
+import { createOffboardingRoutes } from "./routes/offboarding.js";
 import { createOnboardRoutes } from "./routes/onboard.js";
 import { createTenantGroupRoutes } from "./routes/tenant-groups.js";
 import { createTenantVariableRoutes } from "./routes/tenant-variables.js";
 import { createTenantRoutes } from "./routes/tenants.js";
 import { createTestConnectionRoutes } from "./routes/test-connection.js";
+import { createUserTemplateRoutes } from "./routes/user-templates.js";
+import { createTenantUsersRoute } from "./routes/users.js";
 import { createGroupTemplatesDeployRoute } from "./routes/group-templates-deploy.js";
 import { createGroupTemplatesRoutes } from "./routes/group-templates.js";
 import { createGroupCrudRoutes } from "./routes/groups-crud.js";
@@ -216,6 +237,8 @@ export function recordResponseAudit(route: Route, recordAudit: RecordAudit): Rou
 export interface App {
   readonly routes: readonly Route[];
   readonly authenticators: readonly RequestAuthenticator[];
+  /** Background offboarding runs; `idle()` waits for the ones in flight. */
+  readonly offboarding: OffboardingRunner;
   close(): void;
 }
 
@@ -260,6 +283,13 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   const caTemplates = new SqliteCaTemplateRepository(db);
   const groupTemplates = new SqliteGroupTemplateRepository(db);
   const audited = (route: Route) => recordResponseAudit(route, recordAudit);
+  // Route modules type their audit events as interfaces; the sink takes any record.
+  const routeAudit = (event: object) => recordAudit({ ...event });
+  const envelope = createEnvelopeWorker(run, credentialRows);
+  const users = createUserProviders(envelope);
+  const bec = createBecProviders(envelope);
+  const offboardingRepo = new SqliteOffboardingRepository(db, schemaVersion);
+  const offboarding = createOffboardingRunner(envelope, offboardingRepo);
 
   const routes: Route[] = [
     ...createHealthRoutes({
@@ -339,6 +369,34 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
     ...createIntunePoliciesRoutes({ provider: intune.policies, ...caller }),
     ...createIntuneCrudRoutes({ provider: intune.crud, ...caller }),
 
+    // EPIC-011 users, offboarding, BEC, and user templates (T-0818).
+    ...createTenantUsersRoute({
+      provider: users.list,
+      create: users.create,
+      execute: users.execute,
+      patch: users.patch,
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createBecRoutes({
+      provider: bec.check,
+      remediate: bec.remediate,
+      store: createBecFindingStore(new SqliteBecFindingRepository(db, schemaVersion)),
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createOffboardingRoutes({
+      store: createOffboardingStore(offboardingRepo),
+      queue: offboarding,
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+    ...createUserTemplateRoutes({
+      store: createUserTemplateStore(new SqliteUserTemplateRepository(db, schemaVersion)),
+      recordAudit: routeAudit,
+      ...caller,
+    }),
+
     // EPIC-014 groups (T-0819). /groups/usage is mounted before the /groups/:groupId
     // routes so the id pattern cannot capture it.
     ...createGroupUsageRoutes({ provider: groups.usage, ...caller }),
@@ -372,6 +430,7 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
   return {
     routes,
     authenticators,
+    offboarding,
     close: () => {
       if (!options.db) db.close();
     },

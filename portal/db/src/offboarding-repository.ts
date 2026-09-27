@@ -73,6 +73,7 @@ export interface OffboardingRepository {
   listOffboardingJobs(tenantId: string): Promise<OffboardingJob[]>;
 
   listOffboardingSteps(jobId: string): Promise<OffboardingStep[]>;
+  createOffboardingSteps(jobId: string, actions: readonly string[]): Promise<OffboardingStep[]>;
   getOffboardingStep(jobId: string, order: number): Promise<OffboardingStep | undefined>;
   updateOffboardingStep(
     jobId: string,
@@ -184,6 +185,25 @@ export class SqliteOffboardingRepository implements OffboardingRepository {
         .prepare('SELECT * FROM offboarding_steps WHERE jobId = ? ORDER BY "order"')
         .all(jobId) as Row[]
     ).map((row) => this.mapStep(row));
+  }
+
+  /** Append pending steps to an existing job, numbered after its last step. */
+  async createOffboardingSteps(jobId: string, actions: readonly string[]): Promise<OffboardingStep[]> {
+    const insertStep = this.db.prepare(
+      `INSERT INTO offboarding_steps (jobId, "order", action, state, result, error, appliedAt)
+       VALUES (?, ?, ?, 'pending', NULL, NULL, NULL)`,
+    );
+    this.db.transaction(() => {
+      const last = this.db
+        .prepare(`SELECT MAX("order") AS last FROM offboarding_steps WHERE jobId = ?`)
+        .get(jobId) as { last: number | null };
+      let order = last.last ?? 0;
+      for (const action of actions) {
+        order += 1;
+        insertStep.run(jobId, order, action);
+      }
+    })();
+    return this.listOffboardingSteps(jobId);
   }
 
   async getOffboardingStep(jobId: string, order: number): Promise<OffboardingStep | undefined> {

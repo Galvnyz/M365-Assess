@@ -44,6 +44,7 @@ async function serve(
   const { port } = server.address() as AddressInfo;
   const base = `http://127.0.0.1:${port}`;
   return {
+    app,
     get: (p: string) => fetch(`${base}${p}`),
     post: (p: string, body: unknown) =>
       fetch(`${base}${p}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
@@ -424,5 +425,64 @@ describe("groups and Conditional Access routes (T-0819)", () => {
       totalCount: 1,
       items: [{ id: "evt-ca", policyName: "Require MFA", initiatedBy: "dev-user", action: "ca.policy.create", source: "portal" }],
     });
+  });
+});
+
+describe("EPIC-011 users routes (T-0818)", () => {
+  function recordingRunner() {
+    const calls: { entrypoint: string; job: Record<string, unknown> & { payload: Record<string, unknown> } }[] = [];
+    const runner: WorkerRunner = async (entrypoint, job) => {
+      const j = job as Record<string, unknown> & { payload: Record<string, unknown> };
+      calls.push({ entrypoint, job: j });
+      if (entrypoint === "get-tenant-users.ps1") {
+        return { tenantId: "t-a", items: [{ id: "u-1", userPrincipalName: "a@x.invalid" }], nextCursor: null } as never;
+      }
+      if (entrypoint === "invoke-user-offboarding.ps1") {
+        const steps = j.payload["steps"] as { order: number; action: string }[];
+        return {
+          state: "completed",
+          steps: steps.map((s) => ({ order: s.order, state: "succeeded", result: { outcomes: [] }, error: null, appliedAt: "2026-09-26T00:00:00Z" })),
+        } as never;
+      }
+      return {} as never;
+    };
+    return { runner, calls };
+  }
+
+  it("lists users through the envelope worker", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    const res = await api.get("/v1/tenants/t-a/users?status=enabled");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ items: [{ id: "u-1" }] });
+    expect(calls[0]!.job).toMatchObject({ schemaVersion: "v1", payload: { filters: { status: "enabled" } } });
+  });
+
+  it("starts an offboarding job, runs it in the background, and serves its progress", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner);
+    const started = await api.post("/v1/tenants/t-a/offboarding", {
+      userIds: ["u-1"],
+      options: { disableSignIn: true, removeLicenses: true, convertMailbox: false, removeGroups: false },
+    });
+    expect(started.status).toBe(202);
+    const { job } = (await started.json()) as { job: { id: string } };
+
+    await api.app.offboarding.idle();
+    const progress = await api.get(`/v1/tenants/t-a/offboarding/${job.id}`);
+    expect(progress.status).toBe(200);
+    const body = (await progress.json()) as { job: { state: string; createdBy: string }; steps: { state: string }[] };
+    expect(body.job).toMatchObject({ state: "completed", createdBy: "dev-user" });
+    expect(body.steps.length).toBeGreaterThan(0);
+    expect(body.steps.every((s) => s.state === "succeeded")).toBe(true);
+    expect(calls.filter((c) => c.entrypoint === "invoke-user-offboarding.ps1")).toHaveLength(1);
+  });
+
+  it("refuses offboarding to a read-only caller", async () => {
+    const { runner, calls } = recordingRunner();
+    const api = await adminWithTenant(runner, "operator");
+    const res = await api.post("/v1/tenants/t-a/offboarding", { userIds: ["u-1"], options: { disableSignIn: true } });
+    expect(res.status).toBe(403);
+    expect(calls.filter((c) => c.entrypoint === "invoke-user-offboarding.ps1")).toHaveLength(0);
   });
 });

@@ -81,6 +81,29 @@ export function createTenantWorker(run: WorkerRunner, credentials: CredentialSto
   };
 }
 
+/** Calls T-0007 envelope workers with `(entrypoint, tenantId, payload)`. */
+export type EnvelopeWorkerCall = <T>(entrypoint: string, tenantId: string, payload: Record<string, unknown>) => Promise<T>;
+
+/**
+ * The EPIC-011..013 workers read the T-0007 envelope: `schemaVersion`, `tenantId`, a
+ * `correlationId`, and their inputs under `payload`. The credential block stays at the
+ * top level, where Connect-WorkerTenant reads it.
+ */
+export function createEnvelopeWorker(run: WorkerRunner, credentials: CredentialStoreRow): EnvelopeWorkerCall {
+  const call = createTenantWorker(run, credentials);
+  return <T>(entrypoint: string, tenantId: string, payload: Record<string, unknown>) =>
+    call<T>(entrypoint, tenantId, { schemaVersion: "v1", correlationId: globalThis.crypto.randomUUID(), payload });
+}
+
+/**
+ * Normalize a worker's list output. `$list | ConvertTo-Json` unrolls the pipeline, so a
+ * one-item list arrives as a bare object and an empty one as no output at all.
+ */
+export function asArray<T>(value: T | readonly T[] | null | undefined): T[] {
+  if (value === null || value === undefined) return [];
+  return Array.isArray(value) ? [...(value as readonly T[])] : [value as T];
+}
+
 /** Some workers report failures as `{ error, message, statusCode }` rather than throwing. */
 export function raiseWorkerError(result: unknown): void {
   if (typeof result === "object" && result !== null && "error" in result && "statusCode" in result) {

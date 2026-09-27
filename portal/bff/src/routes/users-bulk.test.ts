@@ -35,7 +35,7 @@ class FakeCreateProvider implements UserCreateProvider {
     return users.map((user) =>
       this.failures.has(user.userPrincipalName.toLowerCase())
         ? { userPrincipalName: user.userPrincipalName, status: "failed", error: "graph rejected the create" }
-        : { userPrincipalName: user.userPrincipalName, status: "created", id: `id-${user.userPrincipalName}` },
+        : { userPrincipalName: user.userPrincipalName, status: "created", id: `id-${user.userPrincipalName}`, password: "One-Time-1" },
     );
   }
 }
@@ -130,6 +130,16 @@ describe("tenant users create (T-0202)", () => {
       result: "success",
       userPrincipalName: "new.user@example.invalid",
     });
+  });
+
+  it("returns a created user's one-time password in the response only, never the audit", async () => {
+    const { audits, routes } = optionsFor(callerFor([TENANT]), true);
+
+    const response = await postHandler(routes)(context(TENANT, SINGLE));
+
+    const body = response.body as { rows: Array<{ password?: string | null }> };
+    expect(body.rows[0]?.password).toBe("One-Time-1");
+    expect(JSON.stringify(audits)).not.toContain("One-Time-1");
   });
 
   it("plans without a provider call or audit when dryRun is set", async () => {
