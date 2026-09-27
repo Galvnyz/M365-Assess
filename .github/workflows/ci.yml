@@ -162,6 +162,7 @@ jobs:
       - name: Smoke tests
         shell: pwsh
         run: |
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = @(
             './tests/Smoke/Script-Validation.Tests.ps1'
@@ -274,6 +275,7 @@ jobs:
       - name: Run Pester
         shell: pwsh
         run: |
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = './tests'
           $config.Run.Exit = $true
@@ -382,6 +384,7 @@ jobs:
       - name: Run cross-platform smoke
         shell: pwsh
         run: |
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = './tests/Smoke/Cross-Platform.Tests.ps1'
           $config.Run.Exit = $true
