@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { SqliteRepository, loadMigrations, runMigrations } from "@m365-assess/db";
@@ -13,6 +14,8 @@ import {
   createRunGroupResolver,
   createRunQueue,
   createRunStore,
+  RUN_OUTPUT_UNREADABLE,
+  withFindingsIngestion,
 } from "./runs.js";
 import { createCredentialRowStore, createTenantGroupStore, createTenantStore } from "./tenants.js";
 
@@ -89,9 +92,9 @@ describe("run store (T-0821)", () => {
   it("rolls a parent run up from its children as they change", async () => {
     const { store } = await setup();
     await store.createRunWithChildren!(run("p-1", "t-a"), [run("c-1", "t-a", { parentRunId: "p-1" }), run("c-2", "t-b", { parentRunId: "p-1" })]);
-    await store.updateRun("t-a", "c-1", { status: "running", startedAt: "2026-09-26T00:00:01.000Z" });
+    await store.updateRun!("t-a", "c-1", { status: "running", startedAt: "2026-09-26T00:00:01.000Z" });
     expect(await store.getRunById("p-1")).toMatchObject({ status: "running", startedAt: "2026-09-26T00:00:01.000Z" });
-    await store.updateRun("t-a", "c-1", { status: "succeeded", finishedAt: "2026-09-26T00:00:09.000Z" });
+    await store.updateRun!("t-a", "c-1", { status: "succeeded", finishedAt: "2026-09-26T00:00:09.000Z" });
     expect((await store.getRunById("p-1"))!.status).toBe("running");
     await store.updateRunById!("c-2", { status: "failed", finishedAt: "2026-09-26T00:00:12.000Z" });
     expect(await store.getRunById("p-1")).toMatchObject({ status: "partial", finishedAt: "2026-09-26T00:00:12.000Z" });
@@ -217,5 +220,88 @@ describe("run queue (T-0821)", () => {
     await queue.enqueue(envelope("t-b", "r-secret"));
     expect(await store.getRunById("r-secret")).toMatchObject({ status: "failed", summaryCounts: { error: expect.stringContaining("client-secret") } });
     expect(enqueued).toEqual([]);
+  });
+});
+
+describe("findings ingestion (T-0833)", () => {
+  // The export fixture Export-AssessmentBridgeJson's Pester test keeps in step.
+  const FIXTURE = fileURLToPath(new URL("../../../db/src/fixtures/assessment-bridge.json", import.meta.url));
+
+  function result(env: JobEnvelope, status: "succeeded" | "failed", artifactRefs: string[], error?: string): ResultEnvelope {
+    return {
+      schemaVersion: "v1",
+      jobId: env.jobId,
+      jobType: env.jobType,
+      tenantId: env.tenantId,
+      runId: env.runId,
+      requestId: env.requestId,
+      correlationId: env.correlationId,
+      status,
+      startedAt: "2026-09-27T00:00:00.000Z",
+      finishedAt: "2026-09-27T00:05:00.000Z",
+      exitCode: status === "succeeded" ? 0 : 1,
+      artifactRefs,
+      ...(error ? { error: { code: "worker.assessment_failed", message: error, retryable: false } } : {}),
+    };
+  }
+
+  async function ingestSetup() {
+    const ctx = await setup();
+    const root = mkdtempSync(path.join(tmpdir(), "m365-findings-"));
+    dirs.push(root);
+    await ctx.store.createRun!(run("r-1", "t-a"));
+    const env = envelope("t-a", "r-1");
+    const outputFolder = path.join(root, env.payload.outputRef);
+    return { ...ctx, root, env, outputFolder };
+  }
+
+  it("stores a succeeded run's findings and counts from its export", async () => {
+    const { repo, root, env, outputFolder } = await ingestSetup();
+    mkdirSync(path.join(outputFolder, "Assessment_20260927"), { recursive: true });
+    copyFileSync(FIXTURE, path.join(outputFolder, "Assessment_20260927", "_Assessment_fixture.json"));
+    const refs = ["Assessment_20260927/_Assessment-Log_fixture.txt", "Assessment_20260927/_Assessment_fixture.json"];
+    const worker = withFindingsIngestion(async (e) => result(e, "succeeded", refs), { repo, storageRoot: root });
+
+    expect(await worker(env, new AbortController().signal)).toMatchObject({ status: "succeeded" });
+    const findings = await repo.listFindings("t-a", "r-1");
+    expect(findings.map((f) => [f.checkId, f.status])).toEqual([
+      ["CA-REPORTONLY-001.1", "Warning"],
+      ["EXO-AUDIT-001.1", "Pass"],
+      ["SPO-SHARING-001.1", "Fail"],
+      ["ENTRA-GUEST-001.1", "Review"],
+    ]);
+    expect((await repo.getRun("t-a", "r-1"))!.summaryCounts).toEqual({ pass: 1, fail: 1, warning: 1, review: 1, info: 0, skipped: 0, total: 4 });
+
+    // Ingesting the same run again replaces rather than duplicates.
+    await worker(env, new AbortController().signal);
+    expect(await repo.listFindings("t-a", "r-1")).toHaveLength(4);
+  });
+
+  it("fails a succeeded run whose export is missing or unreadable, with the reason", async () => {
+    const { repo, root, env, outputFolder } = await ingestSetup();
+    const missing = withFindingsIngestion(async (e) => result(e, "succeeded", ["Assessment_1/report.html"]), { repo, storageRoot: root });
+    expect(await missing(env, new AbortController().signal)).toMatchObject({ status: "failed", error: { code: RUN_OUTPUT_UNREADABLE } });
+    expect((await repo.getRun("t-a", "r-1"))!.summaryCounts).toEqual({ error: expect.stringContaining("no findings export") });
+
+    mkdirSync(outputFolder, { recursive: true });
+    writeFileSync(path.join(outputFolder, "_Assessment.json"), "{ not json");
+    const broken = withFindingsIngestion(async (e) => result(e, "succeeded", ["_Assessment.json"]), { repo, storageRoot: root });
+    expect(await broken(env, new AbortController().signal)).toMatchObject({ status: "failed" });
+    expect((await repo.getRun("t-a", "r-1"))!.summaryCounts).toEqual({ error: expect.stringContaining("not valid JSON") });
+
+    const escape = withFindingsIngestion(async (e) => result(e, "succeeded", ["../../_Assessment.json"]), { repo, storageRoot: root });
+    expect(await escape(env, new AbortController().signal)).toMatchObject({ status: "failed" });
+    expect(await repo.listFindings("t-a", "r-1")).toEqual([]);
+  });
+
+  it("keeps a failed worker's error on the run and passes other job types through", async () => {
+    const { repo, root, env } = await ingestSetup();
+    const failed = withFindingsIngestion(async (e) => result(e, "failed", [], "Graph sign-in failed"), { repo, storageRoot: root });
+    expect(await failed(env, new AbortController().signal)).toMatchObject({ status: "failed" });
+    expect((await repo.getRun("t-a", "r-1"))!.summaryCounts).toEqual({ error: "Graph sign-in failed" });
+
+    const other = { ...env, jobType: "remediation" } as JobEnvelope;
+    const passthrough = withFindingsIngestion(async (e) => result(e, "succeeded", []), { repo, storageRoot: root });
+    expect(await passthrough(other, new AbortController().signal)).toMatchObject({ status: "succeeded" });
   });
 });

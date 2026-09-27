@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.0",
+  "assessedAt": "2026-09-27T00:00:00.0000000Z",
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "tenantName": "Fixture Tenant",
+  "assessmentVersion": "0.0.0",
+  "registryVersion": "fixture",
+  "findings": [
+    {
+      "checkId": "CA-REPORTONLY-001.1",
+      "status": "Warning",
+      "severity": "high",
+      "effort": "medium",
+      "frameworks": [
+        "cis-m365-v6"
+      ],
+      "currentValue": "2 report-only",
+      "remediation": "Move report-only policies to enabled.",
+      "category": "Conditional Access",
+      "setting": "Report-only policies",
+      "recommendedValue": "0 report-only",
+      "section": "Identity",
+      "collector": "Entra"
+    },
+    {
+      "checkId": "EXO-AUDIT-001.1",
+      "status": "Pass",
+      "severity": "medium",
+      "effort": "medium",
+      "frameworks": [
+        "cis-m365-v6",
+        "nist-800-53"
+      ],
+      "currentValue": "Enabled",
+      "remediation": "",
+      "category": "Auditing",
+      "setting": "Mailbox auditing",
+      "recommendedValue": "Enabled",
+      "section": "Email",
+      "collector": "Exchange Online"
+    },
+    {
+      "checkId": "SPO-SHARING-001.1",
+      "status": "Fail",
+      "severity": "critical",
+      "effort": "medium",
+      "frameworks": [],
+      "currentValue": "Anyone",
+      "remediation": "Restrict external sharing.",
+      "category": "Sharing",
+      "setting": "External sharing",
+      "recommendedValue": "Existing guests",
+      "section": "Collaboration",
+      "collector": "SharePoint"
+    },
+    {
+      "checkId": "ENTRA-GUEST-001.1",
+      "status": "Review",
+      "severity": "low",
+      "effort": "medium",
+      "frameworks": [],
+      "currentValue": "Admins and members",
+      "remediation": "Review guest invitation settings.",
+      "category": "Guests",
+      "setting": "Guest invite settings",
+      "recommendedValue": "Admins only",
+      "section": "Identity",
+      "collector": "Entra"
+    }
+  ],
+  "domainSummary": {
+    "Conditional Access": {
+      "pass": 0,
+      "warn": 1,
+      "fail": 0,
+      "review": 0,
+      "total": 1
+    },
+    "Exchange Online": {
+      "pass": 1,
+      "warn": 0,
+      "fail": 0,
+      "review": 0,
+      "total": 1
+    },
+    "SharePoint & OneDrive": {
+      "pass": 0,
+      "warn": 0,
+      "fail": 1,
+      "review": 0,
+      "total": 1
+    },
+    "Entra ID": {
+      "pass": 0,
+      "warn": 0,
+      "fail": 0,
+      "review": 1,
+      "total": 1
+    }
+  }
+}

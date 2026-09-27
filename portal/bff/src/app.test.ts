@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { JobEnvelope, ResultEnvelope } from "@m365-assess/contracts";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
@@ -579,8 +580,13 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
     const root = mkdtempSync(path.join(tmpdir(), "m365-app-runs-"));
     const db = new Database(":memory:");
     const worked: string[] = [];
+    // Like run-tenant.ps1, the worker leaves the assessment's findings export behind.
+    const exportFixture = fileURLToPath(new URL("../../db/src/fixtures/assessment-bridge.json", import.meta.url));
     const runWorker = async (envelope: JobEnvelope): Promise<ResultEnvelope> => {
       worked.push(envelope.runId);
+      const assessmentFolder = path.join(root, envelope.payload.outputRef, "Assessment_1");
+      mkdirSync(assessmentFolder, { recursive: true });
+      copyFileSync(exportFixture, path.join(assessmentFolder, "_Assessment.json"));
       return {
         schemaVersion: "v1",
         jobId: envelope.jobId,
@@ -593,7 +599,7 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
         startedAt: "2026-09-26T00:00:00.000Z",
         finishedAt: "2026-09-26T00:00:05.000Z",
         exitCode: 0,
-        artifactRefs: [],
+        artifactRefs: ["Assessment_1/_Assessment.json"],
         summary: { total: 0, byStatus: {} },
         error: null,
       } as unknown as ResultEnvelope;
@@ -633,7 +639,10 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
       expect(worked).toEqual([runId]);
       const detail = await api.get(`/v1/runs/${runId}`);
       expect(detail.status).toBe(200);
-      expect(await detail.json()).toMatchObject({ id: runId, status: "succeeded" });
+      expect(await detail.json()).toMatchObject({ id: runId, status: "succeeded", summaryCounts: { pass: 1, fail: 1, total: 4 } });
+      const results = await api.get(`/v1/runs/${runId}/results`);
+      expect(results.status).toBe(200);
+      expect(await results.json()).toMatchObject({ total: 4, items: expect.arrayContaining([expect.objectContaining({ status: "Fail" })]) });
 
       const list = await api.get("/v1/runs");
       expect(list.status).toBe(200);
@@ -641,7 +650,7 @@ describe("EPIC-001/003 runs routes (T-0821)", () => {
 
       // The parent run follows its only child.
       const parent = await api.get(`/v1/runs/${body.run.id}`);
-      expect(await parent.json()).toMatchObject({ id: body.run.id, status: "succeeded" });
+      expect(await parent.json()).toMatchObject({ id: body.run.id, status: "succeeded", summaryCounts: { total: 4 } });
     } finally {
       cleanup();
     }

@@ -4,16 +4,16 @@
 // (the shapes match field for field), plus the progress hub's run/section writes. The
 // run queue writes each tenant run's context.json under the storage root before
 // handing the envelope to the job queue, since run-tenant.ps1 rebuilds its RunContext
-// from that file.
-import { mkdir, writeFile } from "node:fs/promises";
+// from that file. Findings ingestion stores a finished run's results (T-0833).
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Run, SqliteRepository } from "@m365-assess/db";
-import type { JobEnvelope } from "@m365-assess/contracts";
+import { findingsFromAssessmentExport, type Run, type SqliteRepository } from "@m365-assess/db";
+import type { JobEnvelope, ResultEnvelope } from "@m365-assess/contracts";
 import type Database from "better-sqlite3";
 import { AppError } from "../errors.js";
 import type { GroupMemberResolver } from "../domain/run-plan.js";
 import { rollupRunStatus } from "../domain/runs/run-rollup.js";
-import type { JobQueue, JobStatePersistence } from "../jobs/queue.js";
+import type { JobQueue, JobStatePersistence, RunWorkerFn } from "../jobs/queue.js";
 import type { CredentialStoreRow } from "../routes/credentials.js";
 import type { RunCreateStore, RunRecord } from "../routes/runs-create.js";
 import type { RunsActionsStore } from "../routes/runs-actions.js";
@@ -206,5 +206,73 @@ export function createRunQueue(options: RunQueueOptions): RunQueueAdapter {
       return queue.enqueue(envelope);
     },
     cancel: (jobId) => queue.cancel(jobId),
+  };
+}
+
+export const RUN_OUTPUT_UNREADABLE = "run.output_unreadable";
+
+// Export-AssessmentBridgeJson writes `_Assessment[_<domain>].json` into the assessment's
+// timestamped folder; the log file shares the prefix but not the extension.
+const ASSESSMENT_EXPORT = /(^|\/)_Assessment[^/]*\.json$/;
+
+export interface FindingsIngestionOptions {
+  readonly repo: SqliteRepository;
+  readonly storageRoot: string;
+}
+
+/**
+ * Stores an assessment run's findings and summary counts before the queue reports the
+ * job finished, so a run shows succeeded only once its results are readable. A
+ * succeeded worker whose findings export is missing or unreadable fails the run with
+ * the reason; a failed worker's error is kept on the run the same way.
+ */
+export function withFindingsIngestion(runWorker: RunWorkerFn, options: FindingsIngestionOptions): RunWorkerFn {
+  const { repo, storageRoot } = options;
+
+  async function recordError(envelope: JobEnvelope, message: string): Promise<void> {
+    await repo.updateRun(envelope.tenantId, envelope.runId, {
+      summaryCounts: { error: message },
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async function ingest(envelope: JobEnvelope, result: ResultEnvelope): Promise<void> {
+    const exports = result.artifactRefs
+      .map((ref) => ref.split(path.sep).join("/"))
+      .filter((ref) => ASSESSMENT_EXPORT.test(ref))
+      .sort();
+    const ref = exports.at(-1);
+    if (!ref) throw new Error("the assessment wrote no findings export (_Assessment*.json)");
+    const outputFolder = path.resolve(storageRoot, envelope.payload.outputRef);
+    const file = path.resolve(outputFolder, ref);
+    if (!file.startsWith(outputFolder + path.sep)) throw new Error(`findings export ${ref} is outside the run folder`);
+    const { findings, summaryCounts } = findingsFromAssessmentExport(await readFile(file, "utf8"), {
+      tenantId: envelope.tenantId,
+      runId: envelope.runId,
+    });
+    await repo.replaceRunFindings(envelope.tenantId, envelope.runId, findings);
+    await repo.updateRun(envelope.tenantId, envelope.runId, { summaryCounts, updatedAt: new Date().toISOString() });
+  }
+
+  return async (envelope, signal) => {
+    const result = await runWorker(envelope, signal);
+    if (envelope.jobType !== "assessment") return result;
+    if (result.status === "failed" && result.error?.message) {
+      await recordError(envelope, result.error.message);
+      return result;
+    }
+    if (result.status !== "succeeded") return result;
+    try {
+      await ingest(envelope, result);
+      return result;
+    } catch (error) {
+      const message = `run output unreadable: ${error instanceof Error ? error.message : String(error)}`;
+      await recordError(envelope, message);
+      return {
+        ...result,
+        status: "failed",
+        error: { code: RUN_OUTPUT_UNREADABLE, message, retryable: false },
+      };
+    }
   };
 }

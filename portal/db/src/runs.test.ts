@@ -7,6 +7,7 @@ import {
   InvalidRunStatusError,
   VALID_RUN_STATUSES,
   type AuditEventInput,
+  type FindingInput,
   type RunInput,
   type RunStatus,
   type TenantInput,
@@ -320,6 +321,59 @@ describe("Retention window enforcement (T-0041)", () => {
     expect(auditIds).toContain("old-audit-1");
     expect(auditIds).toContain("new-audit-1");
 
+    repo.close();
+  });
+});
+
+describe("Replacing a run's findings (T-0833)", () => {
+  function finding(id: string, runId: string, tenantId: string, checkId: string): FindingInput {
+    return {
+      id,
+      runId,
+      tenantId,
+      checkId,
+      controlName: null,
+      category: null,
+      collector: null,
+      status: "Pass",
+      severity: null,
+      currentValue: null,
+      recommendedValue: null,
+      evidence: null,
+      frameworkRefs: ["cis-m365-v6"],
+      remediationMode: null,
+    };
+  }
+
+  it("swaps the run's findings in insertion order and leaves other runs alone", async () => {
+    const repo = await openSqliteRepository({ filename: tempDbPath() });
+    await repo.upsertTenant(tenant(TENANT_A));
+    await repo.createRun(runInput("run-1", TENANT_A));
+    await repo.createRun(runInput("run-2", TENANT_A));
+    await repo.createFinding(finding("other", "run-2", TENANT_A, "KEEP-001.1"));
+
+    await repo.replaceRunFindings(TENANT_A, "run-1", [finding("a", "run-1", TENANT_A, "A-001.1")]);
+    const replaced = await repo.replaceRunFindings(TENANT_A, "run-1", [
+      finding("c", "run-1", TENANT_A, "C-001.1"),
+      finding("b", "run-1", TENANT_A, "B-001.1"),
+    ]);
+
+    expect(replaced.map((f) => f.id)).toEqual(["c", "b"]);
+    expect(replaced[0]!.frameworkRefs).toEqual(["cis-m365-v6"]);
+    expect((await repo.listFindings(TENANT_A, "run-2")).map((f) => f.id)).toEqual(["other"]);
+    repo.close();
+  });
+
+  it("refuses findings for another run and keeps the existing ones", async () => {
+    const repo = await openSqliteRepository({ filename: tempDbPath() });
+    await repo.upsertTenant(tenant(TENANT_A));
+    await repo.createRun(runInput("run-1", TENANT_A));
+    await repo.replaceRunFindings(TENANT_A, "run-1", [finding("a", "run-1", TENANT_A, "A-001.1")]);
+
+    await expect(
+      repo.replaceRunFindings(TENANT_A, "run-1", [finding("x", "run-9", TENANT_A, "X-001.1")]),
+    ).rejects.toThrow(/does not belong/);
+    expect((await repo.listFindings(TENANT_A, "run-1")).map((f) => f.id)).toEqual(["a"]);
     repo.close();
   });
 });

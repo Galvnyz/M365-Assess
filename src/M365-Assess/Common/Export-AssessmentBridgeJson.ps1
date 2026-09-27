@@ -65,6 +65,11 @@ function Export-AssessmentBridgeJson {
         [string[]]$SensitiveCheckIds = @()
     )
 
+    function Get-BridgeText {
+        param([PSCustomObject]$Row, [string]$Name)
+        if ($Row.PSObject.Properties[$Name] -and $null -ne $Row.$Name) { [string]$Row.$Name } else { $null }
+    }
+
     $findings = foreach ($f in $AllFindings) {
         $baseCheckId = $f.CheckId -replace '\.\d+$', ''
         $regEntry    = if ($RegistryData.ContainsKey($baseCheckId)) { $RegistryData[$baseCheckId] } else { $null }
@@ -84,14 +89,23 @@ function Export-AssessmentBridgeJson {
         $isSensitive = $SensitiveCheckIds.Count -gt 0 -and
             ($SensitiveCheckIds | Where-Object { $f.CheckId -like $_ }).Count -gt 0
 
+        # category through collector are additive: M365-Remediate ignores them, and the
+        # portal needs them to store complete findings from a run.
         [PSCustomObject]@{
-            checkId      = $f.CheckId
-            status       = $f.Status
-            severity     = $severity
-            effort       = $effort
-            frameworks   = $frameworks
-            currentValue = if ($isSensitive) { '[REDACTED]' } else { $f.CurrentValue }
-            remediation  = $f.Remediation
+            checkId          = $f.CheckId
+            status           = $f.Status
+            severity         = $severity
+            effort           = $effort
+            # @() keeps a single framework an array (the if-expression above unrolls it).
+            # Sorted because hashtable key order varies between processes.
+            frameworks       = @($frameworks | Sort-Object)
+            currentValue     = if ($isSensitive) { '[REDACTED]' } else { $f.CurrentValue }
+            remediation      = $f.Remediation
+            category         = Get-BridgeText -Row $f -Name 'Category'
+            setting          = Get-BridgeText -Row $f -Name 'Setting'
+            recommendedValue = Get-BridgeText -Row $f -Name 'RecommendedValue'
+            section          = Get-BridgeText -Row $f -Name 'Section'
+            collector        = Get-BridgeText -Row $f -Name 'Source'
         }
     }
 
@@ -114,7 +128,7 @@ function Export-AssessmentBridgeJson {
             default          { 'Other' }
         }
         if (-not $domainSummary.Contains($d)) {
-            $domainSummary[$d] = @{ pass = 0; warn = 0; fail = 0; review = 0; total = 0 }
+            $domainSummary[$d] = [ordered]@{ pass = 0; warn = 0; fail = 0; review = 0; total = 0 }
         }
         $bucket = $domainSummary[$d]
         $bucket.total++

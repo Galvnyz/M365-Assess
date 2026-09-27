@@ -1207,6 +1207,14 @@ export class SqliteRepository implements Repository {
   }
 
   async createFinding(input: FindingInput): Promise<Finding> {
+    this.insertFinding(input);
+    const findings = await this.listFindings(input.tenantId, input.runId);
+    const finding = findings.find((candidate) => candidate.id === input.id);
+    if (!finding) throw new Error(`finding ${input.id} was not persisted`);
+    return finding;
+  }
+
+  private insertFinding(input: FindingInput): void {
     const createdAt = input.createdAt ?? nowIso();
     const updatedAt = input.updatedAt ?? nowIso();
     this.db
@@ -1233,16 +1241,25 @@ export class SqliteRepository implements Repository {
         createdAt,
         updatedAt,
       );
-    const findings = await this.listFindings(input.tenantId, input.runId);
-    const finding = findings.find((candidate) => candidate.id === input.id);
-    if (!finding) throw new Error(`finding ${input.id} was not persisted`);
-    return finding;
+  }
+
+  async replaceRunFindings(tenantId: string, runId: string, inputs: readonly FindingInput[]): Promise<Finding[]> {
+    for (const input of inputs) {
+      if (input.tenantId !== tenantId || input.runId !== runId) {
+        throw new Error(`finding ${input.id} does not belong to run ${runId} of tenant ${tenantId}`);
+      }
+    }
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM findings WHERE tenantId = ? AND runId = ?").run(tenantId, runId);
+      for (const input of inputs) this.insertFinding(input);
+    })();
+    return this.listFindings(tenantId, runId);
   }
 
   async listFindings(tenantId: string, runId: string): Promise<Finding[]> {
     return (
       this.db
-        .prepare("SELECT * FROM findings WHERE tenantId = ? AND runId = ? ORDER BY createdAt")
+        .prepare("SELECT * FROM findings WHERE tenantId = ? AND runId = ? ORDER BY createdAt, rowid")
         .all(tenantId, runId) as Row[]
     ).map((row) => this.mapFinding(row));
   }

@@ -1104,6 +1104,8 @@ export interface Repository {
   listRunSections(tenantId: string, runId: string): Promise<RunSection[]>;
 
   createFinding(input: FindingInput): Promise<Finding>;
+  /** Replaces a run's findings in one transaction, so re-ingesting a run is idempotent. */
+  replaceRunFindings(tenantId: string, runId: string, inputs: readonly FindingInput[]): Promise<Finding[]>;
   listFindings(tenantId: string, runId: string): Promise<Finding[]>;
 
   createJob(input: JobInput): Promise<Job>;

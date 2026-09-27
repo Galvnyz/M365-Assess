@@ -57,7 +57,13 @@ import {
   createUnavailableTemplateRender,
 } from "./adapters/reports.js";
 import { createActiveGrantsResolver, createRoleProviders } from "./adapters/roles.js";
-import { createJobPersistence, createRunGroupResolver, createRunQueue, createRunStore } from "./adapters/runs.js";
+import {
+  createJobPersistence,
+  createRunGroupResolver,
+  createRunQueue,
+  createRunStore,
+  withFindingsIngestion,
+} from "./adapters/runs.js";
 import {
   createAuthMethodsPolicyProvider,
   createMfaProviders,
@@ -382,20 +388,23 @@ export function createApp(config: BffConfig, options: CreateAppOptions = {}): Ap
 
   // EPIC-001/003 runs: the job queue supervises run-tenant.ps1 under the artifact root,
   // and every queue and worker progress event goes through the hub, which records run
-  // and section state and serves the progress stream.
+  // and section state and serves the progress stream. A finished run's findings are
+  // stored before the queue reports it finished.
   const runStore = createRunStore(repo, db);
   const hub = new ProgressEventHub({ store: runStore });
   const publish = (event: unknown) => void hub.publish(event as Record<string, unknown>);
   const runJobs = new JobQueue({
     persistence: createJobPersistence(repo),
     poolSize: config.workerPoolSize,
-    runWorker:
+    runWorker: withFindingsIngestion(
       options.runWorker ??
-      createSupervisorRunner({
-        workerScriptPath: path.join(config.workersDir, RUN_WORKER),
-        storageRoot: config.artifactPath,
-        onProgress: publish,
-      }),
+        createSupervisorRunner({
+          workerScriptPath: path.join(config.workersDir, RUN_WORKER),
+          storageRoot: config.artifactPath,
+          onProgress: publish,
+        }),
+      { repo, storageRoot: config.artifactPath },
+    ),
     onProgress: publish,
   });
   const runQueue = createRunQueue({

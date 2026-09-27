@@ -4,6 +4,12 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Added
+- **Bridge JSON findings carry their descriptive fields**: each finding in `_Assessment*.json` now also has `category`, `setting`, `recommendedValue`, `section`, and `collector`. The fields are additive; existing readers ignore them.
+
+### Fixed
+- **Bridge JSON `frameworks` is always an array**: a finding mapped to exactly one framework was written as a bare string. Framework ids are now sorted and the domain summary counts keep a fixed key order, so the file no longer changes between identical runs.
+
 ## [2.13.0] - 2026-06-13
 
 Completes the **Sovereign Cloud** milestone. Running M365 Assess against GCC High was verified end-to-end against a real tenant, and the collectors that failed there were corrected at the source: where a working v1.0 API existed it is now used, and where an endpoint genuinely does not exist in the sovereign cloud the dependent checks emit `Skipped` instead of vanishing. A few report bugs surfaced alongside the sovereign work are fixed, and the docs (README, GCC High setup, architecture diagrams) are refreshed. No breaking API changes.
