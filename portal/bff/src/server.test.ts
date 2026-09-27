@@ -20,11 +20,22 @@ import {
   paginate,
   parsePagination,
 } from "./pagination.js";
-import { OPENAPI_ROUTE, buildServer, type Route } from "./server.js";
+import { tenantScope } from "./rbac/scope.js";
+import {
+  OPENAPI_ROUTE,
+  PAYLOAD_TOO_LARGE,
+  UNAUTHENTICATED,
+  buildServer,
+  type BuildServerOptions,
+  type RequestAuthenticator,
+  type RequestCaller,
+  type RequestContext,
+  type Route,
+} from "./server.js";
 
 const openServers: Server[] = [];
 
-async function startServer(options: { routes?: readonly Route[]; openapiDocument?: string } = {}) {
+async function startServer(options: BuildServerOptions = {}) {
   const server = buildServer(options);
   await new Promise<void>((resolve) => server.listen(0, DEFAULT_HOST, resolve));
   openServers.push(server);
@@ -99,6 +110,142 @@ describe("server routing", () => {
     const raw = await response.text();
     expect(raw).toContain(ErrorCodes.internalError);
     expect(raw).not.toContain("secret internal detail");
+  });
+});
+
+/** A route that echoes what the pipeline put on the context. */
+function echoRoute(method = "POST"): { route: Route; seen: RequestContext[] } {
+  const seen: RequestContext[] = [];
+  return {
+    seen,
+    route: {
+      method,
+      path: "/v1/echo",
+      handler: (ctx) => {
+        seen.push(ctx);
+        return { status: 200, body: { body: ctx.body ?? null, caller: ctx.caller === undefined ? "unset" : ctx.caller } };
+      },
+    },
+  };
+}
+
+describe("request bodies (T-0811)", () => {
+  it("parses a JSON body onto ctx.body", async () => {
+    const { route, seen } = echoRoute();
+    const baseUrl = await startServer({ routes: [route] });
+    const response = await fetch(`${baseUrl}/v1/echo`, {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ name: "Baseline", tags: ["a"] }),
+    });
+    expect(response.status).toBe(200);
+    expect(seen[0]!.body).toEqual({ name: "Baseline", tags: ["a"] });
+  });
+
+  it("accepts +json media types and DELETE bodies", async () => {
+    const { route, seen } = echoRoute("DELETE");
+    const baseUrl = await startServer({ routes: [route] });
+    await fetch(`${baseUrl}/v1/echo`, {
+      method: "DELETE",
+      headers: { "content-type": "application/merge-patch+json" },
+      body: JSON.stringify({ confirmName: "x" }),
+    });
+    expect(seen[0]!.body).toEqual({ confirmName: "x" });
+  });
+
+  it("leaves ctx.body unset for empty and non-JSON bodies", async () => {
+    const { route, seen } = echoRoute();
+    const baseUrl = await startServer({ routes: [route] });
+    await fetch(`${baseUrl}/v1/echo`, { method: "POST", headers: { "content-type": "application/json" }, body: "" });
+    await fetch(`${baseUrl}/v1/echo`, { method: "POST", headers: { "content-type": "text/plain" }, body: "{\"a\":1}" });
+    expect(seen.map((ctx) => "body" in ctx)).toEqual([false, false]);
+  });
+
+  it("rejects invalid JSON with a 400 validation error", async () => {
+    const { route, seen } = echoRoute();
+    const baseUrl = await startServer({ routes: [route] });
+    const response = await fetch(`${baseUrl}/v1/echo`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not json",
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      code: ErrorCodes.validationFailed,
+      details: [{ field: "body", reason: "must be valid JSON" }],
+    });
+    expect(seen).toHaveLength(0);
+  });
+
+  it("rejects an oversized body with a 413", async () => {
+    const { route, seen } = echoRoute();
+    const baseUrl = await startServer({ routes: [route], maxBodyBytes: 64 });
+    const response = await fetch(`${baseUrl}/v1/echo`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ padding: "x".repeat(200) }),
+    });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: PAYLOAD_TOO_LARGE });
+    expect(seen).toHaveLength(0);
+  });
+});
+
+describe("caller resolution (T-0811)", () => {
+  const user: RequestCaller = { roles: ["operator"], tenantScope: tenantScope(["t-1"]) };
+  const client: RequestCaller = { roles: ["readonly"], tenantScope: tenantScope(["t-2"]) };
+  const fixed = (caller: RequestCaller | null): RequestAuthenticator => ({ authenticate: async () => caller });
+
+  it("leaves ctx.caller unset when no authenticators are configured", async () => {
+    const { route } = echoRoute("GET");
+    const baseUrl = await startServer({ routes: [route] });
+    expect(await (await fetch(`${baseUrl}/v1/echo`)).json()).toMatchObject({ caller: "unset" });
+  });
+
+  it("uses the first authenticator that recognises the caller", async () => {
+    const { route, seen } = echoRoute("GET");
+    const baseUrl = await startServer({ routes: [route], authenticators: [fixed(null), fixed(client), fixed(user)] });
+    await fetch(`${baseUrl}/v1/echo`);
+    expect(seen[0]!.caller).toBe(client);
+  });
+
+  it("sets ctx.caller to null for an anonymous request", async () => {
+    const { route, seen } = echoRoute("GET");
+    const baseUrl = await startServer({ routes: [route], authenticators: [fixed(null)] });
+    await fetch(`${baseUrl}/v1/echo`);
+    expect(seen[0]!.caller).toBeNull();
+  });
+
+  it("turns an authenticator failure into a 401 without leaking the token", async () => {
+    const { route, seen } = echoRoute("GET");
+    const failing: RequestAuthenticator = {
+      authenticate: async (req) => {
+        throw new Error(`token rejected: ${req.headers.authorization}`);
+      },
+    };
+    const baseUrl = await startServer({ routes: [route], authenticators: [failing] });
+    const response = await fetch(`${baseUrl}/v1/echo`, { headers: { authorization: "Bearer super-secret-token" } });
+    expect(response.status).toBe(401);
+    const raw = await response.text();
+    expect(raw).toContain(UNAUTHENTICATED);
+    expect(raw).not.toContain("super-secret-token");
+    expect(seen).toHaveLength(0);
+  });
+
+  it("strips the API-client secret header from the context", async () => {
+    const { route, seen } = echoRoute("GET");
+    const baseUrl = await startServer({ routes: [route] });
+    await fetch(`${baseUrl}/v1/echo`, { headers: { "x-client-secret": "s3cret", "x-custom": "kept" } });
+    expect(seen[0]!.headers["x-client-secret"]).toBeUndefined();
+    expect(seen[0]!.headers["x-custom"]).toBe("kept");
+  });
+
+  it("never places the bearer token on the context", async () => {
+    const { route, seen } = echoRoute("GET");
+    const baseUrl = await startServer({ routes: [route], authenticators: [fixed(user)] });
+    await fetch(`${baseUrl}/v1/echo`, { headers: { authorization: "Bearer super-secret-token" } });
+    expect(JSON.stringify(seen[0])).not.toContain("super-secret-token");
+    expect(seen[0]!.headers.authorization).toBeUndefined();
   });
 });
 
