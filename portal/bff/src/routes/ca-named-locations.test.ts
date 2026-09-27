@@ -241,7 +241,7 @@ describe("GET /v1/tenants/:tenantId/ca/named-locations (T-0288)", () => {
       headers: {},
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.totalCount).toBe(2);
     expect(body.items[0].displayName).toBe("Corporate HQ");
     expect(body.items[0].inUse).toBe(true);
@@ -324,7 +324,7 @@ describe("POST /v1/tenants/:tenantId/ca/named-locations (T-0288)", () => {
       body: { displayName: "New Location", locationType: "ip", ipRanges: ["10.0.0.0/8"] },
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.action).toBe("create");
     expect(body.dryRun).toBe(true);
     expect(harness.provider.createCalls[0]!.preview).toBe(true);
@@ -341,7 +341,7 @@ describe("POST /v1/tenants/:tenantId/ca/named-locations (T-0288)", () => {
       body: { displayName: "New Location", locationType: "ip", ipRanges: ["10.0.0.0/8"] },
     });
     expect(res.status).toBe(201);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.success).toBe(true);
     expect(body.auditEvent.action).toBe("ca.namedLocation.create");
     expect(harness.provider.createCalls[0]!.preview).toBe(false);
@@ -360,7 +360,7 @@ describe("PATCH & DELETE /v1/tenants/:tenantId/ca/named-locations/:locationId (T
       body: { displayName: "Corporate HQ Updated", isTrusted: false },
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.success).toBe(true);
     expect(harness.provider.editCalls[0]!.locationId).toBe("loc-1");
   });
@@ -376,7 +376,7 @@ describe("PATCH & DELETE /v1/tenants/:tenantId/ca/named-locations/:locationId (T
       body: { confirmName: "Corporate HQ" },
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.success).toBe(true);
     expect(harness.provider.deleteCalls[0]!.confirmName).toBe("Corporate HQ");
   });

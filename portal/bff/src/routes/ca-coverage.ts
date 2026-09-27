@@ -190,8 +190,7 @@ export function createCaCoverageRoutes(options: CaCoverageRoutesOptions): Route[
         const result = await options.provider.getCoverage(tenantId);
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -210,8 +209,7 @@ export function createCaCoverageRoutes(options: CaCoverageRoutesOptions): Route[
         const result = await options.provider.getHistory(tenantId, { policyId });
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },

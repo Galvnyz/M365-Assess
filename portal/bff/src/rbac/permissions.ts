@@ -59,7 +59,12 @@ import {
 } from "../routes/intune-assignment-filters.js";
 import { INTUNE_COMPARE_PATH, INTUNE_COMPARE_PERMISSION } from "../routes/intune-compare.js";
 import { INTUNE_CRUD_BASE_PATH, INTUNE_CRUD_ITEM_PATH } from "../routes/intune-policies-crud.js";
-import { INTUNE_POLICIES_PATH, INTUNE_READ_PERMISSION, INTUNE_WRITE_PERMISSION } from "../routes/intune-policies.js";
+import {
+  INTUNE_POLICIES_PATH,
+  INTUNE_POLICY_PATH,
+  INTUNE_READ_PERMISSION,
+  INTUNE_WRITE_PERMISSION,
+} from "../routes/intune-policies.js";
 import {
   REUSABLE_SETTING_TEMPLATE_PATH,
   REUSABLE_SETTING_TEMPLATES_PATH,
@@ -343,6 +348,7 @@ export const PermissionRegistry: readonly PermissionRegistryEntry[] = Object.fre
   { method: "POST", path: FILTER_TEMPLATE_DEPLOY_PATH, permission: ASSIGNMENT_FILTER_PERMISSIONS.templates },
   { method: "POST", path: INTUNE_TEMPLATE_DEPLOY_PATH, permission: INTUNE_TEMPLATE_PERMISSIONS.templates },
   { method: "GET", path: INTUNE_POLICIES_PATH, permission: INTUNE_READ_PERMISSION },
+  { method: "GET", path: INTUNE_POLICY_PATH, permission: INTUNE_READ_PERMISSION },
   { method: "POST", path: INTUNE_CRUD_BASE_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "PATCH", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },
   { method: "DELETE", path: INTUNE_CRUD_ITEM_PATH, permission: INTUNE_WRITE_PERMISSION },

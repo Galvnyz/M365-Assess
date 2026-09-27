@@ -246,26 +246,88 @@ export async function saveIntunePolicy(
   return "plan" in body ? body : { success: !preview, plan: body };
 }
 
-/** Find one policy by id. The list API has no item route, so this walks its pages. */
+/** One policy's full configuration from the detail route (T-0829). */
+export interface IntunePolicyDetail {
+  readonly id: string;
+  readonly displayName: string;
+  readonly platform: string;
+  readonly body: Record<string, unknown>;
+  readonly assignments: readonly unknown[];
+}
+
+const IDENTITY_FIELDS = new Set(["@odata.type", "displayName", "name", "description"]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The editor's settings map for a policy body. Compliance policies keep their Graph
+ * properties (minus identity fields). Settings-catalog configuration policies flatten
+ * `settings[].settingInstance` to settingDefinitionId -> value; choice values ending in
+ * _1/_0 become true/false, matching the structured schema's booleans.
+ */
+export function editableSettingsFromDetail(kind: IntunePolicyKind, body: Record<string, unknown>): Record<string, unknown> {
+  if (kind !== "configuration" || !Array.isArray(body["settings"])) {
+    const settings: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (!IDENTITY_FIELDS.has(key) && key !== "platforms" && key !== "technologies") settings[key] = value;
+    }
+    return settings;
+  }
+  const settings: Record<string, unknown> = {};
+  for (const entry of body["settings"] as unknown[]) {
+    const instance = isRecord(entry) && isRecord(entry["settingInstance"]) ? entry["settingInstance"] : undefined;
+    const id = instance?.["settingDefinitionId"];
+    if (typeof id !== "string") continue;
+    const simple = isRecord(instance?.["simpleSettingValue"]) ? instance["simpleSettingValue"]["value"] : undefined;
+    const choice = isRecord(instance?.["choiceSettingValue"]) ? instance["choiceSettingValue"]["value"] : undefined;
+    if (simple !== undefined) settings[id] = simple;
+    else if (typeof choice === "string") settings[id] = /_1$/.test(choice) ? true : /_0$/.test(choice) ? false : choice;
+    else settings[id] = instance;
+  }
+  return settings;
+}
+
+/** Graph assignments ({ target: { @odata.type, groupId } }) in the portal's assignment shape. */
+export function assignmentsFromDetail(raw: readonly unknown[]): IntunePolicyAssignment[] {
+  const out: IntunePolicyAssignment[] = [];
+  for (const item of raw) {
+    const target = isRecord(item) && isRecord(item["target"]) ? item["target"] : undefined;
+    const type = typeof target?.["@odata.type"] === "string" ? String(target["@odata.type"]).replace("#microsoft.graph.", "") : "";
+    if (!type) continue;
+    const groupId = typeof target?.["groupId"] === "string" ? target["groupId"] : "";
+    out.push({ id: groupId || type, target: groupId || type, targetType: type });
+  }
+  return out;
+}
+
+/** One policy for the editor, from the detail route; null when it does not exist. */
 export async function getIntunePolicy(
   tenantId: string,
   kind: IntunePolicyKind,
   policyId: string,
   baseUrl = "",
 ): Promise<IntunePolicyItem | null> {
-  let cursor: string | null = null;
-  do {
-    const page: IntunePoliciesPage = await fetchIntunePolicies(
-      tenantId,
-      kind,
-      { cursor, limit: 100 },
-      baseUrl,
-    );
-    const hit = page.items.find((p) => p.id === policyId);
-    if (hit) return hit;
-    cursor = page.nextCursor;
-  } while (cursor);
-  return null;
+  const res = await fetch(
+    `${baseUrl}/v1/tenants/${encodeURIComponent(tenantId)}/intune/${kind}/${encodeURIComponent(policyId)}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) await throwApiError(res, "Failed to load Intune policy");
+  const detail = (await res.json()) as IntunePolicyDetail;
+  const assignments = assignmentsFromDetail(detail.assignments ?? []);
+  return {
+    id: detail.id,
+    name: detail.displayName,
+    displayName: detail.displayName,
+    platform: detail.platform,
+    policyType: kind === "compliance" ? "Compliance Policy" : "Configuration Policy",
+    assignedToCount: assignments.length,
+    assignments,
+    lastModifiedDateTime: null,
+    modifiedBy: null,
+    settingsSummary: editableSettingsFromDetail(kind, detail.body ?? {}),
+  };
 }
 
 // ---- Template list/edit/delete (T-0305 API) and deploy (T-0306 API) ----

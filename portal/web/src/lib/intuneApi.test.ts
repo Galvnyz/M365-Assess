@@ -1,7 +1,10 @@
 // Tests for the compare-page helpers in intuneApi (T-0810).
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  assignmentsFromDetail,
   buildCompareOptions,
+  editableSettingsFromDetail,
+  getIntunePolicy,
   fetchAllIntunePolicies,
   fetchAllIntuneTemplates,
   type IntunePolicyItem,
@@ -82,5 +85,58 @@ describe("fetchAll helpers (T-0810)", () => {
     expect((await fetchAllIntunePolicies("t-a", "compliance")).map((p) => p.id)).toEqual(["p1", "p2"]);
     expect((await fetchAllIntuneTemplates()).map((t) => t.id)).toEqual(["t1", "t2"]);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("policy detail for the editor (T-0829)", () => {
+  it("flattens settings-catalog settings to definition id -> value", () => {
+    const settings = editableSettingsFromDetail("configuration", {
+      name: "Defender",
+      platforms: "windows10",
+      settings: [
+        { settingInstance: { settingDefinitionId: "rtm", choiceSettingValue: { value: "rtm_1" } } },
+        { settingInstance: { settingDefinitionId: "cloud", choiceSettingValue: { value: "cloud_0" } } },
+        { settingInstance: { settingDefinitionId: "len", simpleSettingValue: { value: 12 } } },
+        { settingInstance: { settingDefinitionId: "mode", choiceSettingValue: { value: "mode_audit" } } },
+      ],
+    });
+    expect(settings).toEqual({ rtm: true, cloud: false, len: 12, mode: "mode_audit" });
+  });
+
+  it("keeps compliance properties minus identity fields", () => {
+    expect(
+      editableSettingsFromDetail("compliance", {
+        "@odata.type": "#microsoft.graph.windows10CompliancePolicy",
+        displayName: "Win",
+        passwordRequired: true,
+        scheduledActionsForRule: [],
+      }),
+    ).toEqual({ passwordRequired: true, scheduledActionsForRule: [] });
+  });
+
+  it("maps Graph assignments to the portal shape", () => {
+    expect(
+      assignmentsFromDetail([
+        { target: { "@odata.type": "#microsoft.graph.groupAssignmentTarget", groupId: "g-1" } },
+        { target: { "@odata.type": "#microsoft.graph.allDevicesAssignmentTarget" } },
+        { nope: true },
+      ]),
+    ).toEqual([
+      { id: "g-1", target: "g-1", targetType: "groupAssignmentTarget" },
+      { id: "allDevicesAssignmentTarget", target: "allDevicesAssignmentTarget", targetType: "allDevicesAssignmentTarget" },
+    ]);
+  });
+
+  it("reads the detail route and returns null for a missing policy", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith("/p-1")
+        ? json({ id: "p-1", displayName: "Win", platform: "windows", body: { passwordRequired: true }, assignments: [] })
+        : new Response("{}", { status: 404 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const policy = await getIntunePolicy("t-a", "compliance", "p-1");
+    expect(fetchMock.mock.calls[0]![0]).toBe("/v1/tenants/t-a/intune/compliance/p-1");
+    expect(policy).toMatchObject({ id: "p-1", settingsSummary: { passwordRequired: true }, assignments: [] });
+    expect(await getIntunePolicy("t-a", "compliance", "gone")).toBeNull();
   });
 });

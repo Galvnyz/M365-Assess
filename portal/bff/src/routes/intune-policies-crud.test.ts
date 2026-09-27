@@ -216,7 +216,7 @@ describe("POST /v1/tenants/:tenantId/intune/:kind (T-0302 create)", () => {
     const route = harness.getRoute("POST", INTUNE_CRUD_BASE_PATH);
     const res = await route.handler(makeCreateCtx("configuration"));
     expect(res.status).toBe(201);
-    const body = JSON.parse(res.body as string) as IntuneCrudResult;
+    const body = res.body as IntuneCrudResult;
     expect(body.success).toBe(true);
     expect(body.auditEvent).toBeDefined();
     expect(body.auditEvent!.action).toBe("intune.configuration.create");
@@ -229,7 +229,7 @@ describe("POST /v1/tenants/:tenantId/intune/:kind (T-0302 create)", () => {
     const route = harness.getRoute("POST", INTUNE_CRUD_BASE_PATH);
     const res = await route.handler(makeCreateCtx("configuration", { preview: true }));
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string) as IntunePlan;
+    const body = res.body as IntunePlan;
     expect(body.dryRun).toBe(true);
     expect(harness.provider.createCalls[0]!.preview).toBe(true);
   });
@@ -282,7 +282,7 @@ describe("PATCH /v1/tenants/:tenantId/intune/:kind/:policyId (T-0302 edit)", () 
       makeItemCtx("configuration", "pol-1", { preview: true }),
     );
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string) as IntunePlan;
+    const body = res.body as IntunePlan;
     expect(body.action).toBe("edit");
   });
 
@@ -314,7 +314,7 @@ describe("DELETE /v1/tenants/:tenantId/intune/:kind/:policyId (T-0302 delete)", 
     const route = harness.getRoute("DELETE", INTUNE_CRUD_ITEM_PATH);
     const res = await route.handler(makeItemCtx("configuration", "pol-1", { preview: true }));
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string) as IntunePlan;
+    const body = res.body as IntunePlan;
     expect(body.action).toBe("delete");
   });
 

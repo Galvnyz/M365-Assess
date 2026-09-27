@@ -13,6 +13,7 @@ import type { RequestContext, Route, RouteResponse } from "../server.js";
 import { isKnownKind, supportedEntriesForKind } from "../domain/intune-policy-types.js";
 
 export const INTUNE_POLICIES_PATH = "/v1/tenants/:tenantId/intune/:kind";
+export const INTUNE_POLICY_PATH = "/v1/tenants/:tenantId/intune/:kind/:policyId";
 export const INTUNE_READ_PERMISSION = "Endpoint.Intune.Read";
 export const INTUNE_WRITE_PERMISSION = "Endpoint.Intune.ReadWrite";
 export const INTUNE_UNAUTHENTICATED = "request.unauthenticated";
@@ -60,7 +61,18 @@ export interface IntunePoliciesPage {
   readonly nextCursor: string | null;
 }
 
+/** One policy's full configuration (T-0829): Graph body minus identity fields, raw assignments. */
+export interface IntunePolicyDetail {
+  readonly id: string;
+  readonly displayName: string;
+  readonly platform: string;
+  readonly body: Record<string, unknown>;
+  readonly assignments: readonly unknown[];
+}
+
 export interface IntunePoliciesProvider {
+  /** Single-policy read for the editor; undefined when the policy does not exist. */
+  getPolicy?(tenantId: string, kind: string, policyId: string): Promise<IntunePolicyDetail | undefined>;
   listPolicies(
     tenantId: string,
     kind: string,
@@ -165,6 +177,25 @@ export function parseIntunePoliciesFilter(query: URLSearchParams): IntunePolicie
   };
 }
 
+function requireSupportedKind(kind: string): void {
+  if (!isKnownKind(kind)) {
+    throw new AppError(
+      ErrorCodes.validationFailed,
+      `unknown Intune policy kind '${kind}'; supported: configuration, compliance, app-protection`,
+      400,
+      [{ field: "kind", reason: "unknown" }],
+    );
+  }
+  const supportedEntries = supportedEntriesForKind(kind);
+  if (supportedEntries === undefined || supportedEntries.length === 0) {
+    throw new AppError(
+      "intune.kind.unsupported",
+      `Intune policy kind '${kind}' is not yet supported; supported kinds in v1: configuration (windows), compliance (windows)`,
+      501,
+    );
+  }
+}
+
 export function createIntunePoliciesRoutes(options: IntunePoliciesRoutesOptions): Route[] {
   return [
     // GET /v1/tenants/:tenantId/intune/:kind
@@ -179,34 +210,43 @@ export function createIntunePoliciesRoutes(options: IntunePoliciesRoutesOptions)
         requireTenantInScope(caller, tenantId);
         await authorizeRead(options, caller);
 
-        // Validate kind
-        if (!isKnownKind(kind)) {
-          throw new AppError(
-            ErrorCodes.validationFailed,
-            `unknown Intune policy kind '${kind}'; supported: configuration, compliance, app-protection`,
-            400,
-            [{ field: "kind", reason: "unknown" }],
-          );
-        }
-
-        // Check if this kind has any supported entries
-        const supportedEntries = supportedEntriesForKind(kind);
-        if (supportedEntries === undefined || supportedEntries.length === 0) {
-          throw new AppError(
-            "intune.kind.unsupported",
-            `Intune policy kind '${kind}' is not yet supported; supported kinds in v1: configuration (windows), compliance (windows)`,
-            501,
-          );
-        }
+        requireSupportedKind(kind);
 
         const filter = parseIntunePoliciesFilter(ctx.query);
         const page = await options.provider.listPolicies(tenantId, kind, filter);
 
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(page),
+          body: page,
         };
+      },
+    },
+
+    // GET /v1/tenants/:tenantId/intune/:kind/:policyId (T-0829)
+    {
+      method: "GET",
+      path: INTUNE_POLICY_PATH,
+      handler: async (ctx: RequestContext): Promise<RouteResponse> => {
+        const caller = requireCaller(options.resolveCaller, ctx);
+        const tenantId = requireTenantParam(ctx);
+        const kind = requireKindParam(ctx);
+        requireTenantInScope(caller, tenantId);
+        await authorizeRead(options, caller);
+        requireSupportedKind(kind);
+        const policyId = ctx.params["policyId"]?.trim();
+        if (!policyId) {
+          throw new AppError(ErrorCodes.validationFailed, "policyId is required", 400, [
+            { field: "policyId", reason: "required" },
+          ]);
+        }
+        if (!options.provider.getPolicy) {
+          throw new AppError("intune.detail.unsupported", "policy detail reads are not available", 501);
+        }
+        const policy = await options.provider.getPolicy(tenantId, kind, policyId);
+        if (!policy) {
+          throw new AppError(ErrorCodes.notFound, `${kind} policy '${policyId}' not found`, 404);
+        }
+        return { status: 200, body: policy };
       },
     },
   ];

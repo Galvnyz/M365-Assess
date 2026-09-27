@@ -4,6 +4,7 @@ import { AppError } from "../errors.js";
 import { tenantScope } from "../rbac/scope.js";
 import {
   INTUNE_POLICIES_PATH,
+  INTUNE_POLICY_PATH,
   INTUNE_READ_PERMISSION,
   createIntunePoliciesRoutes,
   type IntunePoliciesFilter,
@@ -166,7 +167,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     const route = harness.getRoute("GET", INTUNE_POLICIES_PATH);
     const res = await route.handler(makeCtx("configuration"));
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string) as IntunePoliciesPage;
+    const body = res.body as IntunePoliciesPage;
     expect(body.tenantId).toBe(TENANT);
     expect(body.kind).toBe("configuration");
     expect(body.totalCount).toBe(2);
@@ -186,7 +187,7 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
       headers: {},
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string) as IntunePoliciesPage;
+    const body = res.body as IntunePoliciesPage;
     expect(body.kind).toBe("compliance");
     expect(body.totalCount).toBe(2);
   });
@@ -209,3 +210,38 @@ describe("GET /v1/tenants/:tenantId/intune/:kind (T-0301)", () => {
     expect(call.filter.search).toBe("security");
   });
 });
+
+describe("GET /v1/tenants/:tenantId/intune/:kind/:policyId (T-0829)", () => {
+  const detail = { id: "p-1", displayName: "Win", platform: "windows", body: { passwordRequired: true }, assignments: [] };
+
+  function detailHarness() {
+    const h = createHarness();
+    (h.provider as unknown as { getPolicy: unknown }).getPolicy = async (_t: string, _k: string, id: string) =>
+      id === "p-1" ? detail : undefined;
+    return h;
+  }
+
+  it("returns one policy's body and assignments", async () => {
+    const h = detailHarness();
+    const res = await h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" }) as never);
+    expect(res).toMatchObject({ status: 200, body: detail });
+  });
+
+  it("answers 404 for a missing policy and 400 for an unknown kind", async () => {
+    const h = detailHarness();
+    await expect(
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "nope" }) as never),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("widgets", { policyId: "p-1" }) as never),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("answers 501 when the provider cannot read details", async () => {
+    const h = createHarness();
+    await expect(
+      h.getRoute("GET", INTUNE_POLICY_PATH).handler(makeCtx("compliance", { policyId: "p-1" }) as never),
+    ).rejects.toMatchObject({ status: 501 });
+  });
+});
+

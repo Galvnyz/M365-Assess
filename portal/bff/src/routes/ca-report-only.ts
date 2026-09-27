@@ -154,8 +154,7 @@ export function createCaReportOnlyRoutes(options: CaReportOnlyRoutesOptions): Ro
 
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },

@@ -256,8 +256,7 @@ export function createIntuneCrudRoutes(options: IntuneCrudRoutesOptions): Route[
         const result = await options.provider.createPolicy(tenantId, kind, input, isPreview);
         return {
           status: isPreview ? 200 : 201,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -304,8 +303,7 @@ export function createIntuneCrudRoutes(options: IntuneCrudRoutesOptions): Route[
         );
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -340,8 +338,7 @@ export function createIntuneCrudRoutes(options: IntuneCrudRoutesOptions): Route[
         );
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },

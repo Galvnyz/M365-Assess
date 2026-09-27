@@ -249,7 +249,10 @@ describe("Intune and device routes (T-0820)", () => {
     const compare = await api.get("/v1/tenants/t-a/intune/compare?left=policy:compliance:p-1&right=policy:compliance:p-2");
     expect(compare.status).toBe(200);
     expect(await compare.json()).toMatchObject({ settings: [{ path: "passwordMinimumLength", kind: "changed", left: 8, right: 12 }] });
-    expect((await api.get("/v1/tenants/t-a/intune/compliance")).status).toBe(200);
+    const list = await api.get("/v1/tenants/t-a/intune/compliance");
+    expect(list.status).toBe(200);
+    // The body is a JSON object, not a JSON-encoded string (T-0829 fix).
+    expect(await list.json()).toMatchObject({ kind: "compliance", items: [] });
     expect(calls.map((c) => [c.entrypoint, c.job["action"] ?? c.job["policyId"] ?? c.job["kind"]])).toEqual([
       ["set-assignment-filter.ps1", "list"],
       ["sync-reusable-settings.ps1", "list"],
@@ -258,6 +261,14 @@ describe("Intune and device routes (T-0820)", () => {
       ["get-intune-policies.ps1", "compliance"],
     ]);
     for (const call of calls) expect(call.job["credential"]).toMatchObject({ credentialRef: "tenants/t-a/credential" });
+  });
+
+  it("serves one policy's detail for the editor (T-0829)", async () => {
+    const { runner } = recordingRunner();
+    const api = await adminWithTenant(runner);
+    const res = await api.get("/v1/tenants/t-a/intune/compliance/p-1");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ id: "p-1", body: { passwordMinimumLength: 8 } });
   });
 
   it("lets a read-only caller list policies but not write them", async () => {

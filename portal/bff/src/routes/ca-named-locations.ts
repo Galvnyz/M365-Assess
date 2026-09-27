@@ -256,8 +256,7 @@ export function createCaNamedLocationsRoutes(options: CaNamedLocationsRoutesOpti
         const result = await options.provider.listLocations(tenantId);
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -352,8 +351,7 @@ export function createCaNamedLocationsRoutes(options: CaNamedLocationsRoutesOpti
         const status = isPreview ? 200 : 201;
         return {
           status,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -415,8 +413,7 @@ export function createCaNamedLocationsRoutes(options: CaNamedLocationsRoutesOpti
         const result = await options.provider.editLocation(tenantId, locationId, input, isPreview);
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },
@@ -444,8 +441,7 @@ export function createCaNamedLocationsRoutes(options: CaNamedLocationsRoutesOpti
         );
         return {
           status: 200,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(result),
+          body: result,
         };
       },
     },

@@ -22,7 +22,7 @@ import type {
 } from "../routes/intune-assignment-filters.js";
 import type { ComparePolicy, ComparePolicyProvider } from "../routes/intune-compare.js";
 import type { IntuneCrudProvider, IntuneCrudResult, IntunePlan } from "../routes/intune-policies-crud.js";
-import type { IntunePoliciesPage, IntunePoliciesProvider } from "../routes/intune-policies.js";
+import type { IntunePoliciesPage, IntunePoliciesProvider, IntunePolicyDetail } from "../routes/intune-policies.js";
 import type {
   LiveReusableSetting,
   ReusableSettingsProvider,
@@ -108,6 +108,10 @@ export function createIntuneProviders(run: WorkerRunner, credentials: Credential
 
   return {
     policies: {
+      async getPolicy(tenantId, kind, policyId) {
+        const detail = await call<IntunePolicyDetail | null>("get-intune-policies.ps1", tenantId, { kind, policyId });
+        return detail ?? undefined;
+      },
       async listPolicies(tenantId, kind, filter) {
         const result = await call<IntunePoliciesPage>("get-intune-policies.ps1", tenantId, {
           kind,

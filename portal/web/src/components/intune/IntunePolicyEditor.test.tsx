@@ -46,13 +46,18 @@ const PLAN: IntunePlan = {
   requiresConfirmation: false,
 };
 
+/** The detail route's answer for `items[0]` (T-0829), or a 404 when there is none. */
 function listPage(items: IntunePolicyItem[]) {
+  const item = items[0];
+  if (!item) return jsonResponse(404, { code: "resource.not_found", message: "not found" });
   return jsonResponse(200, {
-    tenantId: "t-1",
-    kind: "compliance",
-    totalCount: items.length,
-    items,
-    nextCursor: null,
+    id: item.id,
+    displayName: item.displayName,
+    platform: item.platform,
+    body: { "@odata.type": "#microsoft.graph.windows10CompliancePolicy", displayName: item.displayName, ...item.settingsSummary },
+    assignments: item.assignments.map((a) => ({
+      target: { "@odata.type": `#microsoft.graph.${a.targetType}`, groupId: a.target },
+    })),
   });
 }
 

@@ -151,7 +151,7 @@ describe("GET /v1/tenants/:tenantId/ca/report-only (T-0289)", () => {
       headers: {},
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.tenantId).toBe(TENANT);
     expect(body.summary.totalReportOnlyPolicies).toBe(1);
     expect(body.reportOnlyPolicies[0].policyName).toBe("Require MFA (Report-Only)");

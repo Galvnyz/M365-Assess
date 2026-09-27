@@ -177,7 +177,7 @@ describe("GET /v1/tenants/:tenantId/ca/coverage (T-0290)", () => {
       headers: {},
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.tenantId).toBe(TENANT);
     expect(body.summary.userCoveragePct).toBe(90);
     expect(body.gaps).toHaveLength(2);
@@ -197,7 +197,7 @@ describe("GET /v1/tenants/:tenantId/ca/history (T-0290)", () => {
       headers: {},
     });
     expect(res.status).toBe(200);
-    const body = JSON.parse(res.body as string);
+    const body = (res.body as any);
     expect(body.totalCount).toBe(2);
     expect(body.items[0].source).toBe("portal");
     expect(body.items[1].source).toBe("directoryAudit");
