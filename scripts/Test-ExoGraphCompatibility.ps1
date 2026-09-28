@@ -26,6 +26,12 @@
     Cloud environment used by the project connector.
 .PARAMETER OutputPath
     Optional JSON result path. Results omit tenant identity and raw error messages.
+.PARAMETER DirectSdk
+    Test documented SDK parameters independently of the project connector (commercial cloud).
+.PARAMETER DisableWAM
+    Opt into the EXO/Purview broker workaround in DirectSdk mode.
+.PARAMETER UserPrincipalName
+    Interactive EXO/Purview account in DirectSdk mode. Defaults to the connected Graph account.
 .EXAMPLE
     pwsh -NoProfile -File ./scripts/Test-ExoGraphCompatibility.ps1 -ExoVersion 3.10.1 -GraphVersion 2.40.0 -Order GraphFirst -ModulePath ./Modules
 #>
@@ -40,10 +46,15 @@ param(
     [string]$ClientId,
     [string]$CertificateThumbprint,
     [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')][string]$M365Environment = 'commercial',
-    [string]$OutputPath
+    [string]$OutputPath,
+    [switch]$DirectSdk,
+    [switch]$DisableWAM,
+    [string]$UserPrincipalName
 )
 
 $ErrorActionPreference = 'Stop'
+if (($DisableWAM -or $UserPrincipalName) -and -not $DirectSdk) { throw 'DisableWAM and UserPrincipalName require -DirectSdk.' }
+if ($DirectSdk -and $M365Environment -ne 'commercial') { throw 'DirectSdk currently probes commercial cloud only.' }
 if ((Get-Module -Name ExchangeOnlineManagement, Microsoft.Graph.Authentication) -or
     @([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {
         $_.GetName().Name -like 'Microsoft.Identity.Client*'
@@ -70,6 +81,45 @@ if ($ClientId) {
     $connection.ClientId = $ClientId
     $connection.CertificateThumbprint = $CertificateThumbprint
 }
+function Connect-ProbeService {
+    param([string]$Service)
+    if (-not $DirectSdk) {
+        & (Join-Path -Path $common -ChildPath 'Connect-Service.ps1') -Service $Service @connection | Out-Null
+        return
+    }
+    $parameters = @{ ErrorAction = 'Stop' }
+    if ($Service -eq 'Graph') {
+        $parameters.TenantId = $TenantId
+        $parameters.ContextScope = 'Process'
+        $parameters.NoWelcome = $true
+        if ($ClientId) {
+            $parameters.ClientId = $ClientId
+            $parameters.CertificateThumbprint = $CertificateThumbprint
+        } else { $parameters.Scopes = @('Organization.Read.All') }
+        Connect-MgGraph @parameters | Out-Null
+        return
+    }
+    $parameters.ShowBanner = $false
+    if ($ClientId) {
+        # Organization belongs to certificate authentication, not interactive sign-in.
+        $organization = $TenantId
+        if ($organization -notmatch '\.onmicrosoft\.[a-z]+$') {
+            $organization = (Invoke-MgGraphRequest -Method GET -Uri '/v1.0/organization?$select=verifiedDomains').value.verifiedDomains |
+                Where-Object isInitial | Select-Object -First 1 -ExpandProperty name
+        }
+        if (-not $organization) { throw 'Certificate tests require the initial tenant domain or a connected Graph session.' }
+        $parameters.Organization = $organization
+        $parameters.AppId = $ClientId
+        $parameters.CertificateThumbprint = $CertificateThumbprint
+    } else {
+        $account = $UserPrincipalName
+        if (-not $account -and (Get-Command Get-MgContext -ErrorAction SilentlyContinue)) { $account = (Get-MgContext).Account }
+        if ($account) { $parameters.UserPrincipalName = $account }
+    }
+    if ($DisableWAM) { $parameters.DisableWAM = $true }
+    if ($Service -eq 'ExchangeOnline') { Connect-ExchangeOnline @parameters }
+    else { Connect-IPPSSession @parameters }
+}
 try {
     foreach ($service in $services) {
         $stage = "Import:$service"
@@ -79,7 +129,7 @@ try {
         $steps.Add([ordered]@{ stage = $stage; passed = $true })
         if ($Live) {
             $stage = "Connect:$service"
-            & (Join-Path -Path $common -ChildPath 'Connect-Service.ps1') -Service $service @connection | Out-Null
+            Connect-ProbeService -Service $service
             $steps.Add([ordered]@{ stage = $stage; passed = $true })
         }
     }
@@ -93,7 +143,8 @@ try {
         $null = Get-ExoAuditConfig -ExpectedTenantId $tenantGuid
         $steps.Add([ordered]@{ stage = $stage; passed = $true })
         $stage = 'Connect:Purview'
-        & (Join-Path -Path $common -ChildPath 'Connect-Service.ps1') -Service Purview @connection | Out-Null
+        Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop | Out-Null
+        Connect-ProbeService -Service Purview
         $steps.Add([ordered]@{ stage = $stage; passed = $true })
         $stage = 'Purview:DLP'
         $policies = @(Get-DlpCompliancePolicy -ErrorAction Stop)
@@ -105,12 +156,12 @@ try {
         # audit evidence before that switch; explicitly reconnect to test reuse.
         $stage = 'Reconnect:ExchangeOnline'
         Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop | Out-Null
-        & (Join-Path -Path $common -ChildPath 'Connect-Service.ps1') -Service ExchangeOnline @connection | Out-Null
+        Connect-ProbeService -Service ExchangeOnline
         $null = Get-ExoAuditConfig -ExpectedTenantId $tenantGuid
         $steps.Add([ordered]@{ stage = $stage; passed = $true })
         $stage = 'Reconnect:Graph'
         Disconnect-MgGraph -ErrorAction Stop | Out-Null
-        & (Join-Path -Path $common -ChildPath 'Connect-Service.ps1') -Service Graph @connection | Out-Null
+        Connect-ProbeService -Service Graph
         $null = Invoke-SafeGraphRequest -Uri '/v1.0/organization?$select=id' -ExpectCollection
         $steps.Add([ordered]@{ stage = $stage; passed = $true })
     }
@@ -149,6 +200,8 @@ $result = [ordered]@{
     order = $Order
     mode = if ($Live) { if ($ClientId) { 'Certificate' } else { 'Interactive' } } else { 'ImportOnly' }
     environment = $M365Environment
+    connector = if ($DirectSdk) { 'DirectSdk' } else { 'Project' }
+    disableWAM = [bool]$DisableWAM
     passed = $passed
     steps = @($steps.ToArray())
     failure = $failure
