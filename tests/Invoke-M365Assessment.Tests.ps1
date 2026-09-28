@@ -130,9 +130,11 @@ Describe 'Invoke-M365Assessment - syntax and structure' {
         $typeAttr.TypeName.Name | Should -Be 'string'
     }
 
-    It 'requires PowerShell 7.0 or higher' {
+    It 'requires PowerShell 7.6 in both the entry point and manifest' {
         $scriptContent = Get-Content -Path $script:scriptPath -Raw
-        $scriptContent | Should -Match '#Requires -Version 7'
+        $scriptContent | Should -Match '#Requires -Version 7\.6'
+        $manifest = Import-PowerShellDataFile -Path "$PSScriptRoot/../src/M365-Assess/M365-Assess.psd1"
+        $manifest.PowerShellVersion | Should -Be '7.6'
     }
 }
 

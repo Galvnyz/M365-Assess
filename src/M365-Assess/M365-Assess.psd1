@@ -11,7 +11,7 @@
     Description       = 'Comprehensive read-only Microsoft 365 security assessment tool for IT consultants and administrators. Covers Entra ID, Exchange Online, Intune, Defender, SharePoint, Teams, Purview, and Active Directory.'
 
     # Minimum PowerShell version
-    PowerShellVersion = '7.0'
+    PowerShellVersion = '7.6'
 
     # Required modules (must be installed before running)
     # EXO 3.10.1+ is checked at runtime for Exchange/Purview sections (PowerShell 7.6+).

@@ -220,7 +220,7 @@ Not all sections work with all authentication methods. This matrix shows what wo
 | Requirement | Sections Affected |
 |-------------|-------------------|
 | **RSAT or domain controller** | ActiveDirectory only |
-| **PowerShell 7.x** | All sections (Windows, macOS, Linux) |
+| **PowerShell 7.6+** | All sections (Windows, macOS, Linux) |
 
 ### Service Connections
 

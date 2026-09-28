@@ -4,7 +4,7 @@ Get from a clean Windows install to your first M365 security assessment in under
 
 ## 1. Install PowerShell 7.6 or newer
 
-Windows ships with PowerShell 5.1, but M365 Assess requires **PowerShell 7.6+** for Exchange/Purview assessments (`pwsh`).
+Windows ships with PowerShell 5.1, but M365 Assess requires **PowerShell 7.6+** (`pwsh`).
 
 ```powershell
 # Run this in the built-in Windows PowerShell (powershell.exe)
@@ -126,7 +126,7 @@ Open the HTML report in any browser to review findings. The report is interactiv
 
 | Requirement | Minimum |
 |-------------|---------|
-| PowerShell | 7.0+ |
+| PowerShell | 7.6+ |
 | Microsoft.Graph SDK | 2.25.0+ |
 | ExchangeOnlineManagement | 3.10.1+ (PowerShell 7.6+) |
 | Entra ID role | Global Reader (read-only) |

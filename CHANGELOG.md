@@ -4,6 +4,8 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+- Require PowerShell 7.6+ throughout the module and retire the PowerShell 7.4 CI lane to align with the supported EXO baseline.
+
 - Make EXO 3.10.1+ the supported baseline for Exchange/Purview on PowerShell 7.6+: authenticate Graph first, remove legacy downgrade/DLL-copy repairs, resolve certificate Organization consistently, and expose explicit `-DisableWAM` for interactive broker failures (#231).
 
 ### Added

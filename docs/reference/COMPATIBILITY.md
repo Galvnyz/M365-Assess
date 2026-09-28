@@ -4,8 +4,8 @@
 
 | Requirement | Version |
 |-------------|---------|
-| Minimum     | 7.0     |
-| Recommended | 7.4+    |
+| Minimum     | 7.6     |
+| Recommended | 7.6+    |
 
 ## Required Modules
 
@@ -29,7 +29,7 @@ EXO 3.10.1 is the primary supported version. The old 3.7.x ceiling and downgrade
 repair are removed. Newer stable releases are eligible, but are not automatically
 claimed as tested. Microsoft specifies PowerShell 7.6+ for EXO 3.10.x in its
 [release notes](https://www.powershellgallery.com/packages/ExchangeOnlineManagement/3.10.1).
-Graph-only assessments retain the module's existing PowerShell minimum.
+PowerShell 7.6+ is the project-wide minimum, including Graph-only assessments.
 
 The orchestrator authenticates Graph before importing EXO, including Exchange-only
 and Purview-only selections. If Graph fails, dependent connections are skipped
@@ -106,5 +106,5 @@ The orchestrator's built-in module helper detects missing or incompatible module
 |-------------|---------|-----|
 | EXO 3.10.1 first + Graph Authentication 2.37.0 / 2.40.0 (certificate) | Missing MSAL `WithLogging` method | Graph-first passes; orchestrator enforces Graph-first |
 | EXO 3.10.1 interactive WAM on tested Windows host | RuntimeBroker null reference | Use explicit `-DisableWAM`; see limitations above |
-| PowerShell 5.1 | Module load failures | Use PowerShell 7.0+ |
+| PowerShell 5.1 | Module load failures | Use PowerShell 7.6+ |
 | Graph SDK 1.x | Cmdlet name changes | Upgrade to Graph SDK 2.x |

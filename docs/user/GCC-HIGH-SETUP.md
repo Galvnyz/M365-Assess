@@ -16,7 +16,7 @@ and [`SOVEREIGN-CLOUDS.md`](../reference/SOVEREIGN-CLOUDS.md).
 
 - A GCC High tenant (`*.onmicrosoft.us`).
 - An account that can grant admin consent (Global Administrator, or Privileged Role Administrator + the reader roles).
-- PowerShell 7.x and the required modules (see [`QUICKSTART.md`](QUICKSTART.md)).
+- PowerShell 7.6+ and the required modules (see [`QUICKSTART.md`](QUICKSTART.md)).
 
 ---
 

@@ -187,7 +187,7 @@
     Dry-run preview: sections, services, Graph scopes, and check counts —
     no connections made, no data collected.
 #>
-#Requires -Version 7.0
+#Requires -Version 7.6
 
 # Self-bootstrap: load dependencies when run directly as a .ps1 (not via Import-Module).
 # When dot-sourced by M365-Assess.psm1, InvocationName is '.' and this block is skipped.
