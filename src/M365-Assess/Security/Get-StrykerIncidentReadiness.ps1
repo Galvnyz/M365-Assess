@@ -134,7 +134,7 @@ try {
             $idFilter = ($chunk | ForEach-Object { "'$_'" }) -join ','
             try {
                 $uri = "/v1.0/users?`$filter=id in ($idFilter)&`$select=id,displayName,userPrincipalName,signInActivity"
-                $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
+                $response = Invoke-SafeGraphRequest -ExpectCollection -Uri $uri -Method GET -ErrorAction Stop
                 foreach ($user in $response.value) {
                     $signInData[$user.id] = $user.signInActivity
                 }
@@ -327,7 +327,7 @@ try {
         $role = Get-MgDirectoryRole -Filter "roleTemplateId eq '$roleTemplateId'" -ErrorAction SilentlyContinue
         if (-not $role) { continue }
 
-        $members = Invoke-MgGraphRequest -Uri "/v1.0/directoryRoles/$($role.Id)/members" -Method GET -ErrorAction SilentlyContinue
+        $members = Invoke-SafeGraphRequest -ExpectCollection -Uri "/v1.0/directoryRoles/$($role.Id)/members" -Method GET -ErrorAction SilentlyContinue
         if (-not $members -or -not $members.value) { continue }
 
         foreach ($member in $members.value) {
@@ -338,7 +338,7 @@ try {
                 $memberCount = 'unknown'
                 try {
                     $countUri = "/v1.0/groups/$($member.id)/members/`$count"
-                    $countResponse = Invoke-MgGraphRequest -Uri $countUri -Method GET -Headers @{ 'ConsistencyLevel' = 'eventual' } -ErrorAction Stop
+                    $countResponse = Invoke-SafeGraphRequest -Uri $countUri -Method GET -Headers @{ 'ConsistencyLevel' = 'eventual' } -ErrorAction Stop
                     $memberCount = $countResponse
                 }
                 catch { Write-Verbose "Could not get member count for group $($member.displayName)" }
@@ -395,7 +395,7 @@ try {
     $graphAppId = '00000003-0000-0000-c000-000000000000'
 
     $uri = "/v1.0/applications?`$select=id,appId,displayName,requiredResourceAccess&`$top=999"
-    $response = Invoke-SafeGraphRequest -Uri $uri
+    $response = Invoke-SafeGraphRequest -ExpectCollection -Uri $uri
     $apps = $response.value
 
     $graphSp = Get-MgServicePrincipal -Filter "appId eq '$graphAppId'" -ErrorAction Stop
@@ -451,7 +451,7 @@ catch {
 # =====================================================================
 try {
     $uri = "/beta/deviceManagement/operationApprovalPolicies"
-    $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
+    $response = Invoke-SafeGraphRequest -ExpectCollection -Uri $uri -Method GET -ErrorAction Stop
     $policies = $response.value
 
     if ($policies -and $policies.Count -gt 0) {
@@ -496,14 +496,14 @@ catch {
 # =====================================================================
 try {
     $defsUri = "/v1.0/deviceManagement/roleDefinitions"
-    $defsResponse = Invoke-MgGraphRequest -Uri $defsUri -Method GET -ErrorAction Stop
+    $defsResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $defsUri -Method GET -ErrorAction Stop
 
     $assignments = @()
     foreach ($roleDef in $defsResponse.value) {
         if ($roleDef.isBuiltIn -eq $true -and $roleDef.displayName -eq 'Intune Role Administrator') { continue }
         $assignUri = "/v1.0/deviceManagement/roleDefinitions/$($roleDef.id)/roleAssignments"
         try {
-            $assignResponse = Invoke-MgGraphRequest -Uri $assignUri -Method GET -ErrorAction Stop
+            $assignResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $assignUri -Method GET -ErrorAction Stop
             foreach ($a in $assignResponse.value) {
                 $a['_roleName'] = $roleDef.displayName
                 $assignments += $a
@@ -660,7 +660,7 @@ try {
     $startDate = (Get-Date).ToUniversalTime().AddDays(-$lookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
     $uri = "/v1.0/deviceManagement/auditEvents?`$filter=activityDateTime ge $startDate and (activityType eq 'Wipe' or activityType eq 'Retire' or activityType eq 'Delete')&`$orderby=activityDateTime desc&`$top=500"
-    $response = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction Stop
+    $response = Invoke-SafeGraphRequest -ExpectCollection -Uri $uri -Method GET -ErrorAction Stop
     $wipeEvents = $response.value
 
     if (-not $wipeEvents -or $wipeEvents.Count -eq 0) {

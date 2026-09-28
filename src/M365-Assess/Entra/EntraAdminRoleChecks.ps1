@@ -6,6 +6,8 @@
 # -------------------------------------------------------------------
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 param()
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # ------------------------------------------------------------------
 # 2. Global Admin Count (should be 2-4, excluding break-glass)
@@ -17,7 +19,7 @@ try {
         Uri         = "/v1.0/directoryRoles?`$filter=displayName eq 'Global Administrator'"
         ErrorAction = 'Stop'
     }
-    $globalAdminRole = Invoke-MgGraphRequest @graphParams
+    $globalAdminRole = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     if (-not $globalAdminRole['value'] -or $globalAdminRole['value'].Count -eq 0) {
         $settingParams = @{
             Category         = 'Admin Accounts'
@@ -38,7 +40,7 @@ try {
             Uri         = "/v1.0/directoryRoles/$roleId/members"
             ErrorAction = 'Stop'
         }
-        $members = Invoke-MgGraphRequest @graphParams
+        $members = Invoke-SafeGraphRequest -ExpectCollection @graphParams
         $allAdmins = if ($members -and $members['value']) { @($members['value']) } else { @() }
 
         # Exclude break-glass accounts from the operational admin count
@@ -84,7 +86,7 @@ $script:pimMessage = $null
 # Check if tenant has P2/E5 capability for PIM
 $hasPimLicense = $false
 try {
-    $skus = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
+    $skus = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
     $skuList = if ($skus -and $skus['value']) { @($skus['value']) } else { @() }
     # Detect by service plan, not SKU GUID (#881). Microsoft adds new SKU
     # bundles constantly (developer packs, education, government, partner-
@@ -124,7 +126,7 @@ else {
             Uri         = '/beta/roleManagement/directory/roleAssignmentScheduleInstances'
             ErrorAction = 'Stop'
         }
-        $pimRoleAssignments = Invoke-MgGraphRequest @graphParams
+        $pimRoleAssignments = Invoke-SafeGraphRequest @graphParams
     }
     catch {
         if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
@@ -150,7 +152,7 @@ $gaRoleTemplateId = '62e90394-69f5-4237-9190-012177145e10'
 $gaMembers = @()
 $gaQueryFailed = $false
 try {
-    $gaRoleResp = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/directoryRoles(roleTemplateId='$gaRoleTemplateId')/members" -ErrorAction Stop
+    $gaRoleResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/directoryRoles(roleTemplateId='$gaRoleTemplateId')/members" -ErrorAction Stop
     $gaMembers = if ($gaRoleResp -and $gaRoleResp['value']) { @($gaRoleResp['value']) } else { @() }
 }
 catch {
@@ -166,7 +168,7 @@ if ($hasPimLicense -and -not $gaQueryFailed) {
     # window, but their principal is also in eligibility schedule — so they're
     # correctly classified as eligible (not permanent).
     try {
-        $eligibleResp = Invoke-MgGraphRequest -Method GET -Uri "/beta/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$gaRoleTemplateId'" -ErrorAction Stop
+        $eligibleResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/beta/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$gaRoleTemplateId'" -ErrorAction Stop
         if ($eligibleResp -and $eligibleResp['value']) {
             $eligiblePrincipalIds = @($eligibleResp['value'] | ForEach-Object { $_['principalId'] })
         }
@@ -232,7 +234,7 @@ if ($pimAvailable) {
             Uri         = '/beta/identityGovernance/accessReviews/definitions?$top=100'
             ErrorAction = 'Stop'
         }
-        $accessReviews = Invoke-MgGraphRequest @graphParams
+        $accessReviews = Invoke-SafeGraphRequest @graphParams
     }
     catch {
         if ($_.Exception.Message -match '403|Forbidden|Authorization|license') {
@@ -322,7 +324,7 @@ if ($pimAvailable) {
             Write-Verbose "Checking PIM activation policy for $($role.RoleName)..."
             $filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '$($role.RoleId)'"
             $uri = "/v1.0/policies/roleManagementPolicyAssignments?`$filter=$filter&`$expand=policy(`$expand=rules)"
-            $assignmentsResp = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+            $assignmentsResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $uri -ErrorAction Stop
             $assignment = if ($assignmentsResp -and $assignmentsResp['value']) { @($assignmentsResp['value'])[0] } else { $null }
             $rules = if ($assignment -and $assignment['policy'] -and $assignment['policy']['rules']) {
                 @($assignment['policy']['rules'])
@@ -392,7 +394,7 @@ try {
         Uri         = "/v1.0/directoryRoles/roleTemplateId=$gaRoleTemplateId/members?`$select=displayName,userPrincipalName,onPremisesSyncEnabled"
         ErrorAction = 'Stop'
     }
-    $gaMembers = Invoke-MgGraphRequest @graphParams
+    $gaMembers = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $gaList = if ($gaMembers -and $gaMembers['value']) { @($gaMembers['value']) } else { @() }
     $syncedAdmins = @($gaList | Where-Object { $_['onPremisesSyncEnabled'] -eq $true })
@@ -438,7 +440,7 @@ try {
         Uri         = "/v1.0/directoryRoles/roleTemplateId=$gaRoleTemplateId/members?`$select=displayName,assignedLicenses"
         ErrorAction = 'Stop'
     }
-    $gaUsersLicense = Invoke-MgGraphRequest @graphParams
+    $gaUsersLicense = Invoke-SafeGraphRequest @graphParams
 
     # E3/E5 SKU part IDs (productivity suites that admins shouldn't have)
     $productivitySkus = @(
@@ -537,7 +539,7 @@ try {
         Uri         = "/v1.0/directoryRoles/roleTemplateId=$gaRoleTemplateId/members?`$select=id,displayName,userPrincipalName"
         ErrorAction = 'Stop'
     }
-    $adminMembers = Invoke-MgGraphRequest @graphParams
+    $adminMembers = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     $adminList = if ($adminMembers -and $adminMembers['value']) { @($adminMembers['value']) } else { @() }
 
     if ($adminList.Count -gt 0) {
@@ -546,7 +548,7 @@ try {
             Uri         = '/beta/reports/authenticationMethods/userRegistrationDetails'
             ErrorAction = 'Stop'
         }
-        $mfaDetails = Invoke-MgGraphRequest @graphParams
+        $mfaDetails = Invoke-SafeGraphRequest -ExpectCollection @graphParams
         $mfaList = if ($mfaDetails -and $mfaDetails['value']) { @($mfaDetails['value']) } else { @() }
 
         $phishingResistantMethods = @(

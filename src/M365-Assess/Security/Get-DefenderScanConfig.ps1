@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -50,7 +52,7 @@ try {
         Uri         = '/beta/deviceManagement/deviceConfigurations'
         ErrorAction = 'Stop'
     }
-    $configs = Invoke-MgGraphRequest @graphParams
+    $configs = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $configList = @()
     if ($configs -and $configs['value']) {
@@ -85,7 +87,7 @@ try {
                 Uri         = '/beta/deviceManagement/intents'
                 ErrorAction = 'Stop'
             }
-            $intents = Invoke-MgGraphRequest @intentParams
+            $intents = Invoke-SafeGraphRequest -ExpectCollection @intentParams
 
             if ($intents -and $intents['value']) {
                 $avIntents = @($intents['value'] | Where-Object {

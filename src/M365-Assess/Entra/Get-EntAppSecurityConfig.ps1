@@ -153,7 +153,7 @@ function Get-SpTierPermissionFindings {
 # ------------------------------------------------------------------
 $tenantId = $null
 try {
-    $orgResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/organization' -ErrorAction Stop
+    $orgResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/organization' -ErrorAction Stop
     if ($orgResponse -and $orgResponse['value'] -and $orgResponse['value'].Count -gt 0) {
         $tenantId = $orgResponse['value'][0]['id']
     }
@@ -170,7 +170,7 @@ try {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching service principals..."
     $spUri = '/v1.0/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,servicePrincipalType,keyCredentials,passwordCredentials,accountEnabled&$top=999'
-    $spResponse = Invoke-SafeGraphRequest -Uri $spUri
+    $spResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $spUri
     $allServicePrincipals = if ($spResponse -and $spResponse['value']) { @($spResponse['value']) } else { @() }
     $sw.Stop()
     Write-Verbose "Fetched $($allServicePrincipals.Count) service principals in $($sw.Elapsed.TotalSeconds.ToString('F1'))s"
@@ -191,7 +191,7 @@ try {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Verbose "Fetching directory role assignments for service principals..."
     $roleAssignUri = '/v1.0/roleManagement/directory/roleAssignments?$top=999'
-    $roleResponse = Invoke-SafeGraphRequest -Uri $roleAssignUri
+    $roleResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $roleAssignUri
     $allRoleAssignments = if ($roleResponse -and $roleResponse['value']) { @($roleResponse['value']) } else { @() }
 
     foreach ($assignment in $allRoleAssignments) {
@@ -213,7 +213,7 @@ $graphPermissionMap = @{}
 try {
     Write-Verbose "Fetching Microsoft Graph service principal for permission mapping..."
     $graphSpUri = "/v1.0/servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id,appRoles,oauth2PermissionScopes"
-    $graphSp = Invoke-MgGraphRequest -Method GET -Uri $graphSpUri -ErrorAction Stop
+    $graphSp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $graphSpUri -ErrorAction Stop
     $graphSpValue = if ($graphSp -and $graphSp['value'] -and $graphSp['value'].Count -gt 0) { $graphSp['value'][0] } else { $null }
     if ($graphSpValue) {
         foreach ($role in $graphSpValue['appRoles']) {
@@ -235,7 +235,7 @@ $spOAuth2Map = @{}
 try {
     Write-Verbose "Bulk-fetching oauth2 permission grants..."
     $oauthUri = '/v1.0/oauth2PermissionGrants?$top=999'
-    $oauthResponse = Invoke-SafeGraphRequest -Uri $oauthUri
+    $oauthResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $oauthUri
     $allOAuth2 = if ($oauthResponse -and $oauthResponse['value']) { @($oauthResponse['value']) } else { @() }
 
     foreach ($grant in $allOAuth2) {
@@ -261,7 +261,7 @@ try {
     $graphSpIdValue = $graphSpValue['id']
     if ($graphSpIdValue) {
         $araUri = "/v1.0/servicePrincipals/$graphSpIdValue/appRoleAssignedTo?`$top=999"
-        $araResponse = Invoke-SafeGraphRequest -Uri $araUri
+        $araResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $araUri
         $allAssigned = if ($araResponse -and $araResponse['value']) { @($araResponse['value']) } else { @() }
 
         foreach ($a in $allAssigned) {
@@ -283,7 +283,7 @@ $allAppRegistrations = @()
 try {
     Write-Verbose "Fetching app registrations..."
     $appUri = "/v1.0/applications?`$select=id,appId,displayName,signInAudience,web,spa,publicClient&`$top=999"
-    $appResponse = Invoke-SafeGraphRequest -Uri $appUri
+    $appResponse = Invoke-SafeGraphRequest -ExpectCollection -Uri $appUri
     $allAppRegistrations = if ($appResponse -and $appResponse['value']) { @($appResponse['value']) } else { @() }
     Write-Verbose "Fetched $($allAppRegistrations.Count) app registrations"
 }
@@ -345,7 +345,7 @@ try {
     foreach ($sp in $appsWithCreds) {
         try {
             $signInUri = "/v1.0/servicePrincipals/$($sp['id'])?`$select=signInActivity"
-            $signInData = Invoke-MgGraphRequest -Method GET -Uri $signInUri -ErrorAction Stop
+            $signInData = Invoke-SafeGraphRequest -Method GET -Uri $signInUri -ErrorAction Stop
             $lastSignIn = $signInData['signInActivity']['lastSignInDateTime']
             if (-not $lastSignIn -or $lastSignIn -lt $cutoffDate) {
                 $inactiveWithCreds += $sp['displayName']
@@ -565,7 +565,7 @@ try {
     # Check for tenant-default app management policy
     $defaultPolicy = $null
     try {
-        $defaultPolicy = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/defaultAppManagementPolicy' -ErrorAction Stop
+        $defaultPolicy = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/defaultAppManagementPolicy' -ErrorAction Stop
     }
     catch { Write-Verbose "Default app management policy not available" }
 
@@ -834,7 +834,7 @@ try {
 
         try {
             $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id,displayName"
-            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $ownersResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $ownersUri -ErrorAction Stop
             $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
             if ($owners.Count -gt 0) {
                 $ownerNames = ($owners | ForEach-Object { $_['displayName'] }) -join ', '
@@ -873,7 +873,7 @@ try {
 
         try {
             $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id,displayName"
-            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $ownersResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $ownersUri -ErrorAction Stop
             $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
             if ($owners.Count -gt 0) {
                 $ownerNames = ($owners | ForEach-Object { $_['displayName'] }) -join ', '
@@ -914,7 +914,7 @@ try {
     foreach ($sp in $appsWithCreds) {
         try {
             $ownersUri = "/v1.0/servicePrincipals/$($sp['id'])/owners?`$select=id"
-            $ownersResp = Invoke-MgGraphRequest -Method GET -Uri $ownersUri -ErrorAction Stop
+            $ownersResp = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $ownersUri -ErrorAction Stop
             $owners = if ($ownersResp -and $ownersResp['value']) { @($ownersResp['value']) } else { @() }
             if ($owners.Count -eq 0) {
                 $orphanedApps += $sp['displayName']

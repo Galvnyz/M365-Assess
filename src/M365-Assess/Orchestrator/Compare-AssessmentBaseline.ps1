@@ -67,7 +67,7 @@ function Compare-AssessmentBaseline {
     # Build a lookup of all baseline checks: CheckId -> row object
     $baselineMap = @{}
     $baselineJsonFiles = Get-ChildItem -Path $BaselineFolder -Filter '*.json' -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne 'manifest.json' }
+        Where-Object { $_.Name -ne 'manifest.json' -and $_.Name -notlike '_*' }
 
     foreach ($jsonFile in $baselineJsonFiles) {
         try {
@@ -124,6 +124,28 @@ function Compare-AssessmentBaseline {
 
     $driftResults = [System.Collections.Generic.List[PSCustomObject]]::new()
 
+    $previousDecisions = @{}
+    $currentDecisions = @{}
+    foreach ($pair in @(@{ Folder = $BaselineFolder; Map = $previousDecisions }, @{ Folder = $AssessmentFolder; Map = $currentDecisions })) {
+        $sidecar = Join-Path -Path $pair.Folder -ChildPath '_Assessment-Decisions.json'
+        if (Test-Path -LiteralPath $sidecar) {
+            $document = Get-Content -LiteralPath $sidecar -Raw | ConvertFrom-Json
+            foreach ($decision in $document.decisions) {
+                $pair.Map["$($decision.checkId)`n$($decision.setting)"] = $decision
+            }
+        }
+    }
+    foreach ($key in @(@($previousDecisions.Keys) + @($currentDecisions.Keys) | Sort-Object -Unique)) {
+        $previous = ConvertTo-Json -InputObject $previousDecisions[$key] -Depth 8 -Compress
+        $current = ConvertTo-Json -InputObject $currentDecisions[$key] -Depth 8 -Compress
+        if ($previous -ceq $current) { continue }
+        $scope = $key -split "`n", 2
+        $driftResults.Add([PSCustomObject]@{
+            CheckId = $scope[0]; Setting = $scope[1]; Category = 'Assessor decision'; Section = 'Assessor decisions'
+            ChangeType = 'Modified'; PreviousStatus = ''; CurrentStatus = ''
+            PreviousValue = $previous; CurrentValue = $current
+        })
+    }
     # Check shared (or all) current items against baseline
     foreach ($checkId in $sharedIds) {
         $current  = $currentMap[$checkId]

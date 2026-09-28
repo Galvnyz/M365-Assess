@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
@@ -57,7 +59,7 @@ try {
         Uri         = '/v1.0/admin/sharepoint/settings'
         ErrorAction = 'Stop'
     }
-    $spoSettings = Invoke-MgGraphRequest @graphParams
+    $spoSettings = Invoke-SafeGraphRequest @graphParams
 }
 catch {
     $errMsg = $_.Exception.Message
@@ -83,7 +85,7 @@ if (-not $spoSettings) {
 # ------------------------------------------------------------------
 $sites = @()
 try {
-    $siteResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/sites?$select=id,displayName,sharingCapability,webUrl&$top=100'
+    $siteResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/sites?$select=id,displayName,sharingCapability,webUrl&$top=100'
     $sites = $siteResponse.value
 }
 catch {
@@ -95,7 +97,7 @@ catch {
 # ------------------------------------------------------------------
 $caPolicies = @()
 try {
-    $caResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/policies'
+    $caResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/policies'
     $caPolicies = $caResponse.value
 }
 catch {
@@ -305,7 +307,7 @@ try {
         Uri         = '/v1.0/policies/activityBasedTimeoutPolicies'
         ErrorAction = 'SilentlyContinue'
     }
-    $idlePolicy = Invoke-MgGraphRequest @graphParams
+    $idlePolicy = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     if ($idlePolicy -and $idlePolicy['value'] -and @($idlePolicy['value']).Count -gt 0) {
         $settingParams = @{
@@ -547,7 +549,7 @@ try {
             Uri         = '/beta/admin/sharepoint/settings'
             ErrorAction = 'Stop'
         }
-        $betaSpoSettings = Invoke-MgGraphRequest @graphParams
+        $betaSpoSettings = Invoke-SafeGraphRequest @graphParams
     }
     catch {
         Write-Verbose "Beta SharePoint settings endpoint not available: $_"

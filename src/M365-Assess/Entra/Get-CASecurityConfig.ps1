@@ -29,6 +29,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
@@ -47,7 +49,7 @@ $settings = $ctx.Settings
 $securityDefaultsEnabled = $false
 try {
     Write-Verbose "Checking Security Defaults status..."
-    $sdPolicy = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $sdPolicy = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
     $securityDefaultsEnabled = $sdPolicy['isEnabled'] -eq $true
     if ($securityDefaultsEnabled) {
         Write-Verbose "Security Defaults is enabled -- CA checks covered by SD will be marked Info."
@@ -67,7 +69,7 @@ try {
         Uri         = '/v1.0/identity/conditionalAccess/policies'
         ErrorAction = 'Stop'
     }
-    $caPolicies = Invoke-MgGraphRequest @graphParams
+    $caPolicies = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     $allPolicies = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     $enabledPolicies = @($allPolicies | Where-Object { $_['state'] -eq 'enabled' })
 }
@@ -818,7 +820,7 @@ catch {
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Checking CA: Named location risk..."
-    $namedLocResponse = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/identity/conditionalAccess/namedLocations' -ErrorAction Stop
+    $namedLocResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/identity/conditionalAccess/namedLocations' -ErrorAction Stop
     $namedLocations = if ($namedLocResponse -and $namedLocResponse['value']) { @($namedLocResponse['value']) } else { @() }
     $ipLocations = @($namedLocations | Where-Object {
         $_['@odata.type'] -eq '#microsoft.graph.ipNamedLocation' -and $_['isTrusted'] -eq $true
@@ -949,7 +951,7 @@ catch {
 try {
     Write-Verbose "Checking CA: Role coverage gaps..."
     # Get active role assignments to find which Tier-0 roles are actually in use
-    $roleAssignments = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/roleManagement/directory/roleAssignments?$top=999' -ErrorAction Stop
+    $roleAssignments = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/roleManagement/directory/roleAssignments?$top=999' -ErrorAction Stop
     $activeRoleIds = @($roleAssignments['value'] | ForEach-Object { $_['roleDefinitionId'] } | Sort-Object -Unique)
 
     # Find CA policies that target specific directory roles (not "All users")
@@ -1138,7 +1140,7 @@ try {
         $staleGroupIds = [System.Collections.Generic.HashSet[string]]::new()
         foreach ($gid in $groupIdsToCheck) {
             try {
-                $null = Invoke-MgGraphRequest -Method GET -Uri ('/v1.0/groups/' + $gid + '?$select=id') -ErrorAction Stop
+                $null = Invoke-SafeGraphRequest -Method GET -Uri ('/v1.0/groups/' + $gid + '?$select=id') -ErrorAction Stop
             }
             catch {
                 if ("$_" -match '404|ResourceNotFound|Request_ResourceNotFound') {

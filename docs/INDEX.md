@@ -39,6 +39,13 @@ For contributors writing collectors, modifying the report, or shipping releases.
 | [`dev/cmdlet-reference.md`](dev/cmdlet-reference.md) | Public cmdlet API surface |
 | [`dev/CheckId-Guide.md`](dev/CheckId-Guide.md) | CheckID naming + numbering conventions |
 
+## Assessment trust and assessor workflow
+
+- [Assessor decisions](user/ASSESSOR-DECISIONS.md): accepted risk, manual evidence,
+  expiry, repeated assessments, and report regeneration.
+- [Maintenance validation](dev/ASSESSMENT-TRUST-VALIDATION.md): offline checks and
+  required live tenant verification before release.
+
 ## Reference / canonical docs
 
 Authoritative references for specific topics. Read these when you need to know the exact rules.

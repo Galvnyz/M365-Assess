@@ -31,6 +31,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Continue on errors: non-critical checks should not block remaining assessments.
 $ErrorActionPreference = 'Continue'
@@ -61,7 +63,7 @@ try {
         Uri         = '/beta/admin/forms/settings'
         ErrorAction = 'Stop'
     }
-    $formsSettings = Invoke-MgGraphRequest @graphParams
+    $formsSettings = Invoke-SafeGraphRequest @graphParams
 
     if ($formsSettings) {
         # CIS 3.6.1 - Ensure only people in your organization can respond to forms

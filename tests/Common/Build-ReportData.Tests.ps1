@@ -63,7 +63,7 @@ Describe 'Build-ReportData' {
 
         It 'should escape script end-tag in string values to prevent HTML injection' {
             $closing = '</' + 'script>'
-            $escaped = '<\/' + 'script>'
+            $escaped = '\u003c/' + 'script\u003e'
             $finding = New-Finding -CurrentValue ('foo' + $closing + 'bar')
             $result = Build-ReportDataJson -AllFindings @($finding)
             $result.Contains($closing) | Should -Be $false

@@ -34,7 +34,12 @@ function finalizeReport({
     roadmapOverrides: roadmapOverrides || {}
   };
   const clone = document.documentElement.cloneNode(true);
-  clone.querySelector('#report-overrides').textContent = `window.REPORT_OVERRIDES = ${JSON.stringify(overrides)};`;
+  clone.querySelector('#report-overrides').textContent = `window.REPORT_OVERRIDES = ${JSON.stringify(overrides).replace(/</g, '\\u003c')};`;
+  const dataScript = [...clone.querySelectorAll('script')].find(x => x.textContent.trim().startsWith('window.REPORT_DATA ='));
+  if (dataScript) dataScript.textContent = `window.REPORT_DATA = ${JSON.stringify({
+    ...D,
+    assessmentDecisions: assessmentDecisionDocument
+  }).replace(/</g, '\\u003c')};`;
   clone.querySelector('#root').replaceChildren();
   const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], {
     type: 'text/html'
@@ -900,13 +905,12 @@ const computeSecurityRiskScore = arr => {
   return Math.round(pass / denom * 100);
 };
 const computeComplianceReadinessScore = arr => {
-  // Compliance lens: count Review (manual-validation findings) AS Pass-equivalent
-  // since "needs review" usually means "the auditor will accept it with attestation."
+  // Review is outstanding evidence, never a confirmed pass.
   // Excludes Skipped/Unknown/NotApplicable/NotLicensed -- you can't be ready for
   // a control you literally cannot assess.
   const items = (arr || []).filter(f => ['Pass', 'Fail', 'Warning', 'Review'].includes(f.status));
   if (items.length === 0) return null;
-  const ready = items.filter(f => f.status === 'Pass' || f.status === 'Review').length;
+  const ready = items.filter(f => f.status === 'Pass').length;
   return Math.round(ready / items.length * 100);
 };
 // 3 list views (return an array of findings, sorted/filtered for the workflow):
@@ -920,10 +924,10 @@ const getQuickWins = arr => {
     none: 4,
     info: 5
   };
-  return (arr || []).filter(f => f.status === 'Fail' && (f.effort === 'small' || f.effort === 'low')).sort((a, b) => (sevOrder[a.severity] ?? 99) - (sevOrder[b.severity] ?? 99));
+  return (arr || []).filter(f => isActionableFinding(f) && f.status === 'Fail' && (f.effort === 'small' || f.effort === 'low')).sort((a, b) => (sevOrder[a.severity] ?? 99) - (sevOrder[b.severity] ?? 99));
 };
 const getRequiresLicensing = arr => (arr || []).filter(f => f.status === 'NotLicensed');
-const getManualValidation = arr => (arr || []).filter(f => f.status === 'Review');
+const getManualValidation = arr => (arr || []).filter(f => f.status === 'Review' && isActionableFinding(f));
 const SCORING_VIEWS = [{
   id: 'security-risk',
   label: 'Security Risk',
@@ -935,7 +939,7 @@ const SCORING_VIEWS = [{
   label: 'Compliance Readiness',
   kind: 'score',
   compute: computeComplianceReadinessScore,
-  blurb: 'Counts Review findings as ready. Auditors usually accept them with written attestation.'
+  blurb: 'Confirmed passes among findings requiring a conclusion. Unverified review items remain outstanding.'
 }, {
   id: 'quick-wins',
   label: 'Quick Wins',
@@ -1128,7 +1132,7 @@ function BriefingVerdictCard({
   const readiness = fwReadinessLabel(pctVal);
   // "Applicable" excludes the not-assessed bucket; the donut % keeps the
   // standard fwCoveragePct formula so Briefing and FrameworkQuilt always agree.
-  const applicable = data.counts.total - (data.counts.na || 0);
+  const applicable = data.counts.pass + data.counts.fail + data.counts.warn;
   const qwInFw = getQuickWins(FINDINGS).filter(f => (f.frameworks || []).includes(fwId));
   const projected = qwInFw.length > 0 ? fwCoveragePct({
     ...data.counts,
@@ -1162,7 +1166,7 @@ function BriefingVerdictCard({
     className: 'brief-verdict-line ' + readiness.tone
   }, readiness.label), /*#__PURE__*/React.createElement("div", {
     className: "brief-verdict-sub"
-  }, data.counts.pass, " of ", applicable, " applicable ", meta ? meta.full : fwId, " controls are in place.", qwInFw.length > 0 && projected > pctVal && ` Fixing the ${qwInFw.length} quick win${qwInFw.length === 1 ? '' : 's'} below would bring coverage to ${projected}%.`)));
+  }, data.counts.pass, " of ", applicable, " assessed ", meta ? meta.full : fwId, " findings pass. This is configuration evidence, not an audit conclusion. ", data.counts.na || 0, " not assessed; ", data.counts.review || 0, " require review.", qwInFw.length > 0 && projected > pctVal && ` Fixing the ${qwInFw.length} quick win${qwInFw.length === 1 ? '' : 's'} below would bring the observed pass rate to ${projected}%.`)));
 }
 function BriefingStatRow({
   onShowCritical,
@@ -2663,15 +2667,16 @@ function buildFrameworkData(fwId, activeProfiles) {
   };
 }
 function fwCoveragePct(c) {
-  return c && c.total ? Math.round((c.pass + c.info * 0.5) / c.total * 100) : 0;
+  const n = c ? c.pass + c.fail + c.warn : 0;
+  return n ? Math.round(c.pass / n * 100) : 0;
 }
 function fwReadinessLabel(pct) {
   if (pct >= 90) return {
-    label: 'Audit-ready',
+    label: 'High observed pass rate',
     tone: 'pass'
   };
   if (pct >= 75) return {
-    label: 'On track',
+    label: 'Mostly passing',
     tone: 'pass'
   };
   if (pct >= 55) return {
@@ -2679,7 +2684,7 @@ function fwReadinessLabel(pct) {
     tone: 'warn'
   };
   return {
-    label: 'Failing',
+    label: 'Findings need attention',
     tone: 'fail'
   };
 }
@@ -2923,7 +2928,7 @@ function FwManageButton({
         color: 'var(--muted)',
         fontFamily: 'var(--font-mono)'
       }
-    }, f.id, " · ", data?.counts.total || 0, " controls")), /*#__PURE__*/React.createElement("span", {
+    }, f.id, " · ", data?.counts.total || 0, " findings")), /*#__PURE__*/React.createElement("span", {
       className: 'ct ' + r.tone
     }, pct, "%"));
   })));
@@ -3574,7 +3579,7 @@ function FrameworkQuilt({
       color: 'var(--muted)',
       fontFamily: 'var(--font-mono)'
     }
-  }, focused.counts.pass, " of ", focused.counts.total, " controls passing")), /*#__PURE__*/React.createElement("div", {
+  }, focused.counts.pass, " of ", focused.counts.total, " findings passing")), /*#__PURE__*/React.createElement("div", {
     className: "fw-bar fw-tb-score-bar"
   }, focused.counts.pass > 0 && /*#__PURE__*/React.createElement("div", {
     className: "fw-seg pass",
@@ -5292,7 +5297,7 @@ function Roadmap({
     });
     onRoadmapChange(next);
   };
-  const tasks = FINDINGS.filter(f => !NON_REMEDIATION_STATUSES.has(f.status) && !hiddenFindings?.has(f.checkId)).map(f => ({
+  const tasks = FINDINGS.filter(f => isActionableFinding(f) && !hiddenFindings?.has(f.checkId)).map(f => ({
     ...f
   }));
   const score = f => {
@@ -5781,6 +5786,164 @@ function Overview() {
   }, "│"), /*#__PURE__*/React.createElement("span", null, "Run ", /*#__PURE__*/React.createElement("b", null, new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()))), /*#__PURE__*/React.createElement("div", {
     className: "overview-meta"
   }, /*#__PURE__*/React.createElement("span", null, "› ", D.summary.length, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "› ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "› ", FINDINGS.length, " controls evaluated"), /*#__PURE__*/React.createElement("span", null, "› ", FRAMEWORKS.length, " frameworks mapped")));
+}
+
+// Assessor claims are intentionally separate from collected status and scores.
+let assessmentDecisionDocument = D.assessmentDecisions || {
+  schemaVersion: '1.0',
+  tenantId: TENANT.TenantId || '',
+  decisions: []
+};
+const decisionKey = f => `${f.checkId.replace(/\.\d+$/, '')}\n${f.setting}`;
+function decisionState(d, f, now = Date.now()) {
+  if (Date.parse(d.expiresAt) <= now) return 'Expired';
+  if (Date.parse(d.approvedAt) > now) return 'Future';
+  if (FINDINGS.filter(x => decisionKey(x) === decisionKey(f)).length !== 1) return 'Ambiguous';
+  if (d.type === 'ManualAttestation' && f.status !== 'Review') return 'Ineligible';
+  if (d.type === 'AcceptedRisk' && (!['Fail', 'Warning'].includes(f.status) || String(f.current ?? '') !== d.observedValue)) return 'EvidenceChanged';
+  return 'Active';
+}
+function isActionableFinding(f) {
+  const d = assessmentDecisionDocument.decisions.find(d => `${d.checkId}\n${d.setting}` === decisionKey(f));
+  return ['Fail', 'Warning', 'Review'].includes(f.status) && !(d && decisionState(d, f) === 'Active');
+}
+function validateDecision(d) {
+  for (const k of ['checkId', 'setting', 'justification', 'approvedBy', 'evidence']) {
+    if (typeof d[k] !== 'string' || !d[k].trim()) throw new Error(`${k} is required.`);
+  }
+  if (!['AcceptedRisk', 'ManualAttestation'].includes(d.type) || typeof d.observedValue !== 'string') throw new Error('Invalid decision type or observation.');
+  if (!Number.isFinite(Date.parse(d.approvedAt)) || !Number.isFinite(Date.parse(d.expiresAt)) || Date.parse(d.expiresAt) <= Date.parse(d.approvedAt)) throw new Error('Expiry must be after approval.');
+}
+function downloadDecisions() {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(assessmentDecisionDocument, null, 2)], {
+    type: 'application/json'
+  }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '_Assessment-Decisions.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function CollectionStatus() {
+  const c = D.collection;
+  return /*#__PURE__*/React.createElement("section", {
+    className: "card",
+    "aria-label": "Collection completeness",
+    style: {
+      margin: 20,
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, "Collection: ", c?.state || 'Unspecified'), /*#__PURE__*/React.createElement("p", null, "Scores describe observed findings only. Missing data and unverified reviews do not establish compliance."), c && /*#__PURE__*/React.createElement("p", null, c.incompleteCollectors, " incomplete collectors · ", c.unavailableFindings, " unavailable findings. ", c.scope), !!c?.collectors?.length && /*#__PURE__*/React.createElement("details", null, /*#__PURE__*/React.createElement("summary", null, "Collector results"), /*#__PURE__*/React.createElement("ul", null, c.collectors.map((x, i) => /*#__PURE__*/React.createElement("li", {
+    key: i
+  }, x.Collector, ": ", x.Status, x.Error ? ` — ${x.Error}` : '')))));
+}
+function AssessorWorkflow({
+  editMode
+}) {
+  const [document, setDocument] = useState(assessmentDecisionDocument);
+  const [selected, setSelected] = useState('');
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    type: 'AcceptedRisk',
+    justification: '',
+    approvedBy: '',
+    evidence: '',
+    expiresAt: ''
+  });
+  const candidates = FINDINGS.filter(f => ['Fail', 'Warning', 'Review'].includes(f.status));
+  const update = next => {
+    assessmentDecisionDocument = next;
+    setDocument(next);
+    window.dispatchEvent(new Event('assessment-decisions-changed'));
+  };
+  const save = e => {
+    e.preventDefault();
+    setError('');
+    try {
+      if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(document.tenantId)) throw new Error('A collected tenant GUID is required.');
+      const f = candidates.find(f => decisionKey(f) === selected);
+      if (!f) throw new Error('Select a finding.');
+      const d = {
+        checkId: f.checkId.replace(/\.\d+$/, ''),
+        setting: f.setting,
+        ...form,
+        observedValue: String(f.current ?? ''),
+        approvedAt: new Date().toISOString(),
+        expiresAt: new Date(form.expiresAt).toISOString()
+      };
+      validateDecision(d);
+      if (decisionState(d, f) !== 'Active') throw new Error('This decision does not apply to the selected finding.');
+      update({
+        ...document,
+        decisions: [...document.decisions.filter(x => `${x.checkId}\n${x.setting}` !== selected), d]
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const active = document.decisions.filter(d => FINDINGS.some(f => decisionKey(f) === `${d.checkId}\n${d.setting}` && decisionState(d, f) === 'Active'));
+  const actionable = candidates.filter(f => !active.some(d => decisionKey(f) === `${d.checkId}\n${d.setting}`));
+  return /*#__PURE__*/React.createElement("section", {
+    className: "card",
+    "aria-label": "Assessor decisions",
+    style: {
+      margin: 20,
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("h2", null, "Assessor decisions"), /*#__PURE__*/React.createElement("p", null, actionable.length, " actionable findings · ", active.filter(d => d.type === 'AcceptedRisk').length, " accepted risks · ", active.filter(d => d.type === 'ManualAttestation').length, " manual attestations."), /*#__PURE__*/React.createElement("p", null, "Observations and scores remain unchanged. Export decisions and pass the file with ", /*#__PURE__*/React.createElement("code", null, "-AssessmentDecisionsPath"), " on the next run or report regeneration to update HTML, XLSX and JSON together."), /*#__PURE__*/React.createElement("ul", null, document.decisions.map((d, i) => {
+    const f = FINDINGS.find(f => decisionKey(f) === `${d.checkId}\n${d.setting}`);
+    return /*#__PURE__*/React.createElement("li", {
+      key: i
+    }, /*#__PURE__*/React.createElement("strong", null, d.checkId, " — ", d.setting, ": ", d.type, " (", f ? decisionState(d, f) : 'Unmatched', ")"), /*#__PURE__*/React.createElement("p", null, d.justification, " — ", d.approvedBy, "; approved ", d.approvedAt, "; expires ", d.expiresAt, ". Evidence: ", d.evidence), editMode && /*#__PURE__*/React.createElement("button", {
+      onClick: () => update({
+        ...document,
+        decisions: document.decisions.filter((_, n) => n !== i)
+      })
+    }, "Remove decision"));
+  })), editMode && /*#__PURE__*/React.createElement("form", {
+    onSubmit: save
+  }, /*#__PURE__*/React.createElement("label", null, "Finding ", /*#__PURE__*/React.createElement("select", {
+    value: selected,
+    onChange: e => {
+      setSelected(e.target.value);
+      const f = candidates.find(x => decisionKey(x) === e.target.value);
+      setForm({
+        ...form,
+        type: f?.status === 'Review' ? 'ManualAttestation' : 'AcceptedRisk'
+      });
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Select a finding"), candidates.map(f => /*#__PURE__*/React.createElement("option", {
+    key: f.checkId,
+    value: decisionKey(f)
+  }, f.checkId, " — ", f.setting)))), /*#__PURE__*/React.createElement("p", null, form.type === 'ManualAttestation' ? 'Manual review attestation' : 'Accepted risk'), ['justification', 'approvedBy', 'evidence'].map(k => /*#__PURE__*/React.createElement("label", {
+    key: k,
+    style: {
+      display: 'block'
+    }
+  }, k, " ", /*#__PURE__*/React.createElement("input", {
+    required: true,
+    value: form[k],
+    onChange: e => setForm({
+      ...form,
+      [k]: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("label", null, "Expires ", /*#__PURE__*/React.createElement("input", {
+    type: "datetime-local",
+    required: true,
+    value: form.expiresAt,
+    onChange: e => setForm({
+      ...form,
+      expiresAt: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement("button", {
+    type: "submit"
+  }, "Save decision in report"), error && /*#__PURE__*/React.createElement("p", {
+    role: "alert"
+  }, error)), /*#__PURE__*/React.createElement("button", {
+    onClick: downloadDecisions
+  }, "Export decisions JSON"));
 }
 
 // ======================== Appendix ========================
@@ -6272,6 +6435,12 @@ function TweaksPanel({
 
 // ======================== App root ========================
 function App() {
+  const [, setDecisionRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => setDecisionRevision(n => n + 1);
+    window.addEventListener('assessment-decisions-changed', changed);
+    return () => window.removeEventListener('assessment-decisions-changed', changed);
+  }, []);
   const DEFAULTS = /*EDITMODE-BEGIN*/{
     "theme": "neon",
     "mode": "dark",
@@ -6581,6 +6750,8 @@ function App() {
     onFinalize: handleFinalize,
     onReset: handleResetAll,
     hiddenCount: hiddenFindings.size + hiddenElements.size
+  }), /*#__PURE__*/React.createElement(CollectionStatus, null), /*#__PURE__*/React.createElement(AssessorWorkflow, {
+    editMode: editMode
   }), /*#__PURE__*/React.createElement(Briefing, {
     onViewFinding: onViewFinding,
     onShowCritical: onShowCritical,

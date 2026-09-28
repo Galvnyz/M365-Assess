@@ -31,6 +31,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -51,7 +53,7 @@ try {
         Uri         = '/v1.0/security/secureScoreControlProfiles'
         ErrorAction = 'Stop'
     }
-    $controlProfiles = Invoke-MgGraphRequest @graphParams
+    $controlProfiles = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $configDetectionActive = $false
     $activeControls = @()

@@ -29,6 +29,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
@@ -51,7 +53,7 @@ try {
         Uri         = '/beta/deviceManagement/settings'
         ErrorAction = 'Stop'
     }
-    $complianceSettings = Invoke-MgGraphRequest @graphParams
+    $complianceSettings = Invoke-SafeGraphRequest @graphParams
 
     $markNonCompliant = $complianceSettings['deviceComplianceCheckinThresholdDays']
     # A low threshold (or specific config) means devices are flagged quickly
@@ -115,7 +117,7 @@ try {
         Uri         = '/beta/deviceManagement/deviceEnrollmentConfigurations'
         ErrorAction = 'Stop'
     }
-    $enrollConfigs = Invoke-MgGraphRequest @graphParams
+    $enrollConfigs = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $enrollConfigList = if ($enrollConfigs -and $enrollConfigs['value']) { @($enrollConfigs['value']) } else { @() }
     $platformRestrictions = $enrollConfigList | Where-Object {

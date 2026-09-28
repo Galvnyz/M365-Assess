@@ -103,3 +103,18 @@ Per-check triage of the remaining ~85 emissions is ongoing v2.11.0 (or follow-up
 - `src/M365-Assess/**/*.ps1` — empirical scan
 - `docs/CHECK-STATUS-MODEL.md` — canonical status-value semantics (defines what each status MEANS)
 - Issue #884 (this audit) + #875 (interactive attestation, downstream consumer of the "genuine limitation" subset)
+
+### Assessment trust corrections (September 2026)
+
+Security Defaults query failure and CA gap-query failure now emit Unknown instead
+of Review (two additional literal Unknown sites). Presence of CA policies cannot
+prove Security Defaults equivalence, so apparent full or absent coverage requires
+Review. A complete empty policy list is distinct from an unavailable query.
+UAL requires an identifiable Exchange connection and Boolean evidence; unavailable
+UAL and failed Purview queries now retain Unknown findings rather than disappearing.
+These are evidence limitations, not configuration passes. The existing static
+emission counter only counts literal property assignments, not -Status arguments.
+
+Five optional Purview command absence sites also change Review to Unknown: DLP,
+labels, alert policies, auto-labeling, and communication compliance. Missing
+commands are collection limitations, not manual compliance judgments.

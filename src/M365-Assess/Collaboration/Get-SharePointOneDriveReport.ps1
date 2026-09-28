@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -39,7 +41,7 @@ if (-not (Assert-GraphConnection)) { return }
 # Retrieve SharePoint tenant settings
 try {
     Write-Verbose "Retrieving SharePoint and OneDrive tenant settings..."
-    $spoSettings = Invoke-MgGraphRequest -Uri '/v1.0/admin/sharepoint/settings' -Method GET
+    $spoSettings = Invoke-SafeGraphRequest -Uri '/v1.0/admin/sharepoint/settings' -Method GET
 }
 catch {
     $statusCode = $null

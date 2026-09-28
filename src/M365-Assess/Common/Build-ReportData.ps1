@@ -1,4 +1,4 @@
-﻿# Issue #715: dot-source the lane helper so callers (Export-AssessmentReport and
+# Issue #715: dot-source the lane helper so callers (Export-AssessmentReport and
 # Pester tests alike) don't have to know about it. Idempotent — re-sourcing the
 # function on each load is harmless.
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1')
@@ -119,7 +119,9 @@ function Build-ReportDataJson {
         [string[]]$HeadlineFrameworks = @(),
 
         [Parameter()]
-        [string]$AssessedAt = ''
+        [string]$AssessedAt = '',
+        [object]$Collection = $null,
+        [object]$AssessmentDecisions = $null
     )
 
     # ------------------------------------------------------------------
@@ -159,14 +161,14 @@ function Build-ReportDataJson {
                 $prf = if ($ent -is [hashtable] -and $ent.ContainsKey('profiles'))  { @($ent['profiles']) }
                        elseif ($ent -and $ent.PSObject.Properties['profiles'])       { @($ent.profiles) }
                        else                                                            { @() }
-                $fwMeta[$fwId] = [ordered]@{ controlId = $cid; profiles = $prf }
+                $fwMeta[$fwId] = [ordered]@{ controlId = $cid; profiles = @($prf | Where-Object { $null -ne $_ }) }
             }
         } elseif ($fwSource) {
             foreach ($prop in $fwSource.PSObject.Properties) {
                 $ent = $prop.Value
                 $cid = if ($ent -and $ent.PSObject.Properties['controlId']) { [string]$ent.controlId } else { '' }
                 $prf = if ($ent -and $ent.PSObject.Properties['profiles'])  { @($ent.profiles) } else { @() }
-                $fwMeta[$prop.Name] = [ordered]@{ controlId = $cid; profiles = $prf }
+                $fwMeta[$prop.Name] = [ordered]@{ controlId = $cid; profiles = @($prf | Where-Object { $null -ne $_ }) }
             }
         }
 
@@ -213,6 +215,8 @@ function Build-ReportDataJson {
         $findings.Add([PSCustomObject]@{
             checkId      = $f.CheckId
             status       = $f.Status
+            decision     = $f.Decision
+            actionable   = if ($f.PSObject.Properties['Actionable']) { [bool]$f.Actionable } else { $f.Status -in @('Fail','Warning','Review') }
             severity     = $severity
             domain       = Get-CheckDomain -CheckId $baseCheckId
             # #968: flag the curated "Critical exposure" check set so the React report
@@ -228,11 +232,11 @@ function Build-ReportDataJson {
             remediation  = $f.Remediation
             effort       = $effort
             lane         = $lane
-            frameworks   = $frameworks
+            frameworks   = @($frameworks | Where-Object { $null -ne $_ })
             fwMeta       = $fwMeta
             intentDesign    = [bool]($f.PSObject.Properties['IntentDesign'] -and $f.IntentDesign)
             intentRationale = if ($f.PSObject.Properties['ImpactRationale'] -and $f.ImpactRationale) { [string]$f.ImpactRationale } else { $null }
-            references   = $references
+            references   = @($references | Where-Object { $null -ne $_ })
             impact       = $impact
             rationale    = $rationale
             evidence     = $evidence
@@ -443,6 +447,9 @@ function Build-ReportDataJson {
     })
 
     $reportData = [ordered]@{
+        schemaVersion = '1.0'
+        collection = $Collection
+        assessmentDecisions = $AssessmentDecisions
         tenant         = @($tenantRows)
         users          = @($usersRows  | Select-Object TotalUsers, Licensed, GuestUsers, SyncedFromOnPrem, DisabledUsers, NeverSignedIn, StaleMember)
         score          = @($scoreRows  | Select-Object Percentage, AverageComparativeScore, CurrentScore, MaxScore, CreatedDateTime, MicrosoftScore, CustomerScore)
@@ -474,13 +481,6 @@ function Build-ReportDataJson {
     # ------------------------------------------------------------------
     # 5. Serialize + escape </script> in string values
     # ------------------------------------------------------------------
-    $json = $reportData | ConvertTo-Json -Depth 10
-    # ConvertTo-Json serializes [string[]]@() as null and single-element arrays as bare strings.
-    $json = $json -replace '"frameworks":\s*null',      '"frameworks": []'
-    $json = $json -replace '"profiles":\s*null',        '"profiles": []'
-    $json = $json -replace '"profiles":\s*"([^"]*)"',   '"profiles": ["$1"]'
-    $json = $json -replace '"headlineFrameworks":\s*null',      '"headlineFrameworks": []'
-    $json = $json -replace '"headlineFrameworks":\s*"([^"]*)"', '"headlineFrameworks": ["$1"]'
-    $json = $json -replace '</script>', '<\/script>'
+    $json = ConvertTo-Json -InputObject $reportData -Depth 20 -EscapeHandling EscapeHtml
     return "window.REPORT_DATA = $json;"
 }

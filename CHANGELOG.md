@@ -4,6 +4,26 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Fixed
+- Review findings no longer count as ready evidence. Framework percentages use
+  assessed findings and avoid audit-ready claims based on a pass percentage.
+- Security Defaults alternatives require review of effective CA scope; compliant
+  device OR MFA and excluded/conditional policy scope cannot prove mandatory MFA.
+- Unified audit ingestion is read from the identified Exchange Online connection;
+  unavailable evidence and failed Purview checks remain visible as Unknown.
+- Collectors use shared Graph pagination and transient retries. Page caps and
+  malformed/failed collection pages terminate instead of returning partial data.
+- Scheduled CI runs the substantive suites, and report/build inputs trigger CI.
+
+### Added
+- Tenant-scoped accepted-risk and manual-attestation sidecars, with evidence,
+  ownership, expiry, HTML editing/export/finalization, and repeat-run support.
+  Raw observations remain unchanged; decision-only baseline changes are Modified.
+- Collection completion and structured evidence in HTML, XLSX and JSON; versioned
+  report/bridge/decision schemas and executable React behavior/rendering tests.
+- Bounded report source units compiled into the existing single offline bundle.
+
+
 ## [2.13.0] - 2026-06-13
 
 Completes the **Sovereign Cloud** milestone. Running M365 Assess against GCC High was verified end-to-end against a real tenant, and the collectors that failed there were corrected at the source: where a working v1.0 API existed it is now used, and where an endpoint genuinely does not exist in the sovereign cloud the dependent checks emit `Skipped` instead of vanishing. A few report bugs surfaced alongside the sovereign work are fixed, and the docs (README, GCC High setup, architecture diagrams) are refreshed. No breaking API changes.

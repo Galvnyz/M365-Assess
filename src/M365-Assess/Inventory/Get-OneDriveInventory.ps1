@@ -40,6 +40,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -59,7 +61,7 @@ try {
     $uri = "/v1.0/users?`$filter=accountEnabled eq true&`$select=id,displayName,userPrincipalName&`$top=999"
 
     do {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+        $response = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $uri
         if ($response.value) {
             foreach ($user in $response.value) {
                 $allUsers.Add($user)
@@ -85,7 +87,7 @@ try {
         }
 
         try {
-            $driveInfo = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/users/$($user.id)/drive?`$select=quota,webUrl,lastModifiedDateTime"
+            $driveInfo = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/users/$($user.id)/drive?`$select=quota,webUrl,lastModifiedDateTime"
 
             $storageUsedMB = $null
             $storageAllocatedMB = $null
@@ -141,7 +143,7 @@ if (-not $usedDirectApi) {
 
     $tempFile = [System.IO.Path]::GetTempFileName()
     try {
-        Invoke-MgGraphRequest -Method GET -Uri $reportUri -OutputFilePath $tempFile
+        Invoke-SafeGraphRequest -Method GET -Uri $reportUri -OutputFilePath $tempFile
         $reportData = @(Import-Csv -Path $tempFile)
     }
     catch {

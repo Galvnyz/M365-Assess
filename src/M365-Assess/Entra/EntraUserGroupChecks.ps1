@@ -6,6 +6,8 @@
 # -------------------------------------------------------------------
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 param()
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # ------------------------------------------------------------------
 # 3-5. Authorization Policy (user consent, app registration, groups)
@@ -151,7 +153,7 @@ try {
         Uri         = '/v1.0/policies/adminConsentRequestPolicy'
         ErrorAction = 'Stop'
     }
-    $adminConsentSettings = Invoke-MgGraphRequest @graphParams
+    $adminConsentSettings = Invoke-SafeGraphRequest @graphParams
     $isAdminConsentEnabled = $adminConsentSettings['isEnabled']
 
     $settingParams = @{
@@ -189,7 +191,7 @@ try {
         Uri         = '/v1.0/policies/authorizationPolicy'
         ErrorAction = 'Stop'
     }
-    $authzPolicy = Invoke-MgGraphRequest @graphParams
+    $authzPolicy = Invoke-SafeGraphRequest @graphParams
     $consentSettings = $authzPolicy['defaultUserRolePermissions']
     $consentAllowed = $consentSettings['permissionGrantPoliciesAssigned']
 
@@ -231,7 +233,7 @@ try {
         Uri         = "/v1.0/oauth2PermissionGrants?`$filter=consentType eq 'AllPrincipals'&`$top=999"
         ErrorAction = 'Stop'
     }
-    $allPrincipalGrants = Invoke-MgGraphRequest @graphParams
+    $allPrincipalGrants = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     $tenantWideGrants = if ($allPrincipalGrants -and $allPrincipalGrants['value']) { @($allPrincipalGrants['value']) } else { @() }
 
     $settingParams = @{
@@ -349,7 +351,7 @@ try {
         Headers     = @{ 'ConsistencyLevel' = 'eventual' }
         ErrorAction = 'Stop'
     }
-    $guestCount = Invoke-MgGraphRequest @graphParams
+    $guestCount = Invoke-SafeGraphRequest @graphParams
     $settingParams = @{
         Category         = 'External Collaboration'
         Setting          = 'Guest User Count'
@@ -386,7 +388,7 @@ try {
         Uri         = "/beta/organization/$tenantId"
         ErrorAction = 'Stop'
     }
-    $orgSettings = Invoke-MgGraphRequest @graphParams
+    $orgSettings = Invoke-SafeGraphRequest @graphParams
 
     $linkedInEnabled = $true  # Default assumption
     if ($orgSettings -and $orgSettings['linkedInConfiguration']) {
@@ -428,7 +430,7 @@ try {
         Uri         = '/beta/reports/authenticationMethods/userRegistrationDetails?$select=userPrincipalName,isMfaRegistered,isMfaCapable&$top=1'
         ErrorAction = 'Stop'
     }
-    Invoke-MgGraphRequest @graphParams | Out-Null
+    Invoke-SafeGraphRequest @graphParams | Out-Null
     # Graph doesn't directly expose legacy per-user MFA state (MSOnline concept).
     # We confirm API access works, then emit Review since we can't verify enforcement mode.
     $settingParams = @{
@@ -501,7 +503,7 @@ try {
         Uri         = '/v1.0/policies/crossTenantAccessPolicy/default'
         ErrorAction = 'Stop'
     }
-    $crossTenantPolicy = Invoke-MgGraphRequest @graphParams
+    $crossTenantPolicy = Invoke-SafeGraphRequest @graphParams
 
     $b2bCollabInbound = $crossTenantPolicy['b2bCollaborationInbound']
     $isRestricted = $false
@@ -549,7 +551,7 @@ try {
         Uri         = "/v1.0/groups?`$filter=groupTypes/any(g:g eq 'DynamicMembership')&`$select=displayName,membershipRule&`$top=999"
         ErrorAction = 'Stop'
     }
-    $dynamicGroups = Invoke-MgGraphRequest @graphParams
+    $dynamicGroups = Invoke-SafeGraphRequest -ExpectCollection @graphParams
     $dynamicGroupList = if ($dynamicGroups -and $dynamicGroups['value']) { @($dynamicGroups['value']) } else { @() }
     $guestGroups = @($dynamicGroupList | Where-Object {
         $_['membershipRule'] -and $_['membershipRule'] -match 'user\.userType\s+(-eq|-contains)\s+.?Guest'
@@ -608,7 +610,7 @@ try {
         Uri         = "/v1.0/groups?`$filter=groupTypes/any(g:g eq 'Unified')&`$select=displayName,id,visibility&`$top=999"
         ErrorAction = 'Stop'
     }
-    $unifiedGroups = Invoke-MgGraphRequest @graphParams
+    $unifiedGroups = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $publicGroupList = if ($unifiedGroups -and $unifiedGroups['value']) {
         @($unifiedGroups['value'] | Where-Object { $_['visibility'] -eq 'Public' })
@@ -620,7 +622,7 @@ try {
             Uri         = "/v1.0/groups/$($group['id'])/owners?`$select=id"
             ErrorAction = 'SilentlyContinue'
         }
-        $owners = Invoke-MgGraphRequest @graphParams
+        $owners = Invoke-SafeGraphRequest -ExpectCollection @graphParams
         if (-not $owners['value'] -or $owners['value'].Count -eq 0) {
             $noOwnerGroups += $group['displayName']
         }
@@ -677,7 +679,7 @@ try {
         Uri         = '/v1.0/policies/authorizationPolicy'
         ErrorAction = 'Stop'
     }
-    $consentPolicy = Invoke-MgGraphRequest @graphParams
+    $consentPolicy = Invoke-SafeGraphRequest @graphParams
 
     $consentSetting = $consentPolicy['defaultUserRolePermissions']['permissionGrantPoliciesAssigned']
     $isRestricted = ($null -eq $consentSetting) -or ($consentSetting.Count -eq 0) -or
@@ -750,10 +752,10 @@ Add-Setting @settingParams
 try {
     Write-Verbose "Counting disabled member accounts..."
     $countHeaders  = @{ 'ConsistencyLevel' = 'eventual' }
-    $totalCount    = [int](Invoke-MgGraphRequest -Method GET `
+    $totalCount    = [int](Invoke-SafeGraphRequest -Method GET `
         -Uri "/v1.0/users/`$count?`$filter=userType eq 'Member'" `
         -Headers $countHeaders -ErrorAction Stop)
-    $disabledCount = [int](Invoke-MgGraphRequest -Method GET `
+    $disabledCount = [int](Invoke-SafeGraphRequest -Method GET `
         -Uri "/v1.0/users/`$count?`$filter=accountEnabled eq false and userType eq 'Member'" `
         -Headers $countHeaders -ErrorAction Stop)
     $pct = if ($totalCount -gt 0) { [math]::Round($disabledCount / $totalCount * 100, 1) } else { 0 }
