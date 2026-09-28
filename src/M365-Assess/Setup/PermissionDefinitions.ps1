@@ -11,6 +11,7 @@ $script:RequiredGraphPermissions = @(
     @{ Name = 'Organization.Read.All';                   Sections = 'Tenant, Licensing, Hybrid'              ; Reason = 'Tenant org details, verified domains, hybrid config' }
     @{ Name = 'Domain.Read.All';                         Sections = 'Tenant, Identity, Hybrid'               ; Reason = 'All domains registered in the tenant' }
     @{ Name = 'Group.Read.All';                          Sections = 'Tenant, Inventory'                      ; Reason = 'All groups including Microsoft 365 and security groups' }
+    @{ Name = 'AccessReview.Read.All'; Sections = 'Identity'; Reason = 'Access review definitions and schedules' }
     # -- Identity --------------------------------------------------------------
     @{ Name = 'User.Read.All';                           Sections = 'Tenant, Identity, Licensing, Inventory' ; Reason = 'User profiles, sign-in activity, license assignments' }
     @{ Name = 'AuditLog.Read.All';                       Sections = 'Identity'                               ; Reason = 'Sign-in logs and directory audit events' }

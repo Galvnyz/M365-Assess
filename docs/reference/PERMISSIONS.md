@@ -17,12 +17,12 @@
 | Compliance | — | 0 | 0 | 0 | 1 |
 | Email | ExchangeOnline | 0 | 1 | 1 | 0 |
 | Hybrid | Graph | 2 | 2 | 0 | 0 |
-| Identity | Graph | 9 | 8 | 0 | 0 |
+| Identity | Graph | 10 | 9 | 0 | 0 |
 | Intune | Graph | 2 | 2 | 0 | 0 |
 | Inventory | Graph, ExchangeOnline | 7 | 7 | 1 | 0 |
 | Licensing | Graph | 2 | 2 | 0 | 0 |
 | PowerBI | — | 0 | 0 | 0 | 0 |
-| Security | Graph, ExchangeOnline, Purview | 1 | 4 | 2 | 3 |
+| Security | Graph, ExchangeOnline, Purview | 4 | 4 | 2 | 3 |
 | SOC2 | Graph, Purview | 8 | 0 | 0 | 0 |
 | Tenant | Graph | 5 | 5 | 0 | 0 |
 | ValueOpportunity | Graph | 1 | 0 | 0 | 0 |
@@ -101,6 +101,7 @@
 
 **Delegated Microsoft Graph scopes**
 
+- `AccessReview.Read.All`
 - `Agreement.Read.All`
 - `Application.Read.All`
 - `AuditLog.Read.All`
@@ -115,6 +116,7 @@
 
 | Permission | Reason |
 |---|---|
+| `AccessReview.Read.All` | Access review definitions and schedules |
 | `Application.Read.All` | App registrations, service principals, OAuth permission grants |
 | `AuditLog.Read.All` | Sign-in logs and directory audit events |
 | `Directory.Read.All` | Devices, admin units, role templates |
@@ -198,6 +200,9 @@
 
 **Delegated Microsoft Graph scopes**
 
+- `DeviceManagementApps.Read.All`
+- `DeviceManagementConfiguration.Read.All`
+- `DeviceManagementRBAC.Read.All`
 - `SecurityEvents.Read.All`
 
 **Microsoft Graph application permissions** (app-only auth)

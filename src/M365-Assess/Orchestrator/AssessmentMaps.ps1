@@ -23,10 +23,10 @@ $sectionServiceMap = @{
 # ------------------------------------------------------------------
 $sectionScopeMap = @{
     'Tenant'        = @('Organization.Read.All', 'Domain.Read.All', 'Policy.Read.All', 'User.Read.All', 'Group.Read.All')
-    'Identity'      = @('User.Read.All', 'AuditLog.Read.All', 'UserAuthenticationMethod.Read.All', 'RoleManagement.Read.Directory', 'Policy.Read.All', 'Application.Read.All', 'Domain.Read.All', 'Directory.Read.All', 'Agreement.Read.All')
+    'Identity'      = @('User.Read.All', 'AuditLog.Read.All', 'UserAuthenticationMethod.Read.All', 'RoleManagement.Read.Directory', 'Policy.Read.All', 'Application.Read.All', 'Domain.Read.All', 'Directory.Read.All', 'Agreement.Read.All', 'AccessReview.Read.All')
     'Licensing'     = @('Organization.Read.All', 'User.Read.All')
     'Intune'        = @('DeviceManagementManagedDevices.Read.All', 'DeviceManagementConfiguration.Read.All')
-    'Security'      = @('SecurityEvents.Read.All')
+    'Security'      = @('SecurityEvents.Read.All', 'DeviceManagementApps.Read.All', 'DeviceManagementConfiguration.Read.All', 'DeviceManagementRBAC.Read.All')
     'Collaboration' = @('SharePointTenantSettings.Read.All', 'TeamSettings.Read.All', 'TeamworkAppSettings.Read.All', 'OrgSettings-Forms.Read.All')
     'PowerBI'       = @()
     'Hybrid'           = @('Organization.Read.All', 'Domain.Read.All')

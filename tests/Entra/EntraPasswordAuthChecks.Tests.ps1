@@ -96,7 +96,7 @@ Describe 'EntraPasswordAuthChecks' {
                         # omits systemCredentialPreferences unless it has been explicitly changed.
                     }
                 }
-                '*/v1.0/settings' {
+                '*/v1.0/groupSettings' {
                     return @{ value = @(
                         @{
                             displayName = 'Password Rule Settings'
@@ -301,7 +301,7 @@ Describe 'EntraPasswordAuthChecks - Modern schema with disabled states' {
                         systemCredentialPreferences = @{ state = 'disabled' }
                     }
                 }
-                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/groupSettings' { return @{ value = @() } }
                 '*/v1.0/domains' {
                     return @{ value = @(
                         @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }
@@ -388,7 +388,7 @@ Describe 'EntraPasswordAuthChecks - Security Defaults ON' {
                         }
                     }
                 }
-                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/groupSettings' { return @{ value = @() } }
                 '*/v1.0/domains' {
                     return @{ value = @(
                         @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 90 }
@@ -478,7 +478,7 @@ Describe 'EntraPasswordAuthChecks - Security Defaults OFF no CA' {
                         }
                     }
                 }
-                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/groupSettings' { return @{ value = @() } }
                 '*/v1.0/domains' {
                     return @{ value = @(
                         @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }
@@ -584,7 +584,7 @@ Describe 'EntraPasswordAuthChecks - Modern schema with default states' {
                         systemCredentialPreferences = @{ state = 'default' }
                     }
                 }
-                '*/v1.0/settings' { return @{ value = @() } }
+                '*/v1.0/groupSettings' { return @{ value = @() } }
                 '*/v1.0/domains' {
                     return @{ value = @(
                         @{ id = 'contoso.com'; isVerified = $true; passwordValidityPeriodInDays = 2147483647 }

@@ -468,20 +468,20 @@ Describe 'Get-SharePointSecurityConfig' {
     # --- #382: New site-level and access checks ---
 
     Context 'site-level checks with compliant sites' {
-        It 'SPO-SITE-001 passes when all sites are within tenant policy' {
+        It 'SPO-SITE-001 requires authoritative review even with plausible Graph metadata' {
             $siteCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-001*' }
             $siteCheck | Should -Not -BeNullOrEmpty
-            $siteCheck.Status | Should -Be 'Pass'
+            $siteCheck.Status | Should -Be 'Review'
         }
 
-        It 'SPO-SITE-002 passes when sensitive sites have restricted sharing' {
+        It 'SPO-SITE-002 does not infer sensitive-site protection from Graph metadata' {
             $sensitiveCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-002*' }
             $sensitiveCheck | Should -Not -BeNullOrEmpty
-            # Finance site has 'disabled' sharing — should pass
-            $sensitiveCheck.Status | Should -Be 'Pass'
+            # Graph site resources do not provide this sharing evidence.
+            $sensitiveCheck.Status | Should -Be 'Review'
         }
 
-        It 'SPO-SITE-003 returns Info with site count' {
+        It 'SPO-SITE-003 explains manual administrator verification' {
             $siteAdminCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-003*' }
             $siteAdminCheck | Should -Not -BeNullOrEmpty
             $siteAdminCheck.Status | Should -Be 'Info'
@@ -664,10 +664,10 @@ Describe 'Get-SharePointSecurityConfig' {
             . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-SharePointSecurityConfig.ps1"
         }
 
-        It 'SPO-SITE-001 fails when a site is more permissive than tenant sharing level' {
+        It 'SPO-SITE-001 does not trust an unsupported sharing property' {
             $siteCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-001*' }
             $siteCheck | Should -Not -BeNullOrEmpty
-            $siteCheck.Status | Should -Be 'Fail'
+            $siteCheck.Status | Should -Be 'Review'
         }
     }
 
@@ -721,10 +721,10 @@ Describe 'Get-SharePointSecurityConfig' {
             . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-SharePointSecurityConfig.ps1"
         }
 
-        It 'SPO-SITE-002 warns when a sensitive-named site has external sharing' {
+        It 'SPO-SITE-002 requires review rather than guessing sensitivity from names' {
             $sensitiveCheck = $settings | Where-Object { $_.CheckId -like 'SPO-SITE-002*' }
             $sensitiveCheck | Should -Not -BeNullOrEmpty
-            $sensitiveCheck.Status | Should -Be 'Warning'
+            $sensitiveCheck.Status | Should -Be 'Review'
         }
     }
 

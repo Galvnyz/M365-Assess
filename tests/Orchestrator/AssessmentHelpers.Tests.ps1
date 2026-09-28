@@ -4,6 +4,15 @@ BeforeDiscovery {
 
 Describe 'Collection completion summary' {
     BeforeAll { . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1" }
+    It 'retains request failures in the issue report regardless of HTTP status' -ForEach @(400,403,404,500) {
+        $issue = New-CollectionIssue -Message "GraphCollectionIncomplete: GET /fixture; HTTP=$_" -Section Identity -Collector Fixture
+        $issue.Severity | Should -Be 'WARNING'
+        $issue.ErrorMessage | Should -Match "HTTP=$_"
+        $issue.Collector | Should -Be 'Fixture'
+    }
+    It 'does not convert informational license absence into a collection failure' {
+        New-CollectionIssue -Message 'No Teams licenses detected in this tenant.' -Section Collaboration -Collector Teams | Should -BeNullOrEmpty
+    }
     It 'does not count partial evidence as a completed collector' {
         Mock Write-Host { }
         $summary = @(
