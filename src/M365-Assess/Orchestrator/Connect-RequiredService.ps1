@@ -32,6 +32,17 @@ function Connect-RequiredService {
                 $connectedServices.Remove('Purview') | Out-Null
             }
             elseif ($svc -eq 'Purview' -and $connectedServices.Contains('ExchangeOnline')) {
+                # Preserve authoritative evidence before Purview replaces the EXO session.
+                if ($null -ne $assessmentEvidence) {
+                    try {
+                        . (Join-Path -Path $projectRoot -ChildPath 'Common/Get-ExoAuditConfig.ps1')
+                        $assessmentEvidence.ExchangeAudit = Get-ExoAuditConfig -ExpectedTenantId $script:resolvedTenantId
+                    }
+                    catch {
+                        $assessmentEvidence.ExchangeAudit = [PSCustomObject]@{ Error = $_.Exception.Message }
+                        Write-AssessmentLog -Level WARN -Message "Could not capture Exchange audit evidence: $($_.Exception.Message)" -Section $SectionName
+                    }
+                }
                 Write-AssessmentLog -Level INFO -Message "Disconnecting ExchangeOnline before connecting Purview" -Section $SectionName
                 Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
                 $connectedServices.Remove('ExchangeOnline') | Out-Null

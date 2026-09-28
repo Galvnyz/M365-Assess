@@ -703,6 +703,12 @@ Show-AssessmentHeader -TenantName $TenantId -OutputPath $assessmentFolder -LogPa
 # ------------------------------------------------------------------
 $connectedServices = [System.Collections.Generic.HashSet[string]]::new()  # used by Connect-RequiredService via scope
 $failedServices = [System.Collections.Generic.HashSet[string]]::new()
+$assessmentEvidence = @{} # Fresh evidence for this invocation; shared with connection helper.
+$script:resolvedTenantId = $null
+$script:resolvedTenantDomain = $null
+$script:resolvedTenantDisplayName = $null
+$script:graphPermissionsChecked = $false
+$script:tenantLicensesResolved = $false
 
 # ------------------------------------------------------------------
 # Module compatibility check — Graph SDK and EXO ship conflicting
@@ -1006,6 +1012,11 @@ foreach ($sectionName in $Section) {
                 $collectorParams = $collector.Params.Clone()
             }
 
+            # Reuse audit evidence collected before the Exchange-to-Purview transition.
+            if ($collector.Name -eq '19b-Compliance-Security-Config' -and $assessmentEvidence.ContainsKey('ExchangeAudit')) {
+                $collectorParams['AuditConfigEvidence'] = $assessmentEvidence.ExchangeAudit
+            }
+
             # Value Opportunity collectors need project root + assessment folder paths
             if ($collector.ContainsKey('PassProjectContext') -and $collector.PassProjectContext) {
                 $collectorParams['ProjectRoot'] = $projectRoot
@@ -1195,7 +1206,7 @@ foreach ($sectionName in $Section) {
             if ($collectionWarnings.Count) { $errorMessage = ($collectionWarnings.Message -join '; ') }
             if ($null -ne $results -and @($results).Count -gt 0) {
                 $itemCount = Export-AssessmentCsv -Path $csvPath -Data @($results) -Label $collector.Label
-                $status = 'Complete'
+                $status = if ($collectionWarnings.Count) { 'Partial' } else { 'Complete' }
             }
             else {
                 $itemCount = 0

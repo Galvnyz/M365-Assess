@@ -269,12 +269,14 @@ function Show-CollectorResult {
 
     $symbol = switch ($Status) {
         'Complete' { [char]0x2713 }
+        'Partial'  { [char]0x26A0 }
         'Skipped'  { [char]0x25CB }
         'Failed'   { [char]0x2717 }
         default    { '-' }
     }
     $color = switch ($Status) {
         'Complete' { 'Cyan' }
+        'Partial'  { 'Yellow' }
         'Skipped'  { 'DarkGray' }
         'Failed'   { 'Magenta' }
         default    { 'White' }
@@ -284,6 +286,7 @@ function Show-CollectorResult {
 
     $detail = switch ($Status) {
         'Complete' { '{0,5} items   {1,5:F1}s' -f $Items, $DurationSeconds }
+        'Partial' { '{0,5} items   {1,5:F1}s (incomplete; see log)' -f $Items, $DurationSeconds }
         'Skipped' {
             if ($ErrorMessage) {
                 $shortErr = if ($ErrorMessage.Length -gt 28) { $ErrorMessage.Substring(0, 25) + '...' } else { $ErrorMessage }
@@ -315,19 +318,22 @@ function Show-AssessmentSummary {
         [string]$Version
     )
 
-    $completeCount = @($SummaryResults | Where-Object { $_.Status -eq 'Complete' }).Count
+    $completeCount = @($SummaryResults | Where-Object { $_.Status -eq 'Complete' -and -not $_.Error }).Count
+    $partialCount = @($SummaryResults | Where-Object { $_.Status -eq 'Partial' -or ($_.Status -eq 'Complete' -and $_.Error) }).Count
     $skippedCount = @($SummaryResults | Where-Object { $_.Status -eq 'Skipped' }).Count
     $failedCount = @($SummaryResults | Where-Object { $_.Status -eq 'Failed' }).Count
     $totalCollectors = $SummaryResults.Count
 
     Write-Host ''
     Write-Host '  ░▒▓████████████████████████████████████████████████▓▒░' -ForegroundColor Cyan
-    Write-Host "    Assessment Complete  $([char]0x00B7)  $($Duration.ToString('mm\:ss')) elapsed" -ForegroundColor Cyan
+    $completionLabel = if ($partialCount -gt 0 -or $failedCount -gt 0 -or $skippedCount -gt 0) { 'Assessment Finished (incomplete collection)' } else { 'Assessment Complete' }
+    Write-Host "    $completionLabel  $([char]0x00B7)  $($Duration.ToString('mm\:ss')) elapsed" -ForegroundColor Cyan
     Write-Host '  ░▒▓████████████████████████████████████████████████▓▒░' -ForegroundColor Cyan
     Write-Host ''
     Write-Host "    Sections: $SectionCount    Collectors: $totalCollectors" -ForegroundColor White
 
     $statsLine = "    $([char]0x2713) Complete: $completeCount"
+    if ($partialCount -gt 0) { $statsLine += "   $([char]0x26A0) Partial: $partialCount" }
     if ($skippedCount -gt 0) { $statsLine += "   $([char]0x25CB) Skipped: $skippedCount" }
     if ($failedCount -gt 0) { $statsLine += "   $([char]0x2717) Failed: $failedCount" }
     Write-Host $statsLine -ForegroundColor White
