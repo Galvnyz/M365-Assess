@@ -22,7 +22,10 @@ jobs:
       - name: Install modules
         shell: pwsh
         run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default -ErrorAction Stop
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
           Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Validate manifest
@@ -127,7 +130,10 @@ jobs:
           NUGET_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
         run: |
           Write-Host "Publishing M365-Assess to PSGallery..." -ForegroundColor Cyan
-          Publish-Module -Path ./src/M365-Assess -NuGetApiKey $env:NUGET_API_KEY -Verbose
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default -ErrorAction Stop
+          }
+          Publish-Module -Path ./src/M365-Assess -Repository PSGallery -NuGetApiKey $env:NUGET_API_KEY -Verbose -ErrorAction Stop
           Write-Host "Published successfully" -ForegroundColor Green
 
       - name: Dry run
