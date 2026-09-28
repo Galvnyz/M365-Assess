@@ -100,7 +100,24 @@ function Invoke-SafeGraphRequest {
             } catch {
                 $attempt++
                 $delay = Get-GraphRetryDelay -ErrorRecord $_ -Attempt $attempt
-                if ($null -eq $delay -or $attempt -gt $MaxRetries) { Write-Warning 'GraphCollectionIncomplete: an authoritative Graph query failed; inspect the collector log.'; throw }
+                if ($null -eq $delay -or $attempt -gt $MaxRetries) {
+                    # Exclude query values and object identifiers from diagnostics.
+                    $endpoint = ($Uri -split '\?', 2)[0] -replace '^https?://[^/]+', ''
+                    $endpoint = $endpoint -replace '(?i)[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', '{id}'
+                    $endpoint = $endpoint -replace '[^/]*(@|%40)[^/]*', '{id}'
+                    $statusCode = 0
+                    try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { Write-Debug 'No response status property.' }
+                    if (-not $statusCode) {
+                        try { $statusCode = [int]$_.Exception.ResponseStatusCode } catch { Write-Debug 'No SDK status property.' }
+                    }
+                    $graphCode = 'unavailable'
+                    try {
+                        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json -ErrorAction Stop
+                        if ($errorBody.error.code -match '^[a-zA-Z0-9_.-]{1,100}$') { $graphCode = $errorBody.error.code }
+                    } catch { Write-Debug 'No structured Graph error code.' }
+                    Write-Warning "GraphCollectionIncomplete: $Method $endpoint; page=$pageCount; HTTP=$statusCode; code=$graphCode."
+                    throw
+                }
                 Write-Verbose "Invoke-SafeGraphRequest: transient Graph error (attempt $attempt of $MaxRetries), retrying in ${delay}s: $($_.Exception.Message)"
                 Start-Sleep -Seconds $delay
             }

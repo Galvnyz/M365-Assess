@@ -7,6 +7,22 @@ Describe 'Invoke-SafeGraphRequest' {
     }
 
     Context 'pagination' {
+        It 'logs diagnostic context without query values, identifiers or raw error messages' {
+            Mock Invoke-MgGraphRequest {
+                $exception = [System.Exception]::new('sensitive raw response')
+                $exception | Add-Member -NotePropertyName ResponseStatusCode -NotePropertyValue 403
+                $record = [System.Management.Automation.ErrorRecord]::new($exception, 'GraphFailure', 'InvalidOperation', $null)
+                $record.ErrorDetails = [System.Management.Automation.ErrorDetails]::new('{"error":{"code":"Authorization_RequestDenied","message":"private response"}}')
+                throw $record
+            }
+            $warnings = @()
+            try {
+                Invoke-SafeGraphRequest -Uri '/v1.0/users/11111111-1111-1111-1111-111111111111/licenseDetails?$filter=secret' -WarningVariable warnings -WarningAction SilentlyContinue
+            } catch { }
+            $warnings.Count | Should -Be 1
+            [string]$warnings[0] | Should -Match 'GET /v1.0/users/\{id\}/licenseDetails; page=1; HTTP=403; code=Authorization_RequestDenied'
+            [string]$warnings[0] | Should -Not -Match 'secret|11111111|sensitive|private'
+        }
         It 'merges value arrays across all pages and drops the nextLink' {
             Mock Invoke-MgGraphRequest {
                 switch -Wildcard ($Uri) {

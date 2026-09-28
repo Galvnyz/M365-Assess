@@ -34,6 +34,42 @@ Describe 'Connect-RequiredService' {
         }
     }
 
+    Context 'when Exchange evidence must survive the Purview transition' {
+        BeforeEach {
+            $connectedServices = [System.Collections.Generic.List[string]]::new()
+            $connectedServices.Add('ExchangeOnline')
+            $failedServices = [System.Collections.Generic.List[string]]::new()
+            $issues = [System.Collections.Generic.List[object]]::new()
+            $assessmentEvidence = @{}
+            $projectRoot = "$PSScriptRoot/../../src/M365-Assess"
+            $connectServicePath = Join-Path $TestDrive 'capture-connect.ps1'
+            Set-Content -Path $connectServicePath -Value '# no-op'
+            $M365Environment = 'commercial'
+            $script:resolvedTenantId = 'fixture-tenant'
+            function Get-ConnectionInformation {
+                [PSCustomObject]@{State='Connected';IsEopSession=$false;ModuleName='ExchangeFixture';TenantID='fixture-tenant';ConnectionUri='https://outlook.office365.com'}
+            }
+            Mock Get-Command { { param($ErrorAction) [PSCustomObject]@{UnifiedAuditLogIngestionEnabled=$true} } } -ParameterFilter { $Name -eq 'Get-AdminAuditLogConfig' -and $Module -eq 'ExchangeFixture' }
+            Mock Disconnect-ExchangeOnline {
+                $assessmentEvidence.ExchangeAudit.Enabled | Should -BeTrue
+            }
+        }
+        It 'captures evidence before disconnecting and still connects Purview' {
+            Connect-RequiredService -Services @('Purview') -SectionName 'Security'
+            $assessmentEvidence.ExchangeAudit.Enabled | Should -BeTrue
+            $assessmentEvidence.ExchangeAudit.TenantId | Should -Be 'fixture-tenant'
+            $connectedServices | Should -Contain 'Purview'
+            Should -Invoke Disconnect-ExchangeOnline -Times 1 -Exactly
+        }
+        It 'records capture failure without blocking the Purview connection' {
+            Mock Get-ConnectionInformation { throw 'Audit connection unavailable' }
+            Mock Disconnect-ExchangeOnline { }
+            Connect-RequiredService -Services @('Purview') -SectionName 'Security'
+            $assessmentEvidence.ExchangeAudit.Error | Should -Match 'unavailable'
+            $connectedServices | Should -Contain 'Purview'
+        }
+    }
+
     Context 'when a service previously failed' {
         BeforeAll {
             $connectedServices = [System.Collections.Generic.List[string]]::new()

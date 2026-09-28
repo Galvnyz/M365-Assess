@@ -131,7 +131,7 @@ $evidenceRows = [System.Collections.Generic.List[PSCustomObject]]::new()
 $evidenceFieldNames = @('ObservedValue','ExpectedValue','EvidenceSource','EvidenceTimestamp','CollectionMethod','PermissionRequired','Confidence','Limitations')
 
 foreach ($c in $summary) {
-    if ($c.Status -ne 'Complete' -or [int]$c.Items -eq 0) { continue }
+    if ($c.Status -notin @('Complete', 'Partial') -or [int]$c.Items -eq 0) { continue }
     $csvFile = Join-Path -Path $AssessmentFolder -ChildPath $c.FileName
     if (-not (Test-Path -Path $csvFile)) { continue }
 

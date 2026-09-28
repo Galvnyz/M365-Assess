@@ -2,6 +2,21 @@ BeforeDiscovery {
     # Nothing needed at discovery time
 }
 
+Describe 'Collection completion summary' {
+    BeforeAll { . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1" }
+    It 'does not count partial evidence as a completed collector' {
+        Mock Write-Host { }
+        $summary = @(
+            [PSCustomObject]@{Status='Complete';Error=''},
+            [PSCustomObject]@{Status='Partial';Error='GraphCollectionIncomplete'},
+            [PSCustomObject]@{Status='Complete';Error='Legacy collection warning'}
+        )
+        Show-AssessmentSummary -SummaryResults $summary -Duration ([timespan]::FromSeconds(3)) -SectionCount 1 -Version 'test'
+        Should -Invoke Write-Host -Times 1 -ParameterFilter { $Object -like '*Complete: 1*Partial: 2*' }
+        Should -Invoke Write-Host -Times 1 -ParameterFilter { $Object -like '*incomplete collection*' }
+    }
+}
+
 Describe 'Assert-GraphConnection' {
     BeforeAll {
         # Stub Get-MgContext before loading the script
