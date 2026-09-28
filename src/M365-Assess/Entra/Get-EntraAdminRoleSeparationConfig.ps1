@@ -67,29 +67,28 @@ $exchangePlanIds = @(
 try {
     $adminUserIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
-    foreach ($roleId in $privilegedRoleIds) {
-        Write-Verbose "Checking assignments for role $roleId..."
-        try {
-            $assignParams = @{
-                Method      = 'GET'
-                Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$roleId'&`$top=999"
-                ErrorAction = 'Stop'
-            }
-            $assignments = Invoke-SafeGraphRequest -ExpectCollection @assignParams
-            if ($assignments -and $assignments['value']) {
-                foreach ($a in @($assignments['value'])) {
-                    $principalId = $a['principalId']
-                    if ($principalId) { [void]$adminUserIds.Add($principalId) }
+    # Enumerate once: filtering an uninstantiated role can return 404. Expand
+    # principals so service principals and groups are not queried as users.
+    $assignments = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/roleManagement/directory/roleAssignments?$expand=principal&$top=999'
+    foreach ($assignment in $assignments.value) {
+        if (-not $assignment.roleDefinitionId) { throw 'Role assignment is missing its role definition.' }
+        if ($assignment.roleDefinitionId -notin $privilegedRoleIds) { continue }
+        $principal = $assignment.principal
+        if (-not $principal.id) { throw 'Privileged role principal could not be resolved.' }
+        switch ($principal.'@odata.type') {
+            '#microsoft.graph.user' { [void]$adminUserIds.Add($principal.id) }
+            '#microsoft.graph.servicePrincipal' { continue }
+            '#microsoft.graph.group' {
+                $members = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/groups/$($principal.id)/transitiveMembers"
+                foreach ($member in $members.value) {
+                    if (-not $member.id) { throw 'Privileged group member could not be resolved.' }
+                    if ($member.'@odata.type' -eq '#microsoft.graph.user') { [void]$adminUserIds.Add($member.id) }
+                    elseif ($member.'@odata.type' -notin @('#microsoft.graph.group', '#microsoft.graph.servicePrincipal', '#microsoft.graph.device')) {
+                        throw 'Privileged group member type could not be verified.'
+                    }
                 }
             }
-        }
-        catch {
-            if ("$_" -match '404|ResourceNotFound|Not Found') {
-                Write-Verbose "Role $roleId not present in this tenant — skipping."
-            }
-            else {
-                throw
-            }
+            default { throw 'Privileged role principal type could not be verified.' }
         }
     }
 
@@ -97,9 +96,9 @@ try {
         $settingParams = @{
             Category         = 'Admin Role Separation'
             Setting          = 'Privileged Account vs Daily-Use Account Separation'
-            CurrentValue     = 'No privileged role assignments found'
+            CurrentValue     = 'No privileged user assignments found'
             RecommendedValue = 'Admin accounts must not have Exchange mailbox service plans'
-            Status           = 'Pass'
+            Status           = 'Review'
             CheckId          = 'ENTRA-ADMINROLE-SEPARATION-001'
             Remediation      = 'Assign at least one user to Global Administrator or other privileged roles.'
         }
@@ -120,18 +119,8 @@ try {
             Uri         = "/v1.0/users/$userId/licenseDetails"
             ErrorAction = 'Stop'
         }
-        try {
-            $licDetails = Invoke-SafeGraphRequest @licParams
-        }
-        catch {
-            # 404 = service principal or deleted user assigned to the role — skip
-            if ("$_" -match '404|ResourceNotFound|Not Found') {
-                Write-Verbose "Principal $userId not a user object or no longer exists — skipping license check."
-                continue
-            }
-            throw
-        }
-        if (-not $licDetails -or -not $licDetails['value']) { continue }
+        # A failure for a confirmed user is unavailable evidence, never a safe skip.
+        $licDetails = Invoke-SafeGraphRequest -ExpectCollection @licParams
 
         foreach ($sku in @($licDetails['value'])) {
             $planIds = @($sku['servicePlans'] | ForEach-Object { $_['servicePlanId'] })
@@ -165,29 +154,8 @@ try {
     Add-Setting @settingParams
 }
 catch {
-    if ("$_" -match '403|Forbidden|Authorization|Ensure the required|service is connected|Access_Denied|Authorization_RequestDenied') {
-        $settingParams = @{
-            Category         = 'Admin Role Separation'
-            Setting          = 'Privileged Account vs Daily-Use Account Separation'
-            CurrentValue     = 'Insufficient permissions'
-            RecommendedValue = 'Admin accounts must not have Exchange mailbox service plans'
-            Status           = 'Review'
-            CheckId          = 'ENTRA-ADMINROLE-SEPARATION-001'
-            Remediation      = 'Requires RoleManagement.Read.Directory and Directory.Read.All permissions. Grant via Entra admin center or reconnect with additional scopes.'
-        }
-        Add-Setting @settingParams
-        Write-Host ''
-        Write-Host "    $([char]0x26A0) Missing permission for Admin Role Separation check:" -ForegroundColor Yellow
-        Write-Host '      Identity: RoleManagement.Read.Directory' -ForegroundColor Yellow
-        Write-Host '    To fix: add the missing permission to your app registration, then grant admin consent.' -ForegroundColor DarkGray
-        Write-Host '    Entra ID > App registrations > [your app] > API permissions >' -ForegroundColor DarkGray
-        Write-Host '      Add a permission > Microsoft Graph > Application permissions' -ForegroundColor DarkGray
-        Write-Host "    Then click 'Grant admin consent for [tenant]' and re-run." -ForegroundColor DarkGray
-        Write-Host ''
-    }
-    else {
-        Write-Warning "Could not check admin role separation: $_"
-    }
+    Add-Setting -Category 'Admin Role Separation' -Setting 'Privileged Account vs Daily-Use Account Separation' -CurrentValue 'Unable to verify all privileged users' -RecommendedValue 'Admin accounts must not have Exchange mailbox service plans' -Status 'Unknown' -CheckId 'ENTRA-ADMINROLE-SEPARATION-001' -Limitations 'Role assignment, principal membership or license evidence is incomplete.' -Remediation 'Verify role assignments, role-assignable group membership and user licenses in Entra admin center. Review the collection log for the failed request.'
+    Write-Warning "Could not check admin role separation: $_"
 }
 
 # ------------------------------------------------------------------

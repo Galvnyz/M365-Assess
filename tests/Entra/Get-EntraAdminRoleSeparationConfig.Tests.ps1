@@ -1,188 +1,57 @@
-Describe 'Get-EntraAdminRoleSeparationConfig - Admin Has No Exchange Plans' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
+BeforeAll {
+    function Invoke-MgGraphRequest { param($Method, $Uri, $ErrorAction) }
+    $collector = "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
+}
+Describe 'Authoritative admin-role separation evidence' {
+    BeforeEach {
+        $script:fixtureRoleRows = @(@{roleDefinitionId='62e90394-69f5-4237-9190-012177145e10';principal=@{id='user-001';'@odata.type'='#microsoft.graph.user'}})
+        $script:plans = @()
         Mock Invoke-MgGraphRequest {
-            param($Method, $Uri, $ErrorAction)
-            if ($Uri -match 'roleAssignments') {
-                return @{ value = @(@{ principalId = 'user-001' }) }
-            }
-            if ($Uri -match 'licenseDetails') {
-                return @{
-                    value = @(@{ servicePlans = @(@{ servicePlanId = 'aad-premium-plan-guid' }) })
-                }
-            }
-            return @{ value = @() }
+            if ($Uri -match 'roleAssignments') { return @{value=$script:fixtureRoleRows} }
+            if ($Uri -match 'licenseDetails') { return @{value=@(@{servicePlans=$script:plans})} }
+            if ($Uri -match 'transitiveMembers') { return @{value=@(@{id='user-001';'@odata.type'='#microsoft.graph.user'})} }
+            throw "Unexpected request: $Uri"
         }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
     }
-
-    It 'Returns a non-empty settings list' {
-        $settings.Count | Should -BeGreaterThan 0
+    It 'passes only after verifying the user has no mailbox plans' {
+        (. $collector).Status | Should -Be 'Pass'
+        Should -Invoke Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter { $Uri -match 'roleAssignments' -and $Uri -notmatch 'filter=' }
     }
-
-    It 'Status is Pass when no admin has Exchange plans' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Pass'
+    It 'detects both Exchange mailbox plans' -ForEach @('efb87545-963c-4e0d-99df-69c6916d9eb0','19ec0d23-8335-4cbd-94ac-6050e30712fa') {
+        $script:plans = @(@{servicePlanId=$_})
+        (. $collector).Status | Should -Be 'Fail'
     }
-
-    It 'CheckId follows naming convention' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.CheckId | Should -Match '^ENTRA-ADMINROLE-SEPARATION-001\.\d+$'
+    It 'does not query service principals as users' {
+        $script:fixtureRoleRows += @{roleDefinitionId='62e90394-69f5-4237-9190-012177145e10';principal=@{id='app-001';'@odata.type'='#microsoft.graph.servicePrincipal'}}
+        (. $collector).Status | Should -Be 'Pass'
+        Should -Invoke Invoke-MgGraphRequest -Times 0 -ParameterFilter { $Uri -match '/users/app-001/' }
     }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    It 'includes group members and deduplicates users assigned through multiple paths' {
+        $script:fixtureRoleRows += @{roleDefinitionId='62e90394-69f5-4237-9190-012177145e10';principal=@{id='group-001';'@odata.type'='#microsoft.graph.group'}}
+        (. $collector).Status | Should -Be 'Pass'
+        Should -Invoke Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter { $Uri -match 'transitiveMembers' }
+        Should -Invoke Invoke-MgGraphRequest -Times 1 -Exactly -ParameterFilter { $Uri -match 'licenseDetails' }
     }
-}
-
-Describe 'Get-EntraAdminRoleSeparationConfig - Admin Has Exchange Plan 1' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
-        Mock Invoke-MgGraphRequest {
-            param($Method, $Uri, $ErrorAction)
-            if ($Uri -match 'roleAssignments') {
-                return @{ value = @(@{ principalId = 'admin-001' }) }
-            }
-            if ($Uri -match 'licenseDetails') {
-                return @{
-                    value = @(@{ servicePlans = @(@{ servicePlanId = 'efb87545-963c-4e0d-99df-69c6916d9eb0' }) })
-                }
-            }
-            return @{ value = @() }
-        }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
+    It 'requires review when no privileged users are found' {
+        $script:fixtureRoleRows=@()
+        (. $collector).Status | Should -Be 'Review'
     }
-
-    It 'Status is Fail when admin has Exchange Plan 1' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.Status | Should -Be 'Fail'
+    It 'does not turn unavailable principals into a pass' {
+        $script:fixtureRoleRows[0].principal = $null
+        (. $collector -WarningAction SilentlyContinue).Status | Should -Be 'Unknown'
     }
-
-    It 'CurrentValue mentions Exchange Online' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.CurrentValue | Should -Match 'Exchange Online'
+    It 'does not turn a failed role enumeration into a pass' -ForEach @('403 Forbidden','404 Not Found') {
+        $script:failure=$_
+        Mock Invoke-MgGraphRequest { throw $script:failure }
+        (. $collector -WarningAction SilentlyContinue).Status | Should -Be 'Unknown'
     }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    It 'does not skip a confirmed user whose license request fails' {
+        Mock Invoke-MgGraphRequest { throw '404 Not Found' } -ParameterFilter { $Uri -match 'licenseDetails' }
+        (. $collector -WarningAction SilentlyContinue).Status | Should -Be 'Unknown'
     }
-}
-
-Describe 'Get-EntraAdminRoleSeparationConfig - Admin Has Exchange Plan 2' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
-        Mock Invoke-MgGraphRequest {
-            param($Method, $Uri, $ErrorAction)
-            if ($Uri -match 'roleAssignments') {
-                return @{ value = @(@{ principalId = 'admin-002' }) }
-            }
-            if ($Uri -match 'licenseDetails') {
-                return @{
-                    value = @(@{ servicePlans = @(@{ servicePlanId = '19ec0d23-8335-4cbd-94ac-6050e30712fa' }) })
-                }
-            }
-            return @{ value = @() }
-        }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
-    }
-
-    It 'Status is Fail when admin has Exchange Plan 2' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.Status | Should -Be 'Fail'
-    }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
-    }
-}
-
-Describe 'Get-EntraAdminRoleSeparationConfig - No Role Assignments' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
-        Mock Invoke-MgGraphRequest { return @{ value = @() } }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
-    }
-
-    It 'Status is Pass when no privileged role assignments exist' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.Status | Should -Be 'Pass'
-    }
-
-    It 'CurrentValue mentions no assignments found' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.CurrentValue | Should -Match 'No privileged role assignments found'
-    }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
-    }
-}
-
-Describe 'Get-EntraAdminRoleSeparationConfig - One Role Returns 404' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
-        # First role throws 404; remaining roles return a valid assignment
-        $script:callCount = 0
-        Mock Invoke-MgGraphRequest {
-            param($Method, $Uri, $ErrorAction)
-            if ($Uri -match 'roleAssignments') {
-                $script:callCount++
-                if ($script:callCount -eq 1) { throw 'Response status code does not indicate success: 404 (Not Found).' }
-                return @{ value = @(@{ principalId = 'admin-ok' }) }
-            }
-            # licenseDetails — no Exchange plans
-            return @{ value = @(@{ servicePlans = @(@{ servicePlanId = 'other-plan' }) }) }
-        }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
-    }
-
-    It 'should still produce a result despite the 404 on one role' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check | Should -Not -BeNullOrEmpty
-    }
-
-    It 'should return Pass when the remaining admins have no Exchange plans' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.Status | Should -Be 'Pass'
-    }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
-    }
-}
-
-Describe 'Get-EntraAdminRoleSeparationConfig - Forbidden' {
-    BeforeAll {
-        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
-
-        Mock Invoke-MgGraphRequest { throw '403 Forbidden - Authorization_RequestDenied' }
-
-        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        . "$PSScriptRoot/../../src/M365-Assess/Entra/Get-EntraAdminRoleSeparationConfig.ps1"
-    }
-
-    It 'Status is Review when Graph returns 403' {
-        $check = $settings | Where-Object { $_.CheckId -like 'ENTRA-ADMINROLE-SEPARATION-001*' }
-        $check.Status | Should -Be 'Review'
-    }
-
-    AfterAll {
-        Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
+    It 'does not pass when group membership cannot be read' {
+        $script:fixtureRoleRows[0].principal = @{id='group-001';'@odata.type'='#microsoft.graph.group'}
+        Mock Invoke-MgGraphRequest { throw '403 Forbidden' } -ParameterFilter { $Uri -match 'transitiveMembers' }
+        (. $collector -WarningAction SilentlyContinue).Status | Should -Be 'Unknown'
     }
 }

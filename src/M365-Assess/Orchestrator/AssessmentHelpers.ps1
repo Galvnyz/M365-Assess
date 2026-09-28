@@ -257,6 +257,24 @@ function Show-SectionHeader {
     Write-Host "  $line" -ForegroundColor Cyan
 }
 
+function New-CollectionIssue {
+    <#
+    .SYNOPSIS
+        Creates an issue for a warning that leaves collector evidence incomplete.
+    .EXAMPLE
+        New-CollectionIssue -Message 'GraphCollectionIncomplete: HTTP=400' -Section Identity -Collector Example
+    #>
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param([string]$Message, [string]$Section, [string]$Collector)
+    if ($Message -notmatch 'GraphCollectionIncomplete|Could not|Unable to|Cannot index|401|403|Unauthorized|Forbidden|permission|consent|server side error|querying REST') { return }
+    [PSCustomObject]@{
+        Severity = 'WARNING'; Section = $Section; Collector = $Collector
+        Description = $Message; ErrorMessage = $Message
+        Action = Get-RecommendedAction -ErrorMessage $Message
+    }
+}
+
 function Show-CollectorResult {
     [CmdletBinding()]
     param(

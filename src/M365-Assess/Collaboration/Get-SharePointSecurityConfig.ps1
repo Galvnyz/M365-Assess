@@ -81,18 +81,6 @@ if (-not $spoSettings) {
 }
 
 # ------------------------------------------------------------------
-# Pre-fetch: Site list (for site-level checks)
-# ------------------------------------------------------------------
-$sites = @()
-try {
-    $siteResponse = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/sites?$select=id,displayName,sharingCapability,webUrl&$top=100'
-    $sites = $siteResponse.value
-}
-catch {
-    Write-Verbose "Could not retrieve site list: $($_.Exception.Message)"
-}
-
-# ------------------------------------------------------------------
 # Pre-fetch: Conditional Access policies (for CA coverage check)
 # ------------------------------------------------------------------
 $caPolicies = @()
@@ -739,135 +727,22 @@ catch {
 
 # --- Site & Access Checks (#382) ---
 
-# ------------------------------------------------------------------
-# SPO-SITE-001: Site sharing level within tenant policy
-# ------------------------------------------------------------------
-try {
-    if ($sites.Count -eq 0) {
-        $settingParams = @{
-            Category         = 'External Sharing'
-            Setting          = 'Site Sharing Level vs Tenant Policy'
-            CurrentValue     = 'Could not retrieve site list'
-            RecommendedValue = 'All sites at or below tenant sharing level'
-            Status           = 'Warning'
-            CheckId          = 'SPO-SITE-001'
-            Remediation      = 'Ensure SharePointTenantSettings.Read.All permission is consented. Review site sharing levels in SharePoint admin center > Active sites.'
-        }
-        Add-Setting @settingParams
+# Graph site metadata does not expose site-level SharingCapability. A site name
+# also cannot establish whether its contents are sensitive. Require authoritative
+# SharePoint admin review instead of treating missing properties as restricted.
+foreach ($siteCheck in @(
+    @{ Id = 'SPO-SITE-001'; Setting = 'Site Sharing Level vs Tenant Policy'; Expected = 'All sites at or below tenant sharing level' },
+    @{ Id = 'SPO-SITE-002'; Setting = 'Sensitive Site External Sharing'; Expected = 'Sensitive sites should have restricted sharing' }
+)) {
+    $settingParams = @{
+        Category = 'External Sharing'; Setting = $siteCheck.Setting
+        CurrentValue = 'Manual verification required in SharePoint admin center'
+        RecommendedValue = $siteCheck.Expected; Status = 'Review'; CheckId = $siteCheck.Id
+        EvidenceSource = 'SharePoint admin center / Active sites (manual verification required)'
+        Limitations = 'Microsoft Graph site resources do not expose site-level sharing configuration. Site names do not establish data sensitivity.'
+        Remediation = 'SharePoint admin center > Active sites > review site sharing settings and identify sensitive sites using their actual contents and classification.'
     }
-    else {
-        # Sharing hierarchy: most to least permissive
-        $sharingRank = @{
-            'externalUserAndGuestSharing'     = 3
-            'externalUserSharingOnly'         = 2
-            'existingExternalUserSharingOnly' = 1
-            'disabled'                        = 0
-        }
-        $tenantRank = if ($sharingRank.ContainsKey($spoSettings['sharingCapability'])) { $sharingRank[$spoSettings['sharingCapability']] } else { 0 }
-
-        $violatingSites = $sites | Where-Object {
-            $siteRank = if ($sharingRank.ContainsKey($_.sharingCapability)) { $sharingRank[$_.sharingCapability] } else { 0 }
-            $siteRank -gt $tenantRank
-        }
-
-        if ($violatingSites) {
-            $siteNames = ($violatingSites | ForEach-Object { $_.displayName }) -join ', '
-            $settingParams = @{
-                Category         = 'External Sharing'
-                Setting          = 'Site Sharing Level vs Tenant Policy'
-                CurrentValue     = "Violating sites: $siteNames"
-                RecommendedValue = 'All sites at or below tenant sharing level'
-                Status           = 'Fail'
-                CheckId          = 'SPO-SITE-001'
-                Remediation      = 'Review and restrict site-level sharing in SharePoint admin center > Active sites. Site sharing cannot exceed tenant-level sharing policy.'
-            }
-        }
-        else {
-            $settingParams = @{
-                Category         = 'External Sharing'
-                Setting          = 'Site Sharing Level vs Tenant Policy'
-                CurrentValue     = "All $($sites.Count) retrieved sites are within tenant policy (capped at 100)"
-                RecommendedValue = 'All sites at or below tenant sharing level'
-                Status           = 'Pass'
-                CheckId          = 'SPO-SITE-001'
-                Remediation      = 'No action required. Note: only first 100 sites retrieved.'
-            }
-        }
-        Add-Setting @settingParams
-    }
-}
-catch {
-    Write-Warning "Could not check site sharing levels: $_"
-}
-
-# ------------------------------------------------------------------
-# SPO-SITE-002: Sensitive sites have restricted sharing
-# ------------------------------------------------------------------
-try {
-    if ($sites.Count -eq 0) {
-        $settingParams = @{
-            Category         = 'External Sharing'
-            Setting          = 'Sensitive Site External Sharing'
-            CurrentValue     = 'Site list unavailable'
-            RecommendedValue = 'Sensitive sites should have restricted sharing'
-            Status           = 'Info'
-            CheckId          = 'SPO-SITE-002'
-            Remediation      = 'Review site sharing manually in SharePoint admin center > Active sites.'
-        }
-        Add-Setting @settingParams
-    }
-    else {
-        $sensitiveKeywords = @('HR', 'Human Resources', 'Finance', 'Legal', 'Payroll', 'Executive', 'Board', 'Confidential', 'Compliance')
-        $sensitiveSites = $sites | Where-Object {
-            $displayName = $_.displayName
-            $sensitiveKeywords | Where-Object { $displayName -match [regex]::Escape($_) }
-        }
-
-        if ($sensitiveSites.Count -eq 0) {
-            $settingParams = @{
-                Category         = 'External Sharing'
-                Setting          = 'Sensitive Site External Sharing'
-                CurrentValue     = 'No sensitive-named sites found in first 100 sites'
-                RecommendedValue = 'Sensitive sites should have restricted sharing'
-                Status           = 'Pass'
-                CheckId          = 'SPO-SITE-002'
-                Remediation      = 'No action required based on retrieved site list. Verify naming conventions cover all sensitive sites.'
-            }
-        }
-        else {
-            $exposedSites = $sensitiveSites | Where-Object {
-                $_.sharingCapability -ne 'disabled' -and $_.sharingCapability -ne 'existingExternalUserSharingOnly'
-            }
-
-            if ($exposedSites) {
-                $exposedNames = ($exposedSites | ForEach-Object { $_.displayName }) -join ', '
-                $settingParams = @{
-                    Category         = 'External Sharing'
-                    Setting          = 'Sensitive Site External Sharing'
-                    CurrentValue     = "Sensitive sites with external sharing: $exposedNames"
-                    RecommendedValue = 'Sensitive sites should have restricted sharing'
-                    Status           = 'Warning'
-                    CheckId          = 'SPO-SITE-002'
-                    Remediation      = 'Set sharing to "Only people in your organization" or "Existing guests" for sensitive sites. SharePoint admin center > Active sites > select site > Sharing.'
-                }
-            }
-            else {
-                $settingParams = @{
-                    Category         = 'External Sharing'
-                    Setting          = 'Sensitive Site External Sharing'
-                    CurrentValue     = "Found $($sensitiveSites.Count) sensitive-named site(s) — all have restricted sharing"
-                    RecommendedValue = 'Sensitive sites should have restricted sharing'
-                    Status           = 'Pass'
-                    CheckId          = 'SPO-SITE-002'
-                    Remediation      = 'No action required.'
-                }
-            }
-        }
-        Add-Setting @settingParams
-    }
-}
-catch {
-    Write-Warning "Could not check sensitive site sharing: $_"
+    Add-Setting @settingParams
 }
 
 # ------------------------------------------------------------------
@@ -877,7 +752,7 @@ try {
     $settingParams = @{
         Category         = 'Access Control'
         Setting          = 'Site Collection Administrator Visibility'
-        CurrentValue     = "Retrieved $($sites.Count) sites (capped at 100). Site admin counts require SPO PowerShell: Get-SPOSite | Get-SPOSiteAdministrator"
+        CurrentValue     = 'Site administrators require manual verification in SharePoint admin center > Active sites > Membership.'
         RecommendedValue = 'Review per-site administrators periodically'
         Status           = 'Info'
         CheckId          = 'SPO-SITE-003'
