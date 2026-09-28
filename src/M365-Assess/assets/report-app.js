@@ -1274,7 +1274,9 @@ function Briefing({
   }, /*#__PURE__*/React.createElement(BriefingStatRow, {
     onShowCritical: onShowCritical,
     onShowQuickWins: onShowQuickWins
-  })), /*#__PURE__*/React.createElement(HideableBlock, {
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "score-disclaimer"
+  }, /*#__PURE__*/React.createElement("strong", null, "Assessment scope:"), " Results reflect observed settings against M365-Assess's baseline and best-effort framework mappings. Scores support security improvement and audit preparation; they do not establish overall security or compliance. Validate applicability and alternative implementations against your system's scope, policies, and required evidence."), /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "briefing-actions",
     label: "Briefing action list"
   }, /*#__PURE__*/React.createElement(BriefingActions, {
