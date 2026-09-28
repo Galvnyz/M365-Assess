@@ -105,7 +105,10 @@ jobs:
       - name: Install modules
         shell: pwsh
         run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default -ErrorAction Stop
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
           Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
@@ -269,7 +272,10 @@ jobs:
       - name: Install Pester
         shell: pwsh
         run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default -ErrorAction Stop
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
           Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Run Pester
@@ -378,7 +384,10 @@ jobs:
       - name: Install Pester
         shell: pwsh
         run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default -ErrorAction Stop
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
           Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Run cross-platform smoke
