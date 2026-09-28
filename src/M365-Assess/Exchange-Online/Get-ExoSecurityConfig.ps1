@@ -26,6 +26,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
 $ErrorActionPreference = 'Stop'
@@ -98,7 +100,7 @@ try {
         # Check if tenant has E5 or E5 Compliance license (lockbox is included)
         $hasLockboxLicense = $false
         try {
-            $lockboxSkus = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
+            $lockboxSkus = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri '/v1.0/subscribedSkus' -ErrorAction Stop
             $lockboxSkuList = if ($lockboxSkus -and $lockboxSkus['value']) { @($lockboxSkus['value']) } else { @() }
             $e5SkuIds = @(
                 '06ebc4ee-1bb5-47dd-8120-11324bc54e06'  # SPE_E5 (M365 E5)
@@ -536,7 +538,7 @@ try {
                     Uri         = "/v1.0/users/$($mbx.UserPrincipalName)?`$select=accountEnabled"
                     ErrorAction = 'SilentlyContinue'
                 }
-                $mgUser = Invoke-MgGraphRequest @graphParams
+                $mgUser = Invoke-SafeGraphRequest @graphParams
                 if ($mgUser -and $mgUser['accountEnabled'] -eq $true) {
                     $enabledAccounts += $mbx.UserPrincipalName
                 }

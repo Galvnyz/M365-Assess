@@ -35,6 +35,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -51,7 +53,7 @@ $uri = "/v1.0/groups?`$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&`$s
 
 do {
     try {
-        $response = Invoke-MgGraphRequest -Method GET -Uri $uri
+        $response = Invoke-SafeGraphRequest -Method GET -Uri $uri
     }
     catch {
         Write-Error "Failed to retrieve Teams groups: $_"
@@ -91,7 +93,7 @@ foreach ($group in $allGroups) {
     # Get team settings (isArchived)
     $isArchived = $false
     try {
-        $teamDetail = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/teams/$teamId"
+        $teamDetail = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/teams/$teamId"
         $isArchived = [bool]$teamDetail.isArchived
     }
     catch {
@@ -102,7 +104,7 @@ foreach ($group in $allGroups) {
     $ownerCount = 0
     $ownerList = ''
     try {
-        $owners = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/groups/$teamId/owners?`$select=displayName,userPrincipalName"
+        $owners = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/groups/$teamId/owners?`$select=displayName,userPrincipalName"
         if ($owners.value) {
             $ownerCount = $owners.value.Count
             $ownerList = ($owners.value | ForEach-Object { $_.userPrincipalName }) -join '; '
@@ -115,7 +117,7 @@ foreach ($group in $allGroups) {
     # Get member count
     $memberCount = 0
     try {
-        $membersResponse = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/groups/$teamId/members?`$select=id&`$top=1" -Headers @{ 'ConsistencyLevel' = 'eventual' }
+        $membersResponse = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/groups/$teamId/members?`$select=id&`$top=999" -Headers @{ 'ConsistencyLevel' = 'eventual' }
         # Use @odata.count if available, otherwise enumerate
         if ($null -ne $membersResponse.'@odata.count') {
             $memberCount = $membersResponse.'@odata.count'
@@ -123,7 +125,7 @@ foreach ($group in $allGroups) {
         else {
             # Fall back to counting via /members with $count=true
             try {
-                $countResponse = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/groups/$teamId/members/`$count" -Headers @{ 'ConsistencyLevel' = 'eventual' }
+                $countResponse = Invoke-SafeGraphRequest -Method GET -Uri "/v1.0/groups/$teamId/members/`$count" -Headers @{ 'ConsistencyLevel' = 'eventual' }
                 $memberCount = [int]$countResponse
             }
             catch {
@@ -131,7 +133,7 @@ foreach ($group in $allGroups) {
                 $allMembers = [System.Collections.Generic.List[object]]::new()
                 $memberUri = "/v1.0/groups/$teamId/members?`$select=id&`$top=999"
                 do {
-                    $memberPage = Invoke-MgGraphRequest -Method GET -Uri $memberUri
+                    $memberPage = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri $memberUri
                     if ($memberPage.value) {
                         foreach ($m in $memberPage.value) {
                             $allMembers.Add($m)
@@ -152,7 +154,7 @@ foreach ($group in $allGroups) {
     $privateChannels = 0
     $sharedChannels = 0
     try {
-        $channels = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/teams/$teamId/channels?`$select=id,displayName,membershipType"
+        $channels = Invoke-SafeGraphRequest -ExpectCollection -Method GET -Uri "/v1.0/teams/$teamId/channels?`$select=id,displayName,membershipType"
         if ($channels.value) {
             $channelCount = $channels.value.Count
             $privateChannels = @($channels.value | Where-Object { $_.membershipType -eq 'private' }).Count

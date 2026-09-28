@@ -364,3 +364,20 @@ const data = JSON.parse(m[1].replace(/<\\\/script>/g, '</script>'));
 - `src/M365-Assess/Common/Build-ReportData.ps1` — the producer (function `Build-ReportDataJson`)
 - `src/M365-Assess/assets/report-app.jsx` — the consumer (`const D = window.REPORT_DATA`)
 - `tests/Common/Build-ReportData.Tests.ps1` — current contract tests
+
+
+## Versioned report contracts and source units
+
+`assets/report-sources.json` lists ordered JSX source units. Each component stays
+intact and each unit is limited to 1,000 lines. `npm run build` concatenates these
+units in the existing shared lexical scope and compiles one offline report-app.js.
+There is no runtime module loader or network dependency. `npm test` mounts the
+actual React bundle, tests scores and decisions, and validates a PowerShell fixture.
+
+Runtime schemas live in `src/M365-Assess/schemas`: REPORT_DATA 1.0, bridge JSON 1.1
+(additive evidence, decisions, actionable and collection fields), decisions 1.0.
+Changes to required fields, types or meanings need an explicit schemaVersion
+change and fixture updates. This is independent of the module release version.
+Pester tests check zero/one/multiple arrays and generated HTML/XLSX/JSON. The
+fixture HTML budget warns at 2.5 MB and fails at 3 MB; large tenants add data and
+can exceed the fixture budget without a build-size regression.

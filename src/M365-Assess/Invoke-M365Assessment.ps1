@@ -117,6 +117,10 @@
     baselines exist for the tenant. Off by default — baselines still auto-save
     for drift comparison, but the trend section appears only when the user
     explicitly opts in to longitudinal posture tracking.
+.PARAMETER AssessmentDecisionsPath
+    Validated, tenant-scoped JSON sidecar containing accepted risks and manual
+    attestations. Raw observations remain unchanged. Export decisions from the
+    HTML assessor panel, then pass the file on subsequent runs or regeneration.
 .PARAMETER HeadlineFramework
     Framework id(s) that headline the report's Executive Briefing first screen
     (e.g. 'cis-m365-v6', 'cmmc'). Validated against the framework definitions
@@ -341,6 +345,9 @@ param(
         }
     })]
     [string[]]$HeadlineFramework,
+
+    [Parameter()]
+    [string]$AssessmentDecisionsPath,
 
     [Parameter(ParameterSetName = 'ConnectionProfile', Mandatory)]
     [ArgumentCompleter({
@@ -696,6 +703,12 @@ Show-AssessmentHeader -TenantName $TenantId -OutputPath $assessmentFolder -LogPa
 # ------------------------------------------------------------------
 $connectedServices = [System.Collections.Generic.HashSet[string]]::new()  # used by Connect-RequiredService via scope
 $failedServices = [System.Collections.Generic.HashSet[string]]::new()
+$assessmentEvidence = @{} # Fresh evidence for this invocation; shared with connection helper.
+$script:resolvedTenantId = $null
+$script:resolvedTenantDomain = $null
+$script:resolvedTenantDisplayName = $null
+$script:graphPermissionsChecked = $false
+$script:tenantLicensesResolved = $false
 
 # ------------------------------------------------------------------
 # Module compatibility check — Graph SDK and EXO ship conflicting
@@ -999,6 +1012,11 @@ foreach ($sectionName in $Section) {
                 $collectorParams = $collector.Params.Clone()
             }
 
+            # Reuse audit evidence collected before the Exchange-to-Purview transition.
+            if ($collector.Name -eq '19b-Compliance-Security-Config' -and $assessmentEvidence.ContainsKey('ExchangeAudit')) {
+                $collectorParams['AuditConfigEvidence'] = $assessmentEvidence.ExchangeAudit
+            }
+
             # Value Opportunity collectors need project root + assessment folder paths
             if ($collector.ContainsKey('PassProjectContext') -and $collector.PassProjectContext) {
                 $collectorParams['ProjectRoot'] = $projectRoot
@@ -1184,18 +1202,18 @@ foreach ($sectionName in $Section) {
                 }
             }
 
+            $collectionWarnings = @($capturedWarnings | Where-Object { $_.Message -match 'GraphCollectionIncomplete|Could not|Unable to|Cannot index|401|403|Forbidden|permission|consent' })
+            if ($collectionWarnings.Count) { $errorMessage = ($collectionWarnings.Message -join '; ') }
             if ($null -ne $results -and @($results).Count -gt 0) {
                 $itemCount = Export-AssessmentCsv -Path $csvPath -Data @($results) -Label $collector.Label
-                $status = 'Complete'
+                $status = if ($collectionWarnings.Count) { 'Partial' } else { 'Complete' }
             }
             else {
                 $itemCount = 0
-                if ($hasPermissionWarning) {
+                if ($hasPermissionWarning -or $collectionWarnings.Count) {
                     $status = 'Failed'
-                    $errorMessage = ($capturedWarnings | Where-Object {
-                        $_.Message -match '401|403|Unauthorized|Forbidden|permission|consent'
-                    } | Select-Object -First 1).Message
-                    Write-AssessmentLog -Level ERROR -Message "Collector returned no data due to permission error" `
+                    $errorMessage = $collectionWarnings[0].Message
+                    Write-AssessmentLog -Level ERROR -Message "Collector returned no data after a collection error" `
                         -Section $sectionName -Collector $collector.Label -Detail $errorMessage
                 }
                 else {
@@ -1327,6 +1345,13 @@ Write-AssessmentLog -Level INFO -Message "Assessment complete. Duration: $($over
 # Baseline: save and/or compare
 # ------------------------------------------------------------------
 $driftReport         = @()
+if ($AssessmentDecisionsPath) {
+    . (Join-Path -Path $PSScriptRoot -ChildPath 'Common/AssessmentDecisions.ps1')
+    $decisionTenantPath = Join-Path -Path $assessmentFolder -ChildPath '01-Tenant-Info.csv'
+    $decisionTenant = if (Test-Path -LiteralPath $decisionTenantPath) { @(Import-Csv -LiteralPath $decisionTenantPath)[0].TenantId } else { '' }
+    $decisionDocument = Import-AssessmentDecisions -Path $AssessmentDecisionsPath -TenantId $decisionTenant
+    ConvertTo-Json -InputObject $decisionDocument -Depth 10 | Set-Content -LiteralPath (Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Decisions.json') -Encoding utf8
+}
 $driftBaselineLabel  = ''
 $driftBaselineTimestamp = ''
 

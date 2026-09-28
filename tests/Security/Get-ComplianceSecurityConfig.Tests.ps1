@@ -57,6 +57,19 @@ Describe 'Get-ComplianceSecurityConfig' {
         $settings.Count | Should -BeGreaterThan 0
     }
 
+    It 'uses captured Exchange evidence after the session is disconnected' -ForEach @(
+        @{ Enabled = $true; Expected = 'Pass' }, @{ Enabled = $false; Expected = 'Fail' }
+    ) {
+        $evidence = [PSCustomObject]@{Enabled=$Enabled;Source='Exchange Online / Get-AdminAuditLogConfig';CollectedAt='2026-01-01T00:00:00Z'}
+        $rows = & "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1" -AuditConfigEvidence $evidence
+        ($rows | Where-Object Setting -EQ 'Unified Audit Log (UAL) Ingestion').Status | Should -Be $Expected
+    }
+
+    It 'keeps failed evidence unknown instead of querying Purview for a false value' {
+        $rows = & "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1" -AuditConfigEvidence ([PSCustomObject]@{Error='Capture failed'}) -WarningAction SilentlyContinue
+        ($rows | Where-Object Setting -EQ 'Unified Audit Log (UAL) Ingestion').Status | Should -Be 'Unknown'
+    }
+
     It 'All settings have required properties' {
         foreach ($s in $settings) {
             $s.PSObject.Properties.Name | Should -Contain 'Category'
@@ -69,7 +82,7 @@ Describe 'Get-ComplianceSecurityConfig' {
     }
 
     It 'All Status values are valid' {
-        $validStatuses = @('Pass', 'Fail', 'Warning', 'Review', 'Info', 'N/A')
+        $validStatuses = @('Pass', 'Fail', 'Warning', 'Review', 'Info', 'Unknown')
         foreach ($s in $settings) {
             $s.Status | Should -BeIn $validStatuses `
                 -Because "Setting '$($s.Setting)' has status '$($s.Status)'"
@@ -93,12 +106,12 @@ Describe 'Get-ComplianceSecurityConfig' {
         }
     }
 
-    It 'Unified Audit Log check passes when enabled' {
+    It 'Unified Audit Log is unknown without identifiable Exchange connection' {
         $auditCheck = $settings | Where-Object {
             $_.CheckId -like 'COMPLIANCE-AUDIT-001*' -and $_.Setting -eq 'Unified Audit Log (UAL) Ingestion'
         }
         $auditCheck | Should -Not -BeNullOrEmpty
-        $auditCheck.Status | Should -Be 'Pass'
+        $auditCheck.Status | Should -Be 'Unknown'
     }
 
     It 'DLP Policies check passes with enabled policies' {
@@ -177,9 +190,9 @@ Describe 'Get-ComplianceSecurityConfig - Cmdlets Not Available' {
         $settings.Count | Should -BeGreaterThan 0
     }
 
-    It 'All unavailable-cmdlet checks have Review status' {
+    It 'Unavailable cmdlets never produce conclusions' {
         foreach ($s in $settings) {
-            $s.Status | Should -Be 'Review' `
+            $s.Status | Should -BeIn @('Review','Unknown') `
                 -Because "Setting '$($s.Setting)' should be Review when cmdlet is not available"
         }
     }

@@ -62,7 +62,9 @@ function Export-AssessmentBridgeJson {
         [string]$OutputPath,
 
         [Parameter()]
-        [string[]]$SensitiveCheckIds = @()
+        [string[]]$SensitiveCheckIds = @(),
+        [object]$Collection = $null,
+        [object]$AssessmentDecisions = $null
     )
 
     $findings = foreach ($f in $AllFindings) {
@@ -87,9 +89,12 @@ function Export-AssessmentBridgeJson {
         [PSCustomObject]@{
             checkId      = $f.CheckId
             status       = $f.Status
+            decision = if ($isSensitive) { $null } else { $f.Decision }
+            actionable = if ($f.PSObject.Properties['Actionable']) { [bool]$f.Actionable } else { $f.Status -in @('Fail','Warning','Review') }
+            evidence = if ($isSensitive) { $null } else { $f | Select-Object Evidence, ObservedValue, ExpectedValue, EvidenceSource, EvidenceTimestamp, CollectionMethod, PermissionRequired, Confidence, Limitations }
             severity     = $severity
             effort       = $effort
-            frameworks   = $frameworks
+            frameworks   = @($frameworks | Where-Object { $null -ne $_ })
             currentValue = if ($isSensitive) { '[REDACTED]' } else { $f.CurrentValue }
             remediation  = $f.Remediation
         }
@@ -127,7 +132,9 @@ function Export-AssessmentBridgeJson {
     }
 
     $bridge = [ordered]@{
-        schemaVersion     = '1.0'
+        schemaVersion     = '1.1'
+        collection        = $Collection
+        assessmentDecisions = if ($SensitiveCheckIds.Count -eq 0) { $AssessmentDecisions } else { $null }
         assessedAt        = if ($AssessedAt) { $AssessedAt } else { [datetime]::UtcNow.ToString('o') }
         tenantId          = $TenantId
         tenantName        = $TenantName
@@ -137,8 +144,7 @@ function Export-AssessmentBridgeJson {
         domainSummary     = $domainSummary
     }
 
-    $json = $bridge | ConvertTo-Json -Depth 6
-    $json = $json -replace '"frameworks":\s*null', '"frameworks": []'
+    $json = ConvertTo-Json -InputObject $bridge -Depth 20
     Set-Content -Path $OutputPath -Value $json -Encoding UTF8
     return $OutputPath
 }

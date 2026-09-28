@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "report-data 1.0",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "tenant",
+    "users",
+    "score",
+    "findings",
+    "frameworks",
+    "licenses",
+    "dns",
+    "ca",
+    "admin-roles",
+    "summary",
+    "headlineFrameworks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "tenant": {
+      "type": "array"
+    },
+    "users": {
+      "type": "array"
+    },
+    "score": {
+      "type": "array"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "checkId",
+          "status",
+          "frameworks"
+        ],
+        "properties": {
+          "checkId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "Pass",
+              "Fail",
+              "Warning",
+              "Review",
+              "Info",
+              "Skipped",
+              "Unknown",
+              "NotApplicable",
+              "NotLicensed"
+            ]
+          },
+          "frameworks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fwMeta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "profiles"
+              ],
+              "properties": {
+                "profiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "frameworks": {
+      "type": "array"
+    },
+    "licenses": {
+      "type": "array"
+    },
+    "dns": {
+      "type": "array"
+    },
+    "ca": {
+      "type": "array"
+    },
+    "admin-roles": {
+      "type": "array"
+    },
+    "summary": {
+      "type": "array"
+    },
+    "headlineFrameworks": {
+      "type": "array"
+    }
+  }
+}

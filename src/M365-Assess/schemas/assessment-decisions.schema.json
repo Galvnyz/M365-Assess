@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "M365-Assess assessor decisions 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tenantId",
+    "decisions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checkId",
+          "setting",
+          "type",
+          "justification",
+          "approvedBy",
+          "approvedAt",
+          "expiresAt",
+          "evidence",
+          "observedValue"
+        ],
+        "properties": {
+          "checkId": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9-]+$"
+          },
+          "setting": {
+            "type": "string",
+            "minLength": 1
+          },
+          "justification": {
+            "type": "string",
+            "minLength": 1
+          },
+          "approvedBy": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "enum": [
+              "AcceptedRisk",
+              "ManualAttestation"
+            ]
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observedValue": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -16,6 +16,10 @@
     Requires the ImportExcel module. If not available, logs a warning and returns.
 .PARAMETER AssessmentFolder
     Path to the assessment output folder containing collector CSVs and the summary file.
+.PARAMETER AssessmentDecisionsPath
+    Validated, tenant-scoped JSON sidecar containing accepted risks and manual
+    attestations. Raw observations remain unchanged. Export decisions from the
+    HTML assessor panel, then pass the file on subsequent runs or regeneration.
 .PARAMETER TenantName
     Optional tenant name used in the output filename. If omitted, derived from the
     summary CSV filename.
@@ -38,7 +42,8 @@ param(
 
     [Parameter()]
     [AllowEmptyCollection()]
-    [PSCustomObject[]]$DriftReport = @()
+    [PSCustomObject[]]$DriftReport = @(),
+    [string]$AssessmentDecisionsPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,6 +112,14 @@ if (-not $summaryFile) {
     return
 }
 $summary = Import-Csv -Path $summaryFile.FullName
+. (Join-Path -Path $PSScriptRoot -ChildPath 'AssessmentDecisions.ps1')
+$decisionTenantPath = Join-Path -Path $AssessmentFolder -ChildPath '01-Tenant-Info.csv'
+$decisionTenant = if (Test-Path -LiteralPath $decisionTenantPath) { @(Import-Csv -LiteralPath $decisionTenantPath)[0].TenantId } else { '' }
+if (-not $AssessmentDecisionsPath) {
+    $sidecar = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Decisions.json'
+    if (Test-Path -LiteralPath $sidecar) { $AssessmentDecisionsPath = $sidecar }
+}
+$assessmentDecisions = Import-AssessmentDecisions -Path $AssessmentDecisionsPath -TenantId $decisionTenant
 
 # ------------------------------------------------------------------
 # Scan CSVs and build findings with dynamic framework columns
@@ -118,7 +131,7 @@ $evidenceRows = [System.Collections.Generic.List[PSCustomObject]]::new()
 $evidenceFieldNames = @('ObservedValue','ExpectedValue','EvidenceSource','EvidenceTimestamp','CollectionMethod','PermissionRequired','Confidence','Limitations')
 
 foreach ($c in $summary) {
-    if ($c.Status -ne 'Complete' -or [int]$c.Items -eq 0) { continue }
+    if ($c.Status -notin @('Complete', 'Partial') -or [int]$c.Items -eq 0) { continue }
     $csvFile = Join-Path -Path $AssessmentFolder -ChildPath $c.FileName
     if (-not (Test-Path -Path $csvFile)) { continue }
 
@@ -172,6 +185,7 @@ foreach ($c in $summary) {
             Setting         = $row.Setting
             Category        = $row.Category
             Status          = $row.Status
+            CurrentValue    = $row.CurrentValue
             Horizon         = $horizon
             RiskSeverity    = if ($riskSeverity.ContainsKey($baseCheckId)) { $riskSeverity[$baseCheckId] } else { '' }
             ImpactSeverity  = if ($entry -and $entry.impactRating) { $entry.impactRating.severity }  else { '' }
@@ -205,11 +219,34 @@ foreach ($c in $summary) {
     }
 }
 
+function Export-AssessorDecisionSheet {
+    <# .SYNOPSIS
+        Retains all assessor records, including currently unmatched decisions.
+    #>
+    param([string]$Path)
+    if (-not $assessmentDecisions.decisions) { return }
+    $rows = foreach ($decision in $assessmentDecisions.decisions) {
+        $matched = @($findings | Where-Object { ($_.CheckId -replace '\.\d+$', '') -eq $decision.checkId -and $_.Setting -ceq $decision.setting })
+        $state = if ($matched.Count -eq 1) { $matched[0].Decision_state } elseif ($matched.Count -gt 1) { 'Ambiguous' } else { 'Unmatched' }
+        $decision | Select-Object *, @{Name='EvaluationState'; Expression={ $state }.GetNewClosure()}
+    }
+    $rows | Export-Excel -Path $Path -WorksheetName 'Assessor Decisions' -ClearSheet -AutoSize -FreezeTopRow
+}
 if ($findings.Count -eq 0) {
-    Write-Warning "No CheckId-mapped findings found — skipping XLSX export."
+    $outputFile = Join-Path -Path $AssessmentFolder -ChildPath "_Compliance-Matrix_$TenantName.xlsx"
+    $summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -ClearSheet -AutoSize -FreezeTopRow
+    Export-AssessorDecisionSheet -Path $outputFile
+    Write-Warning 'No CheckId-mapped findings found; XLSX contains collector status and assessor records.'
     return
 }
 
+Add-AssessmentDecisions -Findings $findings -Document $assessmentDecisions
+foreach ($finding in $findings) {
+    foreach ($field in @('type','state','justification','approvedBy','approvedAt','expiresAt','evidence')) {
+        $finding | Add-Member -NotePropertyName "Decision_$field" -NotePropertyValue $finding.Decision.$field
+    }
+    $finding.PSObject.Properties.Remove('Decision')
+}
 # Sort by CheckId
 $sortedFindings = $findings | Sort-Object -Property CheckId
 
@@ -587,7 +624,7 @@ if ($verificationRows.Count -gt 0) {
 # ------------------------------------------------------------------
 $severityOrder = @{ 'critical' = 0; 'high' = 1; 'medium' = 2; 'low' = 3; 'info' = 4; 'none' = 5 }
 $horizonOrder  = @{ 'now' = 0; 'soon' = 1; 'later' = 2 }
-$roadmapRows = $sortedFindings | Where-Object { $_.Horizon } | ForEach-Object {
+$roadmapRows = $sortedFindings | Where-Object { $_.Actionable -and $_.Horizon } | ForEach-Object {
     [PSCustomObject]@{
         Horizon       = switch ($_.Horizon) { 'now' { 'Now' } 'soon' { 'Next' } 'later' { 'Later' } default { $_.Horizon } }
         CheckId       = $_.CheckId
@@ -744,3 +781,7 @@ if ($driftSheet -and $driftSheet.Dimension) {
 Close-ExcelPackage $pkg
 
 Write-Host "  Compliance matrix exported: $outputFile" -ForegroundColor Green
+
+# Preserve missing/failed collector visibility alongside scored observations.
+$summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -AutoSize -FreezeTopRow
+Export-AssessorDecisionSheet -Path $outputFile

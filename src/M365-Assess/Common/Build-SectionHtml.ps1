@@ -81,7 +81,7 @@ $sectionData = @{
 $allCisFindings = [System.Collections.Generic.List[PSCustomObject]]::new()
 
 foreach ($c in $summary) {
-    if ($c.Status -ne 'Complete' -or [int]$c.Items -eq 0) { continue }
+    if ($c.Status -notin @('Complete', 'Partial') -or [int]$c.Items -eq 0) { continue }
     $csvFile = Join-Path -Path $AssessmentFolder -ChildPath $c.FileName
     if (-not (Test-Path -Path $csvFile)) { continue }
 
@@ -120,6 +120,15 @@ foreach ($c in $summary) {
             RiskSeverity    = if ($entry) { $entry.riskSeverity } else { 'Medium' }
             ImpactRationale = if ($entry -and $entry.impactRating -and $entry.impactRating.rationale) { $entry.impactRating.rationale } else { '' }
             Frameworks      = $fwHash
+            Evidence = $row.Evidence
+            ObservedValue = $row.ObservedValue
+            ExpectedValue = $row.ExpectedValue
+            EvidenceSource = $row.EvidenceSource
+            EvidenceTimestamp = $row.EvidenceTimestamp
+            CollectionMethod = $row.CollectionMethod
+            PermissionRequired = $row.PermissionRequired
+            Confidence = $row.Confidence
+            Limitations = $row.Limitations
         })
     }
 }
@@ -127,10 +136,20 @@ foreach ($c in $summary) {
 # ------------------------------------------------------------------
 # 3. Export Compliance Matrix XLSX (requires ImportExcel module)
 # ------------------------------------------------------------------
+. (Join-Path -Path $PSScriptRoot -ChildPath 'AssessmentDecisions.ps1')
+$decisionTenant = if ($tenantData) { [string]$tenantData[0].TenantId } else { '' }
+if (-not $AssessmentDecisionsPath) {
+    $sidecar = Join-Path -Path $AssessmentFolder -ChildPath '_Assessment-Decisions.json'
+    if (Test-Path -LiteralPath $sidecar) { $AssessmentDecisionsPath = $sidecar }
+}
+$assessmentDecisions = Import-AssessmentDecisions -Path $AssessmentDecisionsPath -TenantId $decisionTenant
+Add-AssessmentDecisions -Findings $allCisFindings -Document $assessmentDecisions
+$collectionState = Get-AssessmentCollectionState -Summary $summary -Findings $allCisFindings
 try {
     $xlsxScript = Join-Path -Path $PSScriptRoot -ChildPath 'Export-ComplianceMatrix.ps1'
     if (Test-Path -Path $xlsxScript) {
         $xlsxParams = @{ AssessmentFolder = $AssessmentFolder; TenantName = $reportDomainPrefix }
+        if ($AssessmentDecisionsPath) { $xlsxParams['AssessmentDecisionsPath'] = $AssessmentDecisionsPath }
         if ($DriftReport -and $DriftReport.Count -gt 0) { $xlsxParams['DriftReport'] = $DriftReport }
         & $xlsxScript @xlsxParams
     }

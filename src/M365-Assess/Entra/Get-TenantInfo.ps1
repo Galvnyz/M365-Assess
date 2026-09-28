@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Collects Entra ID tenant information including org details, verified domains, and security defaults status.
 .DESCRIPTION
@@ -28,6 +28,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -51,7 +53,7 @@ catch {
 # Retrieve domains
 try {
     Write-Verbose "Retrieving tenant domains..."
-    $domains = Get-MgDomain
+    $domains = Get-MgDomain -All
 }
 catch {
     Write-Error "Failed to retrieve domain information: $_"
@@ -59,12 +61,12 @@ catch {
 }
 
 # Retrieve security defaults policy (non-fatal — falls back to N/A)
-# Uses Invoke-MgGraphRequest to avoid dependency on specific Graph SDK cmdlet
+# Uses Invoke-SafeGraphRequest to avoid dependency on specific Graph SDK cmdlet
 # names which vary between SDK versions (v1.x vs v2.x).
 $securityDefaults = $null
 try {
     Write-Verbose "Retrieving security defaults enforcement policy..."
-    $securityDefaults = Invoke-MgGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
+    $securityDefaults = Invoke-SafeGraphRequest -Method GET -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy' -ErrorAction Stop
 }
 catch {
     Write-Verbose "Could not retrieve security defaults policy — will report N/A"

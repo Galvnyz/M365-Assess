@@ -28,6 +28,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -48,7 +50,7 @@ try {
         Uri         = '/v1.0/agreements'
         ErrorAction = 'Stop'
     }
-    $agreements = Invoke-MgGraphRequest @graphParams
+    $agreements = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $agreementList = @()
     if ($agreements -and $agreements['value']) {

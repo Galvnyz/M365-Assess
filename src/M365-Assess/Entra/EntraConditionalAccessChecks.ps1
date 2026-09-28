@@ -15,7 +15,7 @@ param()
 # ------------------------------------------------------------------
 try {
     Write-Verbose "Counting conditional access policies..."
-    $caPolicies = Invoke-SafeGraphRequest -Uri '/v1.0/identity/conditionalAccess/policies'
+    $caPolicies = Invoke-SafeGraphRequest -ExpectCollection -Uri '/v1.0/identity/conditionalAccess/policies'
     $policyList = if ($caPolicies -and $caPolicies['value']) { @($caPolicies['value']) } else { @() }
     $caCount = $policyList.Count
     $enabledCount = @($policyList | Where-Object { $_['state'] -eq 'enabled' }).Count
@@ -64,7 +64,7 @@ try {
         Uri         = '/v1.0/policies/deviceRegistrationPolicy'
         ErrorAction = 'Stop'
     }
-    $devicePolicy = Invoke-MgGraphRequest @graphParams
+    $devicePolicy = Invoke-SafeGraphRequest @graphParams
 
     if ($devicePolicy) {
         # CIS 5.1.4.1 -- Device join restricted
@@ -125,7 +125,7 @@ try {
         Uri         = '/beta/policies/deviceRegistrationPolicy'
         ErrorAction = 'Stop'
     }
-    $devicePolicyBeta = Invoke-MgGraphRequest @graphParams
+    $devicePolicyBeta = Invoke-SafeGraphRequest @graphParams
 
     if ($devicePolicyBeta) {
         # CIS 5.1.4.4 -- Local admin assignment limited during Entra join

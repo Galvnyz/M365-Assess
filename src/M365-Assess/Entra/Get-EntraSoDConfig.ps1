@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -56,7 +58,7 @@ try {
         Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$globalAdminRoleId'&`$top=999&`$expand=principal"
         ErrorAction = 'Stop'
     }
-    $gaAssignments = Invoke-MgGraphRequest @gaParams
+    $gaAssignments = Invoke-SafeGraphRequest -ExpectCollection @gaParams
 
     $gaMembers = @()
     if ($gaAssignments -and $gaAssignments['value']) {
@@ -69,7 +71,7 @@ try {
         Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$privRoleAdminRoleId'&`$top=999&`$expand=principal"
         ErrorAction = 'Stop'
     }
-    $praAssignments = Invoke-MgGraphRequest @praParams
+    $praAssignments = Invoke-SafeGraphRequest -ExpectCollection @praParams
 
     $praMembers = @()
     if ($praAssignments -and $praAssignments['value']) {

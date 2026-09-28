@@ -30,6 +30,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -50,7 +52,7 @@ try {
         Uri         = '/v1.0/identity/conditionalAccess/policies'
         ErrorAction = 'Stop'
     }
-    $caResponse = Invoke-MgGraphRequest @graphParams
+    $caResponse = Invoke-SafeGraphRequest -ExpectCollection @graphParams
 
     $policies = @()
     if ($caResponse -and $caResponse['value']) { $policies = @($caResponse['value']) }

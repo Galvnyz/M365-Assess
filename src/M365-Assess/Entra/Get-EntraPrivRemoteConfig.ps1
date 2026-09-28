@@ -32,6 +32,8 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$OutputPath
 )
+. (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Invoke-SafeGraphRequest.ps1')
+
 
 $ErrorActionPreference = 'Stop'
 
@@ -59,7 +61,7 @@ try {
         Uri         = "/v1.0/roleManagement/directory/roleAssignments?`$filter=roleDefinitionId eq '$globalAdminRoleId'"
         ErrorAction = 'Stop'
     }
-    $activeAssignments = Invoke-MgGraphRequest @activeParams
+    $activeAssignments = Invoke-SafeGraphRequest -ExpectCollection @activeParams
 
     $permanentCount = 0
     if ($activeAssignments -and $activeAssignments['value']) {
@@ -75,7 +77,7 @@ try {
             Uri         = "/v1.0/roleManagement/directory/roleEligibilityScheduleInstances?`$filter=roleDefinitionId eq '$globalAdminRoleId'"
             ErrorAction = 'Stop'
         }
-        $eligibleAssignments = Invoke-MgGraphRequest @eligibleParams
+        $eligibleAssignments = Invoke-SafeGraphRequest -ExpectCollection @eligibleParams
 
         if ($eligibleAssignments -and $eligibleAssignments['value']) {
             $eligibleCount = @($eligibleAssignments['value']).Count

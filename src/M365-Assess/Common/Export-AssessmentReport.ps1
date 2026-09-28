@@ -32,6 +32,10 @@
     Baseline label string — retained for downstream compatibility.
 .PARAMETER DriftBaselineTimestamp
     Baseline timestamp string — retained for downstream compatibility.
+.PARAMETER AssessmentDecisionsPath
+    Validated, tenant-scoped JSON sidecar containing accepted risks and manual
+    attestations. Raw observations remain unchanged. Export decisions from the
+    HTML assessor panel, then pass the file on subsequent runs or regeneration.
 .PARAMETER HeadlineFramework
     Framework id(s) that headline the report's Executive Briefing first screen.
     Unknown ids are dropped with a warning (Invoke-M365Assessment validates with
@@ -90,7 +94,8 @@ param(
 
     [Parameter()]
     [AllowEmptyCollection()]
-    [string[]]$HeadlineFramework = @()
+    [string[]]$HeadlineFramework = @(),
+    [string]$AssessmentDecisionsPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -187,7 +192,7 @@ if (-not $OutputPath) {
 # ------------------------------------------------------------------
 # Build REPORT_DATA JSON
 # ------------------------------------------------------------------
-$xlsxName   = if ($reportDomainPrefix) { "_Compliance-Matrix_$reportDomainPrefix.xlsx" } else { '_Compliance-Matrix.xlsx' }
+$xlsxName   = if ($reportDomainPrefix) { "_Compliance-Matrix_$reportDomainPrefix.xlsx" } else { '_Compliance-Matrix_tenant.xlsx' }
 $reportTitle = if ($TenantName -ne 'M365 Tenant') { "$TenantName — M365 Security Assessment" } else { 'M365 Security Assessment' }
 
 # #812: load the deficit map written by Test-GraphPermissions / Test-GraphAppRolePermissions.
@@ -203,6 +208,8 @@ if (Test-Path -Path $deficitPath) {
 }
 
 $reportJsonParams = @{
+    Collection         = $collectionState
+    AssessmentDecisions = $assessmentDecisions
     AllFindings        = $allCisFindings
     SectionData        = $sectionData
     RegistryData       = $controlRegistry
@@ -262,6 +269,8 @@ $bridgePath   = Join-Path -Path $AssessmentFolder -ChildPath "_Assessment$bridge
 
 try {
     $written = Export-AssessmentBridgeJson `
+        -Collection        $collectionState `
+        -AssessmentDecisions $assessmentDecisions `
         -AllFindings       $allCisFindings `
         -RegistryData      $controlRegistry `
         -TenantId          $tenantIdValue `
