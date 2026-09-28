@@ -82,8 +82,8 @@ function Export-ComplianceOverview {
 
     # Informational disclaimer
     $null = $html.AppendLine("<div class='cis-disclaimer'>")
-    $null = $html.AppendLine("<strong>Informational Notice</strong>")
-    $null = $html.AppendLine("<p>This compliance assessment is provided for <strong>informational purposes only</strong> and does not constitute a comprehensive security assessment, audit, or certification. Results reflect automated checks at a point in time and should not be considered conclusive. For a thorough security evaluation, consider engaging a qualified security professional.</p>")
+    $null = $html.AppendLine("<strong>Assessment scope</strong>")
+    $null = $html.AppendLine("<p>Results reflect observed settings against M365-Assess's baseline and best-effort framework mappings. Scores support security improvement and audit preparation; they do not establish overall security or compliance. Validate applicability and alternative implementations against your system's scope, policies, and required evidence.</p>")
     $null = $html.AppendLine("</div>")
 
     # License-skipped notice

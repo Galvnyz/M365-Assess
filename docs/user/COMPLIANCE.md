@@ -2,6 +2,8 @@
 
 The HTML report includes a **Compliance Overview** section that maps all assessed security controls across 15 compliance frameworks simultaneously. No parameters needed; all framework data is always included.
 
+**Assessment scope:** M365-Assess provides best-effort checks and framework mappings to support security insights, audit preparation, and alignment. Some requirements allow multiple implementations or require organizational and procedural evidence beyond the settings assessed here. A passing check does not establish that a framework requirement is fully satisfied, and a deviation from this baseline does not by itself establish noncompliance. Determine applicability within your system's scope and validate supporting evidence with the responsible assessor. Recorded attestations document reviewer judgments; they do not constitute certification.
+
 ## Supported Frameworks
 
 | Framework | Controls | Type |

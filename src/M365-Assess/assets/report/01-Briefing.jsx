@@ -18,6 +18,7 @@ function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
       <HideableBlock hideKey="briefing-stats" label="Briefing stat tiles">
         <BriefingStatRow onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
       </HideableBlock>
+      <p className="score-disclaimer"><strong>Assessment scope:</strong> Results reflect observed settings against M365-Assess's baseline and best-effort framework mappings. Scores support security improvement and audit preparation; they do not establish overall security or compliance. Validate applicability and alternative implementations against your system's scope, policies, and required evidence.</p>
       <HideableBlock hideKey="briefing-actions" label="Briefing action list">
         <BriefingActions onViewFinding={onViewFinding}/>
       </HideableBlock>

@@ -38,10 +38,10 @@ Pass / (Pass + Fail + Warning)
 
 ### 2. Compliance Readiness
 
-Counts `Review` findings as ready, since "needs review" usually means "auditor will accept with attestation."
+Counts only `Pass` findings as ready; `Review` findings remain outstanding in the denominator. Recorded attestations document reviewer judgments and do not increase this score or guarantee audit acceptance. See [Assessment scope](COMPLIANCE.md) for the limits of framework mappings and scores.
 
 ```
-(Pass + Review) / (Pass + Fail + Warning + Review)
+Pass / (Pass + Fail + Warning + Review)
 ```
 
 `Skipped`, `Unknown`, `NotApplicable`, `NotLicensed` are still excluded -- you can't be ready for a control you literally cannot assess.
