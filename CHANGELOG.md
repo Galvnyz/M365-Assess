@@ -5,6 +5,11 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ## [Unreleased]
 
 ### Fixed
+- Correct password-settings Graph routing and request the missing access-review and
+  Intune security read scopes. Admin-role separation distinguishes principal types,
+  includes group members, and keeps failed evidence Unknown. Site-sharing checks
+  require manual review because Graph site metadata lacks sharing configuration.
+  Collection issue reports now include non-permission request failures.
 - Preserve Exchange audit evidence before the orchestrator switches to Purview.
   Partial collectors remain visible in reports and are no longer counted as complete
   in the console summary. Graph failures log endpoint, page, HTTP status and error code.

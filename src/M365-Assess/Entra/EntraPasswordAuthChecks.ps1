@@ -264,7 +264,7 @@ try {
     Write-Verbose "Checking password protection..."
     $graphParams = @{
         Method      = 'GET'
-        Uri         = '/v1.0/settings'
+        Uri         = '/v1.0/groupSettings'
         ErrorAction = 'Stop'
     }
     $passwordProtection = Invoke-SafeGraphRequest -ExpectCollection @graphParams
