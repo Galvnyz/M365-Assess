@@ -23,7 +23,7 @@ jobs:
         shell: pwsh
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+          Install-Module Pester -Force -Scope CurrentUser -RequiredVersion 5.7.1
 
       - name: Validate manifest
         shell: pwsh
@@ -46,6 +46,7 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = './tests'
           $config.Run.Exit = $true

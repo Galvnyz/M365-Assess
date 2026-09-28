@@ -60,7 +60,7 @@ test('finalization preserves tenant decisions and escapes embedded script markup
  data.assessmentDecisions={schemaVersion:'1.0',tenantId:data.tenant[0].TenantId,decisions:[{
   checkId:'CA-TEST-002',setting:'Automated failure',type:'AcceptedRisk',observedValue:'False',
   approvedAt:'2026-01-01T00:00:00Z',expiresAt:'2099-01-01T00:00:00Z',approvedBy:'Assessor',
-  justification:'Migration',evidence:'</ScRiPt><script>untrusted()</script>'
+  justification:'Migration',evidence:'</ScRiPt><script>untrusted()</script> </script ><img id="injected-space"> </script/><img id="injected-slash"> <!--<script></script>'
  }]};
  const dom=new JSDOM('<!doctype html><div id="root"></div><script id="report-overrides"></script><script>window.REPORT_DATA = {};</script>',{runScripts:'outside-only',url:'https://example.test'});
  const w=dom.window;w.REPORT_DATA=data;
@@ -70,6 +70,8 @@ test('finalization preserves tenant decisions and escapes embedded script markup
  const html=await saved.text();
  assert.equal(html.includes('</ScRiPt>'),false);
  const reopened=new JSDOM(html,{runScripts:'outside-only'});
+ assert.equal(reopened.window.document.querySelector('[id^="injected-"]'),null);
+ assert.ok(reopened.window.document.querySelector('#root'));
  const script=[...reopened.window.document.querySelectorAll('script')].find(s=>s.textContent.startsWith('window.REPORT_DATA ='));
  reopened.window.eval(script.textContent);
  assert.deepEqual(JSON.parse(JSON.stringify(reopened.window.REPORT_DATA.assessmentDecisions)),data.assessmentDecisions);

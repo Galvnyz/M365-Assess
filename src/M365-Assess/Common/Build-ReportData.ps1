@@ -40,7 +40,7 @@ function Build-ReportDataJson {
     .DESCRIPTION
         Accepts pre-loaded assessment data and produces a JavaScript assignment statement
         (window.REPORT_DATA = {...};) safe for inline embedding in an HTML <script> block.
-        All </script> substrings in JSON string values are escaped as <\/script>.
+        HTML characters in JSON strings are Unicode-escaped for safe script embedding.
     .PARAMETER AllFindings
         Array of enriched security-config check rows (output of Build-SectionHtml.ps1's
         $allCisFindings). Each row must have: CheckId, Category, Setting, CurrentValue,
@@ -479,7 +479,7 @@ function Build-ReportDataJson {
     }
 
     # ------------------------------------------------------------------
-    # 5. Serialize + escape </script> in string values
+    # 5. Serialize with HTML escaping to preserve the enclosing script boundary.
     # ------------------------------------------------------------------
     $json = ConvertTo-Json -InputObject $reportData -Depth 20 -EscapeHandling EscapeHtml
     return "window.REPORT_DATA = $json;"
