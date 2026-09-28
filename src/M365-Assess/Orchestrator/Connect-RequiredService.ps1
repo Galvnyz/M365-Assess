@@ -5,6 +5,10 @@ function Connect-RequiredService {
         [string]$SectionName
     )
 
+    # EXO-first can bind incompatible identity assemblies before Graph authenticates.
+    if (@($Services | Where-Object { $_ -in @('ExchangeOnline', 'Purview') -and -not $failedServices.Contains($_) }).Count -gt 0) {
+        $Services = @('Graph') + @($Services | Where-Object { $_ -ne 'Graph' })
+    }
     foreach ($svc in $Services) {
         if ($connectedServices.Contains($svc)) { continue }
         if ($failedServices.Contains($svc)) { continue }
@@ -24,6 +28,9 @@ function Connect-RequiredService {
 
         Write-AssessmentLog -Level INFO -Message "Connecting to $svc..." -Section $SectionName
         try {
+            if ($svc -in @('ExchangeOnline', 'Purview') -and -not $connectedServices.Contains('Graph')) {
+                throw 'Graph authentication failed; Exchange/Purview cannot safely load. Start a fresh session and resolve Graph authentication.'
+            }
             # EXO and Purview share the EXO module and conflict if connected simultaneously.
             # Disconnect the other before connecting.
             if ($svc -eq 'ExchangeOnline' -and $connectedServices.Contains('Purview')) {
@@ -62,7 +69,7 @@ function Connect-RequiredService {
             }
 
             if ($svc -eq 'Graph') {
-                $connectParams['Scopes'] = $graphScopes
+                $connectParams['Scopes'] = @(@($graphScopes) + 'Organization.Read.All' | Select-Object -Unique)
             }
 
             if ($M365Environment -ne 'commercial') {
@@ -74,6 +81,8 @@ function Connect-RequiredService {
             if ($UseDeviceCode) {
                 $connectParams['UseDeviceCode'] = $true
             }
+
+            if ($DisableWAM -and $svc -in @('ExchangeOnline', 'Purview')) { $connectParams['DisableWAM'] = $true }
 
             # Suppress noisy output during connection (skip when device code
             # is active — the user needs to see the code and URL).

@@ -111,7 +111,7 @@ function Get-RecommendedAction {
         # failure carries both "WAM Error" and the redirect-uri text, so this must
         # be matched first to point the user at the sovereign portal (#943).
         @{ Pattern = 'Invalid redirect uri|IncorrectConfiguration'; Action = 'Power BI app-registration redirect URI mismatch (common in GCC High). In https://portal.azure.us > App registrations > your app > Authentication, add the WAM broker redirect URI shown in the error (ms-appx-web://microsoft.aad.brokerplugin/<client-id>). Or skip the WAM broker entirely with certificate auth (-ClientId/-CertificateThumbprint).' }
-        @{ Pattern = 'WAM|broker|RuntimeBroker'; Action = 'WAM broker issue. Try -UseDeviceCode (choose your browser profile), -UserPrincipalName admin@tenant.onmicrosoft.com, certificate auth (-ClientId/-CertificateThumbprint), or -SkipConnection with a pre-existing session.' }
+        @{ Pattern = 'WAM|broker|RuntimeBroker'; Action = 'WAM broker issue. For Exchange/Purview try -DisableWAM; for Graph try -UseDeviceCode or a supported terminal. Alternatively use certificate auth (-ClientId/-CertificateThumbprint), or -SkipConnection with a pre-existing session.' }
         @{ Pattern = '401|Unauthorized'; Action = 'Re-authenticate or ensure admin consent has been granted for the required scopes.' }
         @{ Pattern = '403|Forbidden|Insufficient privileges'; Action = 'Grant the required Graph/API permissions to the app registration or user account.' }
         @{ Pattern = 'not recognized|not found|not installed'; Action = 'Ensure the required PowerShell module is installed and the service is connected.' }

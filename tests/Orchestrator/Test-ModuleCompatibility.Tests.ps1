@@ -25,8 +25,10 @@ Describe 'Test-ModuleCompatibility' {
             }
         }
 
+        Mock Test-ExoRuntimeSupported { $true }
         Mock Write-Host { }
         Mock Write-AssessmentLog { }
+        Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and -not $ListAvailable }
 
         $sectionServiceMap = @{
             'Identity' = @('Graph')
@@ -42,8 +44,8 @@ Describe 'Test-ModuleCompatibility' {
             } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
 
             Mock Get-Module {
-                [PSCustomObject]@{ Version = [version]'3.7.1'; ModuleBase = 'C:\fake\exo' }
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+                [PSCustomObject]@{ Version = [version]'3.10.1'; ModuleBase = 'C:\fake\exo' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
 
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module {
@@ -67,8 +69,8 @@ Describe 'Test-ModuleCompatibility' {
         BeforeAll {
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
             Mock Get-Module {
-                [PSCustomObject]@{ Version = [version]'3.7.1'; ModuleBase = 'C:\fake\exo' }
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+                [PSCustomObject]@{ Version = [version]'3.10.1'; ModuleBase = 'C:\fake\exo' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ImportExcel' }
             Mock Install-Module { }
@@ -91,7 +93,7 @@ Describe 'Test-ModuleCompatibility' {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'2.35.0'; ModuleBase = 'C:\fake\graph' }
             } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
-            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ImportExcel' }
             Mock Install-Module { }
@@ -104,21 +106,21 @@ Describe 'Test-ModuleCompatibility' {
         }
     }
 
-    Context 'when EXO version has MSAL conflict (>= 3.8.0, NonInteractive)' {
+    Context 'when EXO is below the supported baseline (NonInteractive)' {
         BeforeAll {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'2.35.0'; ModuleBase = 'C:\fake\graph' }
             } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'3.8.0'; ModuleBase = 'C:\fake\exo' }
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ImportExcel' }
             Mock Install-Module { }
             Mock Write-Error { }
         }
 
-        It 'should return nothing (fatal MSAL conflict)' {
+        It 'should return nothing (unsupported EXO version)' {
             $result = Test-ModuleCompatibility -Section @('Email') -SectionServiceMap $sectionServiceMap -NonInteractive
             $result | Should -BeNullOrEmpty
         }
@@ -126,13 +128,13 @@ Describe 'Test-ModuleCompatibility' {
         It 'should prescribe a side-by-side install, never an uninstall (#231)' {
             Test-ModuleCompatibility -Section @('Email') -SectionServiceMap $sectionServiceMap -NonInteractive
             Should -Invoke Write-AssessmentLog -ParameterFilter {
-                $Message -match 'Install-Module ExchangeOnlineManagement -RequiredVersion 3\.7\.1' -and
+                $Message -match 'Install-Module -Name ExchangeOnlineManagement -RequiredVersion 3\.10\.1' -and
                 $Message -notmatch 'Uninstall-Module'
             }
         }
     }
 
-    Context 'when a compatible EXO version is installed side-by-side with a conflicting one (#231)' {
+    Context 'when the baseline EXO version is installed side-by-side with an older one (#231)' {
         BeforeAll {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'2.35.0'; ModuleBase = 'C:\fake\graph' }
@@ -140,9 +142,9 @@ Describe 'Test-ModuleCompatibility' {
             Mock Get-Module {
                 @(
                     [PSCustomObject]@{ Version = [version]'3.9.2'; ModuleBase = 'C:\fake\exo392' }
-                    [PSCustomObject]@{ Version = [version]'3.7.1'; ModuleBase = 'C:\fake\exo371' }
+                    [PSCustomObject]@{ Version = [version]'3.10.1'; ModuleBase = 'C:\fake\exo371' }
                 )
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'7.8.0' }
@@ -151,7 +153,7 @@ Describe 'Test-ModuleCompatibility' {
             Mock Write-Error { }
         }
 
-        It 'should pass without flagging the conflicting version' {
+        It 'should pass without requiring an upgrade' {
             $result = Test-ModuleCompatibility -Section @('Email') -SectionServiceMap $sectionServiceMap -NonInteractive
             $result.Passed | Should -Be $true
         }
@@ -164,35 +166,54 @@ Describe 'Test-ModuleCompatibility' {
 
         It 'should log which version the session pins' {
             Test-ModuleCompatibility -Section @('Email') -SectionServiceMap $sectionServiceMap -NonInteractive
-            Should -Invoke Write-AssessmentLog -ParameterFilter { $Message -match 'pins 3\.7\.1' }
+            Should -Invoke Write-AssessmentLog -ParameterFilter { $Message -match 'selects 3\.10\.1' }
         }
     }
 
     Context 'Get-CompatibleExoModule' {
-        It 'returns the newest version below 3.8.0 when several are installed' {
+        It 'returns the newest supported stable version when several are installed' {
             Mock Get-Module {
                 @(
                     [PSCustomObject]@{ Version = [version]'3.9.2'; ModuleBase = 'C:\fake\exo392' }
-                    [PSCustomObject]@{ Version = [version]'3.7.1'; ModuleBase = 'C:\fake\exo371' }
+                    [PSCustomObject]@{ Version = [version]'3.10.1'; ModuleBase = 'C:\fake\exo371' }
                     [PSCustomObject]@{ Version = [version]'3.6.0'; ModuleBase = 'C:\fake\exo360' }
                 )
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
 
-            (Get-CompatibleExoModule).Version | Should -Be ([version]'3.7.1')
+            (Get-CompatibleExoModule).Version | Should -Be ([version]'3.10.1')
         }
 
-        It 'returns nothing when only MSAL-conflicting versions are installed' {
+        It 'returns nothing when only older versions are installed' {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'3.9.2'; ModuleBase = 'C:\fake\exo392' }
-            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
 
             Get-CompatibleExoModule | Should -BeNullOrEmpty
         }
 
         It 'returns nothing when EXO is not installed' {
-            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
 
             Get-CompatibleExoModule | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'when the runtime or preloaded session is incompatible' {
+        BeforeEach {
+            Mock Write-Error { }
+            Mock Install-Module { }
+            Mock Get-Module { [PSCustomObject]@{ Version = [version]'3.10.1' } } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
+        }
+        It 'rejects an older runtime before attempting module repair' {
+            Mock Test-ExoRuntimeSupported { $false }
+            Test-ModuleCompatibility -Section Email -SectionServiceMap $sectionServiceMap -NonInteractive | Should -BeNullOrEmpty
+            Should -Invoke Write-Error -ParameterFilter { $Message -match 'PowerShell 7.6' }
+            Should -Invoke Install-Module -Times 0
+        }
+        It 'rejects EXO already loaded without an authenticated Graph context' {
+            Mock Get-Module { [PSCustomObject]@{ Version = [version]'3.10.1' } } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and -not $ListAvailable }
+            Test-ModuleCompatibility -Section Email -SectionServiceMap $sectionServiceMap -NonInteractive | Should -BeNullOrEmpty
+            Should -Invoke Write-Error -ParameterFilter { $Message -match 'fresh pwsh' }
         }
     }
 
@@ -201,7 +222,7 @@ Describe 'Test-ModuleCompatibility' {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'2.35.0'; ModuleBase = 'C:\fake\graph' }
             } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
-            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'7.8.0' }
@@ -219,7 +240,7 @@ Describe 'Test-ModuleCompatibility' {
             Mock Get-Module {
                 [PSCustomObject]@{ Version = [version]'2.35.0'; ModuleBase = 'C:\fake\graph' }
             } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
-            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ImportExcel' }
             Mock Install-Module { }
@@ -235,7 +256,7 @@ Describe 'Test-ModuleCompatibility' {
         BeforeAll {
             $emptyServiceMap = @{ 'ActiveDirectory' = @() }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' }
-            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' }
+            Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ExchangeOnlineManagement' -and $ListAvailable }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'MicrosoftPowerBIMgmt' }
             Mock Get-Module { $null } -ParameterFilter { $Name -eq 'ImportExcel' }
             Mock Install-Module { }

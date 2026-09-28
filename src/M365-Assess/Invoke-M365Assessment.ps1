@@ -49,6 +49,9 @@
     on an Azure resource with a system-assigned or user-assigned managed identity
     (e.g., Azure VM, Azure Functions, Azure Automation). Purview and Power BI do
     not support managed identity and will fall back with a warning.
+.PARAMETER DisableWAM
+    Disable the Exchange/Purview WAM broker for interactive login on affected hosts.
+    Graph retains its own authentication settings.
 .PARAMETER UseDeviceCode
     Use device code authentication flow instead of browser-based interactive auth.
     Displays a code and URL that you can open in any browser profile, which is
@@ -136,7 +139,7 @@
     Save-M365ConnectionProfile to create profiles. The profile provides
     TenantId, ClientId, auth method, and other connection parameters.
 .PARAMETER NonInteractive
-    Suppresses all interactive prompts for module installation, EXO downgrade,
+    Suppresses all interactive prompts for module installation,
     and script unblocking. When a required module is missing or incompatible,
     the exact install/fix command is logged and the script exits with an error.
     When an optional module is missing (e.g., MicrosoftPowerBIMgmt), the
@@ -263,6 +266,9 @@ param(
 
     [Parameter(ParameterSetName = 'DeviceCode', Mandatory)]
     [switch]$UseDeviceCode,
+
+    [Parameter()]
+    [switch]$DisableWAM,
 
     [Parameter()]
     [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')]

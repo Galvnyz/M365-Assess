@@ -2,9 +2,9 @@
 
 Get from a clean Windows install to your first M365 security assessment in under 10 minutes.
 
-## 1. Install PowerShell 7
+## 1. Install PowerShell 7.6 or newer
 
-Windows ships with PowerShell 5.1, but M365 Assess requires **PowerShell 7.x** (`pwsh`).
+Windows ships with PowerShell 5.1, but M365 Assess requires **PowerShell 7.6+** for Exchange/Purview assessments (`pwsh`).
 
 ```powershell
 # Run this in the built-in Windows PowerShell (powershell.exe)
@@ -15,7 +15,7 @@ Close and reopen your terminal, then verify:
 
 ```powershell
 pwsh --version
-# Expected: PowerShell 7.x.x
+# Expected: PowerShell 7.6 or newer
 ```
 
 > **No winget?** Download the MSI installer from the [PowerShell releases page](https://github.com/PowerShell/PowerShell/releases).
@@ -64,7 +64,7 @@ These don't auto-resolve via the manifest — install them separately:
 
 ```powershell
 # Exchange Online — version-pinned (3.8+ has MSAL conflict with Graph SDK)
-Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Scope CurrentUser
+Install-Module ExchangeOnlineManagement -RequiredVersion 3.10.1 -Scope CurrentUser
 
 # Power BI — needed for the PowerBI section
 Install-Module MicrosoftPowerBIMgmt -Scope CurrentUser
@@ -73,7 +73,7 @@ Install-Module MicrosoftPowerBIMgmt -Scope CurrentUser
 Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
 ```
 
-> **Why EXO 3.7.1 exactly?** Versions 3.8.0+ have an MSAL library conflict with the Microsoft Graph SDK. The assessment's pre-flight check detects this and offers to fix it automatically. Tracked at issue #231.
+> **EXO baseline:** Exchange/Purview assessments use EXO 3.10.1+ and require PowerShell 7.6+. The assessment connects Graph first to avoid identity assembly conflicts. Use `-DisableWAM` only if interactive Exchange/Purview login encounters a WAM broker error.
 
 ### C. Optional / opt-in
 
@@ -128,7 +128,7 @@ Open the HTML report in any browser to review findings. The report is interactiv
 |-------------|---------|
 | PowerShell | 7.0+ |
 | Microsoft.Graph SDK | 2.25.0+ |
-| ExchangeOnlineManagement | 3.7.1 (not 3.8+) |
+| ExchangeOnlineManagement | 3.10.1+ (PowerShell 7.6+) |
 | Entra ID role | Global Reader (read-only) |
 | Network | Outbound HTTPS to `graph.microsoft.com`, `outlook.office365.com` |
 

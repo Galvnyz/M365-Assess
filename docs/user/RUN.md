@@ -344,12 +344,16 @@ The orchestrator detects missing or incompatible PowerShell modules **before** c
 | Module | Condition | Severity | Action |
 |--------|-----------|----------|--------|
 | Microsoft.Graph.Authentication | Not installed | Required | Install latest |
-| ExchangeOnlineManagement | Not installed | Required | Install pinned 3.7.1 |
-| ExchangeOnlineManagement | Version >= 3.8.0 and no <= 3.7.x installed | Required | Install 3.7.1 side-by-side (newer versions stay) |
-| msalruntime.dll | Missing (Windows + EXO 3.8.0+) | Required | Auto-copy from module path |
-| MicrosoftPowerBIMgmt | Not installed | Optional | Skip PowerBI section |
+| ExchangeOnlineManagement | Missing or below 3.10.1 | Required | Install tested baseline 3.10.1 side-by-side |
+| PowerShell | Below 7.6 with Exchange/Purview selected | Required | Start PowerShell 7.6+ |
+| MicrosoftPowerBIMgmt | Not installed | Recommended | Install or skip PowerBI section |
 
-In interactive mode the repair flow presents two tiers: (1) install missing modules to `CurrentUser` scope, and (2) install EXO 3.7.1 side-by-side with any EXO >= 3.8.0 (the newer version stays for other tooling; the session pins the compatible version at connect time, due to the [MSAL conflict](../reference/COMPATIBILITY.md)). After repair, modules are re-validated; if issues remain the exact manual commands are displayed and the script exits.
+The module helper installs EXO 3.10.1 when needed and preserves other versions.
+It no longer downgrades EXO or copies bundled identity DLLs. The connector selects
+the newest installed stable EXO version at or above 3.10.1 and authenticates Graph
+first. If module repair fails or is declined, unresolved requirements stop the run.
+For interactive EXO/Purview WAM errors, rerun with `-DisableWAM`; the default keeps
+Microsoft's broker enabled. Start a fresh session when changing EXO versions.
 
 In non-interactive mode, required module issues are logged with the exact install command and the script exits; optional module issues drop the dependent section and continue. On Windows, files extracted from a ZIP are tagged with an NTFS Zone.Identifier that blocks execution under `RemoteSigned`; the orchestrator prompts to `Unblock-File` (interactive) or logs the command and exits (non-interactive).
 

@@ -32,8 +32,10 @@
     Client secret for app-only authentication. Less secure than certificate auth.
 .PARAMETER UserPrincipalName
     User principal name (e.g., 'admin@contoso.onmicrosoft.com') for interactive
-    authentication to Exchange Online or Purview. Bypasses the Windows Authentication
-    Manager (WAM) broker which can cause RuntimeBroker errors on some systems.
+    authentication to Exchange Online or Purview. This selects the account; it does not disable WAM.
+.PARAMETER DisableWAM
+    Explicitly disable the Exchange/Purview WAM broker for interactive authentication.
+    Use this documented workaround only on hosts experiencing broker failures.
 .PARAMETER ManagedIdentity
     Use Azure managed identity authentication. Requires the script to be running
     on an Azure resource with a system-assigned or user-assigned managed identity
@@ -63,7 +65,7 @@
 .EXAMPLE
     PS> .\Common\Connect-Service.ps1 -Service Purview -UserPrincipalName 'admin@contoso.onmicrosoft.com'
 
-    Connects to Purview using the specified UPN (avoids WAM broker issues).
+    Connects to Purview using the specified UPN.
 .EXAMPLE
     PS> .\Common\Connect-Service.ps1 -Service Graph -M365Environment gcchigh -TenantId 'contoso.onmicrosoft.us'
 
@@ -107,6 +109,9 @@ param(
 
     [Parameter()]
     [switch]$UseDeviceCode,
+
+    [Parameter()]
+    [switch]$DisableWAM,
 
     [Parameter()]
     [ValidateSet('commercial', 'gcc', 'gcchigh', 'dod')]
@@ -175,7 +180,7 @@ function Set-ExchangeAppOnlyAuth {
         Connect-ExchangeOnline and Connect-IPPSSession resolve -CertificateThumbprint only through
         the Windows certificate store, which is unavailable on Linux/macOS. When a certificate
         object is supplied it is passed via -Certificate together with -Organization (the tenant's
-        initial domain). Windows keeps the unchanged -CertificateThumbprint code path. Fails early
+        initial domain). Windows also accepts -CertificateThumbprint with the same initial-domain resolution. Fails early
         with an actionable error when the required material cannot be resolved.
     #>
     param(
@@ -185,14 +190,14 @@ function Set-ExchangeAppOnlyAuth {
         [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
         [string]$TenantId
     )
+    $organization = Resolve-InitialDomain -TenantId $TenantId
+    if (-not $organization) {
+        throw "Could not resolve the tenant's initial domain. Connect Graph first or supply the initial onmicrosoft domain as TenantId."
+    }
+    $ConnectParams['Organization'] = $organization
     $ConnectParams['AppId'] = $ClientId
     if ($Certificate) {
         $ConnectParams['Certificate'] = $Certificate
-        $organization = Resolve-InitialDomain -TenantId $TenantId
-        if (-not $organization) {
-            throw "Could not resolve the tenant's initial (*.onmicrosoft.*) domain, which app-only Exchange Online / Purview authentication requires. Connect to Microsoft Graph first, or pass -TenantId as the initial domain."
-        }
-        $ConnectParams['Organization'] = $organization
     }
     elseif ($CertificateThumbprint) {
         if ($IsWindows -eq $false) {
@@ -224,6 +229,25 @@ if (-not (Get-Module -Name $requiredModule -ListAvailable)) {
 }
 
 try {
+    if ($Service -in @('ExchangeOnline', 'Purview')) {
+        if ($PSVersionTable.PSVersion -lt [version]'7.6') {
+            throw 'ExchangeOnlineManagement 3.10.1+ requires PowerShell 7.6+.'
+        }
+        if (-not (Get-Command -Name Get-MgContext -ErrorAction SilentlyContinue) -or -not (Get-MgContext)) {
+            throw 'Connect Microsoft Graph before Exchange/Purview in a fresh pwsh session.'
+        }
+        $exo = Get-Module -Name ExchangeOnlineManagement
+        if ($exo -and $exo.Version -lt [version]'3.10.1') {
+            throw 'An older EXO module is loaded. Start a fresh pwsh session with ExchangeOnlineManagement 3.10.1+.'
+        }
+        if (-not $exo) {
+            $exo = Get-Module -Name ExchangeOnlineManagement -ListAvailable |
+                Where-Object { $_.Version -ge [version]'3.10.1' -and -not $_.PrivateData.PSData.Prerelease } |
+                Sort-Object -Property Version -Descending | Select-Object -First 1
+            if (-not $exo) { throw 'Install ExchangeOnlineManagement 3.10.1 or newer.' }
+            Import-Module -Name ExchangeOnlineManagement -RequiredVersion $exo.Version -ErrorAction Stop
+        }
+    }
     # ------------------------------------------------------------------
     # Environment endpoint configuration
     # GCC uses the same endpoints as commercial (tenant is in the GCC
@@ -295,25 +319,14 @@ try {
         }
 
         'ExchangeOnline' {
-            # #231: EXO 3.8.0+ bundles an MSAL that conflicts with the Graph SDK
-            # in-session. Connect-ExchangeOnline auto-loads the HIGHEST installed
-            # version, so when a compatible (< 3.8.0) version is installed
-            # side-by-side, pin the import to it before connecting.
-            if (-not (Get-Module -Name ExchangeOnlineManagement)) {
-                $compatibleExo = if (Get-Command -Name Get-CompatibleExoModule -ErrorAction SilentlyContinue) { Get-CompatibleExoModule } else { $null }
-                if ($compatibleExo) {
-                    Import-Module -Name ExchangeOnlineManagement -RequiredVersion $compatibleExo.Version -ErrorAction Stop
-                    Write-Verbose "Pinned ExchangeOnlineManagement $($compatibleExo.Version) for this session"
-                }
-            }
-
             $connectParams = @{
                 ShowBanner = $false
             }
-            if ($TenantId) { $connectParams['Organization'] = $TenantId }
+            if ($DisableWAM -and -not $ClientId -and -not $ManagedIdentity -and -not $UseDeviceCode) { $connectParams['DisableWAM'] = $true }
 
             if ($ManagedIdentity) {
                 $connectParams['ManagedIdentity'] = $true
+                if ($TenantId) { $connectParams['Organization'] = $TenantId }
             }
             elseif ($ClientId -and ($appOnlyCertificate -or $CertificateThumbprint)) {
                 Set-ExchangeAppOnlyAuth -ConnectParams $connectParams -ClientId $ClientId -CertificateThumbprint $CertificateThumbprint -Certificate $appOnlyCertificate -TenantId $TenantId
@@ -324,8 +337,9 @@ try {
             elseif ($UseDeviceCode) {
                 $connectParams['Device'] = $true
             }
-            elseif ($UserPrincipalName) {
-                $connectParams['UserPrincipalName'] = $UserPrincipalName
+            else {
+                $account = if ($UserPrincipalName) { $UserPrincipalName } else { (Get-MgContext).Account }
+                if ($account) { $connectParams['UserPrincipalName'] = $account }
             }
 
             if ($currentEnv.ExoEnvironment) {
@@ -337,18 +351,8 @@ try {
         }
 
         'Purview' {
-            # Connect-IPPSSession ships in ExchangeOnlineManagement — same #231
-            # side-by-side pin applies (see the ExchangeOnline case above).
-            if (-not (Get-Module -Name ExchangeOnlineManagement)) {
-                $compatibleExo = if (Get-Command -Name Get-CompatibleExoModule -ErrorAction SilentlyContinue) { Get-CompatibleExoModule } else { $null }
-                if ($compatibleExo) {
-                    Import-Module -Name ExchangeOnlineManagement -RequiredVersion $compatibleExo.Version -ErrorAction Stop
-                    Write-Verbose "Pinned ExchangeOnlineManagement $($compatibleExo.Version) for this session"
-                }
-            }
-
             $connectParams = @{}
-            if ($TenantId) { $connectParams['Organization'] = $TenantId }
+            if ($DisableWAM -and -not ($ClientId -and ($appOnlyCertificate -or $CertificateThumbprint -or $ClientSecret))) { $connectParams['DisableWAM'] = $true }
 
             if ($ManagedIdentity) {
                 Write-Warning "Purview (Connect-IPPSSession) does not support managed identity auth. Falling back to browser-based login."
@@ -360,8 +364,9 @@ try {
             elseif ($ClientId -and $ClientSecret) {
                 throw "Purview does not support client secret authentication. Use -CertificateThumbprint for app-only auth."
             }
-            elseif ($UserPrincipalName) {
-                $connectParams['UserPrincipalName'] = $UserPrincipalName
+            else {
+                $account = if ($UserPrincipalName) { $UserPrincipalName } else { (Get-MgContext).Account }
+                if ($account) { $connectParams['UserPrincipalName'] = $account }
             }
 
             if ($UseDeviceCode) {

@@ -29,9 +29,9 @@
 .PARAMETER DirectSdk
     Test documented SDK parameters independently of the project connector (commercial cloud).
 .PARAMETER DisableWAM
-    Opt into the EXO/Purview broker workaround in DirectSdk mode.
+    Opt into the EXO/Purview broker workaround.
 .PARAMETER UserPrincipalName
-    Interactive EXO/Purview account in DirectSdk mode. Defaults to the connected Graph account.
+    Interactive EXO/Purview account. Defaults to the connected Graph account.
 .EXAMPLE
     pwsh -NoProfile -File ./scripts/Test-ExoGraphCompatibility.ps1 -ExoVersion 3.10.1 -GraphVersion 2.40.0 -Order GraphFirst -ModulePath ./Modules
 #>
@@ -53,7 +53,6 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (($DisableWAM -or $UserPrincipalName) -and -not $DirectSdk) { throw 'DisableWAM and UserPrincipalName require -DirectSdk.' }
 if ($DirectSdk -and $M365Environment -ne 'commercial') { throw 'DirectSdk currently probes commercial cloud only.' }
 if ((Get-Module -Name ExchangeOnlineManagement, Microsoft.Graph.Authentication) -or
     @([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {
@@ -77,6 +76,8 @@ $passed = $false
 $failure = $null
 $services = if ($Order -eq 'GraphFirst') { @('Graph', 'ExchangeOnline') } else { @('ExchangeOnline', 'Graph') }
 $connection = @{ TenantId = $TenantId; M365Environment = $M365Environment; Scopes = @('Organization.Read.All'); ErrorAction = 'Stop' }
+if ($DisableWAM) { $connection.DisableWAM = $true }
+if ($UserPrincipalName) { $connection.UserPrincipalName = $UserPrincipalName }
 if ($ClientId) {
     $connection.ClientId = $ClientId
     $connection.CertificateThumbprint = $CertificateThumbprint

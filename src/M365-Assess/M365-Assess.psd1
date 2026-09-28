@@ -14,10 +14,8 @@
     PowerShellVersion = '7.0'
 
     # Required modules (must be installed before running)
-    # Known compatible: Graph SDK 2.25+ with EXO 3.7.x
-    # EXO 3.8.0+ has MSAL conflicts with Graph SDK 2.x -- do not use
-    # EXO excluded from RequiredModules because ModuleVersion only supports minimum,
-    # and we need a ceiling (< 3.8.0). The orchestrator handles EXO gating at runtime.
+    # EXO 3.10.1+ is checked at runtime for Exchange/Purview sections (PowerShell 7.6+).
+    # Keep it out of RequiredModules so Graph authenticates before EXO is imported.
     RequiredModules   = @(
         @{ ModuleName = 'Microsoft.Graph.Authentication';               ModuleVersion = '2.25.0' }
         @{ ModuleName = 'Microsoft.Graph.Applications';                 ModuleVersion = '2.25.0' }
