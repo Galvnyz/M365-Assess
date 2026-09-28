@@ -25,7 +25,44 @@ Graph submodules (e.g., `Microsoft.Graph.Users`, `Microsoft.Graph.Groups`) are l
 |--------|---------|---------|--------|-------|
 | ExchangeOnlineManagement | 3.5.0 | 3.7.x | 3.7.1 | 3.8.0+ may be installed **side-by-side** but is never loaded |
 
-**Why the ceiling?** EXO 3.8.0+ ships a version of `Microsoft.Identity.Client` (MSAL) that conflicts with Graph SDK 2.x in the same PowerShell session, causing silent auth failures. Upstream tracking: [msgraph-sdk-powershell#3576](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3576) — still unresolved as of EXO 3.10.0 (June 2026).
+**Why the ceiling?** Newer EXO versions can conflict with Graph's identity assemblies in the same PowerShell process. The September 2026 probe below reproduces authentication failures with EXO 3.10.1, so the ceiling remains unchanged. Upstream tracking: [msgraph-sdk-powershell#3576](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3576).
+
+### Live compatibility probe (2026-09-28)
+
+Windows build 26200, PowerShell 7.6.6, Microsoft.Graph.Authentication 2.40.0,
+one commercial test tenant. Each case ran in a fresh process, importing and
+connecting in the stated order through the project's `Connect-Service.ps1`.
+
+| EXO | Authentication | Graph first | EXO first |
+|-----|----------------|-------------|-----------|
+| 3.7.1 | Certificate | Passed | Passed |
+| 3.7.1 | Interactive | Passed | Passed |
+| 3.10.1 | Certificate | Passed | Failed: Graph identity assembly loading |
+| 3.10.1 | Interactive | Failed: EXO WAM RuntimeBroker null reference | Failed: Graph identity assembly loading |
+
+Passed cases read Graph organization data, Exchange audit configuration, and
+Purview DLP policies, then rechecked Graph and reconnected Exchange and Graph.
+Purview can replace overlapping Exchange commands; audit evidence is read before
+that switch, as in the assessment. Both versions imported successfully in both
+orders: **import-only success is not authentication compatibility**.
+
+These are representative connector/collection probes, not a full assessment or
+coverage of every module combination. Linux, macOS, sovereign clouds and older
+PowerShell versions were not tested. Next for #231: evaluate process isolation
+for EXO/Purview versus Graph, preserving explicit collection failures; do not
+raise the ceiling based on the single successful 3.10.1 path.
+
+Reproduce with exact versions installed side-by-side (or saved into `./Modules`):
+
+```powershell
+pwsh -NoProfile -File ./scripts/Test-ExoGraphCompatibility.ps1 -ExoVersion 3.10.1 -GraphVersion 2.40.0 -Order ExoFirst -ModulePath ./Modules
+```
+
+Add `-Live -TenantId <initial-domain>` for interactive read-only probes; add
+`-ClientId <app-id> -CertificateThumbprint <thumbprint>` for Windows certificate
+authentication. Repeat with both orders and the 3.7.1 control. `-OutputPath`
+writes a JSON summary without tenant identities or raw service errors. Underlying
+SDK console output may contain account information; do not publish transcripts.
 
 **Side-by-side support (#231):** you do *not* need to uninstall newer EXO versions you use for other tooling. Install 3.7.1 alongside them:
 

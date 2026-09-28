@@ -4,6 +4,15 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Added
+- Reproducible EXO/Graph compatibility probe with fresh-process, exact-version
+  testing and read-only Graph/Exchange/Purview checks. Live Windows tests retain
+  the EXO 3.7.x ceiling: EXO 3.10.1 still fails supported authentication orders (#231).
+
+### Changed
+- Batch unique user lookups in admin-role and Conditional Access reports, with
+  per-subrequest throttling retries and explicit unresolved evidence (#952).
+
 ## [2.13.0] - 2026-09-27
 
 Completes the **Sovereign Cloud** milestone. Running M365 Assess against GCC High was verified end-to-end against a real tenant, and the collectors that failed there were corrected at the source: where a working v1.0 API existed it is now used, and where an endpoint genuinely does not exist in the sovereign cloud the dependent checks emit `Skipped` instead of vanishing. A few report bugs surfaced alongside the sovereign work are fixed, and the docs (README, GCC High setup, architecture diagrams) are refreshed. No breaking API changes.

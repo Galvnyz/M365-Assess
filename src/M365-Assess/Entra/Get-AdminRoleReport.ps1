@@ -36,6 +36,10 @@ if (-not (Assert-GraphConnection)) { return }
 
 # Ensure required Graph submodule is loaded (PS 7.x does not auto-import)
 Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ErrorAction Stop
+if (-not (Get-Command -Name Invoke-GraphReadBatch -ErrorAction SilentlyContinue)) {
+    . "$PSScriptRoot/../Common/Invoke-SafeGraphRequest.ps1"
+    . "$PSScriptRoot/../Common/Invoke-GraphReadBatch.ps1"
+}
 
 # Retrieve all activated directory roles
 try {
@@ -50,21 +54,35 @@ catch {
 $allRoles = @($directoryRoles)
 Write-Verbose "Found $($allRoles.Count) activated directory roles. Enumerating members..."
 
-$report = foreach ($role in $allRoles) {
+$roleMembers = @{}
+$userIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($role in $allRoles) {
     try {
-        $members = Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All
+        $members = @(Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All)
     }
     catch {
         Write-Warning "Failed to retrieve members for role '$($role.DisplayName)': $_"
         continue
     }
 
-    if ($members.Count -eq 0) {
-        Write-Verbose "Role '$($role.DisplayName)' has no members, skipping."
-        continue
-    }
-
+    $roleMembers[$role.Id] = $members
     foreach ($member in $members) {
+        if ($member.AdditionalProperties['@odata.type'] -eq '#microsoft.graph.user') {
+            [void]$userIds.Add([string]$member.Id)
+        }
+    }
+}
+$userDetails = @{}
+if ($userIds.Count -gt 0) {
+    $requests = @($userIds | ForEach-Object {
+        @{ id = $_; url = '/users/' + [uri]::EscapeDataString($_) + '?$select=id,onPremisesSyncEnabled' }
+    })
+    try { $userDetails = Invoke-GraphReadBatch -Requests $requests }
+    catch { Write-Warning 'Could not resolve user sync state; values remain unknown.' }
+}
+
+$report = foreach ($role in $allRoles) {
+    foreach ($member in $roleMembers[$role.Id]) {
         $additionalProperties = $member.AdditionalProperties
 
         $memberDisplayName = $additionalProperties['displayName']
@@ -79,16 +97,18 @@ $report = foreach ($role in $allRoles) {
             default                             { $memberType }
         }
 
-        # OnPremisesSyncEnabled is a user-only property not returned by Get-MgDirectoryRoleMember;
-        # fetch it per-user via a targeted Graph call. Leave blank for service principals/groups.
+        # Resolve each unique user once, in batches. Unavailable evidence stays
+        # blank; it must never be reported as a known cloud-only account.
         $onPremSync = ''
         if ($friendlyType -eq 'User') {
-            try {
-                $userDetail = Get-MgUser -UserId $member.Id -Property 'OnPremisesSyncEnabled' -ErrorAction Stop
-                $onPremSync = if ($userDetail.OnPremisesSyncEnabled -eq $true) { 'True' } else { 'False' }
-            }
-            catch {
-                Write-Verbose "Could not fetch OnPremisesSyncEnabled for ${memberDisplayName}: $_"
+            $detail = $userDetails[[string]$member.Id]
+            $hasSyncProperty = if ($detail.body -is [System.Collections.IDictionary]) {
+                $detail.body.Contains('onPremisesSyncEnabled')
+            } else { $detail.body.PSObject.Properties.Name -contains 'onPremisesSyncEnabled' }
+            # Graph can explicitly return null for accounts that are not synced.
+            # Preserve that meaning, distinguishing it from an omitted property.
+            if ($detail -and $detail.status -eq 200 -and $hasSyncProperty) {
+                $onPremSync = if ($detail.body.onPremisesSyncEnabled -eq $true) { 'True' } else { 'False' }
             }
         }
 
