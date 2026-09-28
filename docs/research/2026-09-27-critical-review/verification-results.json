@@ -1,0 +1,36 @@
+{
+  "Revision": "4daebfa91520b5998a5dd8184ce1aaedd4a3ef8d",
+  "Method": "Unchanged source blocks with synthetic external responses",
+  "Results": [
+    {
+      "Case": "UAL Purview-shaped False",
+      "Actual": "Fail",
+      "Expected": "Reject non-authoritative endpoint; assess via EXO"
+    },
+    {
+      "Case": "UAL cmdlet throws",
+      "Actual": "0 findings",
+      "Expected": "One explicit not-assessed finding"
+    },
+    {
+      "Case": "Graph cap before next page",
+      "Actual": "items=1; keys=value",
+      "Expected": "Structured incomplete state or terminating error"
+    },
+    {
+      "Case": "CA MFA optional via OR compliantDevice",
+      "Actual": "Pass: All 4 areas covered by Conditional Access",
+      "Expected": "Cannot assert equivalent MFA protection"
+    },
+    {
+      "Case": "Nine passing mapped findings, one failing",
+      "Actual": "90% / Audit-ready",
+      "Expected": "Measured finding posture, not an audit-readiness claim"
+    },
+    {
+      "Case": "Only unverified Review findings",
+      "Actual": "Compliance Readiness = 100%",
+      "Expected": "Unverified work cannot count as confirmed readiness"
+    }
+  ]
+}

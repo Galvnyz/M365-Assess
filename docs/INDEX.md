@@ -69,6 +69,10 @@ Authoritative references for specific topics. Read these when you need to know t
 | [`architecture/`](architecture/) | High-level architecture diagrams (placeholder; mostly empty) |
 | [`diagrams/`](diagrams/) | Mermaid diagrams (data flow, integration topology) |
 
+## Dated project reviews
+
+- [`research/2026-09-27-critical-review/`](research/2026-09-27-critical-review/) — historical correctness and portfolio review, synthetic reproductions, and a resolution update for the subsequent 2.13.0 release. Read the update before using the original recommendations.
+
 ---
 
 ## Cross-link footer template
