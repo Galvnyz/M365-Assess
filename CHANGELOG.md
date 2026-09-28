@@ -4,7 +4,34 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-09-27
+
+Completes the **Sovereign Cloud** milestone. Running M365 Assess against GCC High was verified end-to-end against a real tenant, and the collectors that failed there were corrected at the source: where a working v1.0 API existed it is now used, and where an endpoint genuinely does not exist in the sovereign cloud the dependent checks emit `Skipped` instead of vanishing. A few report bugs surfaced alongside the sovereign work are fixed, and the docs (README, GCC High setup, architecture diagrams) are refreshed. No breaking API changes.
+
+### Added
+- Portable certificate-object and certificate-file authentication for Exchange
+  Online and Purview on Linux/macOS, with initial-tenant-domain resolution (#1009).
+- Separate classification of Microsoft first-party enterprise applications from
+  other external applications (#1005).
+- Tenant-scoped accepted-risk and manual-attestation sidecars, with evidence,
+  ownership, expiry, HTML editing/export/finalization, and repeat-run support.
+  Raw observations remain unchanged; decision-only baseline changes are Modified.
+- Collection completion and structured evidence in HTML, XLSX and JSON; versioned
+  report/bridge/decision schemas and executable React behavior/rendering tests.
+- Bounded report source units compiled into the existing single offline bundle.
+
+### Security
+- Prevent tenant-controlled report text from escaping inline script data. HTML-safe
+  JSON serialization and regression tests cover generated and finalized reports.
+  Thanks to CloudNest365 for reporting the issue. Regenerate older HTML reports
+  using this release; updating the module does not repair existing report files.
+
 ### Fixed
+- Recognize enforced/default MFA states and qualifying all-user MFA policy
+  coverage for administrators; tolerate Conditional Access policies without
+  grant controls (#1003, #1004, #1010).
+- Centralize collector setting emission and update the report build to Babel 8
+  with a pinned classic JSX runtime (#990, #1007).
 - Correct password-settings Graph routing and request the missing access-review and
   Intune security read scopes. Admin-role separation distinguishes principal types,
   includes group members, and keeps failed evidence Unknown. Site-sharing checks
@@ -22,21 +49,6 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 - Collectors use shared Graph pagination and transient retries. Page caps and
   malformed/failed collection pages terminate instead of returning partial data.
 - Scheduled CI runs the substantive suites, and report/build inputs trigger CI.
-
-### Added
-- Tenant-scoped accepted-risk and manual-attestation sidecars, with evidence,
-  ownership, expiry, HTML editing/export/finalization, and repeat-run support.
-  Raw observations remain unchanged; decision-only baseline changes are Modified.
-- Collection completion and structured evidence in HTML, XLSX and JSON; versioned
-  report/bridge/decision schemas and executable React behavior/rendering tests.
-- Bounded report source units compiled into the existing single offline bundle.
-
-
-## [2.13.0] - 2026-06-13
-
-Completes the **Sovereign Cloud** milestone. Running M365 Assess against GCC High was verified end-to-end against a real tenant, and the collectors that failed there were corrected at the source: where a working v1.0 API existed it is now used, and where an endpoint genuinely does not exist in the sovereign cloud the dependent checks emit `Skipped` instead of vanishing. A few report bugs surfaced alongside the sovereign work are fixed, and the docs (README, GCC High setup, architecture diagrams) are refreshed. No breaking API changes.
-
-### Fixed
 - **PIM role-policy checks now use the v1.0 API in GCC High (#978)**: the previous `/beta/policies/roleManagementPolicies` call returned `400 MissingProvider` in GCC High. The collector now queries `/v1.0/policies/roleManagementPolicyAssignments` filtered by `roleDefinitionId` with `$expand=policy($expand=rules)`, returning real Pass/Fail. Verified live on GCC High.
 - **Power BI connects in GCC High (#943)**: `Connect-PowerBIServiceAccount` is now called with `-Environment USGovHigh` (mapped from `-M365Environment`), and `M365Environment` is threaded into the isolated Power BI child process so the routing actually takes effect across the process boundary. This clears the WAM `IncorrectConfiguration` / redirect-URI error with no Azure portal change. Verified live (12 items collected).
 - **Forms and Teams sovereign-cloud gaps emit `Skipped` instead of disappearing (#941, #940)**: the Forms settings endpoint and the two beta Teams endpoints (`teamsClientConfiguration`, `teamsMeetingPolicy`) have no v1.0 equivalent and return `400` in GCC High. Their dependent checks (1 Forms + 6 Teams external/client + 9 Teams meeting-policy) now emit `Skipped` with a clear "not available in this cloud" message and appear in the report's not-assessed group.
