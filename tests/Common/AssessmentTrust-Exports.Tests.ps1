@@ -5,7 +5,7 @@ Describe 'Assessment trust across generated artifacts' {
         $null = New-Item -ItemType Directory -Path $folder
         [PSCustomObject]@{TenantId='11111111-1111-1111-1111-111111111111';OrgDisplayName='Fixture';DefaultDomain='example.test'} | Export-Csv "$folder/01-Tenant-Info.csv" -NoTypeInformation
         @(
-            [PSCustomObject]@{Section='Entra';Collector='Fixture checks';FileName='07b-Entra-Security-Config.csv';Status='Complete';Items=1;Error=''},
+            [PSCustomObject]@{Section='Entra';Collector='Fixture checks';FileName='07b-Entra-Security-Config.csv';Status='Partial';Items=1;Error='GraphCollectionIncomplete'},
             [PSCustomObject]@{Section='Purview';Collector='Unavailable collector';FileName='missing.csv';Status='Failed';Items=0;Error='403 Forbidden'}
         ) | Export-Csv "$folder/_Assessment-Summary.csv" -NoTypeInformation
         [PSCustomObject]@{CheckId='ENTRA-SECDEFAULT-001.1';Setting='Security Defaults Enabled';Category='Identity';Status='Fail';CurrentValue='False';RecommendedValue='True';Remediation='Verify protection';ObservedValue='False';EvidenceSource='Graph';Limitations='Fixture limitation'} | Export-Csv "$folder/07b-Entra-Security-Config.csv" -NoTypeInformation
@@ -21,7 +21,7 @@ Describe 'Assessment trust across generated artifacts' {
         $bridge.findings[0].actionable | Should -BeFalse
         $bridge.findings[0].evidence.Limitations | Should -Be 'Fixture limitation'
         $bridge.collection.state | Should -Be 'Incomplete'
-        $bridge.collection.incompleteCollectors | Should -Be 1
+        $bridge.collection.incompleteCollectors | Should -Be 2
     }
     It 'embeds the same evidence in HTML and stays within the fixture budget' {
         $html | Should -Match 'Fixture limitation'
@@ -39,6 +39,7 @@ Describe 'Assessment trust across generated artifacts' {
         $matrix[0].Decision_justification | Should -Be 'Migration review'
         $collectors = @(Import-Excel -Path $path -WorksheetName 'Collection Status')
         $collectors.Count | Should -Be 2
+        $collectors[0].Status | Should -Be 'Partial'
         $collectors[1].Status | Should -Be 'Failed'
     }
     It 'records decision-only changes as Modified in baseline comparison' {

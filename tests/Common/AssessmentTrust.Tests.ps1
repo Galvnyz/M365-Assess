@@ -116,6 +116,10 @@ Describe 'Conservative Conditional Access evidence' {
     }
 }
 Describe 'Authoritative Exchange audit source' {
+    It 'rejects evidence from a different tenant' {
+        Mock Get-ConnectionInformation { [PSCustomObject]@{State='Connected';IsEopSession=$false;ModuleName='ExchangeFixture';TenantID='other-tenant'} }
+        { Get-ExoAuditConfig -ExpectedTenantId 'expected-tenant' } | Should -Throw '*assessment tenant*'
+    }
     It 'rejects Purview-only sessions even when a command exists' {
         Mock Get-ConnectionInformation { [PSCustomObject]@{State='Connected';IsEopSession=$true;ModuleName='Purview'} }
         { Get-ExoAuditConfig } | Should -Throw '*Exchange Online connection*'

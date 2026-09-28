@@ -10,6 +10,8 @@
     Requires an active Security & Compliance (Purview) connection.
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned to the pipeline.
+.PARAMETER AuditConfigEvidence
+    Exchange audit evidence captured during this assessment before connecting Purview.
 .EXAMPLE
     PS> . .\Common\Connect-Service.ps1
     PS> Connect-Service -Service Purview
@@ -28,7 +30,9 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath
+    [string]$OutputPath,
+    [Parameter()]
+    [PSCustomObject]$AuditConfigEvidence
 )
 
 # Stop on errors: API failures should halt this collector rather than produce partial results.
@@ -47,7 +51,11 @@ $settings = $ctx.Settings
 # ------------------------------------------------------------------
  . (Join-Path -Path $PSScriptRoot -ChildPath '../Common/Get-ExoAuditConfig.ps1')
 try {
-    $audit = Get-ExoAuditConfig
+    $audit = if ($PSBoundParameters.ContainsKey('AuditConfigEvidence')) { $AuditConfigEvidence } else { Get-ExoAuditConfig }
+    if ($audit.Error) { throw $audit.Error }
+    if ($audit.Enabled -isnot [bool] -or -not $audit.Source -or -not $audit.CollectedAt) {
+        throw 'No authoritative Exchange audit evidence was captured.'
+    }
     $settingParams = @{
         Category = 'Audit'; Setting = 'Unified Audit Log (UAL) Ingestion'
         CurrentValue = [string]$audit.Enabled; RecommendedValue = 'True'

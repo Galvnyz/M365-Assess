@@ -5,6 +5,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 ## [Unreleased]
 
 ### Fixed
+- Preserve Exchange audit evidence before the orchestrator switches to Purview.
+  Partial collectors remain visible in reports and are no longer counted as complete
+  in the console summary. Graph failures log endpoint, page, HTTP status and error code.
 - Review findings no longer count as ready evidence. Framework percentages use
   assessed findings and avoid audit-ready claims based on a pass percentage.
 - Security Defaults alternatives require review of effective CA scope; compliant

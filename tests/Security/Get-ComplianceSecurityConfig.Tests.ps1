@@ -57,6 +57,19 @@ Describe 'Get-ComplianceSecurityConfig' {
         $settings.Count | Should -BeGreaterThan 0
     }
 
+    It 'uses captured Exchange evidence after the session is disconnected' -ForEach @(
+        @{ Enabled = $true; Expected = 'Pass' }, @{ Enabled = $false; Expected = 'Fail' }
+    ) {
+        $evidence = [PSCustomObject]@{Enabled=$Enabled;Source='Exchange Online / Get-AdminAuditLogConfig';CollectedAt='2026-01-01T00:00:00Z'}
+        $rows = & "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1" -AuditConfigEvidence $evidence
+        ($rows | Where-Object Setting -EQ 'Unified Audit Log (UAL) Ingestion').Status | Should -Be $Expected
+    }
+
+    It 'keeps failed evidence unknown instead of querying Purview for a false value' {
+        $rows = & "$PSScriptRoot/../../src/M365-Assess/Security/Get-ComplianceSecurityConfig.ps1" -AuditConfigEvidence ([PSCustomObject]@{Error='Capture failed'}) -WarningAction SilentlyContinue
+        ($rows | Where-Object Setting -EQ 'Unified Audit Log (UAL) Ingestion').Status | Should -Be 'Unknown'
+    }
+
     It 'All settings have required properties' {
         foreach ($s in $settings) {
             $s.PSObject.Properties.Name | Should -Contain 'Category'
