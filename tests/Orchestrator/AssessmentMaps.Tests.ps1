@@ -6,6 +6,9 @@ Describe 'Get-AssessmentMaps' {
     BeforeAll {
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentMaps.ps1"
         $maps = Get-AssessmentMaps
+        function Get-MgContext { }
+        function Write-AssessmentLog { param($Level, $Message, $Section) }
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/Test-GraphPermissions.ps1"
     }
 
     It 'should return a hashtable' {
@@ -42,6 +45,24 @@ Describe 'Get-AssessmentMaps' {
     }
 
     Context 'SectionScopeMap' {
+        It 'reports the two newly required scopes as actual preflight deficits' {
+            Mock Get-MgContext {
+                $scopeMap = (Get-AssessmentMaps).SectionScopeMap
+                $granted = @($scopeMap.Identity + $scopeMap.Security | Where-Object { $_ -notin @('AccessReview.Read.All', 'DeviceManagementApps.Read.All') })
+                [PSCustomObject]@{AuthType='Delegated';Scopes=$granted}
+            }
+            Test-GraphPermissions -RequiredScopes @($maps.SectionScopeMap.Identity + $maps.SectionScopeMap.Security) -SectionScopeMap $maps.SectionScopeMap -ActiveSections @('Identity','Security') -OutputFolder $TestDrive
+            $deficits = Get-Content "$TestDrive/_PermissionDeficits.json" -Raw | ConvertFrom-Json
+            $deficits.sections.Identity.missing | Should -Contain 'AccessReview.Read.All'
+            $deficits.sections.Security.missing | Should -Contain 'DeviceManagementApps.Read.All'
+            $deficits.missing.Count | Should -Be 2
+        }
+        It 'requests the read scopes required by access reviews and Intune security evidence' {
+            $maps.SectionScopeMap.Identity | Should -Contain 'AccessReview.Read.All'
+            foreach ($scope in @('DeviceManagementApps.Read.All', 'DeviceManagementConfiguration.Read.All', 'DeviceManagementRBAC.Read.All')) {
+                $maps.SectionScopeMap.Security | Should -Contain $scope
+            }
+        }
         It 'should have entries for Graph-using sections' {
             $graphSections = @('Tenant', 'Identity', 'Licensing', 'Intune', 'Security', 'Collaboration', 'SOC2')
             foreach ($section in $graphSections) {
