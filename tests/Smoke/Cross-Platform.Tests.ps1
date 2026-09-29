@@ -127,7 +127,13 @@ Describe 'Cross-platform smoke (B6 #777)' {
                 $script:createdPortableAuthStubs += 'Invoke-MgGraphRequest'
             }
 
-            Mock Get-Module { @{ Name = $Name } }
+            if (-not (Get-Command -Name Get-MgContext -ErrorAction SilentlyContinue)) {
+                function global:Get-MgContext { }
+                $script:createdPortableAuthStubs += 'Get-MgContext'
+            }
+
+            Mock Get-Module { @{ Name = $Name; Version = [version]'3.10.1' } }
+            Mock Get-MgContext { @{ TenantId = 'fixture-tenant'; AuthType = 'AppOnly' } }
             Mock Connect-ExchangeOnline { }
             Mock Invoke-MgGraphRequest {
                 @{ value = @{ verifiedDomains = @(
@@ -152,7 +158,20 @@ Describe 'Cross-platform smoke (B6 #777)' {
             }
         }
 
-        It 'should pass an X509Certificate2 object and relative Graph lookup to Exchange Online' {
+        It 'should reject Exchange on runtimes below PowerShell 7.6' -Skip:($PSVersionTable.PSVersion -ge [version]'7.6') {
+            { & $script:connectServicePath -Service ExchangeOnline -ErrorAction Stop } |
+                Should -Throw '*requires PowerShell 7.6*'
+            Should -Invoke Connect-ExchangeOnline -Times 0
+        }
+
+        It 'should require Graph authentication before Exchange on supported runtimes' -Skip:($PSVersionTable.PSVersion -lt [version]'7.6') {
+            Mock Get-MgContext { $null }
+            { & $script:connectServicePath -Service ExchangeOnline -ErrorAction Stop } |
+                Should -Throw '*Connect Microsoft Graph before*'
+            Should -Invoke Connect-ExchangeOnline -Times 0
+        }
+
+        It 'should pass an X509Certificate2 object and relative Graph lookup to Exchange Online' -Skip:($PSVersionTable.PSVersion -lt [version]'7.6') {
             if (-not $script:portableAuthAvailable) {
                 Set-ItResult -Skipped -Because 'portable certificate parameters are not present on this branch'
                 return
@@ -174,7 +193,7 @@ Describe 'Cross-platform smoke (B6 #777)' {
             }
         }
 
-        It 'should reject a bare Exchange thumbprint on non-Windows' {
+        It 'should reject a bare Exchange thumbprint on non-Windows' -Skip:($PSVersionTable.PSVersion -lt [version]'7.6') {
             if (-not $script:portableAuthAvailable) {
                 Set-ItResult -Skipped -Because 'portable certificate parameters are not present on this branch'
                 return

@@ -139,21 +139,22 @@ Describe 'Connect-Service' {
         }
     }
 
-    Context 'Exchange/Purview certificate app-only auth (portable, #1009)' {
+    Context 'Exchange/Purview authentication (PowerShell 7.6+, #1009, #231)' -Skip:($PSVersionTable.PSVersion -lt [version]'7.6') {
         BeforeAll {
             # Stub the Exchange/Purview cmdlets + Graph request so nothing reaches a tenant.
             function global:Connect-ExchangeOnline {
                 param($AppId, $Organization, $Certificate, $CertificateThumbprint,
-                      $ManagedIdentity, $Device, $UserPrincipalName, $ExchangeEnvironmentName)
+                      $ManagedIdentity, $Device, $UserPrincipalName, $ExchangeEnvironmentName, $DisableWAM)
             }
             function global:Connect-IPPSSession {
                 param($AppId, $Organization, $Certificate, $CertificateThumbprint,
-                      $UserPrincipalName, $ConnectionUri, $AzureADAuthorizationEndpointUri)
+                      $UserPrincipalName, $ConnectionUri, $AzureADAuthorizationEndpointUri, $DisableWAM)
             }
             if (-not (Get-Command -Name Invoke-MgGraphRequest -ErrorAction SilentlyContinue)) {
                 function global:Invoke-MgGraphRequest { param($Method, $Uri) }
             }
-            Mock Get-Module { @{ Name = 'ExchangeOnlineManagement' } }
+            function global:Get-MgContext { @{ Account = 'admin@contoso.example' } }
+            Mock Get-Module { @{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.10.1' } }
             Mock Import-Module { }
             Mock Connect-ExchangeOnline { }
             Mock Connect-IPPSSession { }
@@ -176,9 +177,35 @@ Describe 'Connect-Service' {
         }
 
         AfterAll {
+            Remove-Item -Path 'function:global:Get-MgContext' -ErrorAction SilentlyContinue
             Remove-Item -Path 'function:global:Connect-ExchangeOnline' -ErrorAction SilentlyContinue
             Remove-Item -Path 'function:global:Connect-IPPSSession' -ErrorAction SilentlyContinue
             Remove-Item -Path 'function:global:Invoke-MgGraphRequest' -ErrorAction SilentlyContinue
+        }
+
+        It 'omits Organization for interactive login and retains WAM by default' {
+            & $script:scriptPath -Service ExchangeOnline -TenantId contoso.example
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter { -not $Organization -and $UserPrincipalName -eq 'admin@contoso.example' -and -not $DisableWAM }
+        }
+        It 'passes explicit DisableWAM to Exchange and Purview' {
+            & $script:scriptPath -Service ExchangeOnline -DisableWAM
+            & $script:scriptPath -Service Purview -DisableWAM
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter { $DisableWAM }
+            Should -Invoke Connect-IPPSSession -ParameterFilter { $DisableWAM -and -not $Organization }
+        }
+        It 'honors DisableWAM for Purview when device code falls back to interactive login' {
+            & $script:scriptPath -Service Purview -UseDeviceCode -DisableWAM -WarningAction SilentlyContinue
+            Should -Invoke Connect-IPPSSession -ParameterFilter { $DisableWAM }
+        }
+        It 'requires Graph before importing EXO' {
+            Mock Get-MgContext { $null }
+            { & $script:scriptPath -Service ExchangeOnline } | Should -Throw '*Connect Microsoft Graph*'
+            Should -Invoke Import-Module -Times 0
+            Should -Invoke Connect-ExchangeOnline -Times 0
+        }
+        It 'resolves the initial domain for certificate thumbprints too' -Skip:(-not $IsWindows) {
+            & $script:scriptPath -Service ExchangeOnline -TenantId contoso.example -ClientId app-id -CertificateThumbprint AB12
+            Should -Invoke Connect-ExchangeOnline -ParameterFilter { $Organization -eq 'contoso.onmicrosoft.com' -and $CertificateThumbprint -eq 'AB12' }
         }
 
         It 'Exchange Online with -Certificate connects with the object + resolved Organization' {

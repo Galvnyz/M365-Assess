@@ -14,7 +14,7 @@
 
 [![CI](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml/badge.svg)](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-check%20CI-informational)](https://github.com/Galvnyz/M365-Assess/actions/workflows/ci.yml)
-[![PowerShell 7.x](https://img.shields.io/badge/PowerShell-7.x-blue?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
+[![PowerShell 7.6+](https://img.shields.io/badge/PowerShell-7.6%2B-blue?logo=powershell&logoColor=white)](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 [![Read-Only](https://img.shields.io/badge/Operations-Read--Only-brightgreen)](.)
 [![Version](https://img.shields.io/badge/version-2.13.0-blue)](.)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

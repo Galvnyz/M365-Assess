@@ -36,6 +36,10 @@ if (-not (Assert-GraphConnection)) { return }
 
 # Ensure required Graph submodule is loaded (PS 7.x does not auto-import)
 Import-Module -Name Microsoft.Graph.Identity.SignIns -ErrorAction Stop
+if (-not (Get-Command -Name Invoke-GraphReadBatch -ErrorAction SilentlyContinue)) {
+    . "$PSScriptRoot/../Common/Invoke-SafeGraphRequest.ps1"
+    . "$PSScriptRoot/../Common/Invoke-GraphReadBatch.ps1"
+}
 
 # Retrieve all Conditional Access policies
 try {
@@ -66,15 +70,18 @@ foreach ($p in $allPolicies) {
 $guidToUpn = @{}
 if ($userGuids.Count -gt 0) {
     Write-Verbose "Resolving $($userGuids.Count) user GUID(s) to UPN..."
-    foreach ($guid in $userGuids) {
-        try {
-            $user = Get-MgUser -UserId $guid -Property UserPrincipalName -ErrorAction Stop
-            $guidToUpn[$guid] = $user.UserPrincipalName
+    $requests = @($userGuids | ForEach-Object {
+        @{ id = $_; url = '/users/' + [uri]::EscapeDataString($_) + '?$select=id,userPrincipalName' }
+    })
+    try {
+        $responses = Invoke-GraphReadBatch -Requests $requests
+        foreach ($guid in $userGuids) {
+            $response = $responses[$guid]
+            if ($response.status -eq 200 -and $response.body.userPrincipalName) {
+                $guidToUpn[$guid] = $response.body.userPrincipalName
+            }
         }
-        catch {
-            $guidToUpn[$guid] = $guid
-        }
-    }
+    } catch { Write-Warning 'User display-name resolution failed; retaining original policy user IDs.' }
 }
 
 # Helper: resolve user IDs to display names (UPN for GUIDs, pass-through for 'All'/'GuestsOrExternalUsers')

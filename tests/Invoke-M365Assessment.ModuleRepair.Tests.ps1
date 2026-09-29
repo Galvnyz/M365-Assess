@@ -19,7 +19,7 @@ Describe 'Module repair detection' {
         }
 
         It 'Should check EXO module conditionally on needsExo' {
-            $src | Should -Match 'needsExo.*-and.*-not.*exoModule'
+            $src | Should -Match 'needsExo.*-and.*-not.*exoCompatible'
         }
 
         It 'Should check PowerBI module conditionally on needsPowerBI' {
@@ -30,8 +30,8 @@ Describe 'Module repair detection' {
             $src | Should -Match 'RequiredVersion'
         }
 
-        It 'Should set EXO RequiredVersion to 3.7.1' {
-            $src | Should -Match "RequiredVersion.*=.*'3\.7\.1'"
+        It 'Should set EXO RequiredVersion to 3.10.1' {
+            $src | Should -Match "RequiredVersion.*=.*'3\.10\.1'"
         }
     }
 
@@ -50,12 +50,12 @@ Describe 'Module repair detection' {
             $src | Should -Match "Tier\s*=\s*'Install'"
         }
 
-        It 'Should define Downgrade tier' {
-            $src | Should -Match "Tier\s*=\s*'Downgrade'"
+        It 'Should not define a legacy Downgrade tier' {
+            $src | Should -Not -Match "Tier\s*=\s*'Downgrade'"
         }
 
-        It 'Should define FileCopy tier' {
-            $src | Should -Match "Tier\s*=\s*'FileCopy'"
+        It 'Should not define a legacy DLL-copy tier' {
+            $src | Should -Not -Match "Tier\s*=\s*'FileCopy'"
         }
     }
 
@@ -85,12 +85,12 @@ Describe 'Module repair flow' {
             $src | Should -Match 'Install missing modules to CurrentUser scope'
         }
 
-        It 'Should prompt separately for the EXO side-by-side install (#231)' {
-            $src | Should -Match 'alongside\? \[Y/n\]'
+        It 'Should use the regular install flow without a separate downgrade prompt' {
+            $src | Should -Not -Match 'alongside\? \[Y/n\]'
         }
 
         It 'Should never uninstall existing EXO versions (#231)' {
-            # The repair installs 3.7.1 side-by-side; newer versions stay
+            # The repair installs 3.10.1 side-by-side; other versions stay
             # installed for other tooling and the session pins the import.
             $src | Should -Not -Match 'Uninstall-Module'
         }

@@ -165,6 +165,7 @@ jobs:
       - name: Smoke tests
         shell: pwsh
         run: |
+          if ($PSVersionTable.PSVersion -lt [version]'7.6') { throw 'CI requires PowerShell 7.6+' }
           Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = @(
@@ -244,7 +245,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ps-version: ['7.4', '7.6']
+        ps-version: ['7.6']
     env:
       COVERAGE_THRESHOLD: 65
     steps:
@@ -281,6 +282,7 @@ jobs:
       - name: Run Pester
         shell: pwsh
         run: |
+          if ($PSVersionTable.PSVersion -lt [version]'7.6') { throw 'CI requires PowerShell 7.6+' }
           Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = './tests'
@@ -393,6 +395,7 @@ jobs:
       - name: Run cross-platform smoke
         shell: pwsh
         run: |
+          if ($PSVersionTable.PSVersion -lt [version]'7.6') { throw 'CI requires PowerShell 7.6+' }
           Import-Module Pester -RequiredVersion 5.7.1 -Force
           $config = New-PesterConfiguration
           $config.Run.Path = './tests/Smoke/Cross-Platform.Tests.ps1'

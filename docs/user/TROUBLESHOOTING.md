@@ -70,27 +70,22 @@ This opens an interactive consent prompt for all scopes the assessment requires.
 
 ### Cause
 
-ExchangeOnlineManagement version 3.8.0 and later ships a newer MSAL (`Microsoft.Identity.Client`) assembly that conflicts with the version bundled in the Microsoft.Graph SDK modules. PowerShell cannot load two different versions of the same assembly in one session.
+EXO and Graph bundle identity libraries that can conflict when EXO authenticates
+first. M365-Assess supports EXO 3.10.1+ by authenticating Graph first.
 
 ### Resolution
 
-Downgrade ExchangeOnlineManagement to the last compatible version:
+Use PowerShell 7.6+ and install the tested baseline if needed:
 
 ```powershell
-# Remove the conflicting version
-Uninstall-Module ExchangeOnlineManagement -AllVersions -Force
-
-# Install the compatible version
-Install-Module ExchangeOnlineManagement -RequiredVersion 3.7.1 -Force
+Install-Module ExchangeOnlineManagement -RequiredVersion 3.10.1 -Scope CurrentUser -Force
 ```
 
-After downgrading, **close and reopen your PowerShell session** before running the assessment. Assemblies loaded in the current session persist until the process exits.
-
-**Verify the installed version:**
-
-```powershell
-Get-Module ExchangeOnlineManagement -ListAvailable | Select-Object Name, Version
-```
+Close and reopen PowerShell, then let the assessment manage service connections.
+Do not preload EXO or manually copy its identity DLLs. Other EXO versions can stay
+installed. For interactive EXO/Purview `WAM` or `RuntimeBroker` errors, use the
+explicit `-DisableWAM` workaround. This option does not affect Graph login; for
+Graph window-handle errors use a supported terminal or `-UseDeviceCode`.
 
 ---
 
@@ -208,7 +203,7 @@ $modules = @(
     @{ Name = 'Microsoft.Graph.Identity.Governance' }
     @{ Name = 'Microsoft.Graph.Security' }
     @{ Name = 'Microsoft.Graph.Applications' }
-    @{ Name = 'ExchangeOnlineManagement'; RequiredVersion = '3.7.1' }
+    @{ Name = 'ExchangeOnlineManagement'; RequiredVersion = '3.10.1' }
 )
 
 foreach ($mod in $modules) {

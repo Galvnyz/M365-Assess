@@ -38,6 +38,7 @@ Describe 'Connect-RequiredService' {
         BeforeEach {
             $connectedServices = [System.Collections.Generic.List[string]]::new()
             $connectedServices.Add('ExchangeOnline')
+            $connectedServices.Add('Graph')
             $failedServices = [System.Collections.Generic.List[string]]::new()
             $issues = [System.Collections.Generic.List[object]]::new()
             $assessmentEvidence = @{}
@@ -67,6 +68,38 @@ Describe 'Connect-RequiredService' {
             Connect-RequiredService -Services @('Purview') -SectionName 'Security'
             $assessmentEvidence.ExchangeAudit.Error | Should -Match 'unavailable'
             $connectedServices | Should -Contain 'Purview'
+        }
+    }
+
+    Context 'when Exchange or Purview is requested first' {
+        BeforeEach {
+            $connectedServices = [System.Collections.Generic.List[string]]::new()
+            $failedServices = [System.Collections.Generic.List[string]]::new()
+            $issues = [System.Collections.Generic.List[object]]::new()
+            $connectServicePath = Join-Path $TestDrive 'ordered-connect.ps1'
+            $M365Environment = 'commercial'
+            $graphScopes = @('User.Read.All')
+            $script:graphPermissionsChecked = $true
+            $script:tenantLicensesResolved = $true
+            $script:resolvedTenantDomain = 'contoso.onmicrosoft.com'
+            $DisableWAM = $true
+            $connectionOrder = [System.Collections.Generic.List[string]]::new()
+            Set-Content $connectServicePath @'
+param($Service, $Scopes, [switch]$DisableWAM)
+$connectionOrder.Add($Service)
+if ($Service -eq 'Graph') { $Scopes | Should -Contain 'Organization.Read.All' }
+else { $DisableWAM | Should -BeTrue }
+'@
+        }
+        It 'authenticates Graph first for <_>' -ForEach @('ExchangeOnline','Purview') {
+            Connect-RequiredService -Services @($_) -SectionName Email
+            ($connectionOrder -join ',') | Should -Be "Graph,$_"
+        }
+        It 'does not attempt EXO when Graph authentication fails' {
+            Set-Content $connectServicePath 'param($Service) $connectionOrder.Add($Service); throw "Graph unavailable"'
+            Connect-RequiredService -Services ExchangeOnline -SectionName Email
+            ($connectionOrder -join ',') | Should -Be 'Graph'
+            $failedServices | Should -Contain 'ExchangeOnline'
         }
     }
 

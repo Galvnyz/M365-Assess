@@ -11,13 +11,11 @@
     Description       = 'Comprehensive read-only Microsoft 365 security assessment tool for IT consultants and administrators. Covers Entra ID, Exchange Online, Intune, Defender, SharePoint, Teams, Purview, and Active Directory.'
 
     # Minimum PowerShell version
-    PowerShellVersion = '7.0'
+    PowerShellVersion = '7.6'
 
     # Required modules (must be installed before running)
-    # Known compatible: Graph SDK 2.25+ with EXO 3.7.x
-    # EXO 3.8.0+ has MSAL conflicts with Graph SDK 2.x -- do not use
-    # EXO excluded from RequiredModules because ModuleVersion only supports minimum,
-    # and we need a ceiling (< 3.8.0). The orchestrator handles EXO gating at runtime.
+    # EXO 3.10.1+ is checked at runtime for Exchange/Purview sections (PowerShell 7.6+).
+    # Keep it out of RequiredModules so Graph authenticates before EXO is imported.
     RequiredModules   = @(
         @{ ModuleName = 'Microsoft.Graph.Authentication';               ModuleVersion = '2.25.0' }
         @{ ModuleName = 'Microsoft.Graph.Applications';                 ModuleVersion = '2.25.0' }
@@ -78,6 +76,7 @@
         'Orchestrator\Compare-M365Baseline.ps1'
         'Common\SecurityConfigHelper.ps1'
         'Common\Invoke-SafeGraphRequest.ps1'
+        'Common\Invoke-GraphReadBatch.ps1'
         'Common\Connect-Service.ps1'
         'Common\Resolve-DnsRecord.ps1'
         'Common\Resolve-TenantIdentity.ps1'
