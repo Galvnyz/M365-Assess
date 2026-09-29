@@ -5,6 +5,9 @@
     Retrieves Full Access, Send As, and Send on Behalf permissions for Exchange
     Online mailboxes. Essential for security reviews, onboarding/offboarding audits,
     and compliance reporting. Excludes system accounts (NT AUTHORITY, S-1-5-*) by default.
+    Tenant-wide Send As collection uses one bulk EXO query. Mailboxes absent from
+    that response, ambiguous matches, or a failed bulk query use individual reads.
+    Full Access still requires an individual mailbox query.
 
     Requires ExchangeOnlineManagement module and an active EXO connection.
 .PARAMETER Identity
@@ -77,6 +80,33 @@ Write-Verbose "Processing $($mailboxes.Count) mailboxes..."
 $results = [System.Collections.Generic.List[PSCustomObject]]::new()
 $counter = 0
 
+# Use the REST-backed standard cmdlet to preserve the existing Trustee values.
+# Get-EXORecipientPermission can return different trustee identifiers.
+# EXO supports tenant-wide RecipientPermission queries, but MailboxPermission
+# still requires Identity. Index once to avoid scanning every row per mailbox.
+# Keep system/self rows in the index: their presence proves that the mailbox was
+# represented even when it has no reportable delegates. Missing coverage falls
+# back to a targeted query rather than being treated as an empty permission set.
+$sendAsByIdentity = $null
+if (-not $Identity -and $mailboxes.Count -gt 1 -and $PermissionType -in 'All', 'SendAs') {
+    try {
+        $bulkPermissions = @(Get-RecipientPermission -ResultSize Unlimited -ErrorAction Stop)
+        $sendAsByIdentity = @{}
+        foreach ($permission in $bulkPermissions) {
+            $key = [string]$permission.Identity
+            if ([string]::IsNullOrWhiteSpace($key)) { throw 'Bulk Send As response contains an unidentified recipient.' }
+            if (-not $sendAsByIdentity.ContainsKey($key)) {
+                $sendAsByIdentity[$key] = [System.Collections.Generic.List[object]]::new()
+            }
+            $sendAsByIdentity[$key].Add($permission)
+        }
+    }
+    catch {
+        $sendAsByIdentity = $null
+        Write-Warning "Bulk SendAs collection unavailable; using individual mailbox queries: $_"
+    }
+}
+
 foreach ($mbx in $mailboxes) {
     $counter++
     Write-Verbose "[$counter/$($mailboxes.Count)] $($mbx.PrimarySmtpAddress)"
@@ -84,7 +114,7 @@ foreach ($mbx in $mailboxes) {
     # Full Access permissions
     if ($PermissionType -in 'All', 'FullAccess') {
         try {
-            $fullAccessPerms = Get-MailboxPermission -Identity $mbx.PrimarySmtpAddress |
+            $fullAccessPerms = Get-MailboxPermission -Identity $mbx.PrimarySmtpAddress -ResultSize Unlimited |
                 Where-Object {
                     $_.User -notlike 'NT AUTHORITY\*' -and
                     $_.User -notlike 'S-1-5-*' -and
@@ -110,7 +140,22 @@ foreach ($mbx in $mailboxes) {
     # Send As permissions
     if ($PermissionType -in 'All', 'SendAs') {
         try {
-            $sendAsPerms = Get-RecipientPermission -Identity $mbx.PrimarySmtpAddress |
+            $matchingKeys = @()
+            if ($null -ne $sendAsByIdentity) {
+                # Use unique recipient identifiers, never display names or aliases.
+                $matchingKeys = @(@($mbx.Identity, $mbx.ExternalDirectoryObjectId, $mbx.Guid,
+                    $mbx.DistinguishedName, $mbx.PrimarySmtpAddress, $mbx.UserPrincipalName) |
+                    ForEach-Object { [string]$_ } | Where-Object {
+                        -not [string]::IsNullOrWhiteSpace($_) -and $sendAsByIdentity.ContainsKey($_)
+                    } | Sort-Object -Unique)
+            }
+            $recipientPerms = if ($matchingKeys.Count -eq 1) {
+                $sendAsByIdentity[$matchingKeys[0]]
+            }
+            else {
+                Get-RecipientPermission -Identity $mbx.PrimarySmtpAddress -ResultSize Unlimited -ErrorAction Stop
+            }
+            $sendAsPerms = $recipientPerms |
                 Where-Object {
                     $_.Trustee -notlike 'NT AUTHORITY\*' -and
                     $_.Trustee -notlike 'S-1-5-*'
