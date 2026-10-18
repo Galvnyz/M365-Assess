@@ -92,9 +92,12 @@ The App Registration needs these Microsoft Graph **application** permissions:
 | `Application.Read.All` | App registrations |
 | `SecurityEvents.Read.All` | Secure Score |
 | `DeviceManagementConfiguration.Read.All` | Intune policies |
+| `DeviceManagementServiceConfig.Read.All` | Intune enrollment restrictions, automatic enrollment, and Autopilot profiles |
 | `DeviceManagementManagedDevices.Read.All` | Device inventory |
 | `Sites.Read.All` | SharePoint/OneDrive |
 | `TeamSettings.Read.All` | Teams configuration |
+
+Existing app registrations need admin consent for this permission. Reconnect delegated sessions to request the updated scopes.
 
 For Exchange Online, add the **Exchange.ManageAsApp** application role and assign the **Exchange Administrator** or **Global Reader** directory role to the service principal.
 

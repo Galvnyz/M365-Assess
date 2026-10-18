@@ -201,6 +201,7 @@ $requiredGraphPermissions = @(
     # ── Intune ────────────────────────────────────────────────────────────────
     @{ Name = 'DeviceManagementManagedDevices.Read.All'; Sections = 'Intune'                                 ; Reason = 'Managed device inventory and compliance state' }
     @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune, Security'                       ; Reason = 'Configuration profiles, compliance policies, Multi-Admin Approval policies' }
+    @{ Name = 'DeviceManagementServiceConfig.Read.All'; Sections = 'Intune'                                 ; Reason = 'Device enrollment restrictions, automatic enrollment, and Autopilot deployment profiles' }
     @{ Name = 'DeviceManagementRBAC.Read.All';           Sections = 'Security'                               ; Reason = 'Intune RBAC role definitions and assignments (scope tag audit)' }
     @{ Name = 'DeviceManagementApps.Read.All';           Sections = 'Security'                               ; Reason = 'Intune audit events including device wipe/retire/delete actions' }
     # ── Security ──────────────────────────────────────────────────────────────
