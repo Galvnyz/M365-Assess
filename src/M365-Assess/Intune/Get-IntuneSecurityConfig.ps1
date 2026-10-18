@@ -5,8 +5,8 @@
     Checks device compliance and enrollment configurations for proper security
     posture. Produces pass/fail verdicts via Add-Setting for each control.
 
-    Requires an active Microsoft Graph connection with DeviceManagementConfiguration
-    permissions.
+    Requires an active Microsoft Graph connection with DeviceManagementConfiguration.Read.All
+    and DeviceManagementServiceConfig.Read.All permissions.
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned to the pipeline.
 .EXAMPLE
@@ -170,7 +170,7 @@ catch {
             RecommendedValue = 'Block personal device enrollment'
             Status           = 'Review'
             CheckId          = 'INTUNE-ENROLL-001'
-            Remediation      = 'This check requires Intune license and DeviceManagementConfiguration.Read.All permission.'
+            Remediation      = 'This check requires Intune license and DeviceManagementServiceConfig.Read.All permission.'
         }
         Add-Setting @settingParams
     }

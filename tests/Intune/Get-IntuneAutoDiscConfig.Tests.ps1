@@ -83,3 +83,22 @@ Describe 'Get-IntuneAutoDiscConfig - No enrollment or Autopilot' {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-IntuneAutoDiscConfig - Enrollment permission denied' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        Mock Invoke-MgGraphRequest { throw '403 Forbidden - Authorization_RequestDenied' }
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Intune/Get-IntuneAutoDiscConfig.ps1"
+    }
+
+    It 'Reports Review and the service configuration permission for enrollment' {
+        $enrollment = @($settings | Where-Object { $_.CheckId -like 'INTUNE-AUTODISC-001*' })
+        $enrollment.Count | Should -Be 1
+        $enrollment[0].Status | Should -Be 'Review'
+        $enrollment[0].Remediation | Should -Match 'DeviceManagementServiceConfig\.Read\.All'
+        $enrollment[0].Remediation | Should -Not -Match 'DeviceManagementConfiguration\.Read\.All'
+    }
+
+    AfterAll { Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue }
+}

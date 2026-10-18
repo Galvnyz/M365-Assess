@@ -18,7 +18,7 @@
 | Email | ExchangeOnline | 0 | 1 | 1 | 0 |
 | Hybrid | Graph | 2 | 2 | 0 | 0 |
 | Identity | Graph | 10 | 9 | 0 | 0 |
-| Intune | Graph | 2 | 2 | 0 | 0 |
+| Intune | Graph | 3 | 3 | 0 | 0 |
 | Inventory | Graph, ExchangeOnline | 7 | 7 | 1 | 0 |
 | Licensing | Graph | 2 | 2 | 0 | 0 |
 | PowerBI | — | 0 | 0 | 0 | 0 |
@@ -134,6 +134,7 @@
 
 - `DeviceManagementConfiguration.Read.All`
 - `DeviceManagementManagedDevices.Read.All`
+- `DeviceManagementServiceConfig.Read.All`
 
 **Microsoft Graph application permissions** (app-only auth)
 
@@ -141,6 +142,7 @@
 |---|---|
 | `DeviceManagementConfiguration.Read.All` | Configuration profiles, compliance policies, Multi-Admin Approval policies |
 | `DeviceManagementManagedDevices.Read.All` | Managed device inventory and compliance state |
+| `DeviceManagementServiceConfig.Read.All` | Device enrollment restrictions, automatic enrollment, and Autopilot deployment profiles |
 
 ### Inventory
 

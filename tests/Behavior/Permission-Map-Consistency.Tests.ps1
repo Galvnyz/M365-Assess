@@ -52,3 +52,11 @@ Describe 'Permission map consistency (C5 #784)' {
         }
     }
 }
+
+Describe 'Intune enrollment delegated scopes (#1031)' {
+    It 'Requests read-only service configuration access alongside existing Intune scopes' {
+        foreach ($scope in @('DeviceManagementServiceConfig.Read.All', 'DeviceManagementConfiguration.Read.All', 'DeviceManagementManagedDevices.Read.All')) {
+            $script:maps.SectionScopeMap.Intune | Should -Contain $scope
+        }
+    }
+}

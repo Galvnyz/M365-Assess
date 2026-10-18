@@ -154,3 +154,28 @@ Describe 'Get-IntuneSecurityConfig - Personal Devices Allowed' {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Get-IntuneSecurityConfig - Enrollment permission denied' {
+    BeforeAll {
+        function global:Update-CheckProgress { param($CheckId, $Setting, $Status) }
+        Mock Invoke-MgGraphRequest { throw '403 Forbidden - Authorization_RequestDenied' }
+        . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
+        . "$PSScriptRoot/../../src/M365-Assess/Intune/Get-IntuneSecurityConfig.ps1"
+    }
+
+    It 'Reports Review and the service configuration permission for enrollment' {
+        $enrollment = @($settings | Where-Object { $_.CheckId -like 'INTUNE-ENROLL-001*' })
+        $enrollment.Count | Should -Be 1
+        $enrollment[0].Status | Should -Be 'Review'
+        $enrollment[0].Remediation | Should -Match 'DeviceManagementServiceConfig\.Read\.All'
+        $enrollment[0].Remediation | Should -Not -Match 'DeviceManagementConfiguration\.Read\.All'
+    }
+
+    It 'Preserves the configuration permission guidance for compliance' {
+        $compliance = $settings | Where-Object { $_.CheckId -like 'INTUNE-COMPLIANCE-001*' }
+        $compliance.Status | Should -Be 'Review'
+        $compliance.Remediation | Should -Match 'DeviceManagementConfiguration\.Read\.All'
+    }
+
+    AfterAll { Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue }
+}
