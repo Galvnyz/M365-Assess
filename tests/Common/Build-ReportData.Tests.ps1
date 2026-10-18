@@ -454,6 +454,32 @@ Describe 'Build-ReportData' {
             $d.domainStats.'Exchange Online'.info   | Should -Be 1
         }
 
+        It 'should count all nine statuses per domain without merging unassessed reasons' {
+            $findings = @(
+                foreach ($status in @('Pass', 'Warning', 'Fail', 'Review', 'Info', 'Skipped', 'Unknown', 'NotApplicable', 'NotLicensed', 'NotLicensed')) {
+                    New-Finding -CheckId 'EXO-AUTH-001.1' -Status $status
+                }
+                New-Finding -CheckId 'ENTRA-MFA-001.1' -Status 'Skipped'
+            )
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings $findings)
+            $exchange = $d.domainStats.'Exchange Online'
+            foreach ($key in @('pass', 'warn', 'fail', 'review', 'info', 'skipped', 'unknown', 'notApplicable')) {
+                $exchange.$key | Should -Be 1
+            }
+            $exchange.notLicensed | Should -Be 2
+            $exchange.total | Should -Be 10
+            ($exchange.PSObject.Properties | Where-Object Name -ne 'total' | Measure-Object -Property Value -Sum).Sum | Should -Be $exchange.total
+            $d.domainStats.'Entra ID'.skipped | Should -Be 1
+            $d.domainStats.'Entra ID'.notLicensed | Should -Be 0
+        }
+
+        It 'should emit zero unassessed counts for a fully assessed domain' {
+            $d = ConvertFrom-ReportDataJson (Build-ReportDataJson -AllFindings @(New-Finding -Status 'Pass'))
+            foreach ($key in @('skipped', 'unknown', 'notApplicable', 'notLicensed')) {
+                $d.domainStats.'Entra ID'.$key | Should -Be 0
+            }
+        }
+
         It 'should produce empty domainStats when AllFindings is empty' {
             $d = ConvertFrom-ReportDataJson (Build-ReportDataJson)
             @($d.domainStats.PSObject.Properties).Count | Should -Be 0

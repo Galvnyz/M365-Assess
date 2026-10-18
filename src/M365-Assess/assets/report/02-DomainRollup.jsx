@@ -1,4 +1,19 @@
 // ======================== Domain rollup ========================
+// Keep older embedded report data usable when the per-status counts are absent.
+function domainNotAssessed(d) {
+  const count = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+  const statuses = [
+    ['skipped', 'skipped'], ['unknown', 'could not be collected'],
+    ['notApplicable', 'not applicable'], ['notLicensed', 'not licensed'],
+  ];
+  const complete = statuses.every(([key]) => Number.isInteger(d[key]) && d[key] >= 0)
+    && statuses.reduce((sum, [key]) => sum + d[key], 0) === count;
+  const detail = complete && count > 0
+    ? statuses.filter(([key]) => d[key] > 0).map(([key, label]) => `${d[key]} ${label}`).join(', ')
+    : '';
+  return { count, tip: detail ? `${detail}. Never counted in any score.` : NOT_ASSESSED_TIP };
+}
+
 function DomainRollup({ onJump }) {
   const [open, setOpen] = useState(true);
 
@@ -25,6 +40,7 @@ function DomainRollup({ onJump }) {
               // weighting in favor of the doc's Pass / (Pass + Fail + Warning).
               const denom = d.pass + d.fail + d.warn;
               const score = denom > 0 ? Math.round((d.pass / denom) * 100) : 0;
+              const notAssessed = domainNotAssessed(d);
               return (
                 <div key={name} className="domain-card" onClick={()=>onJump(name)}>
                   <div className="dc-head">
@@ -37,20 +53,14 @@ function DomainRollup({ onJump }) {
                     {d.fail>0 && <i className="fail-seg" style={{flex: d.fail}}/>}
                     {d.review>0 && <i className="review-seg" style={{flex: d.review}}/>}
                     {d.info>0 && <i className="info-seg" style={{flex: d.info}}/>}
-                    {(() => {
-                      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-                      return notAssessed > 0 ? <i className="skipped-seg" style={{flex: notAssessed}} title={NOT_ASSESSED_TIP}/> : null;
-                    })()}
+                    {notAssessed.count > 0 && <i className="skipped-seg" style={{flex: notAssessed.count}} title={notAssessed.tip}/>}
                   </div>
                   <div className="dc-meta">
                     <span className="dc-pass"><b>{d.pass}</b> pass</span>
                     <span className="dc-warn"><b>{d.warn}</b> warn</span>
                     <span className="dc-fail"><b>{d.fail}</b> fail</span>
                     {d.review>0 && <span className="dc-review"><b>{d.review}</b> review</span>}
-                    {(() => {
-                      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-                      return notAssessed > 0 ? <span className="dc-skipped" title={NOT_ASSESSED_TIP}><b>{notAssessed}</b> not assessed</span> : null;
-                    })()}
+                    {notAssessed.count > 0 && <span className="dc-skipped" title={notAssessed.tip}><b>{notAssessed.count}</b> not assessed</span>}
                   </div>
                 </div>
               );

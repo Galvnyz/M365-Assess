@@ -11,7 +11,7 @@
     selected individually via -Format; the default is all four.
 
     The cmdlet does NOT re-run the assessment. It reads the per-collector CSVs
-    and the registry-driven horizon (now/next/later) the same way the HTML
+    and the registry-driven sequence (now/soon/later) the same way the HTML
     report and XLSX matrix do, so all three artifacts stay in agreement.
 .PARAMETER AssessmentFolder
     Path to the completed assessment output folder.
@@ -62,7 +62,7 @@ function Export-M365Remediation {
         $TenantName = Split-Path -Leaf $AssessmentFolder
     }
 
-    # ---------- Load findings + remediation horizon ----------
+    # ---------- Load findings + remediation sequence ----------
     $laneScript = Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1'
     if (-not (Get-Command -Name Get-RemediationLane -ErrorAction SilentlyContinue)) {
         if (Test-Path $laneScript) { . $laneScript }
@@ -88,7 +88,7 @@ function Export-M365Remediation {
                 $reg  = if ($registry.ContainsKey($base)) { $registry[$base] } else { $null }
                 $sev  = if ($reg -and $reg.riskSeverity) { $reg.riskSeverity } else { 'medium' }
                 $eff  = if ($reg -and $reg.effort) { [string]$reg.effort } else { 'medium' }
-                $hor  = Get-RemediationLane -Status $_.Status -Severity $sev -Effort $eff
+                $sequence  = Get-RemediationLane -Status $_.Status -Severity $sev -Effort $eff
                 $findings.Add([PSCustomObject]@{
                     CheckId      = $_.CheckId
                     BaseCheckId  = $base
@@ -100,7 +100,7 @@ function Export-M365Remediation {
                     Remediation  = $_.Remediation
                     Severity     = $sev
                     Effort       = $eff
-                    Horizon      = $hor
+                    Sequence     = $sequence
                     Impact       = if ($reg -and $reg.impact) { [string]$reg.impact } else { '' }
                     References   = if ($reg -and $reg.references) { @($reg.references) } else { @() }
                 })
@@ -121,7 +121,7 @@ function Export-M365Remediation {
         New-Item -Path $ghDir -ItemType Directory -Force | Out-Null
         foreach ($f in $findings) {
             $title = "[$($f.Severity.ToUpper())] $($f.Setting)"
-            $labels = @($f.Status.ToLower(), "horizon:$($f.Horizon)", "severity:$($f.Severity)") -join ', '
+            $labels = @($f.Status.ToLower(), "sequence:$($f.Sequence)", "severity:$($f.Severity)") -join ', '
             $refsBlock = if ($f.References.Count -gt 0) {
                 "## References`n" + (($f.References | ForEach-Object {
                     $url = if ($_ -is [hashtable]) { $_.url } else { $_.url }
@@ -132,7 +132,7 @@ function Export-M365Remediation {
             $body = @"
 # $title
 
-**CheckId:** $($f.CheckId) | **Status:** $($f.Status) | **Severity:** $($f.Severity) | **Effort:** $($f.Effort) | **Horizon:** $($f.Horizon)
+**CheckId:** $($f.CheckId) | **Status:** $($f.Status) | **Severity:** $($f.Severity) | **Effort:** $($f.Effort) | **Sequence:** $($f.Sequence)
 
 **Suggested labels:** $labels
 
@@ -181,10 +181,10 @@ done
         $quickWins = @($findings | Where-Object {
             $_.Status -eq 'Fail' -and ($_.Effort -eq 'small' -or $_.Effort -eq 'low')
         } | Sort-Object { $sevOrder[$_.Severity] } | Select-Object -First 5)
-        $byHorizon = @{
-            now   = @($findings | Where-Object Horizon -eq 'now').Count
-            soon  = @($findings | Where-Object Horizon -eq 'soon').Count
-            later = @($findings | Where-Object Horizon -eq 'later').Count
+        $bySequence = @{
+            now   = @($findings | Where-Object Sequence -eq 'now').Count
+            soon  = @($findings | Where-Object Sequence -eq 'soon').Count
+            later = @($findings | Where-Object Sequence -eq 'later').Count
         }
 
         $exec = @"
@@ -200,13 +200,13 @@ Generated: $(Get-Date -Format 'yyyy-MM-dd')
 | Warning | $($statusCounts.Warning) |
 | Review (manual validation) | $($statusCounts.Review) |
 
-## Remediation horizon
+## Remediation sequence
 
-| Horizon | Count | Meaning |
+| Sequence | Count | Meaning |
 |---|---|---|
-| Now | $($byHorizon.now) | Critical / high-impact fixes the team should start this sprint |
-| Soon | $($byHorizon.soon) | Next 30-60 days |
-| Later | $($byHorizon.later) | Long-tail / strategic |
+| Now | $($bySequence.now) | Critical / high-impact fixes the team should start this sprint |
+| Soon | $($bySequence.soon) | Next 30-60 days |
+| Later | $($bySequence.later) | Long-tail / strategic |
 
 ## Top critical findings
 
@@ -227,7 +227,7 @@ $(if ($quickWins.Count -eq 0) { '_No quick wins available -- failures require no
 ## Next steps
 
 1. Review the top critical findings with the security architect
-2. Schedule the Now-horizon items into the next sprint
+2. Schedule the Now-sequence items into the next sprint
 3. Use the GitHub Issues markdown export to bulk-create tracking issues
 4. Re-run the assessment after the next remediation sprint to measure drift
 "@
@@ -246,7 +246,7 @@ $(if ($quickWins.Count -eq 0) { '_No quick wins available -- failures require no
                 Description   = "Status: $($_.Status). Current: $($_.CurrentValue). Recommended: $($_.Recommended). $([System.Environment]::NewLine)$([System.Environment]::NewLine)Remediation: $($_.Remediation)"
                 'Issue Type'  = 'Task'
                 Priority      = $priMap[$_.Severity]
-                Labels        = "m365-assess $($_.Status.ToLower()) horizon-$($_.Horizon) severity-$($_.Severity)"
+                Labels        = "m365-assess $($_.Status.ToLower()) sequence-$($_.Sequence) severity-$($_.Severity)"
                 Components    = $_.Category
             }
         }
@@ -258,15 +258,15 @@ $(if ($quickWins.Count -eq 0) { '_No quick wins available -- failures require no
     # ---------- Technical backlog markdown ----------
     if ($Format -contains 'TechnicalBacklog') {
         $rows = $findings | Sort-Object @{Expression={
-            switch ($_.Horizon) { 'now' { 0 } 'soon' { 1 } 'later' { 2 } default { 3 } }
+            switch ($_.Sequence) { 'now' { 0 } 'soon' { 1 } 'later' { 2 } default { 3 } }
         }}, Severity, CheckId
         $body = "# Technical Remediation Backlog - $TenantName`n`n"
         $body += "Generated: $(Get-Date -Format 'yyyy-MM-dd'). Total: $($rows.Count) finding(s).`n`n"
-        $body += "| Horizon | CheckId | Setting | Status | Severity | Effort | Category |`n"
+        $body += "| Sequence | CheckId | Setting | Status | Severity | Effort | Category |`n"
         $body += "|---|---|---|---|---|---|---|`n"
         foreach ($r in $rows) {
             $setting = $r.Setting -replace '\|', '\|'
-            $body += "| $($r.Horizon) | $($r.CheckId) | $setting | $($r.Status) | $($r.Severity) | $($r.Effort) | $($r.Category) |`n"
+            $body += "| $($r.Sequence) | $($r.CheckId) | $setting | $($r.Status) | $($r.Severity) | $($r.Effort) | $($r.Category) |`n"
         }
         $tbPath = Join-Path -Path $OutputFolder -ChildPath 'technical-backlog.md'
         Set-Content -Path $tbPath -Value $body -Encoding UTF8

@@ -250,7 +250,10 @@ function Build-ReportDataJson {
     foreach ($finding in $findings) {
         $d = $finding.domain
         if (-not $domainStats.Contains($d)) {
-            $domainStats[$d] = [ordered]@{ pass=0; warn=0; fail=0; review=0; info=0; total=0 }
+            $domainStats[$d] = [ordered]@{
+                pass=0; warn=0; fail=0; review=0; info=0
+                skipped=0; unknown=0; notApplicable=0; notLicensed=0; total=0
+            }
         }
         $domainStats[$d].total++
         switch ($finding.status) {
@@ -259,6 +262,10 @@ function Build-ReportDataJson {
             'Fail'    { $domainStats[$d].fail++   }
             'Review'  { $domainStats[$d].review++ }
             'Info'    { $domainStats[$d].info++   }
+            'Skipped'       { $domainStats[$d].skipped++       }
+            'Unknown'       { $domainStats[$d].unknown++       }
+            'NotApplicable' { $domainStats[$d].notApplicable++ }
+            'NotLicensed'   { $domainStats[$d].notLicensed++   }
         }
     }
 

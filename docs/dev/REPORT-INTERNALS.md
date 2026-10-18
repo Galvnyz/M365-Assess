@@ -308,14 +308,24 @@ Per #802, `Pass% = Pass / (Pass + Fail + Warning)` everywhere — KPI tiles, sec
 
 ## Domain stats
 
-`domainStats` is a hashtable keyed by domain name, with per-domain Pass/Fail/Warn/Review/Info/Skipped counts plus a `total`. Used by the Domain Posture rollup. Example:
+`domainStats` is a hashtable keyed by domain name, with one count for each of the
+nine statuses plus a `total`. Used by the Domain Posture rollup. Example:
 
 ```jsonc
 {
-  "Entra ID":        { "pass": 24, "warn": 3, "fail": 7, "review": 11, "info": 2, "skipped": 0, "total": 47 },
-  "Exchange Online": { "pass": 18, "warn": 5, "fail": 4, "review": 6,  "info": 1, "skipped": 0, "total": 34 }
+  "Entra ID": {
+    "pass": 24, "warn": 3, "fail": 7, "review": 11, "info": 2,
+    "skipped": 1, "unknown": 2, "notApplicable": 0, "notLicensed": 4,
+    "total": 54
+  }
 }
 ```
+
+The four unassessed counters are additive, optional fields in the 1.0 JSON schema.
+The domain card groups them as **Not assessed** and shows their individual counts
+in its tooltip. They never enter the score denominator. When older data lacks the
+counters, the report derives the bucket from `total` minus the other five counts
+and retains the generic explanation.
 
 ## Frameworks list
 

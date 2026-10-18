@@ -30,6 +30,34 @@ test('Review never increases readiness and missing results never become passes',
  assert.equal(run('fwCoveragePct({pass:1,fail:1,warn:0,info:10,total:12})'),50);
  assert.equal(run('fwReadinessLabel(100)').label.includes('Audit'),false);
 });
+test('domain not-assessed counts explain reasons and preserve older data',()=>{
+ const run=sandbox();
+ const result=JSON.parse(run('JSON.stringify(domainNotAssessed(DOMAIN_STATS["Exchange Online"]))'));
+ assert.equal(result.count,5);
+ assert.equal(result.tip,'1 skipped, 1 could not be collected, 1 not applicable, 2 not licensed. Never counted in any score.');
+ const legacy={pass:1,warn:1,fail:1,review:1,info:1,total:8};
+ assert.equal(run(`domainNotAssessed(${JSON.stringify(legacy)}).count`),3);
+ assert.equal(run(`domainNotAssessed(${JSON.stringify(legacy)}).tip`),run('NOT_ASSESSED_TIP'));
+ for(const partial of [{skipped:3},{skipped:0,unknown:0,notApplicable:0,notLicensed:2}]) {
+  assert.equal(run(`domainNotAssessed(${JSON.stringify({...legacy,...partial})}).tip`),run('NOT_ASSESSED_TIP'));
+ }
+ assert.equal(run('domainNotAssessed({pass:1,warn:0,fail:0,review:0,info:0,total:1,skipped:0,unknown:0,notApplicable:0,notLicensed:0}).count'),0);
+ const licensedOnly={pass:0,warn:0,fail:0,review:0,info:0,total:2,skipped:0,unknown:0,notApplicable:0,notLicensed:2};
+ assert.equal(run(`domainNotAssessed(${JSON.stringify(licensedOnly)}).tip`),'2 not licensed. Never counted in any score.');
+});
+
+test('domain counters validate as optional nonnegative integers',()=>{
+ const legacy=structuredClone(fixture);
+ for(const stats of Object.values(legacy.domainStats)) {
+  for(const key of ['skipped','unknown','notApplicable','notLicensed']) delete stats[key];
+ }
+ assert.equal(validate(legacy),true,JSON.stringify(validate.errors));
+ for(const value of [-1,0.5,'2']) {
+  const bad=structuredClone(fixture);bad.domainStats['Exchange Online'].skipped=value;
+  assert.equal(validate(bad),false);
+ }
+});
+
 test('decisions expire and cannot override automated failures with attestations',()=>{
  const run=sandbox();
  assert.equal(run("decisionState({type:'ManualAttestation',approvedAt:'2020-01-01',expiresAt:'2099-01-01'},FINDINGS[1])"),'Ineligible');
@@ -49,6 +77,12 @@ test('actual offline React bundle mounts and edit workflow renders',async()=>{
  assert.equal(errors.length,0,String(errors));
  assert.match(w.document.body.textContent,/Collection: Unspecified/);
  assert.match(w.document.body.textContent,/Assessor decisions/);
+ const card=[...w.document.querySelectorAll('.domain-card')].find(c=>c.querySelector('.dc-name').textContent==='Exchange Online');
+ assert.ok(card);
+ assert.equal(card.querySelector('.dc-skipped').textContent,'5 not assessed');
+ assert.match(card.querySelector('.dc-skipped').title,/1 skipped, 1 could not be collected, 1 not applicable, 2 not licensed/);
+ assert.equal(card.querySelector('.skipped-seg').title,card.querySelector('.dc-skipped').title);
+ assert.equal(card.querySelector('.dc-score').textContent,'50%');
  w.document.querySelector('.edit-mode-toggle').click();
  await new Promise(r=>setTimeout(r,100));
  assert.match(w.document.body.textContent,/Save decision in report/);

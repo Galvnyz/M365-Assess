@@ -4,6 +4,8 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+- Show per-status counts for each domain's not-assessed findings, use Sequence consistently in remediation exports, and regenerate report previews without fixed line numbers (#971, #969, #970).
+
 - Reduce tenant-wide mailbox Send As collection to one bulk query, with targeted fallbacks for missing or ambiguous recipients; explicitly request unlimited Full Access results (#952).
 
 - Require PowerShell 7.6+ throughout the module and retire the PowerShell 7.4 CI lane to align with the supported EXO baseline.
