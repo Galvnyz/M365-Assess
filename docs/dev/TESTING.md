@@ -196,20 +196,28 @@ It deliberately skips `Import-Module ./src/M365-Assess` and `Test-ModuleManifest
 
 To verify report rendering without a live tenant:
 
-```bash
-# Build a swap-in test HTML using the existing sample report's REPORT_DATA + your latest JSX
-(head -n 21202 docs/sample-report/_Example-Report.html; \
- cat src/M365-Assess/assets/report-app.js; \
- tail -n +24526 docs/sample-report/_Example-Report.html) > _test.html
-```
-
-Then open `_test.html` in a browser. DevTools console should be clean. The "live test report before merging" rule in this project's `.claude/rules/` requires this for any PR touching `report-app.js`/`.jsx`/CSS.
-
-After:
-
 ```powershell
-Remove-Item ./_test.html
+npm run build
+$preview = './M365-Assessment/report-preview'
+New-Item -Path $preview -ItemType Directory -Force | Out-Null
+Copy-Item -Path './docs/sample-report/*' -Destination $preview -Force
+$params = @{
+    AssessmentFolder = $preview
+    OutputPath = "$preview/_Example-Report.html"
+    TenantName = 'contoso'
+}
+& ./src/M365-Assess/Common/Export-AssessmentReport.ps1 @params
 ```
+
+Open `M365-Assessment/report-preview/_Example-Report.html` in a browser and check
+that the sections you changed render correctly and the browser console is clean.
+Regenerate the full report instead of splicing JavaScript at fixed line numbers;
+this also exercises the current report-data producer.
+
+Report generation also rewrites the companion XLSX and writes an
+`_Assessment_contoso.json` bridge file. The preview copy keeps these generated
+files in the ignored `M365-Assessment/` folder. Delete that preview folder when
+finished; no sample-report artifacts need to be committed.
 
 ---
 

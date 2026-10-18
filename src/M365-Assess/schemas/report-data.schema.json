@@ -101,6 +101,54 @@
     },
     "headlineFrameworks": {
       "type": "array"
+    },
+    "domainStats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "pass": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "warn": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fail": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "review": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "info": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unknown": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notApplicable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notLicensed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
     }
   }
 }

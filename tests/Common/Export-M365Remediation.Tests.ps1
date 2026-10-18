@@ -111,10 +111,32 @@ Describe 'Export-M365Remediation (D3 #787)' {
         It 'writes a markdown table with all remediation-relevant findings' {
             Export-M365Remediation -AssessmentFolder $script:assessFolder -Format 'TechnicalBacklog' | Out-Null
             $body = Get-Content (Join-Path $script:assessFolder 'Remediation/technical-backlog.md') -Raw
-            $body | Should -Match '\| Horizon \| CheckId'
+            $body | Should -Match '\| Sequence \| CheckId'
             $body | Should -Match 'EXO-AUTH-001\.1'
             $body | Should -Match 'ENTRA-CA-003\.1'
             $body | Should -Match 'COMPLIANCE-AUDIT-001\.1'
+        }
+    }
+
+    Context 'consistent Sequence wording across export formats (#969)' {
+        It 'should use Sequence in GitHub, executive, Jira, and backlog output' {
+            Export-M365Remediation -AssessmentFolder $script:assessFolder | Out-Null
+            $folder = Join-Path $script:assessFolder 'Remediation'
+            $github = Get-Content (Join-Path $folder 'github/EXO-AUTH-001.1.md') -Raw
+            $github | Should -Match '\*\*Sequence:\*\* (now|soon|later)'
+            $github | Should -Match 'sequence:(now|soon|later)'
+            $executive = Get-Content (Join-Path $folder 'executive-summary.md') -Raw
+            $executive | Should -Match '## Remediation sequence'
+            $executive | Should -Match '\| Sequence \| Count \| Meaning \|'
+            $jira = Import-Csv (Join-Path $folder 'jira-import.csv')
+            foreach ($row in $jira) {
+                $row.Labels | Should -Match 'sequence-(now|soon|later)'
+            }
+            $backlog = Get-Content (Join-Path $folder 'technical-backlog.md') -Raw
+            $backlog | Should -Match '\| Sequence \| CheckId'
+            foreach ($file in Get-ChildItem -Path $folder -Recurse -File) {
+                (Get-Content $file.FullName -Raw) | Should -Not -Match 'horizon'
+            }
         }
     }
 

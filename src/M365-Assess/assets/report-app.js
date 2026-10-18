@@ -2370,6 +2370,17 @@ function AdHybridPanel() {
 }
 
 // ======================== Domain rollup ========================
+// Keep older embedded report data usable when the per-status counts are absent.
+function domainNotAssessed(d) {
+  const count = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
+  const statuses = [['skipped', 'skipped'], ['unknown', 'could not be collected'], ['notApplicable', 'not applicable'], ['notLicensed', 'not licensed']];
+  const complete = statuses.every(([key]) => Number.isInteger(d[key]) && d[key] >= 0) && statuses.reduce((sum, [key]) => sum + d[key], 0) === count;
+  const detail = complete && count > 0 ? statuses.filter(([key]) => d[key] > 0).map(([key, label]) => `${d[key]} ${label}`).join(', ') : '';
+  return {
+    count,
+    tip: detail ? `${detail}. Never counted in any score.` : NOT_ASSESSED_TIP
+  };
+}
 function DomainRollup({
   onJump
 }) {
@@ -2405,6 +2416,7 @@ function DomainRollup({
     // weighting in favor of the doc's Pass / (Pass + Fail + Warning).
     const denom = d.pass + d.fail + d.warn;
     const score = denom > 0 ? Math.round(d.pass / denom * 100) : 0;
+    const notAssessed = domainNotAssessed(d);
     return /*#__PURE__*/React.createElement("div", {
       key: name,
       className: "domain-card",
@@ -2442,16 +2454,13 @@ function DomainRollup({
       style: {
         flex: d.info
       }
-    }), (() => {
-      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-      return notAssessed > 0 ? /*#__PURE__*/React.createElement("i", {
-        className: "skipped-seg",
-        style: {
-          flex: notAssessed
-        },
-        title: NOT_ASSESSED_TIP
-      }) : null;
-    })()), /*#__PURE__*/React.createElement("div", {
+    }), notAssessed.count > 0 && /*#__PURE__*/React.createElement("i", {
+      className: "skipped-seg",
+      style: {
+        flex: notAssessed.count
+      },
+      title: notAssessed.tip
+    })), /*#__PURE__*/React.createElement("div", {
       className: "dc-meta"
     }, /*#__PURE__*/React.createElement("span", {
       className: "dc-pass"
@@ -2461,13 +2470,10 @@ function DomainRollup({
       className: "dc-fail"
     }, /*#__PURE__*/React.createElement("b", null, d.fail), " fail"), d.review > 0 && /*#__PURE__*/React.createElement("span", {
       className: "dc-review"
-    }, /*#__PURE__*/React.createElement("b", null, d.review), " review"), (() => {
-      const notAssessed = Math.max(0, d.total - d.pass - d.warn - d.fail - d.review - d.info);
-      return notAssessed > 0 ? /*#__PURE__*/React.createElement("span", {
-        className: "dc-skipped",
-        title: NOT_ASSESSED_TIP
-      }, /*#__PURE__*/React.createElement("b", null, notAssessed), " not assessed") : null;
-    })()));
+    }, /*#__PURE__*/React.createElement("b", null, d.review), " review"), notAssessed.count > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "dc-skipped",
+      title: notAssessed.tip
+    }, /*#__PURE__*/React.createElement("b", null, notAssessed.count), " not assessed")));
   })), FINDINGS.some(f => f.domain === 'Intune') && /*#__PURE__*/React.createElement("div", {
     id: "identity-intune"
   }, /*#__PURE__*/React.createElement(IntuneCategoryGrid, null)), D.mailboxSummary && /*#__PURE__*/React.createElement("div", {
