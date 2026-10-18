@@ -9,7 +9,7 @@
     a Warning row is emitted indicating manual enrollment or alternate MDM scope.
 
     Requires an active Microsoft Graph connection with
-    DeviceManagementConfiguration.Read.All permission.
+    DeviceManagementServiceConfig.Read.All permission.
 .PARAMETER OutputPath
     Optional path to export results as CSV. If not specified, results are returned
     to the pipeline.
@@ -149,7 +149,7 @@ catch {
             RecommendedValue = 'MDM auto-enrollment configured (scope: All or Some users)'
             Status           = 'Review'
             CheckId          = 'INTUNE-AUTODISC-001'
-            Remediation      = 'Requires DeviceManagementConfiguration.Read.All permission and Intune license.'
+            Remediation      = 'Requires DeviceManagementServiceConfig.Read.All permission and Intune license.'
         }
         Add-Setting @settingParams
     }

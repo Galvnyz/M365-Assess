@@ -345,7 +345,7 @@ Evaluates Intune/Endpoint Manager security settings against CIS requirements.
 **Description:**
 Checks device compliance and enrollment configurations for proper security posture. Produces pass/fail verdicts for each control. Aligned with CIS Microsoft 365 Foundations Benchmark v6.0.1.
 
-**Required Permissions:** Microsoft Graph -- `DeviceManagementConfiguration.Read.All` (via `Microsoft.Graph.DeviceManagement` module).
+**Required Permissions:** Microsoft Graph -- `DeviceManagementConfiguration.Read.All` and `DeviceManagementServiceConfig.Read.All` (via `Microsoft.Graph.DeviceManagement` module).
 
 **Parameters:**
 

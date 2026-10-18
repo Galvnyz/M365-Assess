@@ -94,3 +94,18 @@ Describe 'PermissionDefinitions.ps1' {
         }
     }
 }
+
+Describe 'Intune enrollment permission registration (#1031)' {
+    It 'Includes the read-only service configuration permission for Intune consent' {
+        $permission = @($script:RequiredGraphPermissions | Where-Object Name -eq 'DeviceManagementServiceConfig.Read.All')
+        $permission.Count | Should -Be 1
+        $permission[0].Sections | Should -Be 'Intune'
+    }
+
+    It 'Keeps the standalone consent helper permission definitions synchronized' {
+        $standalone = Get-Content "$PSScriptRoot/../../Setup/Add-M365AssessmentPermissions.txt" -Raw
+        $expected = [regex]::Match($script:defsContent, '(?m)^.*Name = ''DeviceManagementServiceConfig.Read.All''.*$').Value.Trim()
+        $expected | Should -Not -BeNullOrEmpty
+        $standalone | Should -Match ([regex]::Escape($expected))
+    }
+}
