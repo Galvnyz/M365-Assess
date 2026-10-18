@@ -4,22 +4,84 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
-- Show per-status counts for each domain's not-assessed findings, use Sequence consistently in remediation exports, and regenerate report previews without fixed line numbers (#971, #969, #970).
+## [2.14.0] - 2026-10-18
 
-- Reduce tenant-wide mailbox Send As collection to one bulk query, with targeted fallbacks for missing or ambiguous recipients; explicitly request unlimited Full Access results (#952).
+Advances **Trust at Scale** with Graph-first Exchange/Purview authentication,
+fewer repeated permission and user-lookup queries, and clearer assessment reports.
+This release raises the supported runtime requirements; review the upgrade notes
+before updating from 2.13.0.
 
-- Require PowerShell 7.6+ throughout the module and retire the PowerShell 7.4 CI lane to align with the supported EXO baseline.
+### Upgrade notes
 
-- Make EXO 3.10.1+ the supported baseline for Exchange/Purview on PowerShell 7.6+: authenticate Graph first, remove legacy downgrade/DLL-copy repairs, resolve certificate Organization consistently, and expose explicit `-DisableWAM` for interactive broker failures (#231).
+- **PowerShell 7.6+ is now required for every assessment**, including Graph-only
+  runs. Earlier PowerShell versions cannot load this module (#1029).
+- **ExchangeOnlineManagement 3.10.1+ is required for Exchange/Purview sections.**
+  Start a fresh PowerShell session and let the assessment authenticate Graph
+  before loading EXO. If using `-SkipConnection`, establish that order yourself.
+  The assessment preserves other installed module versions (#1029).
+- Grant admin consent for **`DeviceManagementServiceConfig.Read.All`** on existing
+  assessment app registrations. Reconnect delegated sessions to request the added
+  scope; enrollment restrictions and automatic discovery depend on it (#1035).
+- Remediation exports now use **Sequence** instead of Horizon. Update downstream
+  label matching from `horizon:` to `sequence:` for GitHub suggestions and from
+  `horizon-` to `sequence-` for Jira imports. The `now`/`soon`/`later` lane values
+  are unchanged (#1036).
 
 ### Added
-- Reproducible EXO/Graph compatibility probe with fresh-process, exact-version
-  testing and read-only Graph/Exchange/Purview checks. Live Windows tests retain
-  the EXO 3.7.x ceiling: EXO 3.10.1 still fails supported authentication orders (#231).
+
+- Optional **`-DisableWAM`** switch for interactive Exchange/Purview authentication
+  on hosts affected by WAM broker failures. Graph authentication is unchanged
+  (#1029).
+- Reproducible EXO/Graph compatibility probe using fresh processes, exact module
+  versions, and read-only Graph, Exchange, and Purview reads. Recorded Windows
+  validation on 2026-09-28 passed with EXO 3.10.1 using Graph-first certificate authentication
+  and interactive authentication with explicit `-DisableWAM`. In those tests,
+  EXO-first certificate authentication and default WAM on the host failed;
+  Linux/macOS, sovereign clouds, and managed identity were not live-validated
+  for this compatibility transition (#1029).
+- Per-status domain counts and tooltips explain which findings were skipped,
+  could not be collected, were not applicable, or were not licensed. The new
+  counters are optional additions to REPORT_DATA 1.0; older data retains the
+  generic tooltip, and scoring formulas are unchanged (#1036).
 
 ### Changed
-- Batch unique user lookups in admin-role and Conditional Access reports, with
-  per-subrequest throttling retries and explicit unresolved evidence (#952).
+
+- Authenticate Graph before importing ExchangeOnlineManagement, including
+  Exchange-only and Purview-only selections. Failed Graph authentication prevents
+  dependent connections. Certificate authentication consistently resolves the
+  initial tenant domain; interactive authentication uses the account UPN (#1029).
+- Batch unique user lookups in admin-role and Conditional Access reports in
+  groups of up to 20, with retries for throttled subresponses and explicit
+  unresolved evidence (#1029).
+- Use one unlimited Send As permission query for tenant-wide multi-mailbox
+  scans, retaining targeted fallbacks for missing or ambiguous identities and
+  failed bulk responses. Explicit mailbox selections and single-mailbox tenants
+  keep targeted queries. Full Access collection remains per mailbox and now
+  explicitly requests unlimited results (#1030).
+- Clarify assessment scope in HTML reports and compliance guidance: observed
+  baseline results and framework mappings support security improvement and audit
+  preparation; scores and attestations do not establish overall security,
+  compliance, or certification (#1028).
+- Align GitHub, Jira, executive-summary, and technical-backlog remediation exports
+  with the report's Sequence terminology. Document full report regeneration in
+  an ignored preview folder instead of fixed-line HTML splicing (#1036).
+- Refresh build/test dependencies (`@babel/core`, jsdom, and source-map-js) and
+  GitHub Actions tooling. These development dependencies are not runtime module
+  requirements (#1012, #1026, #1027, #1032, #1033, #1034).
+
+### Fixed
+
+- Request the missing Intune service-configuration permission in consent setup,
+  the standalone helper, and delegated scopes. Correct the permission guidance
+  for enrollment restrictions and automatic discovery checks (#1035).
+- Register PSGallery on fresh workflow runners before installing validation
+  dependencies (#1024).
+
+### Removed
+
+- Legacy EXO downgrade and DLL-copy repair paths, the EXO 3.7.x ceiling, and the
+  PowerShell 7.4 CI lane. The supported baseline is PowerShell 7.6+ with EXO
+  3.10.1+ (#1029).
 
 ## [2.13.0] - 2026-09-27
 
