@@ -143,3 +143,26 @@ Describe 'Export-AssessmentBaseline' {
         }
     }
 }
+
+Describe 'Baseline finding counts exclude context-only rows' {
+    BeforeAll { . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/Export-AssessmentBaseline.ps1" }
+    It 'serializes only identified findings and counts the same rows' {
+        $folder = Join-Path -Path $TestDrive -ChildPath 'context-fixture'
+        $null = New-Item -Path $folder -ItemType Directory
+        @(
+            [PSCustomObject]@{CheckId='TEST-001.1';Status='Fail';Setting='Valid finding'},
+            [PSCustomObject]@{CheckId='';Status='Warning';Setting='Context only'},
+            [PSCustomObject]@{CheckId='   ';Status='Warning';Setting='Whitespace identifier'}
+        ) | Export-Csv -Path (Join-Path $folder 'checks-config.csv') -NoTypeInformation
+        [PSCustomObject]@{CheckId='';Status='Warning';Setting='Context only'} | Export-Csv -Path (Join-Path $folder 'empty-config.csv') -NoTypeInformation
+        $baseline = Export-AssessmentBaseline -AssessmentFolder $folder -OutputFolder $TestDrive -Label 'filtered' -TenantId 'example.test'
+        $manifest = Get-Content -LiteralPath (Join-Path $baseline 'manifest.json') -Raw | ConvertFrom-Json
+        $manifest.CheckCount | Should -Be 1
+        $json = Get-Content -LiteralPath (Join-Path $baseline 'checks-config.json') -Raw
+        $json.TrimStart().StartsWith('[') | Should -BeTrue
+        $rows = @($json | ConvertFrom-Json)
+        $rows.Count | Should -Be 1
+        $rows[0].CheckId | Should -Be 'TEST-001.1'
+        Join-Path -Path $baseline -ChildPath 'empty-config.json' | Should -Not -Exist
+    }
+}

@@ -97,6 +97,7 @@
         'Common\Get-ReportTemplate.ps1'
         'Common\Export-ComplianceMatrix.ps1'
         'Common\Export-EvidencePackage.ps1'
+        'Common\Complete-AssessmentArtifacts.ps1'
         'Common\Export-M365Remediation.ps1'
         'Common\Get-RedactionRules.ps1'
         'Common\Export-ComplianceOverview.ps1'
@@ -249,7 +250,7 @@
             IconUri      = 'https://raw.githubusercontent.com/Galvnyz/M365-Assess/main/src/M365-Assess/assets/m365-assess-logo.png'
             LicenseUri   = 'https://github.com/Galvnyz/M365-Assess/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/Galvnyz/M365-Assess'
-            ReleaseNotes = 'v2.14.0 - Graph-first authentication, collection scaling, and report clarity. UPGRADE: PowerShell 7.6+ is required for all assessments; Exchange/Purview require ExchangeOnlineManagement 3.10.1+ and a fresh Graph-first session. Grant DeviceManagementServiceConfig.Read.All admin consent and reconnect delegated sessions for Intune enrollment checks. ADDED: optional -DisableWAM for affected interactive Exchange/Purview hosts; per-status not-assessed domain tooltips with unchanged scoring. CHANGED: batch Graph user lookups and tenant-wide Send As reads, retaining targeted fallbacks; Full Access requests unlimited results. Clarify assessment scope and align remediation exports with Sequence terminology; GitHub/Jira label prefixes change from horizon to sequence. FIXED: Intune permission setup and guidance; PSGallery runner bootstrap. REMOVED: legacy EXO downgrade/DLL-copy repairs and PowerShell 7.4 CI. Build/test and CI dependencies refreshed. See CHANGELOG.md for upgrade steps and live compatibility validation limits.'
+            ReleaseNotes = 'v2.14.0 - Graph-first authentication, collection scaling, and report clarity. UPGRADE: PowerShell 7.6+ is required for all assessments; Exchange/Purview require ExchangeOnlineManagement 3.10.1+ and a fresh Graph-first session. Grant DeviceManagementServiceConfig.Read.All admin consent and reconnect delegated sessions for Intune enrollment checks. ADDED: optional -DisableWAM for affected interactive Exchange/Purview hosts; per-status not-assessed domain tooltips with unchanged scoring. CHANGED: batch Graph user lookups and tenant-wide Send As reads, retaining targeted fallbacks; Full Access requests unlimited results. Clarify assessment scope and align remediation exports with Sequence terminology; GitHub/Jira label prefixes change from horizon to sequence. FIXED: Intune permission setup and guidance; PSGallery runner bootstrap; final artifact provenance hashes, accurate progress counts, readable workbook formatting, and context-free baseline counts. REMOVED: legacy EXO downgrade/DLL-copy repairs and PowerShell 7.4 CI. Build/test and CI dependencies refreshed. See CHANGELOG.md for upgrade steps and live compatibility validation limits.'
         }
     }
 }

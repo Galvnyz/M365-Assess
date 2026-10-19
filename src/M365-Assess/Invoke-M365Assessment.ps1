@@ -1494,91 +1494,6 @@ if (Test-Path -Path $reportScriptPath) {
 }
 
 # ------------------------------------------------------------------
-# Issue #867: write _Assessment-Provenance.json — canonical chain-of-
-# custody artifact. Captures tool version, registry version, run metadata,
-# and SHA-256 hashes of every other artifact in the folder. Must run
-# AFTER the HTML/XLSX/CSV writes so the hashes reflect final content.
-# ------------------------------------------------------------------
-try {
-    $registryVersion = ''
-    try {
-        $regManifest = Join-Path -Path $projectRoot -ChildPath 'controls/registry.json'
-        if (Test-Path -Path $regManifest) {
-            $regJson = Get-Content -Raw -Path $regManifest | ConvertFrom-Json
-            $registryVersion = if ($regJson.dataVersion) { $regJson.dataVersion } else { '' }
-        }
-    } catch { Write-Verbose "Could not read registry dataVersion: $($_.Exception.Message)" }
-
-    $artifactHashes = @()
-    Get-ChildItem -Path $assessmentFolder -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne '_Assessment-Provenance.json' } |
-        Sort-Object -Property Name |
-        ForEach-Object {
-            try {
-                $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
-                $artifactHashes += [ordered]@{
-                    name   = $_.Name
-                    bytes  = $_.Length
-                    sha256 = $hash
-                }
-            } catch {
-                Write-Verbose "Could not hash $($_.FullName): $($_.Exception.Message)"
-            }
-        }
-
-    $tenantNameForProv = if ($script:domainPrefix) { $script:domainPrefix } else { $TenantId }
-    $provenance = [ordered]@{
-        toolName              = 'M365-Assess'
-        toolVersion           = $script:AssessmentVersion
-        registryDataVersion   = $registryVersion
-        generatedAtUtc        = (Get-Date).ToUniversalTime().ToString('o')
-        tenantId              = if ($tenantIdentity -and $tenantIdentity.Guid) { $tenantIdentity.Guid } else { $TenantId }
-        tenantDisplayName     = if ($tenantIdentity -and $tenantIdentity.DisplayName) { $tenantIdentity.DisplayName } else { '' }
-        tenantPrimaryDomain   = if ($tenantIdentity -and $tenantIdentity.PrimaryDomain) { $tenantIdentity.PrimaryDomain } else { '' }
-        tenantNameSlug        = $tenantNameForProv
-        environment           = $M365Environment
-        sectionsRun           = @($Section)
-        collectorsRun         = @($summaryResults).Count
-        durationSeconds       = [int]$overallDuration.TotalSeconds
-        outputArtifacts       = $artifactHashes
-    }
-    $provenancePath = Join-Path -Path $assessmentFolder -ChildPath '_Assessment-Provenance.json'
-    $provenance | ConvertTo-Json -Depth 6 | Set-Content -Path $provenancePath -Encoding UTF8
-    Write-AssessmentLog -Level INFO -Message "Provenance file written: $provenancePath ($($artifactHashes.Count) artifacts hashed)"
-}
-catch {
-    Write-AssessmentLog -Level WARN -Message "Failed to write provenance file: $($_.Exception.Message)"
-}
-
-# ------------------------------------------------------------------
-# D4 #788 -- Sanitized evidence package
-# Runs after HTML/XLSX so we can read the just-written artifacts. Failures
-# here are non-fatal -- the assessment itself is already complete on disk.
-# ------------------------------------------------------------------
-if ($EvidencePackage) {
-    $packageScriptPath = Join-Path -Path $projectRoot -ChildPath 'Common/Export-EvidencePackage.ps1'
-    if (Test-Path -Path $packageScriptPath) {
-        try {
-            . $packageScriptPath
-            $pkgParams = @{
-                AssessmentFolder = $assessmentFolder
-            }
-            if ($script:domainPrefix) { $pkgParams['TenantName'] = $script:domainPrefix }
-            elseif ($TenantId)        { $pkgParams['TenantName'] = $TenantId }
-            if ($Redact) {
-                $pkgParams['Redact'] = $true
-                if ($script:domainPrefix) { $pkgParams['TenantDisplayName'] = $script:domainPrefix }
-            }
-            $packagePath = Export-EvidencePackage @pkgParams
-            Write-AssessmentLog -Level INFO -Message "Evidence package written: $packagePath"
-        }
-        catch {
-            Write-AssessmentLog -Level WARN -Message "Evidence package generation failed: $($_.Exception.Message)"
-        }
-    }
-}
-
-# ------------------------------------------------------------------
 # Disconnect services
 # ------------------------------------------------------------------
 if (-not $SkipConnection) {
@@ -1603,6 +1518,49 @@ if (-not $SkipConnection) {
             Write-AssessmentLog -Level WARN -Message "Failed to disconnect $svc`: $($_.Exception.Message)"
         }
     }
+}
+
+# ------------------------------------------------------------------
+# Seal outputs only after service cleanup has finished writing the log.
+# Evidence packaging and the console summary must not mutate sealed files.
+# ------------------------------------------------------------------
+try {
+    $registryVersion = ''
+    try {
+        $regManifest = Join-Path -Path $projectRoot -ChildPath 'controls/registry.json'
+        if (Test-Path -Path $regManifest) {
+            $regJson = Get-Content -Raw -Path $regManifest | ConvertFrom-Json
+            $registryVersion = if ($regJson.dataVersion) { $regJson.dataVersion } else { '' }
+        }
+    } catch { Write-Verbose "Could not read registry dataVersion: $($_.Exception.Message)" }
+
+    $tenantNameForProv = if ($script:domainPrefix) { $script:domainPrefix } else { $TenantId }
+    $provenance = [ordered]@{
+        toolName              = 'M365-Assess'
+        toolVersion           = $script:AssessmentVersion
+        registryDataVersion   = $registryVersion
+        generatedAtUtc        = (Get-Date).ToUniversalTime().ToString('o')
+        tenantId              = if ($tenantIdentity -and $tenantIdentity.Guid) { $tenantIdentity.Guid } else { $TenantId }
+        tenantDisplayName     = if ($tenantIdentity -and $tenantIdentity.DisplayName) { $tenantIdentity.DisplayName } else { '' }
+        tenantPrimaryDomain   = if ($tenantIdentity -and $tenantIdentity.PrimaryDomain) { $tenantIdentity.PrimaryDomain } else { '' }
+        tenantNameSlug        = $tenantNameForProv
+        environment           = $M365Environment
+        sectionsRun           = @($Section)
+        collectorsRun         = @($summaryResults).Count
+        durationSeconds       = [int]$overallDuration.TotalSeconds
+    }
+    . (Join-Path -Path $projectRoot -ChildPath 'Common/Complete-AssessmentArtifacts.ps1')
+    $artifactParams = @{
+        AssessmentFolder = $assessmentFolder
+        Provenance = $provenance
+        EvidencePackage = $EvidencePackage
+        Redact = $Redact
+    }
+    $null = Complete-AssessmentArtifacts @artifactParams
+}
+catch {
+    Write-AssessmentLog -Level WARN -Message "Failed to finalize assessment artifacts: $($_.Exception.Message)"
+    Write-Warning "Failed to finalize assessment artifacts: $($_.Exception.Message)"
 }
 
 # ------------------------------------------------------------------
