@@ -496,50 +496,27 @@ if ($authPolicy) {
 # ------------------------------------------------------------------
 # 17. Guest Invitation Domain Restrictions (CIS 5.1.6.1)
 # ------------------------------------------------------------------
-try {
-    Write-Verbose "Checking guest invitation domain restrictions..."
-    $graphParams = @{
-        Method      = 'GET'
-        Uri         = '/v1.0/policies/crossTenantAccessPolicy/default'
-        ErrorAction = 'Stop'
-    }
-    $crossTenantPolicy = Invoke-SafeGraphRequest @graphParams
-
-    $b2bCollabInbound = $crossTenantPolicy['b2bCollaborationInbound']
-    $isRestricted = $false
-    if ($b2bCollabInbound -and $b2bCollabInbound['applications']) {
-        $accessType = $b2bCollabInbound['applications']['accessType']
-        $isRestricted = ($accessType -eq 'blocked' -or $accessType -eq 'allowed')
-    }
-
-    # Also check authorizationPolicy allowInvitesFrom
-    $invitesFrom = if ($authPolicy) { $authPolicy['allowInvitesFrom'] } else { 'unknown' }
-    $domainRestricted = ($invitesFrom -ne 'everyone') -and $isRestricted
-
-    $settingParams = @{
-        Category         = 'External Collaboration'
-        Setting          = 'Guest Invitation Domain Restrictions'
-        CurrentValue     = $(if ($domainRestricted) { "Restricted (invites: $invitesFrom)" } else { "Open (invites: $invitesFrom)" })
-        RecommendedValue = 'Restricted to allowed domains only'
-        Status           = $(if ($invitesFrom -eq 'none' -or $domainRestricted) { 'Pass' } elseif ($invitesFrom -ne 'everyone') { 'Review' } else { 'Fail' })
-        CheckId          = 'ENTRA-GUEST-004'
-        Remediation      = 'Entra admin center > External Identities > External collaboration settings > Collaboration restrictions > Allow invitations only to the specified domains.'
-    }
-    Add-Setting @settingParams
+# Inviter roles and cross-tenant application access do not reveal the external
+# collaboration domain allow/block list. Keep this manual until the collector
+# reads that list from an authoritative source; even disabled invitations do
+# not establish which domain restrictions are configured.
+Write-Verbose "Guest invitation domain restrictions require manual review."
+$invitesFrom = if ($authPolicy -and -not [string]::IsNullOrWhiteSpace($authPolicy['allowInvitesFrom'])) {
+    $authPolicy['allowInvitesFrom']
+} else { 'not collected' }
+$settingParams = @{
+    CheckId          = 'ENTRA-GUEST-004'
+    Category         = 'External Collaboration'
+    Setting          = 'Guest Invitation Domain Restrictions'
+    CurrentValue     = "Domain allow/block list not collected (inviter policy: $invitesFrom)"
+    RecommendedValue = 'Restricted to allowed domains only'
+    Status           = 'Review'
+    Remediation      = 'Entra admin center > External Identities > External collaboration settings > Collaboration restrictions. Manually verify Allow invitations only to the specified domains and record the approved Target domains as evidence.'
+    Evidence         = $(if ($invitesFrom -eq 'not collected') { 'Inviter authorization context was not collected.' } else { "authorizationPolicy.allowInvitesFrom=$invitesFrom describes who can invite guests only." })
+    EvidenceSource   = '/v1.0/policies/authorizationPolicy (inviter context only)'
+    Limitations      = 'The invitation-domain allow/block list is not collected. Inviter roles and cross-tenant application access cannot establish domain restrictions.'
 }
-catch {
-    Write-Warning "Could not check guest invitation restrictions: $_"
-    $settingParams = @{
-        CheckId          = 'ENTRA-GUEST-004'
-        Category         = 'External Collaboration'
-        Setting          = 'Guest Invitation Domain Restrictions'
-        CurrentValue     = "Error: $($_.Exception.Message)"
-        RecommendedValue = 'Restricted to allowed domains only'
-        Status           = 'Skipped'
-        Remediation      = 'Check Graph API permissions and retry.'
-    }
-    Add-Setting @settingParams
-}
+Add-Setting @settingParams
 
 # ------------------------------------------------------------------
 # 18. Dynamic Group for Guest Users (CIS 5.1.3.1)

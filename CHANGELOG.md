@@ -10,6 +10,13 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   generated HTML/React and XLSX checks, folder/log checks, and artifact hashes.
   CI retains validation artifacts; human live-tenant release checks remain separate.
 
+### Fixed
+
+- Keep guest invitation domain restrictions (`ENTRA-GUEST-004`) in manual Review
+  until the domain allow/block list is verified. Inviter permissions and cross-tenant
+  application access no longer produce unsupported Pass or Fail results; findings
+  retain inviter context, collection limitations, and portal verification steps.
+
 ## [2.14.0] - 2026-10-18
 
 Advances **Trust at Scale** with Graph-first Exchange/Purview authentication,

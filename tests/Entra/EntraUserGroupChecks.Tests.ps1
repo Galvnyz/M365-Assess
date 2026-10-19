@@ -219,6 +219,71 @@ Describe 'EntraUserGroupChecks' {
     }
 }
 
+Describe 'EntraUserGroupChecks - Invitation domain evidence' {
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/SecurityConfigHelper.ps1"
+        function Invoke-MgGraphRequest { param($Method, $Uri, $Headers) }
+        Mock Invoke-MgGraphRequest {
+            param($Uri)
+            if ($Uri -like '*/policies/crossTenantAccessPolicy/default') {
+                return $script:crossTenantPolicy
+            }
+            return @{ value = @() }
+        }
+        Mock Write-Warning { }
+    }
+
+    BeforeEach {
+        $ctx = Initialize-SecurityConfig
+        $settings = $ctx.Settings
+        $context = @{ TenantId = '11111111-1111-1111-1111-111111111111' }
+        $authPolicy = @{ allowInvitesFrom = 'adminsAndGuestInviters' }
+        $script:crossTenantPolicy = @{
+            b2bCollaborationInbound = @{
+                applications = @{ accessType = 'allowed'; targets = @(@{ target = 'AllApplications'; targetType = 'application' }) }
+                usersAndGroups = @{ accessType = 'allowed'; targets = @(@{ target = 'AllUsers'; targetType = 'user' }) }
+            }
+        }
+    }
+
+    It 'should require domain review with <Inviters> inviters and <Access> inbound access' -ForEach @(
+        foreach ($inviters in @('adminsAndGuestInviters', 'adminsGuestInvitersAndAllMembers', 'everyone', 'none')) {
+            foreach ($access in @('allowed', 'blocked')) {
+                @{ Inviters = $inviters; Access = $access }
+            }
+        }
+    ) {
+        $authPolicy.allowInvitesFrom = $Inviters
+        $script:crossTenantPolicy.b2bCollaborationInbound.applications.accessType = $Access
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraUserGroupChecks.ps1"
+        $check = @($settings | Where-Object Setting -EQ 'Guest Invitation Domain Restrictions')
+        $check.Count | Should -Be 1
+        $check[0].Status | Should -Be 'Review'
+        $check[0].CurrentValue | Should -Match ([regex]::Escape($Inviters))
+        $check[0].CurrentValue | Should -Match 'not collected'
+        $check[0].Limitations | Should -Match 'domain allow/block list'
+        $check[0].Remediation | Should -Match 'Collaboration restrictions'
+        $check[0].Remediation | Should -Match 'Target domains'
+        Should -Invoke Invoke-MgGraphRequest -Times 0 -Exactly -ParameterFilter { $Uri -like '*/policies/crossTenantAccessPolicy/default' }
+    }
+
+    It 'should retain manual review when <Name> authorization context is unavailable' -ForEach @(
+        @{ Name = 'missing'; Policy = $null },
+        @{ Name = 'empty'; Policy = @{} },
+        @{ Name = 'null inviter'; Policy = @{ allowInvitesFrom = $null } }
+    ) {
+        $authPolicy = $Policy
+        Mock Invoke-MgGraphRequest { throw '403 Forbidden' }
+        . "$PSScriptRoot/../../src/M365-Assess/Entra/EntraUserGroupChecks.ps1"
+        $check = @($settings | Where-Object Setting -EQ 'Guest Invitation Domain Restrictions')
+        $check.Count | Should -Be 1
+        $check[0].Status | Should -Be 'Review'
+        $check[0].CurrentValue | Should -Match 'inviter policy: not collected'
+        $check[0].Evidence | Should -Not -Match 'allowInvitesFrom='
+        $check[0].Limitations | Should -Match 'domain allow/block list'
+    }
+}
+
 Describe 'EntraUserGroupChecks - Insecure Settings' {
     BeforeAll {
         function global:Update-CheckProgress {
@@ -404,10 +469,10 @@ Describe 'EntraUserGroupChecks - Skipped fallback on API error' {
         $check.Status | Should -Be 'Skipped'
     }
 
-    It 'should emit a Skipped result for ENTRA-GUEST-004 when cross-tenant policy fails' {
+    It 'should retain domain manual review when Graph context is unavailable' {
         $check = $settings | Where-Object { $_.Setting -eq 'Guest Invitation Domain Restrictions' }
         $check | Should -Not -BeNullOrEmpty
-        $check.Status | Should -Be 'Skipped'
+        $check.Status | Should -Be 'Review'
     }
 
     It 'should emit a Skipped result for ENTRA-GROUP-002 when dynamic group query fails' {
