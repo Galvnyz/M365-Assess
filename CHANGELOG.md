@@ -4,6 +4,12 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ## [Unreleased]
 
+### Added
+
+- Repeatable offline release validation using sample CSVs, two AutoBaseline runs,
+  generated HTML/React and XLSX checks, folder/log checks, and artifact hashes.
+  CI retains validation artifacts; human live-tenant release checks remain separate.
+
 ## [2.14.0] - 2026-10-18
 
 Advances **Trust at Scale** with Graph-first Exchange/Purview authentication,
