@@ -17,10 +17,10 @@ pwsh -NoProfile -Command "Invoke-Pester -Path './tests/Entra' -Output Detailed"
 pwsh -NoProfile -Command "Invoke-Pester -Path './tests/Common/Build-ReportData.Tests.ps1' -Output Detailed"
 ```
 
-Tests assume **PowerShell 7.4+** and **Pester 5.x**. Pester is auto-installed in CI; for local runs:
+Tests assume **PowerShell 7.6+** and **Pester 5.7.1**. Pester is auto-installed in CI; for local runs:
 
 ```powershell
-Install-Module -Name Pester -MinimumVersion 5.0.0 -Scope CurrentUser
+Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser
 ```
 
 ---
@@ -194,6 +194,26 @@ It deliberately skips `Import-Module ./src/M365-Assess` and `Test-ModuleManifest
 
 ## Testing the HTML report locally
 
+For repeatable **offline release validation**, install Pester 5.7.1 and ImportExcel
+7.8.10, use PowerShell 7.6+ and Node.js 24+, then run from the repository root:
+
+```powershell
+npm ci --ignore-scripts
+npm run build
+pwsh -NoProfile -File ./scripts/Test-ReleaseValidation.ps1
+```
+
+The command feeds `docs/sample-report` CSVs through fixture collectors into the
+real orchestrator twice with `-AutoBaseline -IncludeTrend`. It changes one finding
+on the second run and checks baseline comparison, generated HTML data and React
+mounting, XLSX sheets/counts/widths, output files, clean WARN/ERROR logs, and final
+provenance hashes. It never connects to tenant services. A failed check returns a
+nonzero exit code; fresh artifacts, `console.txt`, and `test-results.xml` remain in
+`M365-Assessment/release-validation/run-*` (override the parent with `-OutputRoot`).
+CI runs this command and uploads its artifacts. It does **not** replace the
+separate human live-tenant checks in [ADR 0009](../adr/0009-live-tenant-verification-hard-gate.md),
+including real `-AutoBaseline` collection, browser/workbook inspection, and log review.
+
 To verify report rendering without a live tenant:
 
 ```powershell
@@ -242,8 +262,8 @@ Invoke-ScriptAnalyzer -Path ./src/M365-Assess/Common/SecurityConfigHelper.ps1 -S
 | Job | Triggers | What it checks |
 |---|---|---|
 | **Detect Changes** | Always | Routes between `code` (src/tests/workflow) and `docs` (md/json) filters |
-| **Quality Gates** | `code` | PSScriptAnalyzer, JS build (`npm run build`), Smoke tests, Permissions matrix in sync, Version consistency |
-| **Pester Tests (PS 7.4 + 7.6)** | `code` | Full Pester run with code coverage gate |
+| **Quality Gates** | `code` | PSScriptAnalyzer, JS build (`npm run build`), offline release fixtures, Smoke tests, Permissions matrix in sync, Version consistency |
+| **Pester Tests (PS 7.6)** | `code` | Full Pester run with code coverage gate |
 | **Docs Gates** | `docs` only (when `code` doesn't match) | Lightweight version-consistency on doc-only PRs |
 | **CodeQL** | `code` | Semantic security analysis (JS + Actions) |
 | **CI status** | All | Aggregator; main branch protection requires `CI` to pass |

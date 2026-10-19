@@ -86,6 +86,18 @@ After all milestone PRs have merged to `main`:
 
 ### 1. Pre-flight check
 
+Run the [offline release fixture validation](TESTING.md#testing-the-html-report-locally):
+
+```powershell
+npm ci --ignore-scripts
+npm run build
+pwsh -NoProfile -File ./scripts/Test-ReleaseValidation.ps1
+```
+
+This validates synthetic artifacts only. Before merging release prep or tagging,
+the human must separately complete the live-tenant `-AutoBaseline`, HTML, XLSX,
+folder, and log checks in [ADR 0009](../adr/0009-live-tenant-verification-hard-gate.md).
+
 ```powershell
 # Confirm main is green and matches origin
 git checkout main && git pull --ff-only
