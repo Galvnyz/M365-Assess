@@ -16,6 +16,8 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   until the domain allow/block list is verified. Inviter permissions and cross-tenant
   application access no longer produce unsupported Pass or Fail results; findings
   retain inviter context, collection limitations, and portal verification steps.
+- Install report validation dependencies explicitly in full-suite CI and
+  pre-publish jobs so HTML/XLSX fixture checks do not depend on runner caches.
 
 ## [2.14.0] - 2026-10-18
 
