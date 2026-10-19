@@ -329,7 +329,7 @@ function Complete-CheckProgress {
     if ($state -and $state.Total -gt 0) {
         Write-Progress -Activity 'M365 Security Assessment' -Completed
         Write-Host ''
-        Write-Host "  $([char]0x2713) All $($state.Total) security checks complete" -ForegroundColor Green
+        Write-Host "  Results reported for $($state.Completed) of $($state.Total) queued security checks. See the collector summary for collection status." -ForegroundColor Cyan
         Write-Host ''
     }
 

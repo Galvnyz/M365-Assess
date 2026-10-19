@@ -117,10 +117,13 @@ function Export-AssessmentBaseline {
             $props = $firstRow.PSObject.Properties.Name
             # Only baseline security-config tables (must have both CheckId and Status)
             if ('CheckId' -notin $props -or 'Status' -notin $props) { continue }
+            # Context-only rows are not findings and must not inflate drift counts.
+            $rows = @($rows | Where-Object { -not [string]::IsNullOrWhiteSpace($_.CheckId) })
+            if ($rows.Count -eq 0) { continue }
 
             $jsonName = [System.IO.Path]::GetFileNameWithoutExtension($csvFile.Name) + '.json'
             $jsonPath = Join-Path -Path $baselineDir -ChildPath $jsonName
-            $rows | ConvertTo-Json -Depth 5 | Set-Content -Path $jsonPath -Encoding UTF8
+            ConvertTo-Json -InputObject $rows -Depth 5 | Set-Content -Path $jsonPath -Encoding UTF8
             $checkCount += @($rows).Count
             $saved++
         }

@@ -481,8 +481,8 @@ $matrixParams = @{
 }
 # Issue #840: project Horizon → Sequence at export time, marking Pass rows as 'Done'
 # so no cell is empty. The source object's Horizon property stays untouched —
-# downstream consumers (Roadmap sheet line 566, Export-M365Remediation) still
-# read $_.Horizon, where Pass remains '' and Roadmap correctly excludes it.
+# the Roadmap reads the internal Horizon value, where Pass remains '' and
+# is correctly excluded from remediation.
 $matrixCols = foreach ($propName in $sortedFindings[0].PSObject.Properties.Name) {
     if ($propName -eq 'Horizon') {
         @{ Name = 'Sequence'; Expression = { if ($_.Status -eq 'Pass') { 'Done' } else { $_.Horizon } }.GetNewClosure() }
@@ -626,7 +626,7 @@ $severityOrder = @{ 'critical' = 0; 'high' = 1; 'medium' = 2; 'low' = 3; 'info' 
 $horizonOrder  = @{ 'now' = 0; 'soon' = 1; 'later' = 2 }
 $roadmapRows = $sortedFindings | Where-Object { $_.Actionable -and $_.Horizon } | ForEach-Object {
     [PSCustomObject]@{
-        Horizon       = switch ($_.Horizon) { 'now' { 'Now' } 'soon' { 'Next' } 'later' { 'Later' } default { $_.Horizon } }
+        Sequence      = switch ($_.Horizon) { 'now' { 'Now' } 'soon' { 'Next' } 'later' { 'Later' } default { $_.Horizon } }
         CheckId       = $_.CheckId
         Setting       = $_.Setting
         Severity      = $_.RiskSeverity
@@ -636,7 +636,7 @@ $roadmapRows = $sortedFindings | Where-Object { $_.Actionable -and $_.Horizon } 
         _hOrder       = $horizonOrder[$_.Horizon]
         _sOrder       = if ($severityOrder.ContainsKey(($_.RiskSeverity).ToLower())) { $severityOrder[($_.RiskSeverity).ToLower()] } else { 99 }
     }
-} | Sort-Object -Property _hOrder, _sOrder, CheckId | Select-Object Horizon, CheckId, Setting, Severity, Effort, Status, Remediation
+} | Sort-Object -Property _hOrder, _sOrder, CheckId | Select-Object Sequence, CheckId, Setting, Severity, Effort, Status, Remediation
 
 if ($roadmapRows -and @($roadmapRows).Count -gt 0) {
     $roadmapParams = @{
@@ -700,17 +700,25 @@ if ($evidenceRows -and @($evidenceRows).Count -gt 0) {
 # ------------------------------------------------------------------
 # Apply conditional formatting
 # ------------------------------------------------------------------
+# Preserve missing/failed collector visibility alongside scored observations.
+$summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -AutoSize -FreezeTopRow
+Export-AssessorDecisionSheet -Path $outputFile
+
 $pkg = Open-ExcelPackage -Path $outputFile
 
 # Matrix sheet - color-code Status, Sequence, RiskSeverity, and ImpactSeverity columns
 $matrixSheet = $pkg.Workbook.Worksheets['Compliance Matrix']
-$statusCol      = 4   # Column D = Status
-$sequenceCol    = 5   # Column E = Sequence (issue #715, renamed in #840)
-$riskSevCol     = 6   # Column F = RiskSeverity
-$impactSevCol   = 7   # Column G = ImpactSeverity
+$matrixColumns = @{}
+for ($column = 1; $column -le $matrixSheet.Dimension.End.Column; $column++) {
+    $matrixColumns[[string]$matrixSheet.Cells[2, $column].Value] = $column
+}
+$statusCol = $matrixColumns['Status']
+$sequenceCol = $matrixColumns['Sequence']
+$riskSevCol = $matrixColumns['RiskSeverity']
+$impactSevCol = $matrixColumns['ImpactSeverity']
 $lastRow = $matrixSheet.Dimension.End.Row
 
-for ($r = 2; $r -le $lastRow; $r++) {
+for ($r = 3; $r -le $lastRow; $r++) {
     $val = $matrixSheet.Cells[$r, $statusCol].Value
     switch ($val) {
         'Pass'          { $matrixSheet.Cells[$r, $statusCol].Style.Font.Color.SetColor([System.Drawing.Color]::FromArgb(21, 128, 61));   $matrixSheet.Cells[$r, $statusCol].Style.Fill.PatternType = 'Solid'; $matrixSheet.Cells[$r, $statusCol].Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(220, 252, 231)) }
@@ -778,10 +786,40 @@ if ($driftSheet -and $driftSheet.Dimension) {
     }
 }
 
+# Keep raw audit text intact without allowing auto-fit to create huge columns.
+# Include collection errors, evidence details and assessor-decision sheets too.
+foreach ($worksheet in $pkg.Workbook.Worksheets) {
+    if (-not $worksheet.Dimension) { continue }
+    $headerRow = if ($worksheet.Name -eq 'Compliance Matrix') { 2 } else { 1 }
+    $lastDataRow = $worksheet.Dimension.End.Row
+    $wrappedColumns = @()
+    for ($column = 1; $column -le $worksheet.Dimension.End.Column; $column++) {
+        if ($worksheet.Column($column).Width -gt 60) {
+            $worksheet.Column($column).Width = 60
+            $worksheet.Cells[$headerRow, $column, $lastDataRow, $column].Style.WrapText = $true
+            $wrappedColumns += $column
+        }
+    }
+    for ($row = $headerRow; $row -le $lastDataRow; $row++) {
+        $lines = 1
+        foreach ($column in $wrappedColumns) {
+            $text = [string]$worksheet.Cells[$row, $column].Value
+            $cellLines = 0
+            foreach ($line in ($text -split '\r?\n')) {
+                $cellLines += [math]::Max(1, [math]::Ceiling($line.Length / 55.0))
+            }
+            $lines = [math]::Max($lines, $cellLines)
+        }
+        if ($lines -gt 1) {
+            # Keep rows scannable; full text remains available in the cell.
+            $worksheet.Row($row).Height = [math]::Min(90, [math]::Max($worksheet.DefaultRowHeight, $lines * 15 + 4))
+        }
+    }
+    if ($lastDataRow -gt $headerRow) {
+        $worksheet.Cells[($headerRow + 1), 1, $lastDataRow, $worksheet.Dimension.End.Column].Style.VerticalAlignment = 'Top'
+    }
+}
+
 Close-ExcelPackage $pkg
 
 Write-Host "  Compliance matrix exported: $outputFile" -ForegroundColor Green
-
-# Preserve missing/failed collector visibility alongside scored observations.
-$summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -AutoSize -FreezeTopRow
-Export-AssessorDecisionSheet -Path $outputFile

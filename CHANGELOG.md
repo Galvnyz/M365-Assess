@@ -71,6 +71,11 @@ before updating from 2.13.0.
 
 ### Fixed
 
+- Finalize provenance after service cleanup so the delivered log hash stays valid.
+  Progress reports actual returned check counts, and baselines exclude context
+  rows with blank check identifiers.
+- Bound and wrap wide workbook columns while preserving raw values, color-code
+  Sequence and severity by header name, and rename the Roadmap header to Sequence.
 - Request the missing Intune service-configuration permission in consent setup,
   the standalone helper, and delegated scopes. Correct the permission guidance
   for enrollment restrictions and automatic discovery checks (#1035).

@@ -134,3 +134,28 @@ Describe 'Critical-exposure collector transition (#968)' {
         $global:CheckProgressState.CollectorCounts['CriticalExposure'] | Should -Be 1
     }
 }
+
+Describe 'Completion messages describe returned results without claiming collection success' {
+    BeforeAll {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/Show-CheckProgress.ps1"
+        Mock Write-Host { }
+        Mock Write-Progress { }
+    }
+    BeforeEach {
+        . "$PSScriptRoot/../../src/M365-Assess/Common/Show-CheckProgress.ps1"
+        $registry = @{
+            'ENTRA-ADMIN-001' = @{ checkId='ENTRA-ADMIN-001'; hasAutomatedCheck=$true; collector='Entra' }
+            'ENTRA-ADMIN-002' = @{ checkId='ENTRA-ADMIN-002'; hasAutomatedCheck=$true; collector='Entra' }
+        }
+        Initialize-CheckProgress -ControlRegistry $registry -ActiveSections @('Identity') -Silent
+    }
+    It 'reports <Reported> of 2 queued checks accurately' -ForEach @(@{Reported=0}, @{Reported=1}, @{Reported=2}) {
+        for ($index = 1; $index -le $Reported; $index++) {
+            Update-CheckProgress -CheckId "ENTRA-ADMIN-00$index" -Setting 'Fixture' -Status 'Review'
+        }
+        Complete-CheckProgress
+        Should -Invoke Write-Host -Times 1 -ParameterFilter { [string]$Object -like "*Results reported for $Reported of 2 queued security checks*" }
+        Should -Invoke Write-Host -Times 0 -ParameterFilter { [string]$Object -match 'All.*security checks complete' }
+        $global:CheckProgressState | Should -BeNullOrEmpty
+    }
+}
