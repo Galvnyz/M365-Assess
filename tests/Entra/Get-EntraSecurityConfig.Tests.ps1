@@ -194,6 +194,15 @@ Describe 'Get-EntraSecurityConfig' {
         $categories.Count | Should -BeGreaterOrEqual 3
     }
 
+    It 'should report invitation domains as manual review in the complete collector output' {
+        $check = @($settings | Where-Object Setting -EQ 'Guest Invitation Domain Restrictions')
+        $check.Count | Should -Be 1
+        $check[0].Status | Should -Be 'Review'
+        $check[0].CurrentValue | Should -Match 'adminsAndGuestInviters'
+        $check[0].EvidenceSource | Should -Match 'authorizationPolicy'
+        $check[0].Limitations | Should -Match 'domain allow/block list'
+    }
+
     AfterAll {
         Remove-Item Function:\Update-CheckProgress -ErrorAction SilentlyContinue
     }
