@@ -6,6 +6,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ### Added
 
+- `Invoke-M365Assessment -AdditionalGraphScopes` adds delegated Graph scopes to the
+  connect-time request, and `-KeepGraphConnection` leaves the Graph session open after the
+  run, so a caller can reuse the same sign-in for follow-on Graph work.
 - Repeatable offline release validation using sample CSVs, two AutoBaseline runs,
   generated HTML/React and XLSX checks, folder/log checks, and artifact hashes.
   CI retains validation artifacts; human live-tenant release checks remain separate.

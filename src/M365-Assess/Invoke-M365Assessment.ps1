@@ -24,6 +24,14 @@
     automatically. Defaults to '.\M365-Assessment'.
 .PARAMETER SkipConnection
     Use pre-existing service connections instead of connecting automatically.
+.PARAMETER AdditionalGraphScopes
+    Extra delegated Graph scopes to request at connect time, beyond those the selected
+    sections need. Lets a caller that reuses the Graph session afterwards obtain consent
+    for its own scopes in the same sign-in.
+.PARAMETER KeepGraphConnection
+    Leave the Microsoft Graph session connected when the assessment finishes so the caller
+    can reuse it. Exchange Online and Purview are still disconnected. The caller is
+    responsible for running Disconnect-MgGraph.
 .PARAMETER ClientId
     Application (client) ID for app-only authentication.
 .PARAMETER CertificateThumbprint
@@ -231,6 +239,13 @@ param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$OutputFolder = '.\M365-Assessment',
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string[]]$AdditionalGraphScopes,
+
+    [Parameter()]
+    [switch]$KeepGraphConnection,
 
     [Parameter(ParameterSetName = 'SkipConnection', Mandatory)]
     [switch]$SkipConnection,
@@ -735,6 +750,9 @@ if (-not $SkipConnection) {
         if ($sectionScopeMap.ContainsKey($s)) {
             $graphScopes += $sectionScopeMap[$s]
         }
+    }
+    if ($AdditionalGraphScopes) {
+        $graphScopes += $AdditionalGraphScopes
     }
     $graphScopes = $graphScopes | Select-Object -Unique
 
@@ -1501,8 +1519,13 @@ if (-not $SkipConnection) {
         try {
             switch ($svc) {
                 'Graph' {
-                    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-                    Write-AssessmentLog -Level INFO -Message "Disconnected from Microsoft Graph."
+                    if ($KeepGraphConnection) {
+                        Write-AssessmentLog -Level INFO -Message "Leaving Microsoft Graph connected (-KeepGraphConnection)."
+                    }
+                    else {
+                        Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+                        Write-AssessmentLog -Level INFO -Message "Disconnected from Microsoft Graph."
+                    }
                 }
                 'ExchangeOnline' {
                     Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
