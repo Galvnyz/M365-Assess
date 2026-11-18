@@ -42,6 +42,12 @@
               "type": "string"
             }
           },
+          "setting": {
+            "type": ["string", "null"]
+          },
+          "recommendedValue": {
+            "type": ["string", "null"]
+          },
           "fwMeta": {
             "type": "object",
             "additionalProperties": {

@@ -6,6 +6,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ### Added
 
+- Bridge JSON findings carry the collector's `setting` and `recommendedValue`, so consumers
+  can state what a failed check found against what it expected. Both are optional, nullable
+  schema properties; `schemaVersion` is unchanged.
 - Repeatable offline release validation using sample CSVs, two AutoBaseline runs,
   generated HTML/React and XLSX checks, folder/log checks, and artifact hashes.
   CI retains validation artifacts; human live-tenant release checks remain separate.

@@ -97,6 +97,9 @@ function Export-AssessmentBridgeJson {
             frameworks   = @($frameworks | Where-Object { $null -ne $_ })
             currentValue = if ($isSensitive) { '[REDACTED]' } else { $f.CurrentValue }
             remediation  = $f.Remediation
+            # Lets report consumers state what was found against what was expected.
+            setting          = if ($f.PSObject.Properties['Setting']) { $f.Setting } else { $null }
+            recommendedValue = if ($f.PSObject.Properties['RecommendedValue']) { $f.RecommendedValue } else { $null }
         }
     }
 
