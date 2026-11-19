@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="neon" data-mode="dark" data-density="compact">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Posture Tiles Redesign</title>
+<!-- Live report styles, referenced in place so the mockup cannot drift from them.
+     Serve from the repository root (for example: npx http-server . ) and open
+     /docs/design/posture-tiles/index.html -->
+<link rel="stylesheet" href="../../../src/M365-Assess/assets/report-themes.css"/>
+<link rel="stylesheet" href="../../../src/M365-Assess/assets/report-shell.css"/>
+<link rel="stylesheet" href="posture-tiles.css"/>
+<style> body { background: var(--bg); color: var(--text); margin: 0; } </style>
+</head>
+<body>
+<main class="pt-page">
+  <h1>Posture tiles redesign</h1>
+  <p class="pt-intro">
+    Proposal for issue #1060. Each scenario shows today's summary row next to the proposed one, built from the same synthetic data.
+    Every proposed tile is derived from the checks behind it and the collectors that ran, so its numbers have a source,
+    missing data is labelled as missing, and only areas that were fully measured and fully passed turn green.
+    Click a proposed tile to see which findings it would open. Theme:
+    <select id="theme" aria-label="Theme">
+      <option value="neon|dark">Neon dark</option><option value="neon|light">Neon light</option>
+      <option value="console|dark">Console dark</option><option value="high-contrast|dark">High contrast</option>
+    </select>
+  </p>
+  <div id="scenarios"></div>
+</main>
+<script src="mock-data.js"></script>
+<script src="posture-tiles.js"></script>
+<script>
+  document.getElementById('theme').addEventListener('change', e => {
+    const [t, m] = e.target.value.split('|');
+    document.documentElement.dataset.theme = t;
+    document.documentElement.dataset.mode = m;
+  });
+</script>
+</body>
+</html>
