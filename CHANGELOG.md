@@ -63,6 +63,13 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ### Fixed
 
+- **Teams checks vanished under certificate (app-only) auth** (#1049): the Teams
+  security collector skipped itself and returned nothing, which the run recorded
+  as "Complete, 0 items", so all 19 Teams checks disappeared and the External
+  access tile could look fully measured. Every Teams check now appears as
+  Skipped with the reason (Teams settings need delegated sign-in) and the
+  collector is recorded as Partial. A tenant with no Teams licence now gets the
+  same checks as Not Licensed instead of nothing.
 - **Executive briefing could hide a compromise hit**: a run that found a
   forwarding inbox rule opened with "0% · Findings need attention" and "no
   critical issues open". The briefing now leads with a compromise summary

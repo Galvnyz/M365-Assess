@@ -37,12 +37,61 @@ $ErrorActionPreference = 'Continue'
 if (-not (Assert-GraphConnection)) { return }
 $context = Get-MgContext
 
-# Detect app-only auth — Teams Graph APIs (/v1.0/teamwork/*) do not support
+# Load shared security-config helpers. Loaded before the early exits below so
+# that a run which cannot assess Teams still reports every check with the
+# reason, instead of returning nothing and being recorded as Complete (#1049).
+$_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
+. (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
+
+# Initialize-SecurityConfig records the active context; the shared Add-Setting from
+# SecurityConfigHelper.ps1 reads it, so no local wrapper is needed (#958).
+$ctx = Initialize-SecurityConfig
+$settings = $ctx.Settings
+
+# Every check this collector reports, in emission order.
+$teamsCheckCatalogue = @(
+    @{ CheckId = 'TEAMS-APPS-001';      Category = 'Teams Apps';           Setting = 'Chat Resource-Specific Consent' }
+    @{ CheckId = 'TEAMS-EXTACCESS-001'; Category = 'External Access';      Setting = 'Communication with Unmanaged Teams Users' }
+    @{ CheckId = 'TEAMS-EXTACCESS-002'; Category = 'External Access';      Setting = 'External Unmanaged Users Can Initiate Conversations' }
+    @{ CheckId = 'TEAMS-CLIENT-001';    Category = 'Client Configuration'; Setting = 'Third-Party Cloud Storage' }
+    @{ CheckId = 'TEAMS-CLIENT-002';    Category = 'Client Configuration'; Setting = 'Email Into Channel' }
+    @{ CheckId = 'TEAMS-EXTACCESS-003'; Category = 'External Access';      Setting = 'External Domain Access' }
+    @{ CheckId = 'TEAMS-EXTACCESS-004'; Category = 'External Access';      Setting = 'Skype for Business/Consumer Interop' }
+    @{ CheckId = 'TEAMS-MEETING-001';   Category = 'Meeting Policy';       Setting = 'Anonymous Users Can Join Meeting' }
+    @{ CheckId = 'TEAMS-MEETING-002';   Category = 'Meeting Policy';       Setting = 'Anonymous Users Can Start Meeting' }
+    @{ CheckId = 'TEAMS-MEETING-003';   Category = 'Meeting Policy';       Setting = 'Auto-Admitted Users (Lobby Bypass)' }
+    @{ CheckId = 'TEAMS-MEETING-004';   Category = 'Meeting Policy';       Setting = 'Dial-in Users Bypass Lobby' }
+    @{ CheckId = 'TEAMS-MEETING-005';   Category = 'Meeting Policy';       Setting = 'External Participants Can Give/Request Control' }
+    @{ CheckId = 'TEAMS-MEETING-006';   Category = 'Meeting Policy';       Setting = 'Meeting Chat for Anonymous Users' }
+    @{ CheckId = 'TEAMS-MEETING-007';   Category = 'Meeting Policy';       Setting = 'Default Presenter Role' }
+    @{ CheckId = 'TEAMS-MEETING-008';   Category = 'Meeting Policy';       Setting = 'External Meeting Chat (Non-Trusted)' }
+    @{ CheckId = 'TEAMS-MEETING-009';   Category = 'Meeting Policy';       Setting = 'Cloud Recording' }
+    @{ CheckId = 'TEAMS-INFO-001';      Category = 'Teams Settings';       Setting = 'Teams Workload Active' }
+    @{ CheckId = 'TEAMS-APPS-002';      Category = 'Teams Apps';           Setting = 'Third-Party App Permission Policies' }
+    @{ CheckId = 'TEAMS-REPORTING-001'; Category = 'Teams Settings';       Setting = 'Report a Security Concern Enabled' }
+)
+
+# Detect app-only auth: Teams Graph APIs (/v1.0/teamwork/*) do not support
 # application-only context and return HTTP 412 "not supported in application-only context".
 $isAppOnly = $context.AuthType -eq 'AppOnly' -or (-not $context.Account -and $context.AppName)
 if ($isAppOnly) {
-    Write-Warning "Teams Graph APIs do not support app-only (certificate) authentication. Teams security checks require delegated (interactive) auth. Skipping Teams collector."
-    Write-Output @()
+    # The GraphCollectionIncomplete marker makes the orchestrator record this
+    # collector as Partial and log a collection issue; the rows below keep every
+    # check visible as Skipped in the report and the coverage summary.
+    Write-Warning 'GraphCollectionIncomplete: Teams Graph APIs do not support app-only (certificate) authentication, so no Teams checks were assessed. Run with delegated (interactive) auth to assess them.'
+    foreach ($check in $teamsCheckCatalogue) {
+        $skipParams = @{
+            Category         = $check.Category
+            Setting          = $check.Setting
+            CurrentValue     = 'Not assessed'
+            RecommendedValue = 'n/a'
+            Status           = 'Skipped'
+            CheckId          = $check.CheckId
+            Remediation      = 'Not assessed: Teams settings can only be read with delegated (interactive) sign-in; the Teams Graph APIs reject app-only (certificate) tokens. Re-run the assessment with interactive auth, or verify this setting in the Teams admin center.'
+        }
+        Add-Setting @skipParams
+    }
+    Export-SecurityConfigReport -Settings $settings -OutputPath $OutputPath -ServiceLabel 'Teams'
     return
 }
 
@@ -73,8 +122,22 @@ try {
         if ($hasTeams) { break }
     }
     if (-not $hasTeams) {
-        Write-Warning "No Teams licenses detected in this tenant. Skipping Teams security checks to avoid false errors."
-        Write-Output @()
+        # Licensing was determined, so this is a result rather than a collection
+        # gap: report every check as NotLicensed and leave the collector Complete.
+        Write-Warning "No Teams licenses detected in this tenant. Teams checks are reported as not licensed."
+        foreach ($check in $teamsCheckCatalogue) {
+            $notLicensedParams = @{
+                Category         = $check.Category
+                Setting          = $check.Setting
+                CurrentValue     = 'Not licensed'
+                RecommendedValue = 'n/a'
+                Status           = 'NotLicensed'
+                CheckId          = $check.CheckId
+                Remediation      = 'Not assessed: no assigned Teams service plan was found in this tenant, so Teams settings do not apply. Re-run after assigning Teams licenses to assess them.'
+            }
+            Add-Setting @notLicensedParams
+        }
+        Export-SecurityConfigReport -Settings $settings -OutputPath $OutputPath -ServiceLabel 'Teams'
         return
     }
 }
@@ -82,15 +145,6 @@ catch {
     # If we can't check licenses, proceed with Teams checks and let them fail naturally
     Write-Warning "Could not verify Teams licensing: $($_.Exception.Message). Proceeding with Teams checks."
 }
-
-# Load shared security-config helpers
-$_scriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
-. (Join-Path -Path $_scriptDir -ChildPath '..\Common\SecurityConfigHelper.ps1')
-
-# Initialize-SecurityConfig records the active context; the shared Add-Setting from
-# SecurityConfigHelper.ps1 reads it, so no local wrapper is needed (#958).
-$ctx = Initialize-SecurityConfig
-$settings = $ctx.Settings
 
 # ------------------------------------------------------------------
 # 1. Teams Client Configuration (external access)
