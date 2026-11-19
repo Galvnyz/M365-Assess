@@ -1140,6 +1140,19 @@ function BriefingVerdictCard({
   // "Applicable" excludes the not-assessed bucket; the donut % keeps the
   // standard fwCoveragePct formula so Briefing and FrameworkQuilt always agree.
   const applicable = data.counts.pass + data.counts.fail + data.counts.warn;
+  // Nothing scored (for example a Compromise-only run): a 0% "needs attention"
+  // verdict would be false. Say plainly that the run has no posture score.
+  if (applicable === 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "brief-verdict brief-verdict-empty"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "brief-verdict-info"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "brief-verdict-line"
+    }, "No configuration score for this run"), /*#__PURE__*/React.createElement("div", {
+      className: "brief-verdict-sub"
+    }, FINDINGS.length === 0 ? 'This run did not include any configuration checks, so there is no pass rate to report. Run the standard sections to score the tenant against a framework.' : 'None of the configuration checks in this run could be scored for the selected framework.')));
+  }
   const qwInFw = getQuickWins(FINDINGS).filter(f => (f.frameworks || []).includes(fwId));
   const projected = qwInFw.length > 0 ? fwCoveragePct({
     ...data.counts,
@@ -1186,6 +1199,8 @@ function BriefingStatRow({
   const quickWins = getQuickWins(FINDINGS).length;
   const score = parseFloat(SCORE.Percentage);
   const avg = parseFloat(SCORE.AverageComparativeScore);
+  // No configuration checks ran: these tiles would only show zeros.
+  if (FINDINGS.length === 0 && !Number.isFinite(score)) return null;
   return /*#__PURE__*/React.createElement("div", {
     className: "brief-stat-row"
   }, /*#__PURE__*/React.createElement("button", {
@@ -1197,7 +1212,7 @@ function BriefingStatRow({
     className: "brief-stat-value"
   }, critical), /*#__PURE__*/React.createElement("div", {
     className: "brief-stat-hint"
-  }, critical > 0 ? critical === 1 ? 'issue to fix this week' : 'issues to fix this week' : 'no critical issues open')), /*#__PURE__*/React.createElement("button", {
+  }, critical > 0 ? critical === 1 ? 'configuration issue to fix this week' : 'configuration issues to fix this week' : 'no critical configuration issues open')), /*#__PURE__*/React.createElement("button", {
     className: "brief-stat",
     onClick: onShowQuickWins
   }, /*#__PURE__*/React.createElement("div", {
@@ -1215,6 +1230,75 @@ function BriefingStatRow({
   }, score.toFixed(1), "%"), /*#__PURE__*/React.createElement("div", {
     className: "brief-stat-hint"
   }, Number.isFinite(avg) && avg > 0 ? score >= avg ? `above the peer average of ${avg.toFixed(1)}%` : `below the peer average of ${avg.toFixed(1)}%` : 'as last published by Microsoft')));
+}
+
+// Compromise hunt result on the first screen. Indicators stay out of every
+// score, but a found indicator must never be hidden behind a "nothing open"
+// tile, so the briefing leads with it. Same language policy as the rest of
+// the briefing: no CheckIds, no status vocabulary.
+function BriefingIndicatorAlert() {
+  if (!INDICATORS.length) return null;
+  const hits = INDICATORS.filter(f => f.status === 'Fail' || f.status === 'Warning');
+  const strong = hits.filter(f => f.status === 'Fail');
+  const unchecked = INDICATORS.filter(f => f.status !== 'Pass' && f.status !== 'Fail' && f.status !== 'Warning');
+  const goTo = e => {
+    e.preventDefault();
+    document.getElementById('compromise-indicators')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  };
+  const eventCount = f => {
+    const ev = parseIndicatorEvidence(f);
+    return ev && Number.isFinite(ev.total) ? ev.total : null;
+  };
+  if (hits.length > 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc bad",
+      role: "alert"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc-title"
+    }, "Signs of compromise found"), /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc-sub"
+    }, strong.length > 0 ? 'At least one finding is strongly associated with an account takeover. Treat it as a possible incident until the owner explains it.' : 'Some activity needs a person to confirm it was expected.', ' ', "These results are not part of the configuration score below.", unchecked.length > 0 && ` ${unchecked.length} other compromise check${unchecked.length === 1 ? '' : 's'} could not be completed.`), /*#__PURE__*/React.createElement("ul", {
+      className: "brief-ioc-list"
+    }, hits.map(f => {
+      const n = eventCount(f);
+      return /*#__PURE__*/React.createElement("li", {
+        key: f.checkId
+      }, /*#__PURE__*/React.createElement("span", {
+        className: 'brief-action-dot ' + (f.status === 'Fail' ? 'critical' : 'high')
+      }), /*#__PURE__*/React.createElement("span", {
+        className: "brief-ioc-name"
+      }, f.setting), n !== null && /*#__PURE__*/React.createElement("span", {
+        className: "brief-ioc-count"
+      }, n, " found"));
+    })), /*#__PURE__*/React.createElement("a", {
+      className: "brief-actions-more",
+      href: "#compromise-indicators",
+      onClick: goTo
+    }, "Review the evidence"));
+  }
+  if (unchecked.length > 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc warn"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc-title"
+    }, "Compromise check incomplete"), /*#__PURE__*/React.createElement("div", {
+      className: "brief-ioc-sub"
+    }, "Nothing suspicious was found, but ", unchecked.length, " of ", INDICATORS.length, " compromise checks could not be completed, so no conclusion can be drawn from them."), /*#__PURE__*/React.createElement("a", {
+      className: "brief-actions-more",
+      href: "#compromise-indicators",
+      onClick: goTo
+    }, "See what was not checked"));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "brief-ioc good"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "brief-ioc-title"
+  }, "No signs of compromise found"), /*#__PURE__*/React.createElement("div", {
+    className: "brief-ioc-sub"
+  }, "All ", INDICATORS.length, " compromise checks completed with nothing found. This covers only what those checks look at; it is not proof that the tenant is uncompromised."));
 }
 function BriefingActions({
   onViewFinding
@@ -1269,7 +1353,10 @@ function Briefing({
     year: 'numeric',
     month: 'long',
     day: 'numeric'
-  })} · ` : '', FINDINGS.length, " settings checked")), /*#__PURE__*/React.createElement(HideableBlock, {
+  })} · ` : '', FINDINGS.length > 0 || INDICATORS.length === 0 ? `${FINDINGS.length} settings checked` : '', FINDINGS.length > 0 && INDICATORS.length > 0 ? ' · ' : '', INDICATORS.length > 0 ? `${INDICATORS.length} compromise checks` : '')), /*#__PURE__*/React.createElement(HideableBlock, {
+    hideKey: "briefing-indicators",
+    label: "Compromise check summary"
+  }, /*#__PURE__*/React.createElement(BriefingIndicatorAlert, null)), /*#__PURE__*/React.createElement(HideableBlock, {
     hideKey: "briefing-verdict",
     label: "Briefing verdict card"
   }, /*#__PURE__*/React.createElement(BriefingVerdictCard, {
@@ -1304,6 +1391,10 @@ function Posture() {
   const pass = FINDINGS.filter(f => f.status === 'Pass').length;
   const critical = FINDINGS.filter(f => f.severity === 'critical').length;
   const notAssessed = FINDINGS.filter(f => NOT_ASSESSED_STATUSES.has(f.status)).length;
+
+  // A run with no configuration checks and no Secure Score (for example a
+  // Compromise-only run) would show only zeros and a misleading permissions note.
+  if (FINDINGS.length === 0 && !scoreAvailable) return null;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "posture"
@@ -1509,22 +1600,31 @@ function ExecSummaryRow() {
       state
     });
   }
-  const guestState = guests > 0 ? 'warn' : 'good';
-  const sharingStateMap = {
-    Anyone: 'bad',
-    ExternalUserAndGuestSharing: 'warn',
-    ExternalUserSharingOnly: 'warn',
-    ExistingExternalUserSharingOnly: 'good',
-    Disabled: 'good'
-  };
-  const sharingState = sharingLevel ? sharingStateMap[sharingLevel] || 'warn' : 'good';
-  tiles.push({
-    label: 'External exposure',
-    primary: fmt(guests),
-    suffix: guests === 1 ? 'guest' : 'guests',
-    hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SPO sharing level unknown',
-    state: sharingState === 'bad' || guestState === 'bad' ? 'bad' : sharingState === 'warn' || guestState === 'warn' ? 'warn' : 'good'
-  });
+
+  // Unknown is not good: only data that was actually collected may colour the
+  // tile, and the tile is left out when neither input was collected.
+  const guestsKnown = USERS.GuestUsers !== undefined && USERS.GuestUsers !== null && USERS.GuestUsers !== '';
+  if (guestsKnown || sharingLevel) {
+    const guestState = guestsKnown ? guests > 0 ? 'warn' : 'good' : null;
+    const sharingStateMap = {
+      Anyone: 'bad',
+      ExternalUserAndGuestSharing: 'warn',
+      ExternalUserSharingOnly: 'warn',
+      ExistingExternalUserSharingOnly: 'good',
+      Disabled: 'good'
+    };
+    const sharingState = sharingLevel ? sharingStateMap[sharingLevel] || 'warn' : null;
+    const known = [guestState, sharingState].filter(Boolean);
+    const allKnown = known.length === 2;
+    const state = known.includes('bad') ? 'bad' : known.includes('warn') ? 'warn' : allKnown ? 'good' : '';
+    tiles.push({
+      label: 'External exposure',
+      primary: guestsKnown ? fmt(guests) : '—',
+      suffix: guestsKnown ? guests === 1 ? 'guest' : 'guests' : 'guests not collected',
+      hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SharePoint sharing level not collected in this run',
+      state
+    });
+  }
   if (!tiles.length) return null;
   return /*#__PURE__*/React.createElement("div", {
     className: "exec-summary-row"
@@ -5790,7 +5890,10 @@ function CriticalExposureBlock() {
 
 // ======================== Overview (tenant + summary) ========================
 function Overview() {
-  const totalChecks = D.summary.reduce((a, r) => a + parseInt(r.Items || 0), 0);
+  // D.summary is built from posture findings only; add the compromise
+  // indicator sections so a hunt-only run does not report "0 collectors".
+  const indicatorSections = new Set(INDICATORS.map(i => i.section)).size;
+  const totalChecks = D.summary.reduce((a, r) => a + parseInt(r.Items || 0), 0) + INDICATORS.length;
   return /*#__PURE__*/React.createElement("section", {
     className: "block",
     id: "overview"
@@ -5806,7 +5909,7 @@ function Overview() {
     className: "sep"
   }, "│"), /*#__PURE__*/React.createElement("span", null, "Run ", /*#__PURE__*/React.createElement("b", null, new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()))), /*#__PURE__*/React.createElement("div", {
     className: "overview-meta"
-  }, /*#__PURE__*/React.createElement("span", null, "› ", D.summary.length, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "› ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "› ", FINDINGS.length, " controls evaluated"), /*#__PURE__*/React.createElement("span", null, "› ", FRAMEWORKS.length, " frameworks mapped")));
+  }, /*#__PURE__*/React.createElement("span", null, "› ", D.summary.length + indicatorSections, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "› ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "› ", FINDINGS.length, " controls evaluated"), INDICATORS.length > 0 && /*#__PURE__*/React.createElement("span", null, "› ", INDICATORS.length, " compromise checks"), /*#__PURE__*/React.createElement("span", null, "› ", FRAMEWORKS.length, " frameworks mapped")));
 }
 
 // ======================== Compromise indicators section ========================
