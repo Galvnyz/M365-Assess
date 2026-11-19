@@ -75,8 +75,12 @@ test('actual offline React bundle mounts and edit workflow renders',async()=>{
  for(const f of ['react.production.min.js','react-dom.production.min.js','report-app.js']) w.eval(fs.readFileSync(assets+f,'utf8'));
  await new Promise(r=>setTimeout(r,150));
  assert.equal(errors.length,0,String(errors));
- assert.match(w.document.body.textContent,/Collection: Unspecified/);
- assert.match(w.document.body.textContent,/Assessor decisions/);
+ // #1065: collection status is one collapsed line at the top.
+ const cs=w.document.querySelector('details.collection-status');
+ assert.ok(cs);assert.equal(cs.open,false);
+ assert.match(cs.querySelector('summary').textContent,/Collection: Unspecified/);
+ // #1066: a default run (no decisions) shows no assessor card outside edit mode.
+ assert.equal(w.document.querySelector('[aria-label="Assessor decisions"]'),null);
  const card=[...w.document.querySelectorAll('.domain-card')].find(c=>c.querySelector('.dc-name').textContent==='Exchange Online');
  assert.ok(card);
  assert.equal(card.querySelector('.dc-skipped').textContent,'5 not assessed');
@@ -86,7 +90,41 @@ test('actual offline React bundle mounts and edit workflow renders',async()=>{
  w.document.querySelector('.edit-mode-toggle').click();
  await new Promise(r=>setTimeout(r,100));
  assert.match(w.document.body.textContent,/Save decision in report/);
+ assert.ok(w.document.querySelector('[aria-label="Assessor decisions"]'),'edit mode shows the assessor card');
  assert.equal(errors.length,0,String(errors));dom.window.close();
+});
+
+test('reports that carry decisions show them to readers, below the briefing',async()=>{
+ const data=structuredClone(fixture);
+ data.assessmentDecisions={schemaVersion:'1.0',tenantId:data.tenant[0].TenantId,decisions:[{
+  checkId:'CA-TEST-002',setting:'Automated failure',type:'AcceptedRisk',observedValue:'False',
+  approvedAt:'2026-01-01T00:00:00Z',expiresAt:'2099-01-01T00:00:00Z',approvedBy:'Assessor',justification:'Migration',evidence:'Ticket'
+ }]};
+ data.collection={state:'Incomplete',scope:'Requested collectors only.',unavailableFindings:2,incompleteCollectors:1,
+  collectors:[{Section:'Email',Collector:'Mail Flow',Status:'Complete',Items:1,Error:null},{Section:'Identity',Collector:'Entra Security Config',Status:'Partial',Items:3,Error:'HTTP 403'}]};
+ const dom=new JSDOM('<!doctype html><div id="root"></div>',{runScripts:'outside-only',url:'https://example.test',pretendToBeVisual:true});
+ const w=dom.window;const errors=[];w.addEventListener('error',e=>errors.push(e.error));
+ w.REPORT_DATA=data;
+ w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ w.IntersectionObserver=class{observe(){} disconnect(){} unobserve(){}};
+ w.ResizeObserver=class{observe(){} disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=()=>{};
+ for(const f of ['react.production.min.js','react-dom.production.min.js','report-app.js']) w.eval(fs.readFileSync(assets+f,'utf8'));
+ await new Promise(r=>setTimeout(r,150));
+ assert.equal(errors.length,0,String(errors));
+ const card=w.document.querySelector('[aria-label="Assessor decisions"]');
+ assert.ok(card,'decisions are visible without edit mode');
+ assert.match(card.textContent,/CA-TEST-002/);
+ assert.equal(card.querySelector('form'),null,'no editing form outside edit mode');
+ const anchor=w.document.getElementById('findings-anchor');
+ assert.ok(card.compareDocumentPosition(anchor)&w.Node.DOCUMENT_POSITION_FOLLOWING,'card sits just above All findings');
+ assert.ok(w.document.getElementById('briefing').compareDocumentPosition(card)&w.Node.DOCUMENT_POSITION_FOLLOWING,'card is below the briefing');
+ const summary=w.document.querySelector('details.collection-status summary').textContent;
+ assert.match(summary,/Collection: Incomplete · 1 collector incomplete · 2 findings unavailable/);
+ const rows=[...w.document.querySelectorAll('.cs-list li')];
+ assert.match(rows[0].textContent,/Entra Security Config/,'incomplete collectors are listed first');
+ assert.ok(rows[0].classList.contains('cs-row-partial'));
+ dom.window.close();
 });
 
 test('finalization preserves tenant decisions and escapes embedded script markup',async()=>{

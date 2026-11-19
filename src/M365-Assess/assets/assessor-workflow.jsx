@@ -24,14 +24,39 @@ function downloadDecisions() {
   const url = URL.createObjectURL(new Blob([JSON.stringify(assessmentDecisionDocument, null, 2)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = '_Assessment-Decisions.json'; a.click(); URL.revokeObjectURL(url);
 }
+// #1065: one collapsed line at the top of the report. Expanding it shows the
+// explanation and every collector, incomplete ones first.
 function CollectionStatus() {
   const c = D.collection;
-  return <section className="card" aria-label="Collection completeness" style={{margin:20,padding:20}}>
-    <strong>Collection: {c?.state || 'Unspecified'}</strong>
-    <p>Scores describe observed findings only. Missing data and unverified reviews do not establish compliance.</p>
-    {c && <p>{c.incompleteCollectors} incomplete collectors · {c.unavailableFindings} unavailable findings. {c.scope}</p>}
-    {!!c?.collectors?.length && <details><summary>Collector results</summary><ul>{c.collectors.map((x,i)=><li key={i}>{x.Collector}: {x.Status}{x.Error ? ` — ${x.Error}` : ''}</li>)}</ul></details>}
-  </section>;
+  const state = c?.state || 'Unspecified';
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const parts = [];
+  if (c?.incompleteCollectors) parts.push(plural(c.incompleteCollectors, 'collector incomplete', 'collectors incomplete'));
+  if (c?.unavailableFindings) parts.push(plural(c.unavailableFindings, 'finding unavailable', 'findings unavailable'));
+  const clean = x => x.Status === 'Complete' && !x.Error;
+  const partial = (c?.collectors || []).filter(x => !clean(x));
+  const complete = (c?.collectors || []).filter(clean);
+  return <details className={'collection-status cs-' + state.toLowerCase()} aria-label="Collection completeness">
+    <summary>
+      <span className="cs-dot" aria-hidden="true"/>
+      <strong>Collection: {state}</strong>
+      {parts.length > 0 && <span className="cs-detail">{' · ' + parts.join(' · ')}</span>}
+    </summary>
+    <div className="cs-body">
+      <p>Scores describe observed findings only. Missing data and unverified reviews do not establish compliance.{c?.scope ? ' ' + c.scope : ''}</p>
+      {partial.length > 0 && <ul className="cs-list">{partial.map((x, i) => (
+        <li key={i} className="cs-row-partial">
+          <span className="cs-collector">{x.Section ? x.Section + ' · ' : ''}{x.Collector}</span>
+          <span className="cs-state">{x.Status}</span>
+          {x.Error && <span className="cs-error">{x.Error}</span>}
+        </li>
+      ))}</ul>}
+      {complete.length > 0 && <>
+        <div className="cs-complete-label">{complete.length} complete</div>
+        <ul className="cs-complete-list">{complete.map((x, i) => <li key={i}>{x.Collector}</li>)}</ul>
+      </>}
+    </div>
+  </details>;
 }
 function AssessorWorkflow({ editMode }) {
   const [document, setDocument] = useState(assessmentDecisionDocument);
@@ -54,7 +79,11 @@ function AssessorWorkflow({ editMode }) {
   };
   const active = document.decisions.filter(d => FINDINGS.some(f => decisionKey(f) === `${d.checkId}\n${d.setting}` && decisionState(d,f) === 'Active'));
   const actionable = candidates.filter(f => !active.some(d => decisionKey(f) === `${d.checkId}\n${d.setting}`));
-  return <section className="card" aria-label="Assessor decisions" style={{margin:20,padding:20}}>
+  // #1066: an assessor tool, not reader content. Shown while editing, or when
+  // the report carries decisions (they are not badged on findings yet, so this
+  // is the only place a reader sees them). A default run shows nothing.
+  if (!editMode && document.decisions.length === 0) return null;
+  return <section className="card" aria-label="Assessor decisions" style={{margin:'20px 0',padding:20}}>
     <h2>Assessor decisions</h2><p>{actionable.length} actionable findings · {active.filter(d=>d.type==='AcceptedRisk').length} accepted risks · {active.filter(d=>d.type==='ManualAttestation').length} manual attestations.</p>
     <p>Observations and scores remain unchanged. Export decisions and pass the file with <code>-AssessmentDecisionsPath</code> on the next run or report regeneration to update HTML, XLSX and JSON together.</p>
     <ul>{document.decisions.map((d,i)=>{ const f=FINDINGS.find(f=>decisionKey(f)===`${d.checkId}\n${d.setting}`); return <li key={i}>
