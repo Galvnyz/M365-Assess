@@ -69,6 +69,7 @@ if (-not (Test-Path -Path $AssessmentFolder -PathType Container)) {
 # Load control registry + framework definitions
 # ------------------------------------------------------------------
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+. (Join-Path -Path $PSScriptRoot -ChildPath 'ConvertTo-SafeCellValue.ps1')
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Import-ControlRegistry.ps1')
 . (Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1')
 $controlsPath = Join-Path -Path $projectRoot -ChildPath 'controls'
@@ -129,6 +130,8 @@ $findings = [System.Collections.Generic.List[PSCustomObject]]::new()
 # for rows where at least one evidence field is non-empty; surfaced on Sheet 5.
 $evidenceRows = [System.Collections.Generic.List[PSCustomObject]]::new()
 $evidenceFieldNames = @('ObservedValue','ExpectedValue','EvidenceSource','EvidenceTimestamp','CollectionMethod','PermissionRequired','Confidence','Limitations')
+# Opt-in Compromise section results (IOC-*), reported on their own sheet.
+$indicatorRows = [System.Collections.Generic.List[PSCustomObject]]::new()
 
 foreach ($c in $summary) {
     if ($c.Status -notin @('Complete', 'Partial') -or [int]$c.Items -eq 0) { continue }
@@ -143,6 +146,26 @@ foreach ($c in $summary) {
 
     foreach ($row in $data) {
         if (-not $row.CheckId -or $row.CheckId -eq '') { continue }
+
+        # Compromise indicators are hunt results, not posture checks. Keep them
+        # out of the matrix and every pass rate; they get their own sheet.
+        if ($row.CheckId -like 'IOC-*') {
+            $eventJson = if ($columns -contains 'Evidence') { "$($row.Evidence)" } else { '' }
+            if ($eventJson.Length -gt 30000) { $eventJson = $eventJson.Substring(0, 30000) + ' ...[truncated; see the collector CSV]' }
+            $indicatorRows.Add([PSCustomObject][ordered]@{
+                CheckId           = $row.CheckId
+                Indicator         = $row.Setting
+                Category          = $row.Category
+                Status            = $row.Status
+                Result            = $row.CurrentValue
+                Limitations       = if ($columns -contains 'Limitations')       { $row.Limitations }       else { '' }
+                EvidenceSource    = if ($columns -contains 'EvidenceSource')    { $row.EvidenceSource }    else { '' }
+                EvidenceTimestamp = if ($columns -contains 'EvidenceTimestamp') { $row.EvidenceTimestamp } else { '' }
+                Remediation       = $row.Remediation
+                Events            = $eventJson
+            })
+            continue
+        }
 
         # D1 #785 -- collect rows with structured evidence for the dedicated sheet
         $hasEvidence = $false
@@ -230,11 +253,21 @@ function Export-AssessorDecisionSheet {
         $state = if ($matched.Count -eq 1) { $matched[0].Decision_state } elseif ($matched.Count -gt 1) { 'Ambiguous' } else { 'Unmatched' }
         $decision | Select-Object *, @{Name='EvaluationState'; Expression={ $state }.GetNewClosure()}
     }
-    $rows | Export-Excel -Path $Path -WorksheetName 'Assessor Decisions' -ClearSheet -AutoSize -FreezeTopRow
+    $rows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel -Path $Path -WorksheetName 'Assessor Decisions' -ClearSheet -AutoSize -FreezeTopRow
+}
+function Export-IndicatorSheet {
+    <# .SYNOPSIS
+        Writes Compromise section results to their own sheet. They are hunt
+        results and are deliberately absent from the matrix and pass rates.
+    #>
+    param([string]$Path)
+    if ($indicatorRows.Count -eq 0) { return }
+    $indicatorRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel -Path $Path -WorksheetName 'Compromise Indicators' -ClearSheet -AutoSize -FreezeTopRow -BoldTopRow
 }
 if ($findings.Count -eq 0) {
     $outputFile = Join-Path -Path $AssessmentFolder -ChildPath "_Compliance-Matrix_$TenantName.xlsx"
-    $summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -ClearSheet -AutoSize -FreezeTopRow
+    $summary | Select-Object Section, Collector, Status, Items, Error | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -ClearSheet -AutoSize -FreezeTopRow
+    Export-IndicatorSheet -Path $outputFile
     Export-AssessorDecisionSheet -Path $outputFile
     Write-Warning 'No CheckId-mapped findings found; XLSX contains collector status and assessor records.'
     return
@@ -490,7 +523,7 @@ $matrixCols = foreach ($propName in $sortedFindings[0].PSObject.Properties.Name)
         $propName
     }
 }
-$sortedFindings | Select-Object -Property $matrixCols | Export-Excel @matrixParams
+$sortedFindings | Select-Object -Property $matrixCols | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @matrixParams
 
 # Sheet 2 - Summary (with profile/maturity sub-rows for CIS and CMMC)
 $summaryParams = @{
@@ -501,7 +534,7 @@ $summaryParams = @{
     BoldTopRow    = $true
     TableStyle    = 'Medium6'
 }
-$summaryExpanded | Export-Excel @summaryParams
+$summaryExpanded | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @summaryParams
 
 # Sheet 3 - Grouped by Profile (CIS M365 profile-compliance breakdown)
 $cisFw = $allFrameworks | Where-Object { $_.frameworkId -like 'cis-m365-*' } | Select-Object -First 1
@@ -581,7 +614,7 @@ if ($cisFw -and $null -ne $catalogFindings) {
             BoldTopRow    = $true
             TableStyle    = 'Medium9'
         }
-        $groupedRows | Export-Excel @groupedParams
+        $groupedRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @groupedParams
     }
 }
 
@@ -614,7 +647,7 @@ if ($verificationRows.Count -gt 0) {
         BoldTopRow    = $true
         TableStyle    = 'Medium15'
     }
-    $verificationRows | Export-Excel @verifParams
+    $verificationRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @verifParams
 }
 
 # ------------------------------------------------------------------
@@ -647,7 +680,7 @@ if ($roadmapRows -and @($roadmapRows).Count -gt 0) {
         BoldTopRow    = $true
         TableStyle    = 'Medium4'
     }
-    $roadmapRows | Export-Excel @roadmapParams
+    $roadmapRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @roadmapParams
 }
 
 # ------------------------------------------------------------------
@@ -675,7 +708,7 @@ if ($DriftReport -and $DriftReport.Count -gt 0) {
         BoldTopRow    = $true
         TableStyle    = 'Medium2'
     }
-    $driftRows | Export-Excel @driftParams
+    $driftRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @driftParams
 }
 
 # ------------------------------------------------------------------
@@ -694,14 +727,15 @@ if ($evidenceRows -and @($evidenceRows).Count -gt 0) {
         BoldTopRow    = $true
         TableStyle    = 'Medium3'
     }
-    $evidenceRows | Export-Excel @evidenceParams
+    $evidenceRows | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel @evidenceParams
 }
 
 # ------------------------------------------------------------------
 # Apply conditional formatting
 # ------------------------------------------------------------------
 # Preserve missing/failed collector visibility alongside scored observations.
-$summary | Select-Object Section, Collector, Status, Items, Error | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -AutoSize -FreezeTopRow
+$summary | Select-Object Section, Collector, Status, Items, Error | ConvertTo-SafeCellObject -FormulaLeadOnly | Export-Excel -Path $outputFile -WorksheetName 'Collection Status' -AutoSize -FreezeTopRow
+Export-IndicatorSheet -Path $outputFile
 Export-AssessorDecisionSheet -Path $outputFile
 
 $pkg = Open-ExcelPackage -Path $outputFile

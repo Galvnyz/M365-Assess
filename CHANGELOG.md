@@ -9,6 +9,35 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 - Repeatable offline release validation using sample CSVs, two AutoBaseline runs,
   generated HTML/React and XLSX checks, folder/log checks, and artifact hashes.
   CI retains validation artifacts; human live-tenant release checks remain separate.
+- **Compromise indicators (opt-in `-Section Compromise`)**: a first hunt for signs
+  that a tenant is already compromised. Six checks: inbox rules forwarding to
+  external domains (`IOC-INBOXRULE-001`), inbox rules that hide mail
+  (`IOC-INBOXRULE-002`), external mailbox forwarding (`IOC-FORWARD-001`),
+  high-impact consent grants (`IOC-CONSENT-001`), credentials added to
+  applications (`IOC-SPCRED-001`) and privileged role additions
+  (`IOC-ROLEADD-001`). Uses only permissions other sections already request.
+  Never included by `-Section All`; `-CompromiseLookbackDays` sets the directory
+  audit window. Results are not part of the posture score and appear in their
+  own report section and XLSX sheet. See `docs/user/COMPROMISE-HUNT.md`.
+- Coverage guard for hunt-style checks (`Common/Get-CollectionCoverage.ps1`): a
+  clean result is only reported when everything in scope was examined; a failed
+  or partial query yields Unknown with the reason stated, never Pass.
+
+### Security
+
+- **Spreadsheet formula injection**: tenant-controlled text (group, application,
+  policy and rule names) starting with `=` was written to the XLSX as a live
+  formula. Every sheet now writes such values as text, and the Jira CSV and the
+  in-report roadmap CSV neutralise leading `=`, `+`, `-`, `@`, tab and carriage
+  return. Per-collector CSV files in the assessment folder are unchanged and
+  should still be treated as untrusted when opened in a spreadsheet.
+- **`-EvidencePackage -Redact` included unredacted files**: the HTML report and
+  XLSX matrix were copied into "redacted" packages as they were. The data
+  embedded in the HTML report is now redacted, the XLSX is left out, and a report
+  that cannot be redacted is omitted instead of shipped. Redaction tokens are now
+  keyed per package (HMAC-SHA-256, 16 hex characters) so a recipient cannot
+  confirm a guessed address by hashing it. Packages created with `-Redact` by
+  earlier versions should be treated as unredacted.
 
 ### Fixed
 

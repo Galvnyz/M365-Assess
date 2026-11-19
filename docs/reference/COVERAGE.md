@@ -4,11 +4,11 @@
 
 ## Registry summary
 
-- **Checks:** 292 (290 automated)
-- **Collector families:** 16 (see `controls/sync-scope.json`)
-- **Local extension checks:** 5 (pending upstream CheckID adoption)
-- **Severity-rated:** 292 of 292 (0 unrated checks display the default Medium severity)
-- **Learn-more links:** 31 of 292
+- **Checks:** 298 (296 automated)
+- **Collector families:** 17 (see `controls/sync-scope.json`)
+- **Local extension checks:** 11 (pending upstream CheckID adoption)
+- **Severity-rated:** 298 of 298 (0 unrated checks display the default Medium severity)
+- **Learn-more links:** 31 of 298
 
 ## Per-framework mapping coverage
 
@@ -21,8 +21,8 @@
 | `soc2` | yes | 291 | 199 | 1.5 |
 | `cmmc` | yes | 284 | 152 | 1.9 |
 | `nist-800-171` | — | 284 | 91 | 3.1 |
+| `mitre-attack` | yes | 280 | 476 | 0.6 |
 | `pci-dss` | yes | 277 | 198 | 1.4 |
-| `mitre-attack` | yes | 274 | 476 | 0.6 |
 | `iso-27001` | yes | 271 | 70 | 3.9 |
 | `iso-27002` | yes | 271 | 70 | 3.9 |
 | `iso-27017` | — | 263 | 57 | 4.6 |
@@ -58,6 +58,7 @@ Distinct SCuBA policy IDs mapped, by product prefix (`MS.<PRODUCT>.*`). Products
 | Backup | 1 | 1 | 0 |
 | CAEvaluator | 23 | 23 | 7 |
 | Compliance | 10 | 10 | 0 |
+| CompromiseHunt | 6 | 6 | 0 |
 | CriticalExposure | 0 | 0 | 0 |
 | Defender | 19 | 19 | 0 |
 | DNS | 4 | 4 | 0 |

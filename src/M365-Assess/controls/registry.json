@@ -67783,6 +67783,126 @@
         "rationale": "Failure to route email through Exchange Online mail flow exposes the tenant to: Security control bypass; mail not traversing Exchange Online skips ATP scanning, DLP policies, mail flow rules, and anti-phishing defenses.",
         "scfWeighting": 7
       }
+    },
+    {
+      "checkId": "IOC-INBOXRULE-001",
+      "name": "Inbox rules forwarding to external domains",
+      "category": "INBOXRULE",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1114.003"
+        }
+      },
+      "impactRating": {
+        "severity": "Critical",
+        "rationale": "An inbox rule that forwards or redirects mail outside the organisation is the most common persistence artefact of business email compromise: the attacker keeps reading mail after the password is reset.",
+        "scfWeighting": 9
+      }
+    },
+    {
+      "checkId": "IOC-INBOXRULE-002",
+      "name": "Inbox rules that hide mail",
+      "category": "INBOXRULE",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1564.008"
+        }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Rules that delete or bury replies, security alerts and payment threads hide an account takeover from the mailbox owner while the attacker conducts fraud from the account.",
+        "scfWeighting": 8
+      }
+    },
+    {
+      "checkId": "IOC-FORWARD-001",
+      "name": "Mailbox forwarding to external addresses",
+      "category": "FORWARD",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1114.003"
+        }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Mailbox-level forwarding sends a copy of all mail to an outside address. Set by an attacker it is silent, continuous data theft that survives a password reset.",
+        "scfWeighting": 7
+      }
+    },
+    {
+      "checkId": "IOC-CONSENT-001",
+      "name": "Consent grants for high-impact permissions",
+      "category": "CONSENT",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1528"
+        }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "An application granted mail, file or directory-write permissions keeps access through its own tokens. Illicit consent grants give an attacker durable access that MFA and password resets do not remove.",
+        "scfWeighting": 8
+      }
+    },
+    {
+      "checkId": "IOC-SPCRED-001",
+      "name": "Credentials added to applications and service principals",
+      "category": "SPCRED",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1098.001"
+        }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "An attacker who adds a secret or certificate to an existing application can sign in as that application with all of its permissions, independently of any user account.",
+        "scfWeighting": 8
+      }
+    },
+    {
+      "checkId": "IOC-ROLEADD-001",
+      "name": "Members added to privileged roles",
+      "category": "ROLEADD",
+      "collector": "CompromiseHunt",
+      "hasAutomatedCheck": true,
+      "licensing": {
+        "minimum": "E3"
+      },
+      "frameworks": {
+        "mitre-attack": {
+          "controlId": "T1098.003"
+        }
+      },
+      "impactRating": {
+        "severity": "High",
+        "rationale": "Adding an account to a privileged directory role is how an intruder turns one compromised account into control of the tenant.",
+        "scfWeighting": 9
+      }
     }
   ]
 }

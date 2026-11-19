@@ -300,6 +300,12 @@
     "SPO-SITE-003": "Info",
     "SPO-SWAY-001": "Medium",
     "SPO-VERSIONING-001": "Medium",
-    "TEAMS-GUEST-001": "High"
+    "TEAMS-GUEST-001": "High",
+    "IOC-INBOXRULE-001": "Critical",
+    "IOC-INBOXRULE-002": "High",
+    "IOC-FORWARD-001": "High",
+    "IOC-CONSENT-001": "High",
+    "IOC-SPCRED-001": "High",
+    "IOC-ROLEADD-001": "High"
   }
 }

@@ -16,6 +16,7 @@ $sectionServiceMap = @{
     'ActiveDirectory'  = @()
     'SOC2'             = @('Graph', 'Purview')
     'ValueOpportunity' = @('Graph')
+    'Compromise'       = @('Graph', 'ExchangeOnline')
 }
 
 # ------------------------------------------------------------------
@@ -34,6 +35,9 @@ $sectionScopeMap = @{
     'ActiveDirectory'  = @()
     'SOC2'             = @('Policy.Read.All', 'RoleManagement.Read.Directory', 'SecurityEvents.Read.All', 'SecurityAlert.Read.All', 'AuditLog.Read.All', 'User.Read.All', 'Reports.Read.All', 'Directory.Read.All')
     'ValueOpportunity' = @('Organization.Read.All')
+    # Compromise deliberately uses only scopes other sections already request,
+    # so opting in needs no new consent.
+    'Compromise'       = @('AuditLog.Read.All', 'Directory.Read.All', 'Organization.Read.All')
 }
 
 # ------------------------------------------------------------------
@@ -54,6 +58,7 @@ $sectionModuleMap = @{
     'ActiveDirectory'  = @()
     'SOC2'             = @('Microsoft.Graph.Identity.SignIns', 'Microsoft.Graph.Identity.DirectoryManagement', 'Microsoft.Graph.Security')
     'ValueOpportunity' = @('Microsoft.Graph.Identity.DirectoryManagement')
+    'Compromise'       = @()
 }
 
 # ------------------------------------------------------------------
@@ -155,6 +160,12 @@ $collectorMap = [ordered]@{
         @{ Name = '40-License-Utilization'; Script = 'ValueOpportunity\Get-LicenseUtilization.ps1'; Label = 'License Utilization'; RequiredServices = @('Graph'); PassProjectContext = $true }
         @{ Name = '41-Feature-Adoption';    Script = 'ValueOpportunity\Get-FeatureAdoption.ps1';    Label = 'Feature Adoption'; PassProjectContext = $true }
         @{ Name = '42-Feature-Readiness';   Script = 'ValueOpportunity\Get-FeatureReadiness.ps1';   Label = 'Feature Readiness'; PassProjectContext = $true }
+    )
+    # One script, two entries: each half needs a different service, so a failed
+    # Exchange connection does not stop the directory hunt (and vice versa).
+    'Compromise' = @(
+        @{ Name = '50-Compromise-Mailbox-Config';   Script = 'Compromise\Get-CompromiseIndicators.ps1'; Label = 'Compromise Indicators (Mailbox)';   RequiredServices = @('ExchangeOnline'); Params = @{ Scope = 'Mailbox' } }
+        @{ Name = '51-Compromise-Directory-Config'; Script = 'Compromise\Get-CompromiseIndicators.ps1'; Label = 'Compromise Indicators (Directory)'; RequiredServices = @('Graph');          Params = @{ Scope = 'Directory' } }
     )
 }
 

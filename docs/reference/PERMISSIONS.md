@@ -15,6 +15,7 @@
 | ActiveDirectory | — | 0 | 0 | 0 | 0 |
 | Collaboration | Graph | 4 | 4 | 0 | 0 |
 | Compliance | — | 0 | 0 | 0 | 1 |
+| Compromise | Graph, ExchangeOnline | 3 | 3 | 1 | 0 |
 | Email | ExchangeOnline | 0 | 1 | 1 | 0 |
 | Hybrid | Graph | 2 | 2 | 0 | 0 |
 | Identity | Graph | 10 | 9 | 0 | 0 |
@@ -62,6 +63,30 @@
 | Role | Reason |
 |---|---|
 | `Global Reader` | Broad read-only access across Microsoft 365 services including Purview, covering gaps not addressed by the above roles. |
+
+### Compromise
+
+**Services touched:** Graph, ExchangeOnline
+
+**Delegated Microsoft Graph scopes**
+
+- `AuditLog.Read.All`
+- `Directory.Read.All`
+- `Organization.Read.All`
+
+**Microsoft Graph application permissions** (app-only auth)
+
+| Permission | Reason |
+|---|---|
+| `AuditLog.Read.All` | Sign-in logs and directory audit events |
+| `Directory.Read.All` | Devices, admin units, role templates |
+| `Organization.Read.All` | Tenant org details, verified domains, hybrid config |
+
+**Exchange Online RBAC role groups**
+
+| Role group | Reason |
+|---|---|
+| `View-Only Organization Management` | Read-only access to mailboxes, recipients, transport rules, connectors, and EOP/Defender policies. Replaces the on-prem-only "View-Only Recipients" and "View-Only Configuration" groups in cloud EXO. |
 
 ### Email
 

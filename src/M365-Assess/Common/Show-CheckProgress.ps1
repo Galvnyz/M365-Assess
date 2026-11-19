@@ -26,6 +26,7 @@ $script:CollectorSectionMap = @{
     'Compliance'     = 'Security'
     'StrykerReadiness' = 'Security'
     'CriticalExposure' = 'Security'
+    'CompromiseHunt'   = 'Compromise'
     'Intune'         = 'Intune'
     'SharePoint'     = 'Collaboration'
     'Teams'          = 'Collaboration'
@@ -41,6 +42,7 @@ $script:CollectorLabelMap = @{
     'Compliance'     = 'Compliance Security Config'
     'StrykerReadiness' = 'Critical Exposure'
     'CriticalExposure' = 'Critical Exposure'
+    'CompromiseHunt'   = 'Compromise Indicators'
     'Intune'         = 'Intune Security Config'
     'SharePoint'     = 'SharePoint Security Config'
     'Teams'          = 'Teams Security Config'
@@ -48,7 +50,7 @@ $script:CollectorLabelMap = @{
 }
 
 # Ordered list for consistent display
-$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'StrykerReadiness', 'CriticalExposure', 'Intune', 'SharePoint', 'Teams', 'PowerBI')
+$script:CollectorOrder = @('Entra', 'CAEvaluator', 'ExchangeOnline', 'DNS', 'Defender', 'Compliance', 'StrykerReadiness', 'CriticalExposure', 'Intune', 'SharePoint', 'Teams', 'PowerBI', 'CompromiseHunt')
 
 
 

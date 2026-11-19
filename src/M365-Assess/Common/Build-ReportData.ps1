@@ -29,6 +29,7 @@ function Get-CheckDomain {
         'AZ-*'           { return 'Azure' }
         'SOC2-*'         { return 'SOC 2' }
         'VO-*'           { return 'Value Opportunity' }
+        'IOC-*'          { return 'Compromise Indicators' }
         default          { return 'Other' }
     }
 }
@@ -128,6 +129,10 @@ function Build-ReportDataJson {
     # 1. Map findings → REPORT_DATA.findings shape
     # ------------------------------------------------------------------
     $findings = [System.Collections.Generic.List[PSCustomObject]]::new()
+    # Compromise indicators (IOC-*) are hunt results, not posture checks. They
+    # are emitted as REPORT_DATA.indicators so that nothing built on .findings
+    # (scores, domain and framework rollups, roadmap) counts them.
+    $indicators = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     foreach ($f in $AllFindings) {
         $baseCheckId = $f.CheckId -replace '\.\d+$', ''
@@ -212,7 +217,12 @@ function Build-ReportDataJson {
         # XLSX export agree without recomputing the bucketing rules in two places.
         $lane = Get-RemediationLane -Status $f.Status -Severity $severity -Effort $effort
 
-        $findings.Add([PSCustomObject]@{
+        $isIndicator = ($baseCheckId -like 'IOC-*') -or [bool]($regEntry -and $regEntry.collector -eq 'CompromiseHunt')
+        # Plain assignment, not an if-expression: an empty List sent through the
+        # pipeline is enumerated to $null.
+        $targetList = $findings
+        if ($isIndicator) { $targetList = $indicators }
+        $targetList.Add([PSCustomObject]@{
             checkId      = $f.CheckId
             status       = $f.Status
             decision     = $f.Decision
@@ -462,6 +472,7 @@ function Build-ReportDataJson {
         score          = @($scoreRows  | Select-Object Percentage, AverageComparativeScore, CurrentScore, MaxScore, CreatedDateTime, MicrosoftScore, CustomerScore)
         mfaStats       = $mfaStats
         findings       = @($findings)
+        indicators     = @($indicators)
         domainStats    = $domainStats
         frameworks     = $frameworkList
         licenses       = @($licenseRows  | Select-Object License, Assigned, Total)

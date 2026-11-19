@@ -9,6 +9,10 @@ const USERS = D.users[0] || {};
 const SCORE = D.score[0] || {};
 const MFA_STATS = D.mfaStats;
 const FINDINGS = D.findings;
+// Compromise indicators (IOC-*) are hunt results from the opt-in Compromise
+// section. They are deliberately NOT part of FINDINGS, so no score, rollup,
+// filter or roadmap counts them. Older report data has no such key.
+const INDICATORS = D.indicators || [];
 const DOMAIN_STATS = D.domainStats;
 
 const LS = key => `${key}-${TENANT.TenantId || 'anon'}`;
@@ -247,6 +251,7 @@ function Sidebar({ active, activeSubsection, counts, domainCounts, activeDomain,
     { id: 'briefing', label: 'Executive briefing' },
     { id: 'overview', label: 'Overview' },
     ...(FINDINGS.some(f => f.criticalExposure) ? [{ id: 'critical-exposure', label: 'Critical exposure' }] : []),
+    ...(INDICATORS.length ? [{ id: 'compromise-indicators', label: 'Compromise indicators' }] : []),
     { id: 'posture',  label: 'Posture score' },
     { id: 'frameworks', label: 'Frameworks' },
     { id: 'identity', label: 'Domain posture' },

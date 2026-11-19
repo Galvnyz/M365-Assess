@@ -29,7 +29,7 @@ sequenceDiagram
     note over ORC,OUT: Assessment Runtime
 
     ORC->>REG: Load controls/registry.json
-    REG->>REG: Build hashtable<br/>(292 entries keyed by CheckId)
+    REG->>REG: Build hashtable<br/>(298 entries keyed by CheckId)
     REG->>REG: Merge risk-severity.json<br/>(Critical/High/Medium/Low)
     REG->>REG: Build __cisReverseLookup<br/>(CIS control ID → CheckId)
     REG-->>ORC: Return progressRegistry

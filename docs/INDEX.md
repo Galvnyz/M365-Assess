@@ -23,6 +23,7 @@ For consultants running assessments and consuming the report.
 | [`user/SCORING.md`](user/SCORING.md) | How the headline score is computed; the 6 scoring views; per-audience rationale |
 | [`user/COMPLIANCE.md`](user/COMPLIANCE.md) | 15 frameworks, XLSX export, CheckId system, control registry |
 | [`user/EVIDENCE-PACKAGE.md`](user/EVIDENCE-PACKAGE.md) | Sanitized evidence bundle for auditor handoff (`-EvidencePackage` switch) |
+| [`user/COMPROMISE-HUNT.md`](user/COMPROMISE-HUNT.md) | Opt-in hunt for signs of compromise (`-Section Compromise`): what it checks, how to read results, limits |
 | [`user/TROUBLESHOOTING.md`](user/TROUBLESHOOTING.md) | Common errors and resolutions |
 | [`user/GLOSSARY.md`](user/GLOSSARY.md) | Glossary — Lane / Sequence / Section / Collector / Check / Control / Framework / Profile / Level / Status |
 

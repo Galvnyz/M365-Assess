@@ -37,6 +37,7 @@ function Show-InteractiveWizard {
         '11' = @{ Name = 'ActiveDirectory'; Label = 'Active Directory (RSAT)';      Selected = $false }
         '12' = @{ Name = 'SOC2';            Label = 'SOC 2 Readiness (opt-in)';     Selected = $false }
         '13' = @{ Name = 'ValueOpportunity'; Label = 'Value Opportunity (opt-in)';  Selected = $false }
+        '14' = @{ Name = 'Compromise';      Label = 'Compromise Indicators (opt-in, reads every mailbox)'; Selected = $false }
     }
 
     # --- Header ---
@@ -108,7 +109,7 @@ function Show-InteractiveWizard {
 
             switch ($userChoice.Trim().ToUpper()) {
                 'S' {
-                    $optInSections = @('Inventory', 'ActiveDirectory')
+                    $optInSections = @('Inventory', 'ActiveDirectory', 'Compromise')
                     $rebuilt = [ordered]@{}
                     foreach ($k in @($sections.Keys)) {
                         $rebuilt["$k"] = @{ Name = $sections[$k].Name; Label = $sections[$k].Label; Selected = ($sections[$k].Name -notin $optInSections) }
