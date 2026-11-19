@@ -2,7 +2,7 @@
 
 **Issue:** #1060
 **Date:** 2026-11-19
-**Status:** Proposed — awaiting maintainer review
+**Status:** Approved 2026-11-19
 **Mockup:** [`docs/design/posture-tiles/`](../design/posture-tiles/README.md)
 
 ## Problem
@@ -71,12 +71,9 @@ A tile with checks is a `<button>`. Clicking it sets a new findings filter, `fil
 ## Decisions
 
 - **Compromise hunt: briefing only.** No hunt tile in this row. The briefing summary from #1059 already leads with the hunt result, and a second copy here would mix configuration and compromise in one row.
-
-## Open questions for review
-
-1. **Tile membership.** The prefix lists above are a first cut. `ENTRA-PIM-002` (guest access reviews) sits under Admin protection by prefix but is about guests.
-2. **Seven tiles.** On a 1440px screen that is two rows of three plus one. Merging Audit and investigation into Email security would give six.
-3. **Supporting line choice.** One figure per tile is shown; the rest are behind the click. Agree with the four chosen, or swap any?
+- **Tile membership: by prefix, as listed.** `ENTRA-PIM-002` (guest access reviews) stays under Admin protection with the rest of its family. Membership can be refined later without changing the state rules.
+- **Seven tiles**, in the order above. Audit and investigation stays separate from Email security.
+- **Supporting lines as listed:** admins without MFA, users with no MFA method, domains enforcing DMARC, guest accounts, devices compliant.
 
 ## Out of scope
 
