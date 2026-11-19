@@ -68,7 +68,7 @@ const MOCK_SCENARIOS = [
   },
   {
     title: 'B. Compromise-only run',
-    blurb: 'No configuration section ran. Today the row shows a green "0 guests" and "sharing level unknown". Proposed: the hunt tile reports what was found, and the configuration row collapses to one plain sentence instead of seven grey tiles.',
+    blurb: 'No configuration section ran. Today the row shows a green "0 guests" and "sharing level unknown". Proposed: the row collapses to one plain sentence instead of seven grey tiles, and points to the briefing summary, which is where the hunt result lives.',
     data: {
       collection: { collectors: [col('Compromise', 'Compromise Indicators (Mailbox)', 'Complete'), col('Compromise', 'Compromise Indicators (Directory)', 'Complete')] },
       mfaStats: { total: 0, none: 0, admins: 0, adminsWithoutMfa: 0 },

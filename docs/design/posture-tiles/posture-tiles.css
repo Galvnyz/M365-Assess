@@ -6,8 +6,6 @@
   display: grid; gap: 10px;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
 }
-.pt-hunt { margin-bottom: 10px; }
-.pt-hunt .pt-tile { max-width: 100%; }
 
 .pt-tile {
   display: flex; flex-direction: column; gap: 6px; min-width: 0;

@@ -58,7 +58,7 @@ A tile with checks is a `<button>`. Clicking it sets a new findings filter, `fil
 
 - Tiles colour by Fail severity using the same `severity` values and the same `NON_REMEDIATION_STATUSES` and `scoreDenom()` helpers the briefing uses, so a tile can be "At risk" only if it contains an open critical or high Fail.
 - "Scored" means Pass, Fail or Warning everywhere, matching the strict denominator (`#802`).
-- Compromise indicators stay out of the tiles' counts. See open question 1.
+- Compromise indicators never appear in this row, as a tile or in any tile's counts. The briefing's indicator summary (#1059) is the one place the hunt result is shown. When the row collapses on a run where only the hunt ran, the collapse sentence points to that summary.
 
 ## Implementation notes
 
@@ -68,12 +68,15 @@ A tile with checks is a `<button>`. Clicking it sets a new findings filter, `fil
 - Tests: `node --test` unit tests for `deriveTile()` covering every state, using the three mockup scenarios as fixtures; a jsdom render test that a Compromise-only `REPORT_DATA` shows the collapse sentence and no green tile.
 - Same PR, separate commit: the existing ~87px horizontal overflow at 1024px, which comes from `.filter-bar` and one `.card` (measured during #1058 live testing; unrelated to the tiles).
 
+## Decisions
+
+- **Compromise hunt: briefing only.** No hunt tile in this row. The briefing summary from #1059 already leads with the hunt result, and a second copy here would mix configuration and compromise in one row.
+
 ## Open questions for review
 
-1. **Compromise hunt tile in this row, or briefing only?** The mockup shows one when the Compromise section ran. #1059 already leads the briefing with the hunt result, so this would repeat it. Recommendation: drop it here and keep these tiles posture-only.
-2. **Tile membership.** The prefix lists above are a first cut. `ENTRA-PIM-002` (guest access reviews) sits under Admin protection by prefix but is about guests.
-3. **Seven tiles.** On a 1440px screen that is two rows of three plus one. Merging Audit and investigation into Email security would give six.
-4. **Supporting line choice.** One figure per tile is shown; the rest are behind the click. Agree with the four chosen, or swap any?
+1. **Tile membership.** The prefix lists above are a first cut. `ENTRA-PIM-002` (guest access reviews) sits under Admin protection by prefix but is about guests.
+2. **Seven tiles.** On a 1440px screen that is two rows of three plus one. Merging Audit and investigation into Email security would give six.
+3. **Supporting line choice.** One figure per tile is shown; the rest are behind the click. Agree with the four chosen, or swap any?
 
 ## Out of scope
 

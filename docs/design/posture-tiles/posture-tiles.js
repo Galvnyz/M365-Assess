@@ -138,28 +138,18 @@ function deriveTile(def, data) {
   return { ...base, state: 'good', verdict: 'No gaps found' };
 }
 
-// Compromise hunt tile: present only when the opt-in section ran.
-function deriveHuntTile(data) {
-  const ind = data.indicators || [];
-  if (!ind.length) return null;
-  const hits = ind.filter(f => f.status === 'Fail' || f.status === 'Warning');
-  const unchecked = ind.filter(f => !SCORED.has(f.status));
-  const base = { id: 'hunt', label: 'Compromise hunt', total: ind.length, scored: ind.length - unchecked.length,
-                 counts: { pass: ind.filter(f => f.status === 'Pass').length, warn: ind.filter(f => f.status === 'Warning').length,
-                           fail: ind.filter(f => f.status === 'Fail').length, person: 0, unmeasured: unchecked.length, unlicensed: 0 },
-                 gaps: hits, checkIds: ind.map(f => f.checkId), incomplete: [], missingSections: [], metric: null, hunt: true };
-  if (hits.length) return { ...base, state: 'bad', verdict: 'Signs of compromise' };
-  if (unchecked.length) return { ...base, state: 'partial', verdict: 'Incomplete' };
-  return { ...base, state: 'good', verdict: 'Nothing found' };
-}
-
 // When no configuration section ran at all, the row collapses to one line
 // instead of seven grey tiles.
+//
+// Compromise indicators never appear in this row (decided on #1062): the
+// briefing's indicator summary already leads with the hunt result, and these
+// tiles describe configuration only. `huntRan` exists solely so the collapse
+// sentence can point the reader to that summary.
 function deriveRow(data) {
   const tiles = TILE_DEFS.map(def => deriveTile(def, data));
-  const hunt = deriveHuntTile(data);
   const anyMeasured = tiles.some(t => t.state !== 'missing');
-  return { tiles: anyMeasured ? tiles : [], collapsed: !anyMeasured, hunt };
+  const huntRan = (data.indicators || []).length > 0;
+  return { tiles: anyMeasured ? tiles : [], collapsed: !anyMeasured, huntRan };
 }
 
 // ---------------------------------------------------------------- mockup only
@@ -175,13 +165,13 @@ function bar(t) {
 function renderTile(t) {
   const measured = t.state !== 'missing' && t.state !== 'na';
   const numbers = measured
-    ? `<div class="pt-count"><b>${t.counts.pass}</b> of ${t.scored} ${t.hunt ? 'checks clean' : 'scored checks pass'}</div>`
+    ? `<div class="pt-count"><b>${t.counts.pass}</b> of ${t.scored} scored checks pass</div>`
     : `<div class="pt-count pt-muted">${esc(t.reason)}</div>`;
   const metric = t.metric
     ? `<div class="pt-metric${t.metric.bad ? ' bad' : ''}"><b>${esc(t.metric.value)}</b> ${esc(t.metric.unit)}</div>`
     : (measured && TILE_DEFS.find(d => d.id === t.id)?.metric ? '<div class="pt-metric pt-muted">Supporting data not collected</div>' : '');
   const weakest = t.gaps && t.gaps.length
-    ? `<div class="pt-weakest"><span class="pt-label">${t.hunt ? 'Found' : 'Weakest'}</span> ${esc(t.gaps[0].setting)}${t.gaps.length > 1 ? ` <span class="pt-muted">+${t.gaps.length - 1} more</span>` : ''}</div>`
+    ? `<div class="pt-weakest"><span class="pt-label">Weakest</span> ${esc(t.gaps[0].setting)}${t.gaps.length > 1 ? ` <span class="pt-muted">+${t.gaps.length - 1} more</span>` : ''}</div>`
     : '';
   const notes = [];
   if (t.counts.unmeasured > 0 && measured) notes.push(`${t.counts.unmeasured} not measured`);
@@ -200,11 +190,9 @@ function renderTile(t) {
 
 function renderRow(data) {
   const row = deriveRow(data);
-  const tiles = row.collapsed
-    ? '<div class="pt-collapsed">No configuration areas were collected in this run, so there is nothing to summarise here. Run the standard sections to see posture by area.</div>'
-    : `<div class="pt-grid">${row.tiles.map(renderTile).join('')}</div>`;
-  const hunt = row.hunt ? `<div class="pt-hunt">${renderTile(row.hunt)}</div>` : '';
-  return hunt + tiles;
+  if (!row.collapsed) return `<div class="pt-grid">${row.tiles.map(renderTile).join('')}</div>`;
+  const pointer = row.huntRan ? ' The compromise hunt result is in the briefing summary above.' : '';
+  return `<div class="pt-collapsed">No configuration areas were collected in this run, so there is nothing to summarise here.${pointer} Run the standard sections to see posture by area.</div>`;
 }
 
 function renderToday(data) {
@@ -247,4 +235,4 @@ function mount() {
 }
 
 if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', mount);
-if (typeof module !== 'undefined') module.exports = { TILE_DEFS, deriveTile, deriveHuntTile, deriveRow };
+if (typeof module !== 'undefined') module.exports = { TILE_DEFS, deriveTile, deriveRow };

@@ -6,7 +6,7 @@ Mockup for **issue #1060**. The decisions, tile set, state rules and open questi
 
 | File | Purpose |
 |---|---|
-| `posture-tiles.js` | **The implementation reference.** `TILE_DEFS`, `deriveTile()`, `deriveHuntTile()` and `deriveRow()` are plain JavaScript with no DOM or React, meant to be ported into the report. The renderer below them is mockup-only. |
+| `posture-tiles.js` | **The implementation reference.** `TILE_DEFS`, `deriveTile()` and `deriveRow()` are plain JavaScript with no DOM or React, meant to be ported into the report. The renderer below them is mockup-only. |
 | `mock-data.js` | Three synthetic scenarios: a full run with mixed results, a Compromise-only run, and a partial run with sections missing, one collector incomplete and an unlicensed area. Contoso placeholders only. |
 | `posture-tiles.css` | New `.pt-*` classes. Uses the report's theme tokens, so it follows every theme and light/dark mode. The "mockup page chrome only" block is not for the report. |
 | `index.html` | Shows today's row next to the proposed row for each scenario. Clicking a proposed tile shows which findings it would open. |
