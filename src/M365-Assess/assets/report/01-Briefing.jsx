@@ -9,9 +9,14 @@ function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
         <span className="briefing-header-org">{TENANT.OrgDisplayName || 'Microsoft 365 tenant'}</span>
         <span className="briefing-header-meta">
           {assessedOk ? `Assessed ${assessedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · ` : ''}
-          {FINDINGS.length} settings checked
+          {FINDINGS.length > 0 || INDICATORS.length === 0 ? `${FINDINGS.length} settings checked` : ''}
+          {FINDINGS.length > 0 && INDICATORS.length > 0 ? ' · ' : ''}
+          {INDICATORS.length > 0 ? `${INDICATORS.length} compromise checks` : ''}
         </span>
       </div>
+      <HideableBlock hideKey="briefing-indicators" label="Compromise check summary">
+        <BriefingIndicatorAlert/>
+      </HideableBlock>
       <HideableBlock hideKey="briefing-verdict" label="Briefing verdict card">
         <BriefingVerdictCard fwId={fwId} setFwId={setFwId}/>
       </HideableBlock>
@@ -40,6 +45,10 @@ function Posture() {
   const pass = FINDINGS.filter(f=>f.status==='Pass').length;
   const critical = FINDINGS.filter(f=>f.severity==='critical').length;
   const notAssessed = FINDINGS.filter(f=>NOT_ASSESSED_STATUSES.has(f.status)).length;
+
+  // A run with no configuration checks and no Secure Score (for example a
+  // Compromise-only run) would show only zeros and a misleading permissions note.
+  if (FINDINGS.length === 0 && !scoreAvailable) return null;
 
   return (
     <section className="block" id="posture">
@@ -201,16 +210,24 @@ function ExecSummaryRow() {
     });
   }
 
-  const guestState = guests > 0 ? 'warn' : 'good';
-  const sharingStateMap = { Anyone: 'bad', ExternalUserAndGuestSharing: 'warn', ExternalUserSharingOnly: 'warn', ExistingExternalUserSharingOnly: 'good', Disabled: 'good' };
-  const sharingState = sharingLevel ? (sharingStateMap[sharingLevel] || 'warn') : 'good';
-  tiles.push({
-    label: 'External exposure',
-    primary: fmt(guests),
-    suffix: guests === 1 ? 'guest' : 'guests',
-    hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SPO sharing level unknown',
-    state: sharingState === 'bad' || guestState === 'bad' ? 'bad' : (sharingState === 'warn' || guestState === 'warn') ? 'warn' : 'good',
-  });
+  // Unknown is not good: only data that was actually collected may colour the
+  // tile, and the tile is left out when neither input was collected.
+  const guestsKnown = USERS.GuestUsers !== undefined && USERS.GuestUsers !== null && USERS.GuestUsers !== '';
+  if (guestsKnown || sharingLevel) {
+    const guestState = guestsKnown ? (guests > 0 ? 'warn' : 'good') : null;
+    const sharingStateMap = { Anyone: 'bad', ExternalUserAndGuestSharing: 'warn', ExternalUserSharingOnly: 'warn', ExistingExternalUserSharingOnly: 'good', Disabled: 'good' };
+    const sharingState = sharingLevel ? (sharingStateMap[sharingLevel] || 'warn') : null;
+    const known = [guestState, sharingState].filter(Boolean);
+    const allKnown = known.length === 2;
+    const state = known.includes('bad') ? 'bad' : known.includes('warn') ? 'warn' : allKnown ? 'good' : '';
+    tiles.push({
+      label: 'External exposure',
+      primary: guestsKnown ? fmt(guests) : '—',
+      suffix: guestsKnown ? (guests === 1 ? 'guest' : 'guests') : 'guests not collected',
+      hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SharePoint sharing level not collected in this run',
+      state,
+    });
+  }
 
   if (!tiles.length) return null;
 
