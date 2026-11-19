@@ -36,7 +36,23 @@ function FilterBar({ filters, setFilters, counts, total, search, setSearch, inFi
       return { ...f, [k]: [...cur] };
     });
   };
-  const active = filters.status.length + (filters.sequence||[]).length + filters.severity.length + filters.framework.length + filters.domain.length + (filters.profile||[]).length;
+  const active = filters.status.length + (filters.sequence||[]).length + filters.severity.length + filters.framework.length + filters.domain.length + (filters.profile||[]).length + (filters.area||[]).length;
+  // #1060: area filter set by a posture tile. Shown only while active, as a
+  // removable chip, because it has no picker of its own.
+  const areaGroup = (filters.area||[]).length === 0 ? null : (
+    <div className="filter-group">
+      <span className="filter-group-label">Area</span>
+      {filters.area.map(id => {
+        const def = PT_TILE_DEFS.find(d => d.id === id);
+        const n = FINDINGS.filter(f => ptTileHasCheck(id, f.checkId)).length;
+        return (
+          <button key={id} className="chip selected" onClick={() => update('area', id)} title="Remove this area filter">
+            {def ? def.label : id}<span className="ct">{n}</span><span aria-hidden="true" style={{marginLeft:4}}>×</span>
+          </button>
+        );
+      })}
+    </div>
+  );
   const hasActiveFilters = search.length > 0 || active > 0;
   const isActive = hasActiveFilters && inFindings;
 
@@ -117,6 +133,8 @@ function FilterBar({ filters, setFilters, counts, total, search, setSearch, inFi
           still wrap internally as a fallback. Clear-all sits inline at the end
           when filters are active (was a dedicated trailing row). */}
       <div className="fb-row fb-row-flow">
+        {areaGroup}
+        {areaGroup && <div className="filter-divider"/>}
         <div className="filter-group">
           <span className="filter-group-label">Status</span>
           {statusChips
@@ -191,7 +209,7 @@ function FilterBar({ filters, setFilters, counts, total, search, setSearch, inFi
         {levelGroup}
         {active > 0 && (
           <button className="filter-clear filter-clear-inline"
-            onClick={()=>setFilters({status:[],sequence:[],severity:[],framework:[],domain:[],profile:[]})}>
+            onClick={()=>setFilters({status:[],sequence:[],severity:[],framework:[],domain:[],profile:[],area:[]})}>
             Clear {active} filter{active===1?'':'s'}
           </button>
         )}
@@ -471,6 +489,7 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
       if (filters.severity.length && !filters.severity.includes(f.severity)) return false;
       if (filters.framework.length && !f.frameworks.some(fw => filters.framework.includes(fw))) return false;
       if (filters.domain.length && !filters.domain.includes(f.domain)) return false;
+      if ((filters.area||[]).length && !filters.area.some(id => ptTileHasCheck(id, f.checkId))) return false;
       if ((filters.profile||[]).length) {
         const activeFw = filters.framework.length === 1 ? filters.framework[0] : null;
         const fProfiles = activeFw ? [].concat(f.fwMeta?.[activeFw]?.profiles || []) : [];
@@ -525,7 +544,8 @@ function FindingsTable({ filters, search, focusFinding, onFocusClear, onMatchesC
     || filters.severity.length > 0
     || filters.framework.length > 0
     || filters.domain.length > 0
-    || (filters.profile || []).length > 0;
+    || (filters.profile || []).length > 0
+    || (filters.area || []).length > 0;
 
   const toggle = i => setOpen(o => {
     const n = new Set(o);

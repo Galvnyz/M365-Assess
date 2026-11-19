@@ -38,8 +38,8 @@ Evaluated in this order. Only `good` is green.
 
 | State | Verdict | When |
 |---|---|---|
-| `missing` | Not collected | No checks for the tile, and none of its sections ran. Shows which section to run. |
-| `na` | Nothing to check / Not licensed | No checks although a section ran; or every check is `NotLicensed`. |
+| `missing` | Not collected | No checks for the tile, and at least one of its sections did not run. Names the sections that did not run. |
+| `na` | Nothing to check / Not licensed | No checks although every one of its sections ran; or every check is `NotLicensed`. |
 | `missing` | Not measured | Checks exist but none is Pass, Fail or Warning (all skipped, unknown or awaiting a person). |
 | `bad` | At risk | Any Fail with critical or high severity. |
 | `warn` | Needs work | Any other Fail or Warning. |
@@ -52,7 +52,7 @@ Each tile shows: verdict; "X of Y scored checks pass" with a segmented bar (pass
 
 ## Interaction
 
-A tile with checks is a `<button>`. Clicking it sets a new findings filter, `filters.area = { id, label, checkIds }`, scrolls to All findings, and shows a removable chip "Area: Admin protection". `area` joins the existing `status / severity / framework / domain / profile` filters in `05-Appendix.jsx` (`setFilters`) and the persisted filter key. Tiles without checks are not interactive.
+A tile with checks is a `<button>`. Clicking it sets a new findings filter, `filters.area = ['<tile id>']`, clears the other filters and search so the table count matches the tile, scrolls to All findings, and shows a removable "Area" chip. `area` joins the existing `status / severity / framework / domain / profile` filters in `05-Appendix.jsx` (`setFilters`) and the persisted filter key. It stores tile ids rather than check IDs because filters persist per tenant in localStorage: a stored check list would be stale for a later report, so membership is looked up from the tile definition at filter time. Saved ids that are not a known tile are dropped on load. Tiles without checks are not interactive.
 
 ## Consistency with the briefing
 

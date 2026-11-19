@@ -23,6 +23,21 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   clean result is only reported when everything in scope was examined; a failed
   or partial query yields Unknown with the reason stated, never Pass.
 
+### Changed
+
+- **Posture tiles rebuilt from findings** (#1060): the four fixed tiles under
+  the Posture block (Privileged roles, Device compliance, Email authentication,
+  External exposure) are replaced by seven risk-ordered areas: Admin
+  protection, Sign-in protection, Apps and consent, Email security, External
+  access, Devices, and Audit and investigation. Each tile is derived from the
+  checks in that area and the collectors that ran, shows "X of Y scored checks
+  pass" with its weakest item, and opens All findings filtered to exactly those
+  checks (a removable "Area" filter). A tile is green only when every check was
+  measured and passed, every section it depends on ran, and every collector
+  completed; otherwise it says "Partly measured", "Not measured" or "Not
+  collected" and names what is missing. Compromise indicators stay out of this
+  row. Design: `docs/specs/2026-11-19-posture-tiles-design.md`.
+
 ### Security
 
 - **Spreadsheet formula injection**: tenant-controlled text (group, application,

@@ -478,51 +478,64 @@ section.block { margin-bottom: 52px; scroll-margin-top: 20px; }
 .kpi.warn .kpi-value { color: var(--warn-text); }
 .kpi.good .kpi-value { color: var(--success-text); }
 
-/* ---------- Exec summary row (posture indicators) ---------- */
-.exec-summary-row {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+/* ---------- Posture tiles (#1060) ----------
+   Derived from findings plus collector coverage; see
+   docs/specs/2026-11-19-posture-tiles-design.md. Only fully measured, fully
+   passing areas are green. */
+.pt-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
   margin-top: 14px;
-  /* #742: separate the tile row from the critical-findings banner below */
   margin-bottom: 12px;
 }
-.exec-tile {
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
-  border-radius: var(--radius);
+.pt-tile {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  text-align: left; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--muted); border-radius: var(--radius);
+  padding: 12px 14px;
 }
-.exec-tile-label {
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .08em;
-  color: var(--muted);
-  margin-bottom: 8px;
+button.pt-tile { cursor: pointer; }
+button.pt-tile:hover { border-color: var(--accent); }
+button.pt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pt-tile.bad     { border-left-color: var(--danger); }
+.pt-tile.warn    { border-left-color: var(--warn); }
+.pt-tile.good    { border-left-color: var(--success); }
+.pt-tile.partial { border-left-color: var(--muted); }
+.pt-tile.missing,
+.pt-tile.na      { border-left-color: var(--border); border-style: dashed; border-left-style: solid; opacity: .85; }
+.pt-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+.pt-name { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pt-verdict { font-family: var(--font-display); font-size: 15px; font-weight: 700; text-align: right; white-space: nowrap; }
+.pt-tile.bad .pt-verdict  { color: var(--danger-text); }
+.pt-tile.warn .pt-verdict { color: var(--warn-text); }
+.pt-tile.good .pt-verdict { color: var(--success-text); }
+.pt-tile.partial .pt-verdict,
+.pt-tile.missing .pt-verdict,
+.pt-tile.na .pt-verdict   { color: var(--text-soft); font-size: 13px; }
+.pt-count { font-size: 13px; color: var(--text-soft); }
+.pt-count b { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.pt-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--chip); }
+.pt-bar span { display: block; min-width: 3px; }
+.pt-bar .pass { background: var(--success); }
+.pt-bar .warn { background: var(--warn); }
+.pt-bar .fail { background: var(--danger); }
+.pt-bar .person { background: var(--accent); opacity: .7; }
+.pt-bar .unmeasured { background: var(--muted); opacity: .35; }
+/* A partly measured area must not look all-green at a glance. */
+.pt-tile.partial .pt-bar .pass { opacity: .4; }
+.pt-metric { font-size: 12.5px; color: var(--text-soft); }
+.pt-metric b { color: var(--text); font-variant-numeric: tabular-nums; }
+.pt-metric.bad b { color: var(--danger-text); }
+.pt-weakest { font-size: 12.5px; color: var(--text); line-height: 1.4; overflow-wrap: anywhere; }
+.pt-label { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.pt-foot { margin-top: auto; padding-top: 4px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.pt-muted { color: var(--muted); }
+.pt-collapsed {
+  margin-top: 14px; margin-bottom: 12px;
+  font-size: 13px; color: var(--text-soft); padding: 12px 14px;
+  border: 1px dashed var(--border); border-radius: var(--radius);
 }
-.exec-tile-value {
-  font-family: var(--font-display);
-  font-size: 22px; font-weight: 700;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
-  line-height: 1.1;
-}
-.exec-tile-suffix {
-  font-size: 12px; font-weight: 500;
-  color: var(--muted);
-  margin-left: 6px;
-  letter-spacing: 0;
-}
-.exec-tile-hint {
-  font-size: 11.5px; color: var(--muted);
-  line-height: 1.4;
-}
-.exec-tile.good { border-left-color: var(--success); }
-.exec-tile.good .exec-tile-value { color: var(--success-text); }
-.exec-tile.warn { border-left-color: var(--warn); }
-.exec-tile.warn .exec-tile-value { color: var(--warn-text); }
-.exec-tile.bad  { border-left-color: var(--danger); }
-.exec-tile.bad  .exec-tile-value { color: var(--danger-text); }
 
 /* ---------- TrendChart (#642) ---------- */
 .trend-subtitle {
