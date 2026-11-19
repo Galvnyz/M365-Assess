@@ -117,7 +117,7 @@ Describe 'Export-EvidencePackage (D4 #788)' {
 
         $findings = Get-Content (Join-Path $extract 'findings.json') -Raw
         $findings | Should -Not -Match 'admin@contoso\.com'
-        $findings | Should -Match '<user-[0-9a-f]{8}>'
+        $findings | Should -Match '<user-[0-9a-f]{16}>'
     }
 
     It 'records redactionApplied=true in run-metadata.json when -Redact is supplied' {
@@ -132,6 +132,108 @@ Describe 'Export-EvidencePackage (D4 #788)' {
         $meta = Get-Content (Join-Path $extract 'run-metadata.json') -Raw | ConvertFrom-Json
         $meta.redactionApplied | Should -BeTrue
         $meta.tenantName       | Should -Be '<tenant>'
+    }
+
+    Context 'when -Redact is supplied and the report has a data island' {
+        BeforeEach {
+            $reportHtml = @'
+<!DOCTYPE html>
+<html><head><title>Contoso Assessment</title><style>a::before{content:"x"}</style></head>
+<body><div id="root"></div>
+<script>
+window.REPORT_DATA = {"tenant":{"OrgDisplayName":"Contoso","TenantId":"11111111-2222-3333-4444-555555555555"},"findings":[{"checkId":"X-001.1","current":"line one\nadmin@contoso.com from 203.0.113.7","count":3,"flag":true,"none":null,"tags":["owner@contoso.com","plain"]}]};
+</script>
+<script id="report-overrides">window.REPORT_OVERRIDES = null;</script>
+<script>var css="a::before";</script>
+</body></html>
+'@
+            Set-Content -Path (Join-Path $script:assessFolder 'fake_Assessment-Report.html') -Value $reportHtml -Encoding UTF8
+
+            $out = Join-Path $TestDrive 'package-html.zip'
+            Export-EvidencePackage -AssessmentFolder $script:assessFolder -OutputPath $out -TenantName 'test' -Redact -TenantDisplayName 'Contoso' | Out-Null
+            $script:extract = Join-Path $TestDrive 'extract-html'
+            if (Test-Path $script:extract) { Remove-Item -Recurse -Force $script:extract }
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($out, $script:extract)
+            $script:html = Get-Content (Join-Path $script:extract 'executive-report.html') -Raw
+        }
+
+        It 'should remove addresses, IPs, GUIDs and the tenant name from the report data' {
+            $script:html | Should -Not -Match 'admin@contoso\.com'
+            $script:html | Should -Not -Match 'owner@contoso\.com'
+            $script:html | Should -Not -Match '203\.0\.113\.7'
+            $script:html | Should -Not -Match '11111111-2222-3333-4444-555555555555'
+            $script:html | Should -Not -Match 'Contoso'
+        }
+
+        It 'should leave the script bundle and styles untouched' {
+            $script:html | Should -Match 'a::before\{content:"x"\}'
+            $script:html | Should -Match 'var css="a::before";'
+            $script:html | Should -Match 'window\.REPORT_OVERRIDES = null;'
+        }
+
+        It 'should keep the data island valid JSON with types and escapes intact' {
+            $island = [regex]::Match($script:html, '(?s)window\.REPORT_DATA\s*=\s*(.*?);\s*</script>').Groups[1].Value
+            $data = $island | ConvertFrom-Json
+            $data.findings[0].count | Should -Be 3
+            $data.findings[0].flag | Should -BeTrue
+            $data.findings[0].none | Should -BeNullOrEmpty
+            $data.findings[0].current | Should -Match "^line one`n<user-[0-9a-f]{16}> from <ip-[0-9a-f]{16}>$"
+            $data.findings[0].tags[1] | Should -Be 'plain'
+        }
+
+        It 'should not write a raw less-than sign inside the data island' {
+            $island = [regex]::Match($script:html, '(?s)window\.REPORT_DATA\s*=\s*(.*?);\s*</script>').Groups[1].Value
+            $island | Should -Not -Match '<'
+        }
+
+        It 'should leave the XLSX matrix out and say so in the metadata' {
+            Test-Path (Join-Path $script:extract 'compliance-matrix.xlsx') | Should -BeFalse
+            $meta = Get-Content (Join-Path $script:extract 'run-metadata.json') -Raw | ConvertFrom-Json
+            @($meta.redactionNotes) -join ' ' | Should -Match 'compliance-matrix\.xlsx was omitted'
+        }
+
+        It 'should list only files that are present in the manifest' {
+            $manifest = Get-Content (Join-Path $script:extract 'manifest.json') -Raw | ConvertFrom-Json
+            $manifest.files.path | Should -Not -Contain 'compliance-matrix.xlsx'
+            $manifest.files.path | Should -Contain 'executive-report.html'
+        }
+    }
+
+    Context 'when -Redact is supplied and the report data cannot be located' {
+        It 'should leave the report out instead of shipping it unredacted' {
+            # The BeforeEach stub report has no REPORT_DATA island.
+            $out = Join-Path $TestDrive 'package-nohtml.zip'
+            Export-EvidencePackage -AssessmentFolder $script:assessFolder -OutputPath $out -TenantName 'test' -Redact -WarningAction SilentlyContinue | Out-Null
+            $extract = Join-Path $TestDrive 'extract-nohtml'
+            if (Test-Path $extract) { Remove-Item -Recurse -Force $extract }
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($out, $extract)
+
+            Test-Path (Join-Path $extract 'executive-report.html') | Should -BeFalse
+            $meta = Get-Content (Join-Path $extract 'run-metadata.json') -Raw | ConvertFrom-Json
+            @($meta.redactionNotes) -join ' ' | Should -Match 'executive-report\.html was omitted'
+        }
+    }
+
+    Context 'when two redacted packages are built from the same data' {
+        It 'should produce different tokens for the same address' {
+            @(
+                [PSCustomObject]@{ CheckId = 'T-1.1'; Setting = 's'; Status = 'Fail'; CurrentValue = 'admin@contoso.com' }
+            ) | Export-Csv -Path (Join-Path $script:assessFolder 'salt-config.csv') -NoTypeInformation -Encoding UTF8
+
+            $tokens = foreach ($n in 1, 2) {
+                $out = Join-Path $TestDrive "package-salt$n.zip"
+                Export-EvidencePackage -AssessmentFolder $script:assessFolder -OutputPath $out -TenantName 'test' -Redact -WarningAction SilentlyContinue | Out-Null
+                $extract = Join-Path $TestDrive "extract-salt$n"
+                if (Test-Path $extract) { Remove-Item -Recurse -Force $extract }
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                [System.IO.Compression.ZipFile]::ExtractToDirectory($out, $extract)
+                [regex]::Match((Get-Content (Join-Path $extract 'findings.json') -Raw), '<user-[0-9a-f]{16}>').Value
+            }
+            $tokens[0] | Should -Not -BeNullOrEmpty
+            $tokens[0] | Should -Not -Be $tokens[1]
+        }
     }
 
     It 'rejects a non-existent assessment folder with a clear error' {
