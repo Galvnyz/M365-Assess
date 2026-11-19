@@ -41,6 +41,13 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
 
 ### Fixed
 
+- **Executive briefing could hide a compromise hit**: a run that found a
+  forwarding inbox rule opened with "0% · Findings need attention" and "no
+  critical issues open". The briefing now leads with a compromise summary
+  (found, incomplete, or clean), says "configuration" on the attention tile,
+  shows "no configuration score" instead of a red 0% when nothing was scored,
+  and no longer colours the External exposure tile green from data that was
+  not collected.
 - Keep guest invitation domain restrictions (`ENTRA-GUEST-004`) in manual Review
   until the domain allow/block list is verified. Inviter permissions and cross-tenant
   application access no longer produce unsupported Pass or Fail results; findings
