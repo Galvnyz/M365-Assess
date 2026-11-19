@@ -694,6 +694,22 @@ function BriefingVerdictCard({ fwId, setFwId }) {
   // "Applicable" excludes the not-assessed bucket; the donut % keeps the
   // standard fwCoveragePct formula so Briefing and FrameworkQuilt always agree.
   const applicable = data.counts.pass + data.counts.fail + data.counts.warn;
+  // Nothing scored (for example a Compromise-only run): a 0% "needs attention"
+  // verdict would be false. Say plainly that the run has no posture score.
+  if (applicable === 0) {
+    return (
+      <div className="brief-verdict brief-verdict-empty">
+        <div className="brief-verdict-info">
+          <div className="brief-verdict-line">No configuration score for this run</div>
+          <div className="brief-verdict-sub">
+            {FINDINGS.length === 0
+              ? 'This run did not include any configuration checks, so there is no pass rate to report. Run the standard sections to score the tenant against a framework.'
+              : 'None of the configuration checks in this run could be scored for the selected framework.'}
+          </div>
+        </div>
+      </div>
+    );
+  }
   const qwInFw = getQuickWins(FINDINGS).filter(f => (f.frameworks || []).includes(fwId));
   const projected = qwInFw.length > 0
     ? fwCoveragePct({ ...data.counts, pass: data.counts.pass + qwInFw.length, fail: Math.max(0, data.counts.fail - qwInFw.length) })
@@ -740,12 +756,14 @@ function BriefingStatRow({ onShowCritical, onShowQuickWins }) {
   const quickWins = getQuickWins(FINDINGS).length;
   const score = parseFloat(SCORE.Percentage);
   const avg = parseFloat(SCORE.AverageComparativeScore);
+  // No configuration checks ran: these tiles would only show zeros.
+  if (FINDINGS.length === 0 && !Number.isFinite(score)) return null;
   return (
     <div className="brief-stat-row">
       <button className={'brief-stat ' + (critical > 0 ? 'bad' : 'good')} onClick={onShowCritical}>
         <div className="brief-stat-label">Needs attention now</div>
         <div className="brief-stat-value">{critical}</div>
-        <div className="brief-stat-hint">{critical > 0 ? (critical === 1 ? 'issue to fix this week' : 'issues to fix this week') : 'no critical issues open'}</div>
+        <div className="brief-stat-hint">{critical > 0 ? (critical === 1 ? 'configuration issue to fix this week' : 'configuration issues to fix this week') : 'no critical configuration issues open'}</div>
       </button>
       <button className="brief-stat" onClick={onShowQuickWins}>
         <div className="brief-stat-label">Quick wins</div>
@@ -763,6 +781,74 @@ function BriefingStatRow({ onShowCritical, onShowQuickWins }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Compromise hunt result on the first screen. Indicators stay out of every
+// score, but a found indicator must never be hidden behind a "nothing open"
+// tile, so the briefing leads with it. Same language policy as the rest of
+// the briefing: no CheckIds, no status vocabulary.
+function BriefingIndicatorAlert() {
+  if (!INDICATORS.length) return null;
+  const hits = INDICATORS.filter(f => f.status === 'Fail' || f.status === 'Warning');
+  const strong = hits.filter(f => f.status === 'Fail');
+  const unchecked = INDICATORS.filter(f => f.status !== 'Pass' && f.status !== 'Fail' && f.status !== 'Warning');
+  const goTo = e => {
+    e.preventDefault();
+    document.getElementById('compromise-indicators')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const eventCount = f => {
+    const ev = parseIndicatorEvidence(f);
+    return ev && Number.isFinite(ev.total) ? ev.total : null;
+  };
+
+  if (hits.length > 0) {
+    return (
+      <div className="brief-ioc bad" role="alert">
+        <div className="brief-ioc-title">Signs of compromise found</div>
+        <div className="brief-ioc-sub">
+          {strong.length > 0
+            ? 'At least one finding is strongly associated with an account takeover. Treat it as a possible incident until the owner explains it.'
+            : 'Some activity needs a person to confirm it was expected.'}
+          {' '}These results are not part of the configuration score below.
+          {unchecked.length > 0 && ` ${unchecked.length} other compromise check${unchecked.length === 1 ? '' : 's'} could not be completed.`}
+        </div>
+        <ul className="brief-ioc-list">
+          {hits.map(f => {
+            const n = eventCount(f);
+            return (
+              <li key={f.checkId}>
+                <span className={'brief-action-dot ' + (f.status === 'Fail' ? 'critical' : 'high')}/>
+                <span className="brief-ioc-name">{f.setting}</span>
+                {n !== null && <span className="brief-ioc-count">{n} found</span>}
+              </li>
+            );
+          })}
+        </ul>
+        <a className="brief-actions-more" href="#compromise-indicators" onClick={goTo}>Review the evidence</a>
+      </div>
+    );
+  }
+
+  if (unchecked.length > 0) {
+    return (
+      <div className="brief-ioc warn">
+        <div className="brief-ioc-title">Compromise check incomplete</div>
+        <div className="brief-ioc-sub">
+          Nothing suspicious was found, but {unchecked.length} of {INDICATORS.length} compromise checks could not be completed, so no conclusion can be drawn from them.
+        </div>
+        <a className="brief-actions-more" href="#compromise-indicators" onClick={goTo}>See what was not checked</a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="brief-ioc good">
+      <div className="brief-ioc-title">No signs of compromise found</div>
+      <div className="brief-ioc-sub">
+        All {INDICATORS.length} compromise checks completed with nothing found. This covers only what those checks look at; it is not proof that the tenant is uncompromised.
+      </div>
     </div>
   );
 }
