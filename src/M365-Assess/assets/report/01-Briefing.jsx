@@ -32,7 +32,7 @@ function Briefing({ onViewFinding, onShowCritical, onShowQuickWins }) {
 }
 
 // ======================== Posture hero ========================
-function Posture() {
+function Posture({ onAreaSelect }) {
   const score = parseFloat(SCORE.Percentage);
   const avg = parseFloat(SCORE.AverageComparativeScore);
   const scoreAvailable = Number.isFinite(score);
@@ -152,97 +152,12 @@ function Posture() {
           <MFABreakdown />
         </div>
       </div>
-      <ExecSummaryRow/>
+      <HideableBlock hideKey="posture-tiles" label="Posture by area tiles">
+        <PostureTiles onAreaSelect={onAreaSelect}/>
+      </HideableBlock>
       {/* #963: the critical banner moved to the Executive Briefing, which leads
           with a "Needs attention now" tile and the top remediation actions. */}
     </section>
-  );
-}
-
-// ======================== Exec summary row (posture indicators) ========================
-function ExecSummaryRow() {
-  const allRoles = D['admin-roles'] || [];
-  const adminCount = allRoles.length;
-  const adminsWithoutMfa = MFA_STATS.adminsWithoutMfa || 0;
-
-  const ds  = D.deviceStats;
-  const dns = D.dns || [];
-  const dnsTotal = dns.length;
-  const dmarcEnf = dns.filter(r => r.DMARCPolicy === 'reject' || r.DMARCPolicy === 'quarantine').length;
-
-  const guests = USERS.GuestUsers || 0;
-  const sharingLevel = D.sharepointConfig?.SharingLevel;
-
-  // Severity: a tile is "alert" when the underlying indicator is concerning.
-  const tiles = [];
-
-  if (adminCount > 0) {
-    tiles.push({
-      label: 'Privileged roles',
-      primary: adminCount,
-      suffix: 'assignments',
-      hint: adminsWithoutMfa > 0
-        ? `${adminsWithoutMfa} admin${adminsWithoutMfa===1?'':'s'} without MFA`
-        : 'All admins MFA-enrolled',
-      state: adminsWithoutMfa > 0 ? 'bad' : 'good',
-    });
-  }
-
-  if (ds && ds.total > 0) {
-    const compliantPct = Math.round((ds.compliant / ds.total) * 100);
-    tiles.push({
-      label: 'Device compliance',
-      primary: compliantPct,
-      suffix: '%',
-      hint: `${fmt(ds.compliant)} of ${fmt(ds.total)} devices compliant`,
-      state: compliantPct >= 90 ? 'good' : compliantPct >= 70 ? 'warn' : 'bad',
-    });
-  }
-
-  if (dnsTotal > 0) {
-    const state = dmarcEnf === dnsTotal ? 'good' : dmarcEnf > 0 ? 'warn' : 'bad';
-    tiles.push({
-      label: 'Email authentication',
-      primary: pct(dmarcEnf, dnsTotal),
-      suffix: '%',
-      hint: `${dmarcEnf} of ${dnsTotal} domain${dnsTotal===1?'':'s'} enforce DMARC (reject or quarantine)`,
-      state,
-    });
-  }
-
-  // Unknown is not good: only data that was actually collected may colour the
-  // tile, and the tile is left out when neither input was collected.
-  const guestsKnown = USERS.GuestUsers !== undefined && USERS.GuestUsers !== null && USERS.GuestUsers !== '';
-  if (guestsKnown || sharingLevel) {
-    const guestState = guestsKnown ? (guests > 0 ? 'warn' : 'good') : null;
-    const sharingStateMap = { Anyone: 'bad', ExternalUserAndGuestSharing: 'warn', ExternalUserSharingOnly: 'warn', ExistingExternalUserSharingOnly: 'good', Disabled: 'good' };
-    const sharingState = sharingLevel ? (sharingStateMap[sharingLevel] || 'warn') : null;
-    const known = [guestState, sharingState].filter(Boolean);
-    const allKnown = known.length === 2;
-    const state = known.includes('bad') ? 'bad' : known.includes('warn') ? 'warn' : allKnown ? 'good' : '';
-    tiles.push({
-      label: 'External exposure',
-      primary: guestsKnown ? fmt(guests) : '—',
-      suffix: guestsKnown ? (guests === 1 ? 'guest' : 'guests') : 'guests not collected',
-      hint: sharingLevel ? `SPO sharing · ${sharingLevel}` : 'SharePoint sharing level not collected in this run',
-      state,
-    });
-  }
-
-  if (!tiles.length) return null;
-
-  return (
-    <div className="exec-summary-row">
-      {tiles.map(t => (
-        <div key={t.label} className={'exec-tile ' + t.state}>
-          <div className="exec-tile-label">{t.label}</div>
-          <div className="exec-tile-value">
-            {t.primary}<span className="exec-tile-suffix">{t.suffix}</span>
-          </div>
-          <div className="exec-tile-hint">{t.hint}</div>
-        </div>
-      ))}
-    </div>
   );
 }
 

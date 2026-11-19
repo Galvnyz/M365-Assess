@@ -114,9 +114,11 @@ function deriveTile(def, data) {
                  checkIds: checks.map(f => f.checkId), incomplete: cov.incomplete, missingSections: cov.missing };
 
   if (checks.length === 0) {
-    return cov.ran
-      ? { ...base, state: 'na', verdict: 'Nothing to check', reason: 'The sections for this area ran but produced no checks for it.' }
-      : { ...base, state: 'missing', verdict: 'Not collected', reason: `${def.sections.join(' or ')} section not run.` };
+    // "Nothing to check" is a claim about every dependent section, so it needs
+    // all of them to have run. Otherwise name the ones that did not.
+    if (!cov.ran) return { ...base, state: 'missing', verdict: 'Not collected', reason: `${def.sections.join(' or ')} section not run.` };
+    if (cov.missing.length) return { ...base, state: 'missing', verdict: 'Not collected', reason: `${cov.missing.join(' and ')} section not run.` };
+    return { ...base, state: 'na', verdict: 'Nothing to check', reason: 'The sections for this area ran but produced no checks for it.' };
   }
   if (scored === 0) {
     if (counts.unlicensed === checks.length) {

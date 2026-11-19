@@ -23,6 +23,21 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   clean result is only reported when everything in scope was examined; a failed
   or partial query yields Unknown with the reason stated, never Pass.
 
+### Changed
+
+- **Posture tiles rebuilt from findings** (#1060): the four fixed tiles under
+  the Posture block (Privileged roles, Device compliance, Email authentication,
+  External exposure) are replaced by seven risk-ordered areas: Admin
+  protection, Sign-in protection, Apps and consent, Email security, External
+  access, Devices, and Audit and investigation. Each tile is derived from the
+  checks in that area and the collectors that ran, shows "X of Y scored checks
+  pass" with its weakest item, and opens All findings filtered to exactly those
+  checks (a removable "Area" filter). A tile is green only when every check was
+  measured and passed, every section it depends on ran, and every collector
+  completed; otherwise it says "Partly measured", "Not measured" or "Not
+  collected" and names what is missing. Compromise indicators stay out of this
+  row. Design: `docs/specs/2026-11-19-posture-tiles-design.md`.
+
 ### Security
 
 - **Spreadsheet formula injection**: tenant-controlled text (group, application,
@@ -48,6 +63,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   shows "no configuration score" instead of a red 0% when nothing was scored,
   and no longer colours the External exposure tile green from data that was
   not collected.
+- The report no longer scrolls sideways at about 1024px wide: the Status filter
+  group now wraps its chips, and long permission names in the permissions table
+  break instead of widening the card.
 - Keep guest invitation domain restrictions (`ENTRA-GUEST-004`) in manual Review
   until the domain allow/block list is verified. Inviter permissions and cross-tenant
   application access no longer produce unsupported Pass or Fail results; findings

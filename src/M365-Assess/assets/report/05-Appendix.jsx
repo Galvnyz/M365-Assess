@@ -287,10 +287,12 @@ function App() {
           framework: Array.isArray(saved.framework) ? saved.framework : [],
           domain:    Array.isArray(saved.domain)    ? saved.domain    : [],
           profile:   Array.isArray(saved.profile)   ? saved.profile   : [],
+          // #1060: posture-tile area, stored as tile ids; unknown ids are dropped.
+          area:      Array.isArray(saved.area)      ? saved.area.filter(id => PT_TILE_DEFS.some(d => d.id === id)) : [],
         };
       }
     } catch {}
-    return { status:[], sequence:[], severity:[], framework:[], domain:[], profile:[] };
+    return { status:[], sequence:[], severity:[], framework:[], domain:[], profile:[], area:[] };
   });
   const [active, setActive] = useState('briefing');
   // #963: ScoringViews tab state (lifted so the Briefing can deep-link).
@@ -453,14 +455,21 @@ function App() {
     onDomainJump(null);
   };
   const onViewFinding = useCallback((checkId) => {
-    setFilters({ status:[], sequence:[], severity:[], framework:[], domain:[], profile:[] });
+    setFilters({ status:[], sequence:[], severity:[], framework:[], domain:[], profile:[], area:[] });
     setSearch('');
     setFocusFinding(checkId);
     document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
   // #963: Briefing tile deep-links.
   const onShowCritical = useCallback(() => {
-    setFilters({ status:[], sequence:[], severity:['critical'], framework:[], domain:[], profile:[] });
+    setFilters({ status:[], sequence:[], severity:['critical'], framework:[], domain:[], profile:[], area:[] });
+    setSearch('');
+    document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  // #1060: a posture tile opens All findings narrowed to exactly its checks.
+  // Other filters are cleared so the table count matches the tile's count.
+  const onAreaSelect = useCallback((id) => {
+    setFilters({ status:[], sequence:[], severity:[], framework:[], domain:[], profile:[], area: id ? [id] : [] });
     setSearch('');
     document.getElementById('findings-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
@@ -494,7 +503,7 @@ function App() {
         <AssessorWorkflow editMode={editMode}/>
         <Briefing onViewFinding={onViewFinding} onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
         <Overview/>
-        <Posture/>
+        <Posture onAreaSelect={onAreaSelect}/>
         <CriticalExposureBlock/>
         <IndicatorBlock/>
         <ScoringViews view={scoringView} setView={setScoringView}/>
