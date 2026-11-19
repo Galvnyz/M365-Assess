@@ -167,6 +167,7 @@ Approximate runtimes for a typical SMB tenant (10--500 users). Actual times vary
 | Inventory | ~30 seconds (opt-in) |
 | ActiveDirectory | ~15 seconds (opt-in) |
 | SOC2 | ~20 seconds (opt-in) |
+| Compromise | Depends on mailbox count: one inbox-rule query per mailbox (opt-in, never part of `All`) |
 
 **Total for default sections:** 5--8 minutes for a full scan (including service connections and report generation).
 
@@ -271,12 +272,14 @@ Get-ChildItem -Path .\M365-Assess\src -Recurse -Filter *.ps1 | Unblock-File
 | **ActiveDirectory** *(opt-in)* | AD Domain & Forest, AD DC Health, AD Replication, AD Security | Domain/forest topology, DC health via dcdiag, replication partners and lag, password policies, privileged group membership. Includes a hybrid sync dashboard panel in the report home view. Requires RSAT or domain controller access. |
 | **SOC2** *(opt-in)* | Security Controls, Confidentiality Controls, Audit Evidence, Readiness Checklist | SOC 2 Trust Services Criteria assessment: security and confidentiality controls, 30-day audit log evidence collection, organizational readiness checklist for non-automatable criteria (CC1-CC5, CC8-CC9) |
 | **ValueOpportunity** *(opt-in)* | License Utilization, Feature Adoption, Feature Readiness | Analyzes license utilization and feature adoption to identify features your tenant pays for but does not use. Produces an adoption roadmap with quick wins. |
+| **Compromise** *(opt-in)* | Compromise Indicators (Mailbox), Compromise Indicators (Directory) | Hunts for signs of compromise: inbox rules that forward or hide mail, external mailbox forwarding, high-impact consent grants, new application credentials and privileged role additions. Not part of the posture score and never included by `All`. See [COMPROMISE-HUNT.md](COMPROMISE-HUNT.md). |
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ActiveDirectory`, `SOC2`, `ValueOpportunity` opt-in sections. Use `All` to run every section. |
+| `-Section` | string[] | Tenant, Identity, Licensing, Email, Intune, Security, Collaboration, PowerBI, Hybrid | Sections to assess. Add `Inventory`, `ActiveDirectory`, `SOC2`, `ValueOpportunity` opt-in sections. Use `All` to run every section except `Compromise`, which must be named explicitly. |
+| `-CompromiseLookbackDays` | int | 30 | Days of directory audit history the `Compromise` section reviews (1-90). The effective window is limited by Entra audit log retention (7 days, or 30 with Entra ID P1/P2). |
 | `-TenantId` | string | *(wizard prompt)* | Tenant ID or `*.onmicrosoft.com` domain |
 | `-OutputFolder` | string | `.\M365-Assessment` | Base output directory |
 | `-SkipConnection` | switch | | Skip service connections (use pre-existing) |

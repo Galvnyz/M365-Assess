@@ -8,18 +8,18 @@
 
 $script:RequiredGraphPermissions = @(
     # -- Tenant ----------------------------------------------------------------
-    @{ Name = 'Organization.Read.All';                   Sections = 'Tenant, Licensing, Hybrid'              ; Reason = 'Tenant org details, verified domains, hybrid config' }
+    @{ Name = 'Organization.Read.All';                   Sections = 'Tenant, Licensing, Hybrid, Compromise'; Reason = 'Tenant org details, verified domains, hybrid config' }
     @{ Name = 'Domain.Read.All';                         Sections = 'Tenant, Identity, Hybrid'               ; Reason = 'All domains registered in the tenant' }
     @{ Name = 'Group.Read.All';                          Sections = 'Tenant, Inventory'                      ; Reason = 'All groups including Microsoft 365 and security groups' }
     @{ Name = 'AccessReview.Read.All'; Sections = 'Identity'; Reason = 'Access review definitions and schedules' }
     # -- Identity --------------------------------------------------------------
     @{ Name = 'User.Read.All';                           Sections = 'Tenant, Identity, Licensing, Inventory' ; Reason = 'User profiles, sign-in activity, license assignments' }
-    @{ Name = 'AuditLog.Read.All';                       Sections = 'Identity'                               ; Reason = 'Sign-in logs and directory audit events' }
+    @{ Name = 'AuditLog.Read.All';                       Sections = 'Identity, Compromise'                   ; Reason = 'Sign-in logs and directory audit events' }
     @{ Name = 'UserAuthenticationMethod.Read.All';       Sections = 'Identity'                               ; Reason = 'MFA and passwordless authentication methods per user' }
     @{ Name = 'RoleManagement.Read.Directory';           Sections = 'Identity'                               ; Reason = 'Entra directory role assignments and PIM eligibility' }
     @{ Name = 'Policy.Read.All';                         Sections = 'Tenant, Identity'                       ; Reason = 'Conditional Access, auth methods, token lifetime, password policies' }
     @{ Name = 'Application.Read.All';                    Sections = 'Identity'                               ; Reason = 'App registrations, service principals, OAuth permission grants' }
-    @{ Name = 'Directory.Read.All';                      Sections = 'Identity'                               ; Reason = 'Devices, admin units, role templates' }
+    @{ Name = 'Directory.Read.All';                      Sections = 'Identity, Compromise'                   ; Reason = 'Devices, admin units, role templates' }
     # -- Intune ----------------------------------------------------------------
     @{ Name = 'DeviceManagementManagedDevices.Read.All'; Sections = 'Intune'                                 ; Reason = 'Managed device inventory and compliance state' }
     @{ Name = 'DeviceManagementConfiguration.Read.All';  Sections = 'Intune, Security'                       ; Reason = 'Configuration profiles, compliance policies, Multi-Admin Approval policies' }
@@ -59,7 +59,7 @@ $script:RequiredGraphPermissions = @(
 $script:RequiredExoRoleGroups = @(
     @{
         RoleGroup = 'View-Only Organization Management'
-        Sections  = 'Email, Security, Inventory'
+        Sections  = 'Email, Security, Inventory, Compromise'
         Reason    = 'Read-only access to mailboxes, recipients, transport rules, connectors, and EOP/Defender policies. Replaces the on-prem-only "View-Only Recipients" and "View-Only Configuration" groups in cloud EXO.'
     }
     @{

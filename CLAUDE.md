@@ -26,7 +26,7 @@ src/M365-Assess/
 ├── SharePoint/                 # SPO, Teams checks
 ├── Purview/                    # Compliance checks
 └── controls/
-    ├── registry.json            # 292 M365-scoped checks (CheckID upstream + 5 local extensions)
+    ├── registry.json            # 298 M365-scoped checks (CheckID upstream + 11 local extensions)
     ├── sync-scope.json          # M365 collector allowlist — sync filters WIN-*/AZ-* out
     ├── licensing-overlay.json   # Maps CheckID E3/E5 minimum → exact service plan IDs
     ├── risk-severity.json       # Risk scores per checkId
@@ -50,7 +50,7 @@ The upstream registry also carries Windows-endpoint (`WIN-*`) and Azure-subscrip
 to the collectors in `controls/sync-scope.json`; `Import-ControlRegistry` enforces the
 same scope at load time. **Never commit an unpartitioned registry.**
 
-Local extension checks (5 total, in `local-extensions.json`) are M365-Assess-specific
+Local extension checks (11 total, in `local-extensions.json`) are M365-Assess-specific
 checks not yet in CheckID upstream. **The sync script must preserve them by checkId
 prefix or explicit list.** When adding new local extension checks, register them in
 the sync preservation list.

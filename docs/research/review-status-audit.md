@@ -118,3 +118,18 @@ emission counter only counts literal property assignments, not -Status arguments
 Five optional Purview command absence sites also change Review to Unknown: DLP,
 labels, alert policies, auto-labeling, and communication compliance. Missing
 commands are collection limitations, not manual compliance judgments.
+
+### Compromise indicators coverage guard (November 2026)
+
+One new literal Unknown site, in `Common/Get-CollectionCoverage.ps1`
+(`Add-IndicatorSetting`). Unknown ceiling raised 8 to 9.
+
+Classification: genuine limitation, by design. The six `IOC-*` checks ask "is
+there anything bad in this set?", so a clean answer is only meaningful when the
+whole set was read. `Add-IndicatorSetting` is the single place the status of an
+indicator check is chosen: indicators found gives Fail or Warning, no indicators
+with complete coverage gives Pass, and no indicators with incomplete coverage
+(failed listing, refused audit query, mailboxes that could not be read) gives
+Unknown with the reason in `Limitations`. Collectors never pick the status
+themselves, so all six checks share this one emission site and a Pass cannot be
+produced from partial data.

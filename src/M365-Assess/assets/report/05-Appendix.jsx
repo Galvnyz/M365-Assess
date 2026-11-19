@@ -496,6 +496,7 @@ function App() {
         <Overview/>
         <Posture/>
         <CriticalExposureBlock/>
+        <IndicatorBlock/>
         <ScoringViews view={scoringView} setView={setScoringView}/>
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>

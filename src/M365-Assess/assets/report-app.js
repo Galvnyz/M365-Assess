@@ -15,6 +15,10 @@ const USERS = D.users[0] || {};
 const SCORE = D.score[0] || {};
 const MFA_STATS = D.mfaStats;
 const FINDINGS = D.findings;
+// Compromise indicators (IOC-*) are hunt results from the opt-in Compromise
+// section. They are deliberately NOT part of FINDINGS, so no score, rollup,
+// filter or roadmap counts them. Older report data has no such key.
+const INDICATORS = D.indicators || [];
 const DOMAIN_STATS = D.domainStats;
 const LS = key => `${key}-${TENANT.TenantId || 'anon'}`;
 const RO = window.REPORT_OVERRIDES || null;
@@ -472,6 +476,9 @@ function Sidebar({
   }, ...(FINDINGS.some(f => f.criticalExposure) ? [{
     id: 'critical-exposure',
     label: 'Critical exposure'
+  }] : []), ...(INDICATORS.length ? [{
+    id: 'compromise-indicators',
+    label: 'Compromise indicators'
   }] : []), {
     id: 'posture',
     label: 'Posture score'
@@ -5328,7 +5335,13 @@ function Roadmap({
   const FW_PREF_RM = ['cis-m365-v6', 'nist-800-53', 'cmmc', 'nist-csf', 'iso-27001'];
   const buildRoadmapCsv = (n, s, l) => {
     const cols = ['Lane', 'Setting', 'CheckID', 'Severity', 'Effort', 'Domain', 'Section', 'CurrentValue', 'RecommendedValue', 'Remediation', 'LearnMore', 'ControlRef'];
-    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Tenant-controlled text reaches this CSV; prefix an apostrophe to any
+    // value a spreadsheet would evaluate as a formula (=, +, -, @, tab, CR).
+    const esc = v => {
+      const s = String(v ?? '');
+      const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
     const rows = [cols.join(',')];
     [['Do Now', n], ['Do Next', s], ['Later', l]].forEach(([label, items]) => {
       items.forEach(t => {
@@ -5794,6 +5807,188 @@ function Overview() {
   }, "│"), /*#__PURE__*/React.createElement("span", null, "Run ", /*#__PURE__*/React.createElement("b", null, new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()))), /*#__PURE__*/React.createElement("div", {
     className: "overview-meta"
   }, /*#__PURE__*/React.createElement("span", null, "› ", D.summary.length, " collectors executed"), /*#__PURE__*/React.createElement("span", null, "› ", fmt(totalChecks), " data points inventoried"), /*#__PURE__*/React.createElement("span", null, "› ", FINDINGS.length, " controls evaluated"), /*#__PURE__*/React.createElement("span", null, "› ", FRAMEWORKS.length, " frameworks mapped")));
+}
+
+// ======================== Compromise indicators section ========================
+// Results of the opt-in Compromise section (IOC-* checks). These answer "are
+// there signs this tenant is already compromised?", which is a different
+// question from posture, so they live in D.indicators and never feed a score.
+// The collector stores its event list as a JSON string in Evidence; after the
+// CSV round trip and Build-ReportData it arrives JSON-encoded once or twice.
+function parseIndicatorEvidence(f) {
+  let value = f && f.evidence ? f.evidence.raw : null;
+  for (let i = 0; i < 2 && typeof value === 'string'; i++) {
+    try {
+      value = JSON.parse(value);
+    } catch (e) {
+      return null;
+    }
+  }
+  return value && typeof value === 'object' ? value : null;
+}
+const INDICATOR_EVENT_COLUMNS = [['Time', 'Time (UTC)'], ['Actor', 'Account / actor'], ['Target', 'Target'], ['Detail', 'What was found'], ['IpAddress', 'IP address']];
+function IndicatorEvents({
+  evidence
+}) {
+  const events = evidence && Array.isArray(evidence.events) ? evidence.events : [];
+  if (!events.length) return null;
+  const columns = INDICATOR_EVENT_COLUMNS.filter(([key]) => events.some(e => e && e[key]));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "indicator-events"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "evidence-table indicator-events-table"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, columns.map(([key, label]) => /*#__PURE__*/React.createElement("th", {
+    key: key
+  }, label)))), /*#__PURE__*/React.createElement("tbody", null, events.map((e, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i
+  }, columns.map(([key]) => /*#__PURE__*/React.createElement("td", {
+    key: key
+  }, e && e[key] ? String(e[key]) : '')))))), evidence.total > events.length && /*#__PURE__*/React.createElement("div", {
+    className: "indicator-note"
+  }, "Showing ", events.length, " of ", evidence.total, ". The full list is in the collector CSV in the assessment folder."));
+}
+function IndicatorBlock() {
+  const {
+    open,
+    headProps
+  } = useCollapsibleSection();
+  const [expanded, setExpanded] = useState(() => {
+    // Open anything that needs attention; leave clean results collapsed.
+    const initial = {};
+    INDICATORS.forEach((f, i) => {
+      if (f.status !== 'Pass') initial[i] = true;
+    });
+    return initial;
+  });
+  if (!INDICATORS.length) return null;
+  const found = INDICATORS.filter(f => f.status === 'Fail' || f.status === 'Warning').length;
+  const clean = INDICATORS.filter(f => f.status === 'Pass').length;
+  const notEvaluated = INDICATORS.length - found - clean;
+  const toggle = i => setExpanded(prev => ({
+    ...prev,
+    [i]: !prev[i]
+  }));
+  return /*#__PURE__*/React.createElement("section", {
+    className: "block",
+    id: "compromise-indicators"
+  }, /*#__PURE__*/React.createElement("div", headProps, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "Hunt · Compromise indicators"), /*#__PURE__*/React.createElement("h2", null, "Signs of compromise"), /*#__PURE__*/React.createElement("span", {
+    className: "section-chevron",
+    "aria-hidden": "true"
+  }, open ? '▾' : '▸'), /*#__PURE__*/React.createElement("div", {
+    className: "hr"
+  })), open && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 12,
+      display: 'flex',
+      gap: 24,
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 240,
+      fontSize: 13,
+      color: 'var(--text-soft)',
+      lineHeight: 1.55
+    }
+  }, "These checks look for artefacts an intruder leaves behind: mail rules that forward or hide messages, new application credentials, permission grants and privileged role changes. They are not part of the posture score. ", /*#__PURE__*/React.createElement("b", null, "A clean result covers only what each check examined; it is not proof that the tenant is uncompromised."), " Anything marked not evaluated could not be examined completely and supports no conclusion."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 18,
+      fontVariantNumeric: 'tabular-nums'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--muted)'
+    }
+  }, "Indicators found"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: found ? 'var(--danger-text)' : 'var(--text)'
+    }
+  }, found)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--muted)'
+    }
+  }, "Clean"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: 'var(--success-text)'
+    }
+  }, clean)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--muted)'
+    }
+  }, "Not evaluated"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: notEvaluated ? 'var(--warn-text)' : 'var(--text)'
+    }
+  }, notEvaluated)))), /*#__PURE__*/React.createElement("div", {
+    className: "findings ce-findings"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "findings-head"
+  }, /*#__PURE__*/React.createElement("div", null, "Status"), /*#__PURE__*/React.createElement("div", null, "Indicator"), /*#__PURE__*/React.createElement("div", null, "Check ID"), /*#__PURE__*/React.createElement("div", null, "Severity"), /*#__PURE__*/React.createElement("div", null)), INDICATORS.map((f, i) => {
+    const evidence = parseIndicatorEvidence(f);
+    const isOpen = !!expanded[i];
+    const limitations = f.evidence && f.evidence.limitations;
+    return /*#__PURE__*/React.createElement(React.Fragment, {
+      key: i
+    }, /*#__PURE__*/React.createElement("div", {
+      className: 'finding-row' + (isOpen ? ' open' : ''),
+      role: "button",
+      tabIndex: 0,
+      "aria-expanded": isOpen,
+      onClick: () => toggle(i),
+      onKeyDown: e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle(i);
+        }
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: 'status-badge ' + STATUS_COLORS[f.status],
+      title: STATUS_TIP[f.status]
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "dot"
+    }), statusLabel(f.status))), /*#__PURE__*/React.createElement("div", {
+      className: "finding-title"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "t"
+    }, f.setting), /*#__PURE__*/React.createElement("div", {
+      className: "sub"
+    }, f.current)), /*#__PURE__*/React.createElement("div", {
+      className: "check-id"
+    }, f.checkId), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: 'sev-badge ' + f.severity
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "bar"
+    }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("span", null, SEV_LABEL[f.severity]))), /*#__PURE__*/React.createElement("div", {
+      className: "caret",
+      "aria-hidden": "true"
+    }, "›")), isOpen && /*#__PURE__*/React.createElement("div", {
+      className: "finding-detail indicator-detail"
+    }, /*#__PURE__*/React.createElement(IndicatorEvents, {
+      evidence: evidence
+    }), f.status !== 'Pass' && f.remediation && /*#__PURE__*/React.createElement("div", {
+      className: "indicator-field"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "indicator-label"
+    }, "What to do"), /*#__PURE__*/React.createElement("div", null, f.remediation)), limitations && /*#__PURE__*/React.createElement("div", {
+      className: "indicator-field"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "indicator-label"
+    }, "Limits of this check"), /*#__PURE__*/React.createElement("div", null, limitations)), f.evidence && f.evidence.evidenceSource && /*#__PURE__*/React.createElement("div", {
+      className: "indicator-note"
+    }, "Source: ", f.evidence.evidenceSource, f.evidence.evidenceTimestamp ? ' · collected ' + f.evidence.evidenceTimestamp : '')));
+  }))));
 }
 
 // Assessor claims are intentionally separate from collected status and scores.
@@ -6764,7 +6959,7 @@ function App() {
     onViewFinding: onViewFinding,
     onShowCritical: onShowCritical,
     onShowQuickWins: onShowQuickWins
-  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(CriticalExposureBlock, null), /*#__PURE__*/React.createElement(ScoringViews, {
+  }), /*#__PURE__*/React.createElement(Overview, null), /*#__PURE__*/React.createElement(Posture, null), /*#__PURE__*/React.createElement(CriticalExposureBlock, null), /*#__PURE__*/React.createElement(IndicatorBlock, null), /*#__PURE__*/React.createElement(ScoringViews, {
     view: scoringView,
     setView: setScoringView
   }), /*#__PURE__*/React.createElement(TrendChart, null), /*#__PURE__*/React.createElement(FrameworkQuilt, {

@@ -14,9 +14,18 @@
 .PARAMETER Section
     One or more assessment sections to run. Valid values: Tenant, Identity,
     Licensing, Email, Intune, Security, Collaboration, Hybrid, PowerBI,
-    Inventory, ActiveDirectory, SOC2, ValueOpportunity, All. Defaults to all
-    standard sections. Use 'All' to include opt-in sections (Inventory,
-    ActiveDirectory, SOC2, ValueOpportunity) in a single value.
+    Inventory, ActiveDirectory, SOC2, ValueOpportunity, Compromise, All.
+    Defaults to all standard sections. Use 'All' to include opt-in sections
+    (Inventory, ActiveDirectory, SOC2, ValueOpportunity) in a single value.
+    'Compromise' hunts for indicators of compromise (suspicious inbox rules,
+    external forwarding, risky consent grants, new app credentials, privileged
+    role additions). It reads every mailbox, so it is never implied by 'All'
+    and must be named explicitly.
+.PARAMETER CompromiseLookbackDays
+    How many days of directory audit history the Compromise section reviews
+    (1-90, default 30). Entra ID keeps these logs for 7 days without a premium
+    licence and 30 days with Entra ID P1 or P2; each finding states the window
+    that was really visible.
 .PARAMETER TenantId
     Tenant ID or domain (e.g., 'contoso.onmicrosoft.com').
 .PARAMETER OutputFolder
@@ -210,7 +219,7 @@ function Invoke-M365Assessment {
 param(
     [Parameter()]
     [ValidateSet('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration',
-                 'PowerBI', 'Hybrid', 'Inventory', 'ActiveDirectory', 'SOC2', 'ValueOpportunity', 'All')]
+                 'PowerBI', 'Hybrid', 'Inventory', 'ActiveDirectory', 'SOC2', 'ValueOpportunity', 'Compromise', 'All')]
     [string[]]$Section = @('Tenant', 'Identity', 'Licensing', 'Email', 'Intune', 'Security', 'Collaboration', 'PowerBI', 'Hybrid'),
 
     # TenantId: optional in interactive sets; mandatory in app-only sets where the
@@ -332,6 +341,11 @@ param(
 
     [Parameter()]
     [switch]$Redact,
+
+    # Directory audit lookback for the opt-in Compromise section.
+    [Parameter()]
+    [ValidateRange(1, 90)]
+    [int]$CompromiseLookbackDays = 30,
 
     # #963 -- framework id(s) that headline the Executive Briefing first screen.
     # Completer offers the JSON basenames (= framework ids by convention);
@@ -800,6 +814,7 @@ if (Test-Path -Path $dnsHelper) { . $dnsHelper }
 $sectionOrder = @(
     'Tenant', 'Identity', 'Licensing', 'Email', 'Intune',
     'Inventory',        # EXO-dependent — run before Security's Purview collectors
+    'Compromise',       # Opt-in hunt: EXO (mailbox rules) + Graph (directory audit)
     'Security',         # Graph → EXO (Defender) → Purview (DLP/Compliance)
     'Collaboration', 'PowerBI', 'Hybrid',
     'ActiveDirectory', 'SOC2',
@@ -1021,6 +1036,11 @@ foreach ($sectionName in $Section) {
             # Reuse audit evidence collected before the Exchange-to-Purview transition.
             if ($collector.Name -eq '19b-Compliance-Security-Config' -and $assessmentEvidence.ContainsKey('ExchangeAudit')) {
                 $collectorParams['AuditConfigEvidence'] = $assessmentEvidence.ExchangeAudit
+            }
+
+            # Compromise collectors read directory audit history for the requested window.
+            if ($sectionName -eq 'Compromise') {
+                $collectorParams['LookbackDays'] = $CompromiseLookbackDays
             }
 
             # Value Opportunity collectors need project root + assessment folder paths

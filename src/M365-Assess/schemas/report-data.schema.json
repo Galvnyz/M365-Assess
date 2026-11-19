@@ -29,6 +29,10 @@
     "score": {
       "type": "array"
     },
+    "indicators": {
+      "description": "Compromise indicator results (IOC-*) from the opt-in Compromise section. Same item shape as findings, but never counted in scores or rollups.",
+      "type": "array"
+    },
     "findings": {
       "type": "array",
       "items": {

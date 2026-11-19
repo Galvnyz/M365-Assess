@@ -1019,6 +1019,34 @@ mark.search-hl {
   }
 }
 
+/* Compromise indicators: expanded detail with a time-stamped event table. The
+   table scrolls inside its own box so a long address never widens the page. */
+.finding-detail.indicator-detail { padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+/* The row's second line carries the result ("2 indicator(s) found (examined
+   412 of 412 mailboxes ...)"); let it wrap instead of truncating the coverage. */
+/* "Unknown" and "Warning" badges are wider than the 80px status column the
+   Critical exposure table uses. */
+@media (min-width: 721px) {
+  #compromise-indicators .ce-findings .findings-head,
+  #compromise-indicators .ce-findings .finding-row {
+    grid-template-columns: 112px minmax(0, 1fr) 200px 130px 28px;
+  }
+}
+#compromise-indicators .finding-title .t,
+#compromise-indicators .finding-title .sub { white-space: normal; overflow: visible; text-overflow: clip; }
+.indicator-events { overflow-x: auto; max-width: 100%; }
+.indicator-events-table { margin: 0; min-width: 560px; }
+.indicator-events-table th {
+  width: auto; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+}
+.indicator-events-table td { font-variant-numeric: tabular-nums; }
+.indicator-field { font-size: 13px; line-height: 1.55; color: var(--text); }
+.indicator-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin-bottom: 3px;
+}
+.indicator-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
 .caret {
   color: var(--muted); transition: transform .15s;
 }

@@ -473,7 +473,13 @@ function Roadmap({ onViewFinding, editMode, hiddenFindings, roadmapOverrides, on
   const buildRoadmapCsv = (n, s, l) => {
     const cols = ['Lane','Setting','CheckID','Severity','Effort','Domain','Section',
                   'CurrentValue','RecommendedValue','Remediation','LearnMore','ControlRef'];
-    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Tenant-controlled text reaches this CSV; prefix an apostrophe to any
+    // value a spreadsheet would evaluate as a formula (=, +, -, @, tab, CR).
+    const esc = v => {
+      const s = String(v ?? '');
+      const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
     const rows = [cols.join(',')];
     [['Do Now', n], ['Do Next', s], ['Later', l]].forEach(([label, items]) => {
       items.forEach(t => {
@@ -749,6 +755,114 @@ function Overview() {
         <span>› {FINDINGS.length} controls evaluated</span>
         <span>› {FRAMEWORKS.length} frameworks mapped</span>
       </div>
+    </section>
+  );
+}
+
+// ======================== Compromise indicators section ========================
+// Results of the opt-in Compromise section (IOC-* checks). These answer "are
+// there signs this tenant is already compromised?", which is a different
+// question from posture, so they live in D.indicators and never feed a score.
+// The collector stores its event list as a JSON string in Evidence; after the
+// CSV round trip and Build-ReportData it arrives JSON-encoded once or twice.
+function parseIndicatorEvidence(f) {
+  let value = f && f.evidence ? f.evidence.raw : null;
+  for (let i = 0; i < 2 && typeof value === 'string'; i++) {
+    try { value = JSON.parse(value); } catch (e) { return null; }
+  }
+  return value && typeof value === 'object' ? value : null;
+}
+
+const INDICATOR_EVENT_COLUMNS = [
+  ['Time', 'Time (UTC)'], ['Actor', 'Account / actor'], ['Target', 'Target'], ['Detail', 'What was found'], ['IpAddress', 'IP address'],
+];
+
+function IndicatorEvents({ evidence }) {
+  const events = evidence && Array.isArray(evidence.events) ? evidence.events : [];
+  if (!events.length) return null;
+  const columns = INDICATOR_EVENT_COLUMNS.filter(([key]) => events.some(e => e && e[key]));
+  return (
+    <div className="indicator-events">
+      <table className="evidence-table indicator-events-table">
+        <thead><tr>{columns.map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
+        <tbody>
+          {events.map((e, i) => (
+            <tr key={i}>{columns.map(([key]) => <td key={key}>{e && e[key] ? String(e[key]) : ''}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+      {evidence.total > events.length &&
+        <div className="indicator-note">Showing {events.length} of {evidence.total}. The full list is in the collector CSV in the assessment folder.</div>}
+    </div>
+  );
+}
+
+function IndicatorBlock() {
+  const { open, headProps } = useCollapsibleSection();
+  const [expanded, setExpanded] = useState(() => {
+    // Open anything that needs attention; leave clean results collapsed.
+    const initial = {};
+    INDICATORS.forEach((f, i) => { if (f.status !== 'Pass') initial[i] = true; });
+    return initial;
+  });
+  if (!INDICATORS.length) return null;
+  const found = INDICATORS.filter(f => f.status === 'Fail' || f.status === 'Warning').length;
+  const clean = INDICATORS.filter(f => f.status === 'Pass').length;
+  const notEvaluated = INDICATORS.length - found - clean;
+  const toggle = i => setExpanded(prev => ({ ...prev, [i]: !prev[i] }));
+  return (
+    <section className="block" id="compromise-indicators">
+      <div {...headProps}>
+        <span className="eyebrow">Hunt · Compromise indicators</span>
+        <h2>Signs of compromise</h2>
+        <span className="section-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <div className="hr"/>
+      </div>
+      {open && <><div className="card" style={{marginBottom:12, display:'flex', gap:24, alignItems:'center', flexWrap:'wrap'}}>
+        <div style={{flex:1, minWidth:240, fontSize:13, color:'var(--text-soft)', lineHeight:1.55}}>
+          These checks look for artefacts an intruder leaves behind: mail rules that forward or hide messages, new application credentials, permission grants and privileged role changes.
+          They are not part of the posture score. <b>A clean result covers only what each check examined; it is not proof that the tenant is uncompromised.</b> Anything marked not evaluated could not be examined completely and supports no conclusion.
+        </div>
+        <div style={{display:'flex', gap:18, fontVariantNumeric:'tabular-nums'}}>
+          <div><div style={{fontSize:12,color:'var(--muted)'}}>Indicators found</div><div style={{fontWeight:700, color: found ? 'var(--danger-text)' : 'var(--text)'}}>{found}</div></div>
+          <div><div style={{fontSize:12,color:'var(--muted)'}}>Clean</div><div style={{fontWeight:700, color:'var(--success-text)'}}>{clean}</div></div>
+          <div><div style={{fontSize:12,color:'var(--muted)'}}>Not evaluated</div><div style={{fontWeight:700, color: notEvaluated ? 'var(--warn-text)' : 'var(--text)'}}>{notEvaluated}</div></div>
+        </div>
+      </div>
+      <div className="findings ce-findings">
+        <div className="findings-head">
+          <div>Status</div><div>Indicator</div><div>Check ID</div><div>Severity</div><div/>
+        </div>
+        {INDICATORS.map((f, i) => {
+          const evidence = parseIndicatorEvidence(f);
+          const isOpen = !!expanded[i];
+          const limitations = f.evidence && f.evidence.limitations;
+          return (
+            <React.Fragment key={i}>
+              <div className={'finding-row' + (isOpen ? ' open' : '')} role="button" tabIndex={0} aria-expanded={isOpen}
+                   onClick={() => toggle(i)}
+                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(i); } }}>
+                <div><span className={'status-badge '+STATUS_COLORS[f.status]} title={STATUS_TIP[f.status]}><span className="dot"/>{statusLabel(f.status)}</span></div>
+                <div className="finding-title"><div className="t">{f.setting}</div><div className="sub">{f.current}</div></div>
+                <div className="check-id">{f.checkId}</div>
+                <div><span className={'sev-badge '+f.severity}><span className="bar"><i/><i/><i/><i/></span><span>{SEV_LABEL[f.severity]}</span></span></div>
+                <div className="caret" aria-hidden="true">›</div>
+              </div>
+              {isOpen && (
+                <div className="finding-detail indicator-detail">
+                  <IndicatorEvents evidence={evidence}/>
+                  {f.status !== 'Pass' && f.remediation &&
+                    <div className="indicator-field"><div className="indicator-label">What to do</div><div>{f.remediation}</div></div>}
+                  {limitations &&
+                    <div className="indicator-field"><div className="indicator-label">Limits of this check</div><div>{limitations}</div></div>}
+                  {f.evidence && f.evidence.evidenceSource &&
+                    <div className="indicator-note">Source: {f.evidence.evidenceSource}{f.evidence.evidenceTimestamp ? ' · collected ' + f.evidence.evidenceTimestamp : ''}</div>}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div></>}
     </section>
   );
 }

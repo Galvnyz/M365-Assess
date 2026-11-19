@@ -62,6 +62,9 @@ function Export-M365Remediation {
         $TenantName = Split-Path -Leaf $AssessmentFolder
     }
 
+    # Tenant-controlled text lands in the Jira CSV; neutralise formula leads.
+    . (Join-Path -Path $PSScriptRoot -ChildPath 'ConvertTo-SafeCellValue.ps1')
+
     # ---------- Load findings + remediation sequence ----------
     $laneScript = Join-Path -Path $PSScriptRoot -ChildPath 'Get-RemediationLane.ps1'
     if (-not (Get-Command -Name Get-RemediationLane -ErrorAction SilentlyContinue)) {
@@ -251,7 +254,7 @@ $(if ($quickWins.Count -eq 0) { '_No quick wins available -- failures require no
             }
         }
         $jiraPath = Join-Path -Path $OutputFolder -ChildPath 'jira-import.csv'
-        $jiraRows | Export-Csv -Path $jiraPath -NoTypeInformation -Encoding UTF8
+        $jiraRows | ConvertTo-SafeCellObject | Export-Csv -Path $jiraPath -NoTypeInformation -Encoding UTF8
         $written.Add($jiraPath)
     }
 

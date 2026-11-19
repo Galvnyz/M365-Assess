@@ -22,8 +22,11 @@
     Optional tenant identifier for the output filename. Defaults to the
     assessment-folder basename.
 .PARAMETER Redact
-    When set, applies the PII redaction ruleset to all text artifacts
-    (findings.json, run-metadata.json) before zipping.
+    When set, applies the PII redaction ruleset to findings.json, the
+    permissions summary and the data embedded in the HTML report. The XLSX
+    matrix is left out of a redacted package, and the HTML report is left out
+    if its data cannot be redacted. Redaction is pattern based (addresses,
+    IPs, GUIDs, tenant display name); it does not remove display names.
 .PARAMETER TenantDisplayName
     When -Redact is set, all case-insensitive occurrences of this string
     are replaced with <tenant>. Pass the actual tenant display name from
@@ -59,11 +62,17 @@ function Export-EvidencePackage {
 
     # Load redaction rules only if needed -- avoids failure if the helper
     # isn't dot-sourced upstream.
+    $redactionSalt = $null
+    $redactionNotes = [System.Collections.Generic.List[string]]::new()
     if ($Redact) {
         $rulesPath = Join-Path -Path $PSScriptRoot -ChildPath 'Get-RedactionRules.ps1'
-        if (-not (Get-Command -Name Invoke-RedactionRules -ErrorAction SilentlyContinue)) {
+        if (-not (Get-Command -Name ConvertTo-RedactedReportHtml -ErrorAction SilentlyContinue)) {
             . $rulesPath
         }
+        # One random salt per package: tokens correlate inside the package but
+        # cannot be reversed by hashing guessed UPNs, and never match the
+        # tokens of another package. The salt is not written anywhere.
+        $redactionSalt = New-RedactionSalt
     }
 
     # Resolve filename + staging dir
@@ -83,21 +92,43 @@ function Export-EvidencePackage {
         # ----- 1. Stage source artifacts (with optional redaction) -----
         $stagedFiles = [System.Collections.Generic.List[string]]::new()
 
-        # 1a. HTML report (binary-safe; not redacted -- the React app already
-        # renders text, and PII would appear in window.REPORT_DATA below).
+        # 1a. HTML report. All tenant data lives in the window.REPORT_DATA
+        # island, so with -Redact that island is parsed and redacted. If it
+        # cannot be redacted the report is left out: a redacted package must
+        # never carry an unredacted artifact.
         $htmlSrc = Get-ChildItem -Path $AssessmentFolder -Filter '*Assessment-Report*.html' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($htmlSrc) {
             $htmlDst = Join-Path -Path $tempDir -ChildPath 'executive-report.html'
-            Copy-Item -Path $htmlSrc.FullName -Destination $htmlDst -Force
-            $stagedFiles.Add($htmlDst)
+            if ($Redact) {
+                $htmlText = Get-Content -Path $htmlSrc.FullName -Raw
+                $redactedHtml = ConvertTo-RedactedReportHtml -Html $htmlText -TenantDisplayName $TenantDisplayName -Salt $redactionSalt
+                if ($null -ne $redactedHtml) {
+                    Set-Content -Path $htmlDst -Value $redactedHtml -Encoding UTF8 -NoNewline
+                    $stagedFiles.Add($htmlDst)
+                }
+                else {
+                    $redactionNotes.Add('executive-report.html was omitted: its embedded data could not be redacted.')
+                    Write-Warning 'Evidence package: the HTML report could not be redacted and was left out of the package.'
+                }
+            }
+            else {
+                Copy-Item -Path $htmlSrc.FullName -Destination $htmlDst -Force
+                $stagedFiles.Add($htmlDst)
+            }
         }
 
-        # 1b. XLSX matrix
+        # 1b. XLSX matrix. A workbook cannot be redacted in place without
+        # rewriting every sheet, so with -Redact it is left out.
         $xlsxSrc = Get-ChildItem -Path $AssessmentFolder -Filter '*Compliance-Matrix*.xlsx' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($xlsxSrc) {
-            $xlsxDst = Join-Path -Path $tempDir -ChildPath 'compliance-matrix.xlsx'
-            Copy-Item -Path $xlsxSrc.FullName -Destination $xlsxDst -Force
-            $stagedFiles.Add($xlsxDst)
+            if ($Redact) {
+                $redactionNotes.Add('compliance-matrix.xlsx was omitted: the workbook is not redacted. Share it separately only if the recipient may see tenant identifiers.')
+            }
+            else {
+                $xlsxDst = Join-Path -Path $tempDir -ChildPath 'compliance-matrix.xlsx'
+                Copy-Item -Path $xlsxSrc.FullName -Destination $xlsxDst -Force
+                $stagedFiles.Add($xlsxDst)
+            }
         }
 
         # 1c. findings.json -- aggregate all per-collector CSVs into one JSON
@@ -110,7 +141,12 @@ function Export-EvidencePackage {
         }
         $findingsJson = $allFindings | ConvertTo-Json -Depth 6
         if ($Redact) {
-            $findingsJson = Invoke-RedactionRules -Text $findingsJson -TenantDisplayName $TenantDisplayName
+            $findingsJson = if ($allFindings.Count -gt 0) {
+                ConvertTo-RedactedJson -Json $findingsJson -TenantDisplayName $TenantDisplayName -Salt $redactionSalt -ForFile
+            }
+            else {
+                '[]'
+            }
         }
         $findingsPath = Join-Path -Path $tempDir -ChildPath 'findings.json'
         Set-Content -Path $findingsPath -Value $findingsJson -Encoding UTF8
@@ -123,7 +159,7 @@ function Export-EvidencePackage {
         if (Test-Path -Path $permSrc) {
             $permContent = Get-Content -Path $permSrc -Raw
             if ($Redact) {
-                $permContent = Invoke-RedactionRules -Text $permContent -TenantDisplayName $TenantDisplayName
+                $permContent = Invoke-RedactionRules -Text $permContent -TenantDisplayName $TenantDisplayName -Salt $redactionSalt
             }
             Set-Content -Path $permDst -Value $permContent -Encoding UTF8
         } else {
@@ -150,6 +186,7 @@ function Export-EvidencePackage {
             assessmentVersion     = $assessVersion
             registryDataVersion   = $registryDataVersion
             redactionApplied      = [bool]$Redact
+            redactionNotes        = @($redactionNotes)
             findingCount          = $allFindings.Count
         }
         $runMetaPath = Join-Path -Path $tempDir -ChildPath 'run-metadata.json'
@@ -171,13 +208,18 @@ override anything stated here.
 When `-Redact` is in effect:
 
 - UPNs, email addresses, IPv4/IPv6 addresses, and GUIDs are replaced with
-  deterministic hash tokens (e.g. `<user-a3f81b29>`).
-- The tenant display name is replaced with `<tenant>`.
-- Hash tokens are stable within the package -- the same UPN always produces the
+  keyed hash tokens (e.g. `<user-a3f81b29c04d7e15>`).
+- The tenant display name is replaced with `<tenant>` when it was supplied.
+- Tokens are stable within the package -- the same UPN always produces the
   same `<user-...>` token, preserving join keys for cross-finding correlation.
-- The HTML report and XLSX matrix are NOT redacted; they are bundled as-is.
-  Generate the HTML/XLSX from a redacted run if those artifacts must also be
-  PII-free.
+  They use a random per-package key that is not stored, so they cannot be
+  reversed by hashing guessed addresses and do not match other packages.
+- The data embedded in the HTML report is redacted with the same rules.
+- The XLSX matrix is left out of a redacted package. See `redactionNotes` in
+  `run-metadata.json` for anything that was omitted.
+- Redaction is pattern based. Display names, group names and free text that
+  identify a person or organisation without matching an address, IP or GUID
+  pattern are NOT removed. Review before sharing outside your organisation.
 
 See `docs/EVIDENCE-PACKAGE.md` in the M365-Assess repository for the full
 package layout reference.
@@ -199,8 +241,8 @@ Registry data version: $registryDataVersion
 
 ## Files
 
-- ``executive-report.html`` -- the full M365-Assess HTML report
-- ``compliance-matrix.xlsx`` -- framework crosswalk + evidence sheets
+- ``executive-report.html`` -- the full M365-Assess HTML report$(if ($Redact) { ' (embedded data redacted)' })
+- ``compliance-matrix.xlsx`` -- framework crosswalk + evidence sheets$(if ($Redact) { ' (omitted from redacted packages)' })
 - ``findings.json`` -- structured findings with evidence schema (D1 #785)
 - ``permissions-summary.json`` -- per-section app-role / scope coverage
 - ``run-metadata.json`` -- run identifier, version, redaction state

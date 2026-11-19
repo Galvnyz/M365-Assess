@@ -14,7 +14,7 @@ The package is a **post-processing artifact**, not a separate run. It reads the 
 # Plain (no redaction) -- contents identical to the assessment folder
 Invoke-M365Assessment -TenantId contoso.onmicrosoft.com -EvidencePackage
 
-# Redacted -- safe to send to a third party
+# Redacted -- addresses, IPs and GUIDs replaced; review before sending to a third party
 Invoke-M365Assessment -TenantId contoso.onmicrosoft.com -EvidencePackage -Redact
 ```
 
@@ -28,8 +28,8 @@ The package is written next to the assessment folder as `<TenantName>_EvidencePa
 <package>.zip
 ├── README.md                  # Auditor-facing top-level guide
 ├── manifest.json              # SHA-256 hash + byte count per file
-├── executive-report.html      # Full M365-Assess HTML report (NOT redacted; bundle as-is)
-├── compliance-matrix.xlsx     # Framework crosswalk + Evidence Details sheet (NOT redacted)
+├── executive-report.html      # Full M365-Assess HTML report (embedded data redacted with -Redact)
+├── compliance-matrix.xlsx     # Framework crosswalk + Evidence Details sheet (left out with -Redact)
 ├── findings.json              # Aggregated findings with structured evidence schema
 ├── permissions-summary.json   # Per-section app-role / scope deficits (B2)
 ├── run-metadata.json          # Run identifier, version, redaction state
@@ -60,22 +60,29 @@ If any file has been modified post-extraction, the comparison fails. The manifes
 
 | Category | Pattern | Replaced with |
 |---|---|---|
-| UPNs / email addresses | `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}` | `<user-{8-hex}>` |
-| IPv4 addresses | Standard 4-octet form | `<ip-{8-hex}>` |
-| IPv6 addresses | Full and `::`-compact forms | `<ip-{8-hex}>` |
-| GUIDs | `8-4-4-4-12` format | `<guid-{8-hex}>` |
+| UPNs / email addresses | `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}` | `<user-{16-hex}>` |
+| IPv4 addresses | Standard 4-octet form | `<ip-{16-hex}>` |
+| IPv6 addresses | Full and `::`-compact forms | `<ip-{16-hex}>` |
+| GUIDs | `8-4-4-4-12` format | `<guid-{16-hex}>` |
 | Tenant display name | Literal match (case-insensitive) | `<tenant>` |
 
-Hash tokens are deterministic: `SHA-256(value).ToLowerInvariant()` truncated to 8 hex characters. The same plaintext always produces the same token within a package, which preserves join keys for cross-finding correlation:
+Tokens are keyed hashes: `HMAC-SHA-256(key, value.ToLowerInvariant())` truncated to 16 hex characters, with a random key generated for each package and never stored. The same plaintext always produces the same token within a package, which preserves join keys for cross-finding correlation:
 
-> "user-a3f81b29 fails MFA on CA-001, *and* has admin role on ROLE-001."
+> "user-a3f81b29c04d7e15 fails MFA on CA-001, *and* has admin role on ROLE-001."
 
-The auditor can reason about the user's posture without knowing the underlying UPN.
+The auditor can reason about the user's posture without knowing the underlying UPN. Because the key is random and discarded, a recipient cannot confirm a guessed address by hashing it, and tokens from two packages do not match each other.
+
+### What `-Redact` covers
+
+- **findings.json** and **permissions-summary.json** -- every string value is redacted.
+- **executive-report.html** -- the report's embedded data (`window.REPORT_DATA`) is parsed and every string value is redacted with the same rules and the same key. The report application code and styles are not touched. If the data cannot be located or parsed, the report is left out of the package and `run-metadata.json` says so; an unredacted report is never included.
+- **compliance-matrix.xlsx** -- left out of a redacted package. A workbook cannot be redacted reliably in place. Share it separately only if the recipient may see tenant identifiers.
+
+`run-metadata.json` lists anything that was omitted under `redactionNotes`.
 
 ### What is NOT redacted
 
-- **executive-report.html** -- bundled as-is. The HTML is a Microsoft-rendered assessment artifact. To produce a redacted HTML, run the assessment in a context that produces redacted findings *upstream* (out of scope for v2.9).
-- **compliance-matrix.xlsx** -- bundled as-is for the same reason.
+- **Display names and free text.** Redaction is pattern based. A person's display name, a group or application name, or a domain written without an address does not match any pattern and is left as it is. Review the package before sharing it outside your organisation.
 - **CheckId values** -- these are public registry identifiers, not tenant-specific.
 - **Setting names, framework controlIds, remediation guidance** -- all from the public control registry.
 

@@ -72,13 +72,13 @@ ENTRA-ADMIN-001.2    Second setting assessed under ENTRA-ADMIN-001
 ```
 
 <!-- registry-stats:checks:begin -->
-The assessment suite includes **292 security checks** across **16 collector families** (Backup, CAEvaluator, Compliance, CriticalExposure, Defender, DNS, EntApp, Entra, ExchangeOnline, Forms, Intune, PowerBI, PurviewRetention, SharePoint, StrykerReadiness, Teams), each mapped to one or more compliance frameworks.
+The assessment suite includes **298 security checks** across **17 collector families** (Backup, CAEvaluator, Compliance, CompromiseHunt, CriticalExposure, Defender, DNS, EntApp, Entra, ExchangeOnline, Forms, Intune, PowerBI, PurviewRetention, SharePoint, StrykerReadiness, Teams), each mapped to one or more compliance frameworks.
 <!-- registry-stats:checks:end -->
 
 ## Control Registry
 
 <!-- registry-stats:registry:begin -->
-Framework mappings are defined in `controls/registry.json`, which contains **292 control entries** — the M365-scoped subset of the upstream CheckID registry plus **5 local extension checks**.
+Framework mappings are defined in `controls/registry.json`, which contains **298 control entries** — the M365-scoped subset of the upstream CheckID registry plus **11 local extension checks**.
 <!-- registry-stats:registry:end -->
 
 CheckID upstream also carries Windows-endpoint `WIN-*` and Azure-subscription `AZ-*` checks; the sync workflow filters those out via `controls/sync-scope.json` because no collector in this module can emit them. Each entry specifies the check ID, description, and mappings to all applicable frameworks.

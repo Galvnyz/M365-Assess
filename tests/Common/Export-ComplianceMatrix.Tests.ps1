@@ -61,7 +61,9 @@ Describe 'Workbook readability and header-based formatting' -Skip:(-not (Get-Mod
         $script:longValue = ('Raw evidence value with spaces. ' * 150)
         @(
             [PSCustomObject]@{CheckId='ENTRA-SECDEFAULT-001.1';Setting='Long evidence';Category='Identity';Status='Fail';CurrentValue=$script:longValue;RecommendedValue='True';Remediation=('Review the complete evidence. ' * 60)},
-            [PSCustomObject]@{CheckId='EXO-AUTH-001.1';Setting='Pass fixture';Category='Authentication';Status='Pass';CurrentValue='Done';RecommendedValue='Done';Remediation='None'}
+            [PSCustomObject]@{CheckId='EXO-AUTH-001.1';Setting='Pass fixture';Category='Authentication';Status='Pass';CurrentValue='Done';RecommendedValue='Done';Remediation='None'},
+            [PSCustomObject]@{CheckId='ENTRA-GUEST-001.1';Setting='=HYPERLINK("https://example.test","Click")';Category='Identity';Status='Fail';CurrentValue='=1+1';RecommendedValue='True';Remediation='None'},
+            [PSCustomObject]@{CheckId='IOC-INBOXRULE-001.1';Setting='Inbox rules forwarding to external domains';Category='Mailbox Indicators';Status='Fail';CurrentValue='1 indicator(s) found (examined 3 of 3 mailboxes, current inbox rules)';RecommendedValue='None';Remediation='Investigate.'}
         ) | Export-Csv -Path (Join-Path $folder 'fixture-config.csv') -NoTypeInformation
         @(
             [PSCustomObject]@{Section='Identity';Collector='Fixture';FileName='fixture-config.csv';Status='Complete';Items=2;Error=''},
@@ -77,6 +79,37 @@ Describe 'Workbook readability and header-based formatting' -Skip:(-not (Get-Mod
         }
     }
     AfterAll { if ($script:package) { $script:package.Dispose() } }
+
+    It 'writes tenant-controlled text that looks like a formula as plain text on every sheet' {
+        $formulaCells = foreach ($worksheet in $script:package.Workbook.Worksheets) {
+            foreach ($cell in $worksheet.Cells[$worksheet.Dimension.Address]) {
+                if ($cell.Formula -match 'HYPERLINK|1\+1') { "$($worksheet.Name)!$($cell.Address)" }
+            }
+        }
+        $formulaCells | Should -BeNullOrEmpty
+
+        for ($r = 3; $r -le $script:sheet.Dimension.End.Row; $r++) {
+            if ($script:sheet.Cells[$r,$script:columns['CheckId']].Value -eq 'ENTRA-GUEST-001.1') {
+                $script:sheet.Cells[$r,$script:columns['Setting']].Value | Should -BeExactly "'=HYPERLINK(`"https://example.test`",`"Click`")"
+                $script:sheet.Cells[$r,$script:columns['CurrentValue']].Value | Should -BeExactly "'=1+1"
+            }
+        }
+    }
+
+    It 'reports compromise indicators on their own sheet and keeps them out of the matrix and pass rates' {
+        $indicatorRows = @(Import-Excel -Path $script:workbookPath -WorksheetName 'Compromise Indicators')
+        $indicatorRows.Count | Should -Be 1
+        $indicatorRows[0].CheckId | Should -Be 'IOC-INBOXRULE-001.1'
+        $indicatorRows[0].Status | Should -Be 'Fail'
+
+        $matrixIds = @(Import-Excel -Path $script:workbookPath -WorksheetName 'Compliance Matrix' -StartRow 2).CheckId
+        $matrixIds | Should -Not -Contain 'IOC-INBOXRULE-001.1'
+        $matrixIds | Should -Contain 'EXO-AUTH-001.1'
+
+        # The fixture has two posture Fails and one indicator Fail; no framework row may count three.
+        $summaryRows = @(Import-Excel -Path $script:workbookPath -WorksheetName 'Summary')
+        @($summaryRows | Where-Object { [int]$_.Fail -gt 2 }) | Should -BeNullOrEmpty
+    }
 
     It 'bounds wide columns on all sheets and wraps preserved evidence' {
         foreach ($worksheet in $script:package.Workbook.Worksheets) {

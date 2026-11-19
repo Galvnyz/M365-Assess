@@ -103,6 +103,9 @@ function Export-AssessmentBridgeJson {
     $domainSummary = [ordered]@{}
     foreach ($f in $AllFindings) {
         $baseId = $f.CheckId -replace '\.\d+$', ''
+        # Compromise indicators are hunt results; they stay in .findings for
+        # consumers but are not counted in the posture summary.
+        if ($baseId -like 'IOC-*') { continue }
         $d = switch -Wildcard ($baseId) {
             'CA-*'           { 'Conditional Access';    break }
             'ENTRA-ENTAPP-*' { 'Enterprise Apps';       break }
