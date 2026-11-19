@@ -735,7 +735,10 @@ function CriticalExposureBlock() {
 
 // ======================== Overview (tenant + summary) ========================
 function Overview() {
-  const totalChecks = D.summary.reduce((a,r)=>a+parseInt(r.Items||0),0);
+  // D.summary is built from posture findings only; add the compromise
+  // indicator sections so a hunt-only run does not report "0 collectors".
+  const indicatorSections = new Set(INDICATORS.map(i => i.section)).size;
+  const totalChecks = D.summary.reduce((a,r)=>a+parseInt(r.Items||0),0) + INDICATORS.length;
   return (
     <section className="block" id="overview">
       <div className="tenant-line">
@@ -750,9 +753,10 @@ function Overview() {
         <span>Run <b>{new Date(SCORE.CreatedDateTime || Date.now()).toLocaleString()}</b></span>
       </div>
       <div className="overview-meta">
-        <span>› {D.summary.length} collectors executed</span>
+        <span>› {D.summary.length + indicatorSections} collectors executed</span>
         <span>› {fmt(totalChecks)} data points inventoried</span>
         <span>› {FINDINGS.length} controls evaluated</span>
+        {INDICATORS.length > 0 && <span>› {INDICATORS.length} compromise checks</span>}
         <span>› {FRAMEWORKS.length} frameworks mapped</span>
       </div>
     </section>

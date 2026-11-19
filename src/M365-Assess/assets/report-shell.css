@@ -1019,6 +1019,25 @@ mark.search-hl {
   }
 }
 
+/* Briefing: compromise hunt summary, shown above the configuration verdict. */
+.brief-ioc {
+  margin-bottom: 12px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--muted); border-radius: var(--radius); padding: 14px 18px;
+}
+.brief-ioc.bad  { border-left-color: var(--danger);  background: var(--danger-soft); }
+.brief-ioc.warn { border-left-color: var(--warn);    background: var(--warn-soft); }
+.brief-ioc.good { border-left-color: var(--success); }
+.brief-ioc-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.brief-ioc.bad .brief-ioc-title  { color: var(--danger-text); }
+.brief-ioc.warn .brief-ioc-title { color: var(--warn-text); }
+.brief-ioc.good .brief-ioc-title { color: var(--success-text); }
+.brief-ioc-sub { font-size: 13.5px; color: var(--text-soft); line-height: 1.55; max-width: 72ch; }
+.brief-ioc-list { list-style: none; margin: 10px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.brief-ioc-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text); }
+.brief-ioc-name { flex: 1; min-width: 0; }
+.brief-ioc-count { font-size: 12px; color: var(--text-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.brief-verdict-empty { display: block; }
+
 /* Compromise indicators: expanded detail with a time-stamped event table. The
    table scrolls inside its own box so a long address never widens the page. */
 .finding-detail.indicator-detail { padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
