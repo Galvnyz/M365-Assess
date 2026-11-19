@@ -6,7 +6,9 @@ the observed Review visible. Neither increases the observed pass rate. Active
 decisions remove matching findings from the actionable queue and remediation
 roadmap; the assessor panel and XLSX matrix retain the decision and its evidence.
 
-In the HTML report, enable edit mode and use **Assessor decisions**. Select a
+In the HTML report, enable edit mode and use **Assessor decisions**, just above
+All findings. The card is hidden in a default report: it appears only in edit
+mode, or for readers when the report already carries decisions. Select a
 finding and provide a justification, approver, evidence reference, and expiry.
 Fail/Warning findings support accepted risk; Review findings support a manual
 attestation. An attestation records that an assessor reviewed the control; it is
@@ -45,7 +47,9 @@ decision includes `checkId`, `setting`, `type`, `observedValue`, `justification`
 `approvedBy`, `approvedAt`, `expiresAt`, and `evidence`. Timestamps use ISO 8601
 with timezone. Evidence is a reference or explanatory text, not an uploaded file.
 
-Collection completeness is shown independently. A high observed pass rate does
+Collection completeness is shown independently, as a one-line **Collection**
+indicator at the top of the HTML report; expand it for every collector's
+result. A high observed pass rate does
 not compensate for failed collectors, unavailable findings, or pending review.
 The Collection Status workbook sheet and JSON collection block preserve those
 limitations, even when a failed collector emitted no findings.

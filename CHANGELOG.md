@@ -37,6 +37,13 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   completed; otherwise it says "Partly measured", "Not measured" or "Not
   collected" and names what is missing. Compromise indicators stay out of this
   row. Design: `docs/specs/2026-11-19-posture-tiles-design.md`.
+- **Collection status is one line at the top of the report** (#1065), for
+  example "Collection: Incomplete · 4 collectors incomplete · 2 findings
+  unavailable", collapsed by default. Expanding it lists incomplete collectors
+  with their errors first, then the complete ones in a compact grid.
+- **Assessor decisions no longer appear in default reports** (#1066). The card
+  shows only in edit mode or when the report carries decisions, and it now sits
+  just above All findings instead of at the top.
 
 ### Security
 

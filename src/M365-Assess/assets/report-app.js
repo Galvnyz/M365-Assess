@@ -6079,18 +6079,46 @@ function downloadDecisions() {
   a.click();
   URL.revokeObjectURL(url);
 }
+// #1065: one collapsed line at the top of the report. Expanding it shows the
+// explanation and every collector, incomplete ones first.
 function CollectionStatus() {
   const c = D.collection;
-  return /*#__PURE__*/React.createElement("section", {
-    className: "card",
-    "aria-label": "Collection completeness",
-    style: {
-      margin: 20,
-      padding: 20
-    }
-  }, /*#__PURE__*/React.createElement("strong", null, "Collection: ", c?.state || 'Unspecified'), /*#__PURE__*/React.createElement("p", null, "Scores describe observed findings only. Missing data and unverified reviews do not establish compliance."), c && /*#__PURE__*/React.createElement("p", null, c.incompleteCollectors, " incomplete collectors · ", c.unavailableFindings, " unavailable findings. ", c.scope), !!c?.collectors?.length && /*#__PURE__*/React.createElement("details", null, /*#__PURE__*/React.createElement("summary", null, "Collector results"), /*#__PURE__*/React.createElement("ul", null, c.collectors.map((x, i) => /*#__PURE__*/React.createElement("li", {
+  const state = c?.state || 'Unspecified';
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const parts = [];
+  if (c?.incompleteCollectors) parts.push(plural(c.incompleteCollectors, 'collector incomplete', 'collectors incomplete'));
+  if (c?.unavailableFindings) parts.push(plural(c.unavailableFindings, 'finding unavailable', 'findings unavailable'));
+  const clean = x => x.Status === 'Complete' && !x.Error;
+  const partial = (c?.collectors || []).filter(x => !clean(x));
+  const complete = (c?.collectors || []).filter(clean);
+  return /*#__PURE__*/React.createElement("details", {
+    className: 'collection-status cs-' + state.toLowerCase(),
+    "aria-label": "Collection completeness"
+  }, /*#__PURE__*/React.createElement("summary", null, /*#__PURE__*/React.createElement("span", {
+    className: "cs-dot",
+    "aria-hidden": "true"
+  }), /*#__PURE__*/React.createElement("strong", null, "Collection: ", state), parts.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "cs-detail"
+  }, ' · ' + parts.join(' · '))), /*#__PURE__*/React.createElement("div", {
+    className: "cs-body"
+  }, /*#__PURE__*/React.createElement("p", null, "Scores describe observed findings only. Missing data and unverified reviews do not establish compliance.", c?.scope ? ' ' + c.scope : ''), partial.length > 0 && /*#__PURE__*/React.createElement("ul", {
+    className: "cs-list"
+  }, partial.map((x, i) => /*#__PURE__*/React.createElement("li", {
+    key: i,
+    className: "cs-row-partial"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cs-collector"
+  }, x.Section ? x.Section + ' · ' : '', x.Collector), /*#__PURE__*/React.createElement("span", {
+    className: "cs-state"
+  }, x.Status), x.Error && /*#__PURE__*/React.createElement("span", {
+    className: "cs-error"
+  }, x.Error)))), complete.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "cs-complete-label"
+  }, complete.length, " complete"), /*#__PURE__*/React.createElement("ul", {
+    className: "cs-complete-list"
+  }, complete.map((x, i) => /*#__PURE__*/React.createElement("li", {
     key: i
-  }, x.Collector, ": ", x.Status, x.Error ? ` — ${x.Error}` : '')))));
+  }, x.Collector))))));
 }
 function AssessorWorkflow({
   editMode
@@ -6138,11 +6166,15 @@ function AssessorWorkflow({
   };
   const active = document.decisions.filter(d => FINDINGS.some(f => decisionKey(f) === `${d.checkId}\n${d.setting}` && decisionState(d, f) === 'Active'));
   const actionable = candidates.filter(f => !active.some(d => decisionKey(f) === `${d.checkId}\n${d.setting}`));
+  // #1066: an assessor tool, not reader content. Shown while editing, or when
+  // the report carries decisions (they are not badged on findings yet, so this
+  // is the only place a reader sees them). A default run shows nothing.
+  if (!editMode && document.decisions.length === 0) return null;
   return /*#__PURE__*/React.createElement("section", {
     className: "card",
     "aria-label": "Assessor decisions",
     style: {
-      margin: 20,
+      margin: '20px 0',
       padding: 20
     }
   }, /*#__PURE__*/React.createElement("h2", null, "Assessor decisions"), /*#__PURE__*/React.createElement("p", null, actionable.length, " actionable findings · ", active.filter(d => d.type === 'AcceptedRisk').length, " accepted risks · ", active.filter(d => d.type === 'ManualAttestation').length, " manual attestations."), /*#__PURE__*/React.createElement("p", null, "Observations and scores remain unchanged. Export decisions and pass the file with ", /*#__PURE__*/React.createElement("code", null, "-AssessmentDecisionsPath"), " on the next run or report regeneration to update HTML, XLSX and JSON together."), /*#__PURE__*/React.createElement("ul", null, document.decisions.map((d, i) => {
@@ -7346,9 +7378,7 @@ function App() {
     onFinalize: handleFinalize,
     onReset: handleResetAll,
     hiddenCount: hiddenFindings.size + hiddenElements.size
-  }), /*#__PURE__*/React.createElement(CollectionStatus, null), /*#__PURE__*/React.createElement(AssessorWorkflow, {
-    editMode: editMode
-  }), /*#__PURE__*/React.createElement(Briefing, {
+  }), /*#__PURE__*/React.createElement(CollectionStatus, null), /*#__PURE__*/React.createElement(Briefing, {
     onViewFinding: onViewFinding,
     onShowCritical: onShowCritical,
     onShowQuickWins: onShowQuickWins
@@ -7364,6 +7394,8 @@ function App() {
     activeProfiles: filters.profile || []
   }), /*#__PURE__*/React.createElement(DomainRollup, {
     onJump: onDomainJump
+  }), /*#__PURE__*/React.createElement(AssessorWorkflow, {
+    editMode: editMode
   }), /*#__PURE__*/React.createElement("div", {
     id: "findings-anchor"
   }), /*#__PURE__*/React.createElement("div", {

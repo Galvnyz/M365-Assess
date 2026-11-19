@@ -500,7 +500,6 @@ function App() {
           hiddenCount={hiddenFindings.size + hiddenElements.size}
         />
         <CollectionStatus/>
-        <AssessorWorkflow editMode={editMode}/>
         <Briefing onViewFinding={onViewFinding} onShowCritical={onShowCritical} onShowQuickWins={onShowQuickWins}/>
         <Overview/>
         <Posture onAreaSelect={onAreaSelect}/>
@@ -510,6 +509,9 @@ function App() {
         <TrendChart/>
         <FrameworkQuilt onSelect={onFrameworkSelect} selected={filters.framework[0]} onProfileSelect={onProfileSelect} activeProfiles={filters.profile || []}/>
         <DomainRollup onJump={onDomainJump}/>
+        {/* #1066: assessor decisions sit beside the findings they act on, and
+            only render while editing or when the report carries decisions. */}
+        <AssessorWorkflow editMode={editMode}/>
         <div id="findings-anchor"/>
         <div style={{marginTop:20}}/>
         <FilterBar filters={filters} setFilters={setFilters} counts={counts} total={FINDINGS.length} search={search} setSearch={setSearch} inFindings={active === 'findings'}/>
