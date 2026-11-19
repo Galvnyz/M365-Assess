@@ -63,6 +63,9 @@ All notable changes to M365 Assess are documented here. This project uses [Conve
   shows "no configuration score" instead of a red 0% when nothing was scored,
   and no longer colours the External exposure tile green from data that was
   not collected.
+- The report no longer scrolls sideways at about 1024px wide: the Status filter
+  group now wraps its chips, and long permission names in the permissions table
+  break instead of widening the card.
 - Keep guest invitation domain restrictions (`ENTRA-GUEST-004`) in manual Review
   until the domain allow/block list is verified. Inviter permissions and cross-tenant
   application access no longer produce unsupported Pass or Fail results; findings

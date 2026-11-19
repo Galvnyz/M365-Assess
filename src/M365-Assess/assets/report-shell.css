@@ -629,7 +629,10 @@ button.pt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset:
   column-gap: 12px;
   row-gap: 6px;
 }
-.fb-row-flow .filter-group { flex: 0 0 auto; min-width: 0; }
+/* Groups break as units, but a single group wider than the row (Status with
+   every chip present) may shrink so its chips wrap instead of overflowing the
+   page at ~1024px. */
+.fb-row-flow .filter-group { flex: 0 1 auto; min-width: 0; max-width: 100%; }
 /* Hide leading dividers on a wrapped row so a group that breaks to a new
    line doesn't start with an orphan divider. */
 .fb-row-flow .filter-divider:first-child { display: none; }
@@ -1453,6 +1456,8 @@ mark.search-hl {
 .permissions-table td {
   padding: 8px 10px; text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--border);
+  /* Scope names such as Exchange.ManageAsApp have no break points. */
+  overflow-wrap: anywhere;
 }
 .permissions-table th {
   font-weight: 600; color: var(--text-soft); background: var(--surface2);
