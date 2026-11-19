@@ -251,11 +251,21 @@ Describe 'Get-TeamsSecurityConfig - sovereign-cloud endpoint gaps emit Skipped (
     }
 }
 
-Describe 'Get-TeamsSecurityConfig - App-Only Auth Early Exit' {
+Describe 'Get-TeamsSecurityConfig - App-Only Auth' {
     BeforeAll {
         function global:Update-CheckProgress {
             param($CheckId, $Setting, $Status)
         }
+
+        # Every check the collector reports. When Teams cannot be assessed at all,
+        # each one must still appear with a reason instead of silently vanishing (#1049).
+        $script:expectedTeamsChecks = @(
+            'TEAMS-APPS-001', 'TEAMS-EXTACCESS-001', 'TEAMS-EXTACCESS-002', 'TEAMS-CLIENT-001',
+            'TEAMS-CLIENT-002', 'TEAMS-EXTACCESS-003', 'TEAMS-EXTACCESS-004',
+            'TEAMS-MEETING-001', 'TEAMS-MEETING-002', 'TEAMS-MEETING-003', 'TEAMS-MEETING-004',
+            'TEAMS-MEETING-005', 'TEAMS-MEETING-006', 'TEAMS-MEETING-007', 'TEAMS-MEETING-008',
+            'TEAMS-MEETING-009', 'TEAMS-INFO-001', 'TEAMS-APPS-002', 'TEAMS-REPORTING-001'
+        )
 
         # Stub Get-MgContext as app-only auth (no Account, has AppName)
         function Get-MgContext {
@@ -265,14 +275,38 @@ Describe 'Get-TeamsSecurityConfig - App-Only Auth Early Exit' {
                 AppName  = 'TestApp'
             }
         }
+        Mock Invoke-MgGraphRequest { throw 'Graph must not be called under app-only auth' }
 
-        # Capture the output from the collector
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        $script:collectorOutput = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1"
+        $raw = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1" 3>&1
+        $script:warnings = @($raw | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+        $script:collectorOutput = @($raw | Where-Object { $_ -isnot [System.Management.Automation.WarningRecord] })
     }
 
-    It 'Returns empty array for app-only auth' {
-        @($script:collectorOutput).Count | Should -Be 0
+    Context 'when Teams settings cannot be read with an app-only token' {
+        It 'should report every Teams check instead of returning nothing' {
+            $ids = @($script:collectorOutput | ForEach-Object { $_.CheckId -replace '\.\d+$', '' })
+            $ids | Sort-Object | Should -Be ($script:expectedTeamsChecks | Sort-Object)
+        }
+
+        It 'should mark every check Skipped with the reason and next step' {
+            $script:collectorOutput | ForEach-Object {
+                $_.Status | Should -Be 'Skipped'
+                $_.CurrentValue | Should -Be 'Not assessed'
+                $_.Remediation | Should -Match 'delegated \(interactive\)'
+            }
+        }
+
+        It 'should warn with the GraphCollectionIncomplete marker so the run records the collector as Partial' {
+            $marked = @($script:warnings | Where-Object { $_.Message -like 'GraphCollectionIncomplete:*' })
+            $marked.Count | Should -Be 1
+            New-CollectionIssue -Message $marked[0].Message -Section Collaboration -Collector 'Teams Security Config' |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It 'should not call Graph' {
+            Should -Invoke Invoke-MgGraphRequest -Times 0 -Exactly
+        }
     }
 
     AfterAll {
@@ -351,6 +385,14 @@ Describe 'Get-TeamsSecurityConfig - No Teams License' {
             param($CheckId, $Setting, $Status)
         }
 
+        $script:expectedTeamsChecks = @(
+            'TEAMS-APPS-001', 'TEAMS-EXTACCESS-001', 'TEAMS-EXTACCESS-002', 'TEAMS-CLIENT-001',
+            'TEAMS-CLIENT-002', 'TEAMS-EXTACCESS-003', 'TEAMS-EXTACCESS-004',
+            'TEAMS-MEETING-001', 'TEAMS-MEETING-002', 'TEAMS-MEETING-003', 'TEAMS-MEETING-004',
+            'TEAMS-MEETING-005', 'TEAMS-MEETING-006', 'TEAMS-MEETING-007', 'TEAMS-MEETING-008',
+            'TEAMS-MEETING-009', 'TEAMS-INFO-001', 'TEAMS-APPS-002', 'TEAMS-REPORTING-001'
+        )
+
         # Stub Get-MgContext as delegated auth
         function Get-MgContext {
             return @{
@@ -372,14 +414,28 @@ Describe 'Get-TeamsSecurityConfig - No Teams License' {
                 }
             )
         }
+        Mock Invoke-MgGraphRequest { throw 'Graph must not be called without a Teams licence' }
 
-        # Capture the output from the collector
         . "$PSScriptRoot/../../src/M365-Assess/Orchestrator/AssessmentHelpers.ps1"
-        $script:collectorOutput = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1"
+        $raw = . "$PSScriptRoot/../../src/M365-Assess/Collaboration/Get-TeamsSecurityConfig.ps1" 3>&1
+        $script:warnings = @($raw | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+        $script:collectorOutput = @($raw | Where-Object { $_ -isnot [System.Management.Automation.WarningRecord] })
     }
 
-    It 'Returns empty array when no Teams license is detected' {
-        @($script:collectorOutput).Count | Should -Be 0
+    Context 'when the tenant has no assigned Teams service plan' {
+        It 'should report every Teams check as NotLicensed' {
+            $ids = @($script:collectorOutput | ForEach-Object { $_.CheckId -replace '\.\d+$', '' })
+            $ids | Sort-Object | Should -Be ($script:expectedTeamsChecks | Sort-Object)
+            $script:collectorOutput | ForEach-Object { $_.Status | Should -Be 'NotLicensed' }
+        }
+
+        It 'should not mark the collector incomplete, because licensing was determined' {
+            @($script:warnings | Where-Object { $_.Message -like 'GraphCollectionIncomplete:*' }).Count | Should -Be 0
+            foreach ($w in $script:warnings) {
+                New-CollectionIssue -Message $w.Message -Section Collaboration -Collector 'Teams Security Config' |
+                    Should -BeNullOrEmpty
+            }
+        }
     }
 
     AfterAll {

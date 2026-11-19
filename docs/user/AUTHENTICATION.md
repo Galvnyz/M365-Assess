@@ -200,7 +200,7 @@ Not all sections work with all authentication methods. This matrix shows what wo
 | Email | Yes | Yes | Yes | No | Yes | EXO requires Exchange Admin or Global Reader role for app-only. Client secret not supported for EXO. |
 | Intune | Yes | Yes | Yes | Yes | Yes | Falls back to Review on 403 |
 | Security | Yes | Yes | Yes | Partial | Yes | DLP/Purview: no device code, managed identity, or client secret (falls back to browser) |
-| Collaboration | Yes | Yes | **Partial** | Yes | Yes | **Teams checks skip under app-only** -- Graph Teams APIs require delegated auth |
+| Collaboration | Yes | Yes | **Partial** | Yes | Yes | **Teams checks are not assessed under app-only**: Graph Teams APIs require delegated auth. All 19 Teams checks appear as Skipped and the collector is marked Partial, so the gap shows in the report |
 | PowerBI | Yes | No | Yes | Yes | No | Opt-in. Requires MicrosoftPowerBIMgmt module |
 | Hybrid | Yes | Yes | Yes | Yes | Yes | |
 | Inventory | Yes | Yes | Yes | Yes | Yes | |
@@ -212,7 +212,7 @@ Not all sections work with all authentication methods. This matrix shows what wo
 | Section/Collector | Minimum License | Behavior Without License |
 |-------------------|----------------|------------------------|
 | All default sections | E3 | Full functionality |
-| Teams Security Config | E3 + Teams | Skips with warning if no Teams licenses detected |
+| Teams Security Config | E3 + Teams | Reports every Teams check as Not Licensed if no Teams licenses are detected |
 | Defender Security Config | E3 + Defender P1 | Gracefully skips checks when Defender cmdlets unavailable |
 | PIM checks (Entra) | E5 or Entra P2 | Falls back to Review status with manual verification steps |
 | Intune Security Config | E3 + Intune | Falls back to Review on permission errors |
